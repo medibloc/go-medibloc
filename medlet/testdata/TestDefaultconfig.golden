@@ -1,0 +1,19 @@
+network: <
+  listen: "127.0.0.1:9900"
+  listen: "127.0.0.1:9910"
+>
+chain: <
+  chain_id: 1010
+>
+rpc: <
+  rpc_listen: "127.0.0.1:9920"
+  http_listen: "127.0.0.1:9921"
+>
+misc: <
+>
+app: <
+  log_level: "debug"
+  log_file: "logs"
+  pprof: <
+  >
+>
