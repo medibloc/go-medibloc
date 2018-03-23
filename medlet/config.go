@@ -41,12 +41,12 @@ func defaultConfig() *medletpb.Config {
 	return &medletpb.Config{
 		Network: &medletpb.NetworkConfig{
 			Seed:       nil,
-			Listen:     nil,
+			Listen:     []string{"127.0.0.1:9900", "127.0.0.1:9910"},
 			PrivateKey: "",
 			NetworkId:  0,
 		},
 		Chain: &medletpb.ChainConfig{
-			ChainId:          0,
+			ChainId:          1010,
 			Genesis:          "",
 			Datadir:          "",
 			Keydir:           "",
@@ -57,8 +57,8 @@ func defaultConfig() *medletpb.Config {
 			SignatureCiphers: nil,
 		},
 		Rpc: &medletpb.RPCConfig{
-			RpcListen:        nil,
-			HttpListen:       nil,
+			RpcListen:        []string{"127.0.0.1:9920"},
+			HttpListen:       []string{"127.0.0.1:9921"},
 			HttpModule:       nil,
 			ConnectionLimits: 0,
 		},
@@ -66,8 +66,8 @@ func defaultConfig() *medletpb.Config {
 			DefaultKeystoreFileCiper: "",
 		},
 		App: &medletpb.AppConfig{
-			LogLevel: "",
-			LogFile:  "",
+			LogLevel: "debug",
+			LogFile:  "logs",
 			LogAge:   0,
 			Pprof: &medletpb.PprofConfig{
 				HttpListen: "",
