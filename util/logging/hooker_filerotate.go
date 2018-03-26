@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// NewFileRotateHooker returns file rotate hooker.
 func NewFileRotateHooker(path string, age uint32) logrus.Hook {
 	if path == "" {
 		panic("Failed to parse logger folder:" + path + ".")

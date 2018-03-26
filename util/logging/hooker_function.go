@@ -11,6 +11,7 @@ import (
 
 type functionHooker struct{}
 
+// NewFunctionHooker adds function info to log entry.
 func NewFunctionHooker() logrus.Hook {
 	return &functionHooker{}
 }

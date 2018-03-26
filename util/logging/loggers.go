@@ -18,6 +18,7 @@ var (
 	vlog *logrus.Logger
 )
 
+// Console returns console logger.
 func Console() *logrus.Logger {
 	if clog == nil {
 		Init("/tmp", "info", 0)
@@ -32,6 +33,7 @@ func vLog() *logrus.Logger {
 	return vlog
 }
 
+// Init loggers.
 func Init(path string, level string, age uint32) {
 	levelNo, err := logrus.ParseLevel(level)
 	if err != nil {
@@ -61,6 +63,7 @@ func Init(path string, level string, age uint32) {
 	}).Info("Logger Configuration.")
 }
 
+// TestHook returns hook for testing log entry.
 func TestHook() *test.Hook {
 	logger, hook := test.NewNullLogger()
 	clog = logger
