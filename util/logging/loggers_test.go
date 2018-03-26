@@ -4,10 +4,11 @@ import (
 	"os"
 	"testing"
 
+	"path/filepath"
+
 	log "github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
 )
 
 func TestLogger(t *testing.T) {

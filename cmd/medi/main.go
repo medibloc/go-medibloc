@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/urfave/cli"
 	"github.com/medibloc/go-medibloc/medlet"
 	log "github.com/medibloc/go-medibloc/util/logging"
+	"github.com/urfave/cli"
 )
 
 var (
@@ -33,7 +33,7 @@ func versionStr() string {
 }
 
 func medi(ctx *cli.Context) error {
-	conf:= medlet.LoadConfig("")
+	conf := medlet.LoadConfig("")
 	m, err := medlet.New(conf)
 	if err != nil {
 		return err

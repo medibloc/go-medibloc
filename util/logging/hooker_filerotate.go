@@ -1,12 +1,13 @@
 package logging
 
 import (
-	"github.com/lestrrat-go/file-rotatelogs"
-	"github.com/rifflock/lfshook"
-	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/lestrrat-go/file-rotatelogs"
+	"github.com/rifflock/lfshook"
+	"github.com/sirupsen/logrus"
 )
 
 func NewFileRotateHooker(path string, age uint32) logrus.Hook {
