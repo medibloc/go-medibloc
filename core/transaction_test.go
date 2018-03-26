@@ -2,13 +2,11 @@ package core
 
 import (
 	"crypto/ecdsa"
-	"io/ioutil"
 	"math/big"
 	"reflect"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/medibloc/go-medibloc/accounts"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/keystore"
@@ -27,7 +25,7 @@ func mockNormalTransaction(t *testing.T, ks *keystore.KeyStore, chainID uint32, 
 func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
 	acc, err := ks.NewAccount("")
 	assert.NoError(t, err)
-	return acc.Address
+	return acc
 }
 
 func mockTransaction(t *testing.T, ks *keystore.KeyStore, chainID uint32, payloadType string, payload []byte) *Transaction {
@@ -45,11 +43,7 @@ func TestTransaction(t *testing.T) {
 		value *big.Int
 		data  *corepb.Data
 	}
-	dir, err := ioutil.TempDir("", "eth-keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks := keystore.NewKeyStore(dir, veryLightScryptN, veryLightScryptP)
+	ks := keystore.NewKeyStore()
 	tests := []struct {
 		name   string
 		fields fields
@@ -97,18 +91,14 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 	}
 
 	tests := []testTx{}
-	dir, err := ioutil.TempDir("", "eth-keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks := keystore.NewKeyStore(dir, veryLightScryptN, veryLightScryptP)
+	ks := keystore.NewKeyStore()
 
 	for index := 0; index < testCount; index++ {
 
 		from := mockAddress(t, ks)
 		to := mockAddress(t, ks)
 
-		_, key1, err := ks.GetKey(accounts.Account{Address: from}, "")
+		key1, err := ks.GetKey(from, "")
 		assert.NoError(t, err)
 
 		tx, err := NewTransaction(1, from, to, big.NewInt(0), TxPayloadBinaryType, []byte("datadata"))

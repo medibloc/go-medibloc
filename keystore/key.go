@@ -4,16 +4,10 @@ import (
   "crypto/ecdsa"
   "encoding/hex"
   "encoding/json"
-  "fmt"
-  "github.com/medibloc/go-medibloc/accounts"
   "github.com/medibloc/go-medibloc/common"
   "github.com/medibloc/go-medibloc/crypto"
   "github.com/pborman/uuid"
   "io"
-  "io/ioutil"
-  "os"
-  "path/filepath"
-  "time"
 )
 
 const (
@@ -113,65 +107,4 @@ func newKey(rand io.Reader) (*Key, error) {
     return nil, err
   }
   return newKeyFromECDSA(privateKeyECDSA), nil
-}
-
-func storeNewKey(ks *KeyStore, rand io.Reader, auth string) (*Key, accounts.Account, error) {
-  key, err := newKey(rand)
-  if err != nil {
-    return nil, accounts.Account{}, err
-  }
-  a := accounts.Account{Address: key.Address, URL: accounts.URL{Scheme: KeyStoreScheme, Path: ks.JoinPath(keyFileName(key.Address))}}
-  if err := ks.StoreKey(a.URL.Path, key, auth); err != nil {
-    zeroKey(key.PrivateKey)
-    return nil, a, err
-  }
-  return key, a, err
-}
-
-func writeKeyFile(file string, content []byte) error {
-  // Create the keystore directory with appropriate permissions
-  // in case it is not present yet.
-  const dirPerm = 0700
-  if err := os.MkdirAll(filepath.Dir(file), dirPerm); err != nil {
-    return err
-  }
-  // Atomic write: create a temporary hidden file first
-  // then move it into place. TempFile assigns mode 0600.
-  f, err := ioutil.TempFile(filepath.Dir(file), "."+filepath.Base(file)+".tmp")
-  if err != nil {
-    return err
-  }
-  if _, err := f.Write(content); err != nil {
-    f.Close()
-    os.Remove(f.Name())
-    return err
-  }
-  f.Close()
-  return os.Rename(f.Name(), file)
-}
-
-// keyFileName implements the naming convention for keyfiles:
-// UTC--<created_at UTC ISO8601>-<address hex>
-func keyFileName(keyAddr common.Address) string {
-  ts := time.Now().UTC()
-  return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
-}
-
-func toISO8601(t time.Time) string {
-  var tz string
-  name, offset := t.Zone()
-  if name == "UTC" {
-    tz = "Z"
-  } else {
-    tz = fmt.Sprintf("%03d00", offset/3600)
-  }
-  return fmt.Sprintf("%04d-%02d-%02dT%02d-%02d-%02d.%09d%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), tz)
-}
-
-// zeroKey zeroes a private key in memory.
-func zeroKey(k *ecdsa.PrivateKey) {
-  b := k.D.Bits()
-  for i := range b {
-    b[i] = 0
-  }
 }

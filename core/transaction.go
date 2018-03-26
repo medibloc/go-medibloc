@@ -20,7 +20,7 @@ type Transaction struct {
   sign    []byte
 }
 
-func (tx *Transaction) Hash() (common.Hash, error) {
+func (tx *Transaction) CalcHash() (common.Hash, error) {
   hashTarget, err := tx.hashTargetBytes()
   if err != nil {
     var h common.Hash
@@ -30,7 +30,7 @@ func (tx *Transaction) Hash() (common.Hash, error) {
 }
 
 func (tx *Transaction) Sign(privateKey *ecdsa.PrivateKey) error {
-  hash, err := tx.Hash()
+  hash, err := tx.CalcHash()
   if err != nil {
     return err
   }
@@ -51,7 +51,7 @@ func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
   }
 
   // check Hash.
-  wantedHash, err := tx.Hash()
+  wantedHash, err := tx.CalcHash()
   if err != nil {
     return err
   }

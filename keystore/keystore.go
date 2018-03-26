@@ -31,11 +31,6 @@ import (
   "github.com/medibloc/go-medibloc/crypto/rand"
   "github.com/pborman/uuid"
   "golang.org/x/crypto/scrypt"
-  "io/ioutil"
-  "os"
-  "path/filepath"
-  "sync"
-  "time"
 )
 
 const (
@@ -62,213 +57,65 @@ const (
 )
 
 var (
-  ErrLocked  = accounts.NewAuthNeededError("password or unlock")
-  ErrNoMatch = errors.New("no key for given address or file")
+  ErrNoMatch = errors.New("no key for given address")
   ErrDecrypt = errors.New("could not decrypt key with given passphrase")
 )
 
-var KeyStoreScheme = "keystore"
-
 type KeyStore struct {
-  unlocked map[common.Address]*unlocked
-  cache    *accountCache
-  changes  chan struct{} // Channel receiving change notifications from the cache
-
-  keysDirPath string
-  scryptN     int
-  scryptP     int
-
-  mu sync.RWMutex
-}
-
-type unlocked struct {
-  *Key
-  abort chan struct{}
+  keys    map[common.Address][]byte
+  scryptN int
+  scryptP int
 }
 
 // NewKeyStore creates a keystore for the given directory.
-func NewKeyStore(keydir string, scryptN, scryptP int) *KeyStore {
-  keydir, _ = filepath.Abs(keydir)
+func NewKeyStore() *KeyStore {
   ks := &KeyStore{
-    keysDirPath: keydir,
-    scryptN:     scryptN,
-    scryptP:     scryptP,
+    scryptN: StandardScryptN,
+    scryptP: StandardScryptP,
   }
-  ks.init(keydir)
+  ks.init()
   return ks
 }
 
-func (ks *KeyStore) init(keydir string) {
-  ks.mu.Lock()
-  defer ks.mu.Unlock()
-
-  ks.unlocked = make(map[common.Address]*unlocked)
-  ks.cache, ks.changes = newAccountCache(keydir)
+func (ks *KeyStore) init() {
+  ks.keys = make(map[common.Address][]byte)
 }
 
 // NewAccount generates a new key and stores it into the key directory,
 // encrypting it with the passphrase.
-func (ks *KeyStore) NewAccount(passphrase string) (accounts.Account, error) {
-  _, account, err := storeNewKey(ks, crand.Reader, passphrase)
+func (ks *KeyStore) NewAccount(auth string) (common.Address, error) {
+  key, err := newKey(crand.Reader)
   if err != nil {
-    return accounts.Account{}, err
+    return common.Address{}, err
   }
-  // Add the account to the cache immediately rather
-  // than waiting for file system notifications to pick it up.
-  ks.cache.add(account)
-  return account, nil
+  keyjson, err := EncryptKey(key, auth, ks.scryptN, ks.scryptP)
+  if err != nil {
+    return common.Address{}, err
+  }
+  ks.keys[key.Address] = keyjson
+  return key.Address, nil
 }
 
-// Update changes the passphrase of an existing account.
-func (ks *KeyStore) Update(a accounts.Account, passphrase, newPassphrase string) error {
-  a, key, err := ks.GetKey(a, passphrase)
-  if err != nil {
-    return err
+func (ks *KeyStore) Delete(a common.Address) error {
+  if !ks.HasAddress(a) {
+    return ErrNoMatch
   }
-  return ks.StoreKey(a.URL.Path, key, newPassphrase)
-}
-
-func (ks *KeyStore) Delete(a accounts.Account, passphrase string) error {
-  // Decrypting the key isn't really necessary, but we do
-  // it anyway to check the password and zero out the key
-  // immediately afterwards.
-  a, key, err := ks.GetKey(a, passphrase)
-  if key != nil {
-    zeroKey(key.PrivateKey)
-  }
-  if err != nil {
-    return err
-  }
-  // The order is crucial here. The key is dropped from the
-  // cache after the file is gone so that a reload happening in
-  // between won't insert it into the cache again.
-  err = os.Remove(a.URL.Path)
-  if err == nil {
-    ks.cache.delete(a)
-  }
-  return err
+  delete(ks.keys, a)
+  return nil
 }
 
 // HasAddress reports whether a key with the given address is present.
 func (ks *KeyStore) HasAddress(addr common.Address) bool {
-  return ks.cache.hasAddress(addr)
+  return len(ks.keys[addr]) > 0
 }
 
 // Accounts returns all key files present in the directory.
-func (ks *KeyStore) Accounts() []accounts.Account {
-  return ks.cache.accounts()
-}
-
-// Unlock unlocks the given account indefinitely.
-func (ks *KeyStore) Unlock(a accounts.Account, passphrase string) error {
-  return ks.TimedUnlock(a, passphrase, 0)
-}
-
-// Lock removes the private key with the given address from memory.
-func (ks *KeyStore) Lock(addr common.Address) error {
-  ks.mu.Lock()
-  if unl, found := ks.unlocked[addr]; found {
-    ks.mu.Unlock()
-    ks.expire(addr, unl, time.Duration(0)*time.Nanosecond)
-  } else {
-    ks.mu.Unlock()
+func (ks *KeyStore) Accounts() []common.Address {
+  addresses := []common.Address{}
+  for addr := range ks.keys {
+    addresses = append(addresses, addr)
   }
-  return nil
-}
-
-// TimedUnlock unlocks the given account with the passphrase. The account
-// stays unlocked for the duration of timeout. A timeout of 0 unlocks the account
-// until the program exits. The account must match a unique key file.
-//
-// If the account address is already unlocked for a duration, TimedUnlock extends or
-// shortens the active unlock timeout. If the address was previously unlocked
-// indefinitely the timeout is not altered.
-func (ks *KeyStore) TimedUnlock(a accounts.Account, passphrase string, timeout time.Duration) error {
-  a, key, err := ks.GetKey(a, passphrase)
-  if err != nil {
-    return err
-  }
-
-  ks.mu.Lock()
-  defer ks.mu.Unlock()
-  u, found := ks.unlocked[a.Address]
-  if found {
-    if u.abort == nil {
-      // The address was unlocked indefinitely, so unlocking
-      // it with a timeout would be confusing.
-      zeroKey(key.PrivateKey)
-      return nil
-    }
-    // Terminate the expire goroutine and replace it below.
-    close(u.abort)
-  }
-  if timeout > 0 {
-    u = &unlocked{Key: key, abort: make(chan struct{})}
-    go ks.expire(a.Address, u, timeout)
-  } else {
-    u = &unlocked{Key: key}
-  }
-  ks.unlocked[a.Address] = u
-  return nil
-}
-
-func (ks *KeyStore) expire(addr common.Address, u *unlocked, timeout time.Duration) {
-  t := time.NewTimer(timeout)
-  defer t.Stop()
-  select {
-  case <-u.abort:
-    // just quit
-  case <-t.C:
-    ks.mu.Lock()
-    // only drop if it's still the same key instance that dropLater
-    // was launched with. we can check that using pointer equality
-    // because the map stores a new pointer every time the key is
-    // unlocked.
-    if ks.unlocked[addr] == u {
-      zeroKey(u.PrivateKey)
-      delete(ks.unlocked, addr)
-    }
-    ks.mu.Unlock()
-  }
-}
-
-func (ks *KeyStore) getKeyFromFile(addr common.Address, filename, auth string) (*Key, error) {
-  keyjson, err := ioutil.ReadFile(filename)
-  if err != nil {
-    return nil, err
-  }
-  key, err := DecryptKey(keyjson, auth)
-  if err != nil {
-    return nil, err
-  }
-  if key.Address != addr {
-    return nil, fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
-  }
-  return key, nil
-}
-
-func StoreKey(dir, auth string, scryptN, scryptP int) (common.Address, error) {
-  _, a, err := storeNewKey(&KeyStore{
-    keysDirPath: dir,
-    scryptN:     scryptN,
-    scryptP:     scryptP}, crand.Reader, auth)
-  return a.Address, err
-}
-
-func (ks *KeyStore) StoreKey(filename string, key *Key, auth string) error {
-  keyjson, err := EncryptKey(key, auth, ks.scryptN, ks.scryptP)
-  if err != nil {
-    return err
-  }
-  return writeKeyFile(filename, keyjson)
-}
-
-func (ks *KeyStore) JoinPath(filename string) string {
-  if filepath.IsAbs(filename) {
-    return filename
-  } else {
-    return filepath.Join(ks.keysDirPath, filename)
-  }
+  return addresses
 }
 
 func EncryptKey(key *Key, auth string, scryptN, scryptP int) ([]byte, error) {
@@ -411,31 +258,11 @@ func ensureInt(x interface{}) int {
   return res
 }
 
-func (ks *KeyStore) GetUnlockedKey(a accounts.Account) (*Key, error) {
-  ks.mu.RLock()
-  defer ks.mu.RUnlock()
-
-  unlockedKey, found := ks.unlocked[a.Address]
-  if !found {
-    return nil, errors.New("unlocked key not found")
+func (ks *KeyStore) GetKey(a common.Address, auth string) (*Key, error) {
+  if !ks.HasAddress(a) {
+    return nil, ErrNoMatch
   }
 
-  return unlockedKey.Key, nil
-}
-
-func (ks *KeyStore) Find(a accounts.Account) (accounts.Account, error) {
-  ks.cache.maybeReload()
-  ks.cache.mu.Lock()
-  defer ks.cache.mu.Unlock()
-  return ks.cache.find(a)
-}
-
-func (ks *KeyStore) GetKey(a accounts.Account, auth string) (accounts.Account, *Key, error) {
-  a, err := ks.Find(a)
-  if err != nil {
-    return a, nil, err
-  }
-
-  key, err := ks.getKeyFromFile(a.Address, a.URL.Path, auth)
-  return a, key, err
+  key, err := DecryptKey(ks.keys[a], auth)
+  return key, err
 }

@@ -18,11 +18,7 @@ package keystore
 
 import (
 	"io/ioutil"
-	"os"
-	"runtime"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/medibloc/go-medibloc/common"
 )
@@ -66,60 +62,19 @@ func TestKeyEncryptDecrypt(t *testing.T) {
 }
 
 func TestKeyStore(t *testing.T) {
-	dir, err := ioutil.TempDir("", "eth-keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks := NewKeyStore(dir, veryLightScryptN, veryLightScryptP)
-	defer os.RemoveAll(dir)
+	ks := NewKeyStore()
 
 	a, err := ks.NewAccount("foo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(a.URL.Path, dir) {
-		t.Errorf("account file %s doesn't have dir prefix", a.URL)
+	if !ks.HasAddress(a) {
+		t.Errorf("HasAccount(%x) should've returned true", a)
 	}
-	stat, err := os.Stat(a.URL.Path)
-	if err != nil {
-		t.Fatalf("account file %s doesn't exist (%v)", a.URL, err)
-	}
-	if runtime.GOOS != "windows" && stat.Mode() != 0600 {
-		t.Fatalf("account file has wrong mode: got %o, want %o", stat.Mode(), 0600)
-	}
-	if !ks.HasAddress(a.Address) {
-		t.Errorf("HasAccount(%x) should've returned true", a.Address)
-	}
-	if err := ks.Update(a, "foo", "bar"); err != nil {
-		t.Errorf("Update error: %v", err)
-	}
-	if err := ks.Delete(a, "bar"); err != nil {
+	if err := ks.Delete(a); err != nil {
 		t.Errorf("Delete error: %v", err)
 	}
-	if common.FileExist(a.URL.Path) {
-		t.Errorf("account file %s should be gone after Delete", a.URL)
-	}
-	if ks.HasAddress(a.Address) {
-		t.Errorf("HasAccount(%x) should've returned true after Delete", a.Address)
-	}
-}
-
-func TestTimedUnlock(t *testing.T) {
-	dir, err := ioutil.TempDir("", "eth-keystore-test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ks := NewKeyStore(dir, veryLightScryptN, veryLightScryptP)
-	defer os.RemoveAll(dir)
-
-	pass := "foo"
-	a1, err := ks.NewAccount(pass)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Signing with passphrase works
-	if err = ks.TimedUnlock(a1, pass, 100*time.Millisecond); err != nil {
-		t.Fatal(err)
+	if ks.HasAddress(a) {
+		t.Errorf("HasAccount(%x) should've returned true after Delete", a)
 	}
 }
