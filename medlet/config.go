@@ -6,6 +6,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/medlet/pb"
+	log "github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 // LoadConfig loads configuration from the file.
@@ -20,20 +22,29 @@ func LoadConfig(file string) *medletpb.Config {
 
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		// TODO logging
+		log.Console().WithFields(logrus.Fields{
+			"file": file,
+			"err":  err,
+		}).Fatal("Failed to read the config file.")
 	}
 	content := string(b)
 
 	pb := new(medletpb.Config)
 	if err := proto.UnmarshalText(content, pb); err != nil {
-		// TODO logging
+		log.Console().WithFields(logrus.Fields{
+			"file": file,
+			"err":  err,
+		}).Fatal("Failed to parse the config file.")
 	}
 	return pb
 }
 
 func createDefaultConfigFile(filename string) {
 	if err := ioutil.WriteFile(filename, []byte(defaultConfigString()), 0644); err != nil {
-		// TODO logging
+		log.Console().WithFields(logrus.Fields{
+			"file": filename,
+			"err":  err,
+		}).Fatal("Failed to create the config file.")
 	}
 }
 
