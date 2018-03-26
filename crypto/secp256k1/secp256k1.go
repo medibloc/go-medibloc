@@ -59,6 +59,11 @@ var (
   ErrRecoverFailed       = errors.New("recovery failed")
 )
 
+// SeckeyVerify check private is ok for secp256k1
+func SeckeyVerify(seckey []byte) bool {
+  return C.secp256k1_ec_seckey_verify(context, cBuf(seckey)) == 1
+}
+
 // Sign creates a recoverable ECDSA signature.
 // The produced signature is in the 65-byte [R || S || V] format where V is 0 or 1.
 //
@@ -174,4 +179,8 @@ func checkSignature(sig []byte) error {
     return ErrInvalidRecoveryID
   }
   return nil
+}
+
+func cBuf(goSlice []byte) *C.uchar {
+  return (*C.uchar)(unsafe.Pointer(&goSlice[0]))
 }

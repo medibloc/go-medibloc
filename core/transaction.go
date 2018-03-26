@@ -1,12 +1,12 @@
 package core
 
 import (
-  "crypto/ecdsa"
   "fmt"
   "github.com/golang/protobuf/proto"
   "github.com/medibloc/go-medibloc/common"
   "github.com/medibloc/go-medibloc/core/pb"
   "github.com/medibloc/go-medibloc/crypto"
+  "github.com/medibloc/go-medibloc/keystore"
   "math/big"
 )
 
@@ -17,10 +17,25 @@ type Transaction struct {
   value   *big.Int
   data    *corepb.Data
   chainID uint32
+  alg     keystore.Algorithm
   sign    []byte
 }
 
-func (tx *Transaction) CalcHash() (common.Hash, error) {
+func NewTransaction(chainID uint32, from, to common.Address, value *big.Int, payloadType string, payload []byte) (*Transaction, error) {
+  tx := &Transaction{
+    from:    from,
+    to:      to,
+    value:   value,
+    data:    &corepb.Data{Type: payloadType, Payload: payload},
+    chainID: chainID,
+    hash:    common.BytesToHash([]byte{}),
+    sign:    []byte{},
+  }
+
+  return tx, nil
+}
+
+func (tx *Transaction) calcHash() (common.Hash, error) {
   hashTarget, err := tx.hashTargetBytes()
   if err != nil {
     var h common.Hash
@@ -29,16 +44,18 @@ func (tx *Transaction) CalcHash() (common.Hash, error) {
   return common.BytesToHash(crypto.Sha3256(hashTarget)), nil
 }
 
-func (tx *Transaction) Sign(privateKey *ecdsa.PrivateKey) error {
-  hash, err := tx.CalcHash()
+func (tx *Transaction) Sign(signer keystore.Signature) error {
+  hash, err := tx.calcHash()
   if err != nil {
     return err
   }
-  sig, err := crypto.Sign(hash.Bytes(), privateKey)
+
+  sig, err := signer.Sign(hash.Bytes())
   if err != nil {
     return err
   }
   tx.hash = hash
+  tx.alg = signer.Algorithm()
   tx.sign = sig
   return nil
 }
@@ -51,7 +68,7 @@ func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
   }
 
   // check Hash.
-  wantedHash, err := tx.CalcHash()
+  wantedHash, err := tx.calcHash()
   if err != nil {
     return err
   }
@@ -64,17 +81,28 @@ func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
 }
 
 func (tx *Transaction) verifySign() error {
-  pubKeyBuf, err := crypto.Ecrecover(tx.hash.Bytes(), tx.sign)
+  signer, err := tx.recoverSigner()
   if err != nil {
     return err
   }
-
-  pubKey := crypto.ToECDSAPub(pubKeyBuf)
-  signer := crypto.PubkeyToAddress(*pubKey)
   if !tx.from.Equals(signer) {
     return ErrInvalidTransactionSigner
   }
   return nil
+}
+
+func (tx *Transaction) recoverSigner() (common.Address, error) {
+  signature, err := crypto.NewSignature(tx.alg)
+  if err != nil {
+    return common.Address{}, err
+  }
+
+  pubKey, err := signature.RecoverPublic(tx.hash.Bytes(), tx.sign)
+  if err != nil {
+    return common.Address{}, err
+  }
+
+  return pubKey.Address()
 }
 
 func (tx *Transaction) From() common.Address {
@@ -107,6 +135,7 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
     Value:   value,
     Data:    tx.data,
     ChainId: tx.chainID,
+    Alg:     uint32(tx.alg),
     Sign:    tx.sign,
   }, nil
 }
@@ -120,6 +149,12 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
     tx.value.SetBytes(msg.Value)
     tx.data = msg.Data
     tx.chainID = msg.ChainId
+    alg := keystore.Algorithm(msg.Alg)
+    err := crypto.CheckAlgorithm(alg)
+    if err != nil {
+      return err
+    }
+    tx.alg = alg
     tx.sign = msg.Sign
 
     return nil
@@ -134,36 +169,24 @@ func (tx *Transaction) hashTargetProto() proto.Message {
     To:      tx.to.Bytes(),
     Value:   tx.value.Bytes(),
     Data:    tx.data,
+    Alg:     uint32(tx.alg),
     ChainId: tx.chainID,
   }
 }
 
 func (tx *Transaction) String() string {
-  return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%d", "type":"%s"}`,
+  return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%d", "type":"%s", "alg":"%d"}`,
     tx.chainID,
     tx.hash,
     tx.from,
     tx.to,
     tx.value.String(),
     tx.Type(),
+    tx.alg,
   )
 }
 
 type Transactions []*Transaction
-
-func NewTransaction(chainID uint32, from, to common.Address, value *big.Int, payloadType string, payload []byte) (*Transaction, error) {
-  tx := &Transaction{
-    from:    from,
-    to:      to,
-    value:   value,
-    data:    &corepb.Data{Type: payloadType, Payload: payload},
-    chainID: chainID,
-    hash:    common.BytesToHash([]byte{}),
-    sign:    []byte{},
-  }
-
-  return tx, nil
-}
 
 func (tx *Transaction) hashTargetBytes() ([]byte, error) {
   return proto.Marshal(tx.hashTargetProto())

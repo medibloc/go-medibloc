@@ -1,7 +1,6 @@
 package core
 
 import (
-	"crypto/ecdsa"
 	"math/big"
 	"reflect"
 	"testing"
@@ -9,6 +8,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +23,9 @@ func mockNormalTransaction(t *testing.T, ks *keystore.KeyStore, chainID uint32, 
 }
 
 func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
-	acc, err := ks.NewAccount("")
+	privKey, err := crypto.GenerateKey(keystore.SECP256K1)
+	assert.NoError(t, err)
+	acc, err := ks.SetKey(privKey)
 	assert.NoError(t, err)
 	return acc
 }
@@ -86,7 +88,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 	type testTx struct {
 		name    string
 		tx      *Transaction
-		privKey *ecdsa.PrivateKey
+		privKey keystore.PrivateKey
 		count   int
 	}
 
@@ -98,20 +100,26 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 		from := mockAddress(t, ks)
 		to := mockAddress(t, ks)
 
-		key1, err := ks.GetKey(from, "")
+		key1, err := ks.GetKey(from)
 		assert.NoError(t, err)
 
 		tx, err := NewTransaction(1, from, to, big.NewInt(0), TxPayloadBinaryType, []byte("datadata"))
 		assert.NoError(t, err)
 
-		assert.NoError(t, tx.Sign(key1.PrivateKey))
-		test := testTx{string(index), tx, key1.PrivateKey, 1}
+		sig, err := crypto.NewSignature(keystore.SECP256K1)
+		assert.NoError(t, err)
+		sig.InitSign(key1)
+		assert.NoError(t, tx.Sign(sig))
+		test := testTx{string(index), tx, key1, 1}
 		tests = append(tests, test)
 	}
 	for _, tt := range tests {
 		for index := 0; index < tt.count; index++ {
 			t.Run(tt.name, func(t *testing.T) {
-				err := tt.tx.Sign(tt.privKey)
+				signature, err := crypto.NewSignature(keystore.SECP256K1)
+				assert.NoError(t, err)
+				signature.InitSign(tt.privKey)
+				err = tt.tx.Sign(signature)
 				if err != nil {
 					t.Errorf("Sign() error = %v", err)
 					return
