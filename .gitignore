@@ -16,3 +16,9 @@
 
 # MacOS
 .DS_Store
+
+# build
+build/
+
+# report
+report/
