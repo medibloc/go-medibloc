@@ -24,7 +24,6 @@ import (
   "encoding/json"
   "errors"
   "fmt"
-  "github.com/medibloc/go-medibloc/accounts"
   "github.com/medibloc/go-medibloc/common"
   "github.com/medibloc/go-medibloc/common/math"
   "github.com/medibloc/go-medibloc/crypto"
