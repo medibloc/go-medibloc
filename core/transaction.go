@@ -9,6 +9,7 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/keystore"
+	"golang.org/x/crypto/sha3"
 )
 
 type Transaction struct {
@@ -77,12 +78,18 @@ func NewTransaction(chainID uint32, from, to common.Address, value *big.Int, pay
 }
 
 func (tx *Transaction) calcHash() (common.Hash, error) {
-	hashTarget, err := tx.hashTargetBytes()
-	if err != nil {
-		var h common.Hash
-		return h, ErrTransactionHashFailed
-	}
-	return common.BytesToHash(crypto.Sha3256(hashTarget)), nil
+	hasher := sha3.New256()
+
+	hasher.Write(tx.from.Bytes())
+	hasher.Write(tx.to.Bytes())
+	hasher.Write(tx.value.Bytes())
+	hasher.Write([]byte(tx.data.Type))
+	hasher.Write(tx.data.Payload)
+	hasher.Write(common.FromUint32(uint32(tx.alg)))
+	hasher.Write(common.FromUint32(tx.chainID))
+
+	hash := hasher.Sum(nil)
+	return common.BytesToHash(hash), nil
 }
 
 func (tx *Transaction) Sign(signer keystore.Signature) error {
@@ -182,7 +189,7 @@ func (tx *Transaction) hashTargetProto() proto.Message {
 }
 
 func (tx *Transaction) String() string {
-	return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%d", "type":"%s", "alg":"%d"}`,
+	return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%s", "type":"%s", "alg":"%d"}`,
 		tx.chainID,
 		tx.hash,
 		tx.from,
