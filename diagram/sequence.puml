@@ -1,0 +1,141 @@
+@startuml
+title Mining Diagram
+
+participant Dpos as dpos
+participant BlockChain as chain
+participant BlockPool as bpool
+participant Block as block
+participant DposContext as dposctx
+participant DynastyContext as dynctx
+participant TransactionPool as txpool
+participant Transaction as tx
+participant AccountManager as am
+participant NetService as net
+participant AccountStates as accstate
+
+dpos -> dpos : mintBlock()
+
+dpos -> chain : TailBlock()
+dpos <-- chain : tail
+
+group checkDeadline
+    dpos -> dposctx : core.BlockInterval
+    dpos -> block : tail.Timestamp()
+end
+
+group checkProposer
+    dpos -> block : tail.NextDynastyContext(chain)
+    block -> dposctx : CloneDynastyContext(block)
+    block <-- dposctx : dynastyContext
+    block -> dynctx : electNextDynasty(block.timestamp)
+    dynctx -> accstate : RootHash()
+    block -> dynctx : FindProposer(block.timestamp, dynastyContext)
+    dpos <-- block : dynastyContext
+    dpos -> dynctx : Proposer()
+    dpos <-- dynctx : proposer
+end
+
+group newBlock
+    dpos -> block : NewBlock(chain.chainID, coinbase, tail)
+    block -> block : NewBlockFromTail()
+    dpos -> block : LoadDynastyContext(dynastyContext)
+    block -> dynctx : CloneDposContext()
+    dpos -> block : CollectTransactions()
+    loop collect tx
+        block -> txpool : Pop()
+        block <-- txpool : tx
+        group executeTransaction
+            block -> accstate : getOrCreateAccount(tx)
+            block -> tx : VerifyExecution(block)
+            tx -> block : UpdateBlockState
+            tx -> block : RecordEvent
+            block -> accstate : incrNonse(tx.fromAcc)
+        end
+    end
+    block -> am : SignBlock(block)
+    am -> block : Sign(signature)
+end
+
+group broadcast
+    dpos -> chain : BlockPool()
+    dpos <-- chain : blockPool
+    dpos -> bpool : PushAndBroadcast(block)
+    bpool -> net : BroadCast(Serializable)
+    bpool -> bpool : push(block)
+end
+@enduml
+
+@startuml
+title Block Pool
+
+participant NetService as net
+participant BlockPool as bpool
+participant Block as block
+participant Transaction as tx
+participant Dpos as dpos
+participant BlockChain as chain
+'participant DposContext as dposctx
+participant DynastyContext as dynctx
+'participant TransactionPool as txpool
+'participant AccountManager as am
+'participant AccountStates as accstate
+
+net -> bpool : push(sender, block)
+note left
+    *dpos -> mintBlock
+    *sync -> net
+    *block -> net
+end note
+
+bpool -> chain : GetBlock(hash)
+bpool -> block : VerifyIntegrity(chain.ID, chain.ConsensusHandler)
+loop block.transactions
+    block -> tx : VerifyIntegrity(chain.ID)
+end
+
+group fast verify block
+block -> dpos : FastVerifyBlock(block)
+dpos -> chain : TailBlock()
+dpos <-- chain : tail
+
+    group FindProposer
+        block -> dynctx : FindProposer(block.timestamp, dynastyContext)
+        dpos <-- block : dynastyContext
+        dpos -> dynctx : Proposer()
+        dpos <-- dynctx : proposer
+    end
+    dpos -> block : VerifyBlockSign
+end
+@enduml
+
+@startuml
+title Transaction Execution
+
+'participant Dpos as dpos
+'participant BlockChain as chain
+'participant BlockPool as bpool
+'participant Block as block
+'participant DposContext as dposctx
+'participant DynastyContext as dynctx
+'participant TransactionPool as txpool
+'participant Transaction as tx
+'participant AccountManager as am
+'participant NetService as net
+'participant AccountStates as accstate
+@enduml
+
+@startuml
+title Transaction Pooling
+
+'participant Dpos as dpos
+'participant BlockChain as chain
+'participant BlockPool as bpool
+'participant Block as block
+'participant DposContext as dposctx
+'participant DynastyContext as dynctx
+'participant TransactionPool as txpool
+'participant Transaction as tx
+'participant AccountManager as am
+'participant NetService as net
+'participant AccountStates as accstate
+@enduml

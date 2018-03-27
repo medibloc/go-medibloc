@@ -1,0 +1,38 @@
+@startuml
+title Block Core
+
+participant NetService as net
+participant BlockManager as mgr
+participant BlockPool as pool
+participant BlockChain as chain
+participant Block as block
+participant Transaction as tx
+
+net -> mgr : Push block via Subscriber channel
+
+mgr -> block : block.VerifyIntegrity()
+block -> tx : tx.VerifyIntegrity()
+
+mgr -> chain : HasParent(block)
+alt chain.HasParent : true
+        mgr -> chain : Push(block)
+        chain -> chain : FindParentBlock()
+        chain -> block : block.VerifyExecution(parentBlock)
+        block -> tx : tx.VerifyExecution(block)
+    loop FindDescendant
+        mgr -> pool : FindChildren(block)
+        mgr <-- pool : childBlocks
+        mgr -> chain : Push(block)
+        chain -> block : block.VerifyExecution(parentBlock)
+        block -> tx : tx.VerifyExecution(block)
+        mgr -> pool : Remove(block)
+    end
+else chain.HasParent : false
+    mgr -> pool : Push(block)
+    mgr -> pool : FindMissingAncestor(block)
+    mgr <-- pool : block
+    mgr -> net : RequestDownload(block)
+end
+
+mgr -> net : Publish block to net
+@enduml
