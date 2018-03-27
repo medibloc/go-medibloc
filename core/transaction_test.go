@@ -18,10 +18,6 @@ const (
 	veryLightScryptP = 1
 )
 
-func mockNormalTransaction(t *testing.T, ks *keystore.KeyStore, chainID uint32, nonce uint64) *Transaction {
-	return mockTransaction(t, ks, chainID, TxPayloadBinaryType, nil)
-}
-
 func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
 	privKey, err := crypto.GenerateKey(keystore.SECP256K1)
 	assert.NoError(t, err)

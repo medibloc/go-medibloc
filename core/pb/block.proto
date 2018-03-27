@@ -1,28 +1,22 @@
 syntax = "proto3";
 package corepb;
 
-message Data {
-  string type = 1;
-  bytes payload = 2;
-}
+import "transaction.proto";
 
-message Transaction {
+message BlockHeader {
   bytes hash  = 1;
-  bytes from = 2;
-  bytes to = 3;
-  bytes value = 4;
-  Data data = 5;
-  uint32 chain_id = 6;
+  bytes parent_hash = 2;
 
-  uint32 alg = 7;
-  bytes sign = 8;
+  bytes coinbase = 3;
+  int64 timestamp = 4;
+  uint32 chain_id = 5;
+
+  uint32 alg = 6;
+  bytes sign = 7;
 }
 
-message TxHashTarget {
-  bytes from = 1;
-  bytes to = 2;
-  bytes value = 3;
-  Data data = 4;
-  uint32 alg = 5;
-  uint32 chain_id = 6;
+message Block {
+  BlockHeader header = 1;
+  repeated Transaction transactions = 2;
+  uint64 height = 3;
 }

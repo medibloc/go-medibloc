@@ -1,0 +1,28 @@
+syntax = "proto3";
+package corepb;
+
+message Data {
+  string type = 1;
+  bytes payload = 2;
+}
+
+message Transaction {
+  bytes hash  = 1;
+  bytes from = 2;
+  bytes to = 3;
+  bytes value = 4;
+  Data data = 5;
+  uint32 chain_id = 6;
+
+  uint32 alg = 7;
+  bytes sign = 8;
+}
+
+message TxHashTarget {
+  bytes from = 1;
+  bytes to = 2;
+  bytes value = 3;
+  Data data = 4;
+  uint32 alg = 5;
+  uint32 chain_id = 6;
+}
