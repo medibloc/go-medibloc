@@ -1,8 +1,10 @@
 package rand
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/medibloc/go-medibloc/crypto/rand"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRandom(t *testing.T) {

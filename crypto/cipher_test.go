@@ -2,9 +2,10 @@ package crypto
 
 import (
 	"crypto/aes"
+	"testing"
+
 	"github.com/medibloc/go-medibloc/crypto/rand"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAESDecryption(t *testing.T) {

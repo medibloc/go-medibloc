@@ -2,9 +2,10 @@ package math
 
 import (
 	"encoding/hex"
-	"github.com/stretchr/testify/assert"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMustParseBig256(t *testing.T) {

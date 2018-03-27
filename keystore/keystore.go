@@ -17,61 +17,62 @@
 package keystore
 
 import (
-  "errors"
-  "github.com/medibloc/go-medibloc/common"
+	"errors"
+
+	"github.com/medibloc/go-medibloc/common"
 )
 
 var (
-  ErrNoMatch = errors.New("no key for given address")
+	ErrNoMatch = errors.New("no key for given address")
 )
 
 type KeyStore struct {
-  keys map[common.Address]PrivateKey
+	keys map[common.Address]PrivateKey
 }
 
 // NewKeyStore creates a keystore for the given directory.
 func NewKeyStore() *KeyStore {
-  ks := &KeyStore{}
-  ks.keys = make(map[common.Address]PrivateKey)
-  return ks
+	ks := &KeyStore{}
+	ks.keys = make(map[common.Address]PrivateKey)
+	return ks
 }
 
 // NewAccount generates a new key and stores it into the key directory,
 // encrypting it with the passphrase.
 func (ks *KeyStore) SetKey(key PrivateKey) (common.Address, error) {
-  addr, err := key.Address()
-  if err != nil {
-    return common.Address{}, err
-  }
-  ks.keys[addr] = key
-  return addr, nil
+	addr, err := key.Address()
+	if err != nil {
+		return common.Address{}, err
+	}
+	ks.keys[addr] = key
+	return addr, nil
 }
 
 func (ks *KeyStore) Delete(a common.Address) error {
-  if !ks.HasAddress(a) {
-    return ErrNoMatch
-  }
-  delete(ks.keys, a)
-  return nil
+	if !ks.HasAddress(a) {
+		return ErrNoMatch
+	}
+	delete(ks.keys, a)
+	return nil
 }
 
 // HasAddress reports whether a key with the given address is present.
 func (ks *KeyStore) HasAddress(addr common.Address) bool {
-  return ks.keys[addr] != nil
+	return ks.keys[addr] != nil
 }
 
 // Accounts returns all key files present in the directory.
 func (ks *KeyStore) Accounts() []common.Address {
-  addresses := []common.Address{}
-  for addr := range ks.keys {
-    addresses = append(addresses, addr)
-  }
-  return addresses
+	addresses := []common.Address{}
+	for addr := range ks.keys {
+		addresses = append(addresses, addr)
+	}
+	return addresses
 }
 
 func (ks *KeyStore) GetKey(a common.Address) (PrivateKey, error) {
-  if !ks.HasAddress(a) {
-    return nil, ErrNoMatch
-  }
-  return ks.keys[a], nil
+	if !ks.HasAddress(a) {
+		return nil, ErrNoMatch
+	}
+	return ks.keys[a], nil
 }
