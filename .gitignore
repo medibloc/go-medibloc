@@ -22,3 +22,6 @@ build/
 
 # report
 report/
+
+# vendor
+vendor/

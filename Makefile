@@ -15,9 +15,12 @@ TEST_REPORT=$(REPORT_DIR)/test.report
 
 LDFLAGS = -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.branch=${BRANCH}"
 
-.PHONY: clean vet fmt lint build test
+.PHONY: clean vet fmt lint build test dep
 
 all: clean vet fmt lint build test
+
+dep:
+	dep ensure -v
 
 build:
 	cd cmd/medi; go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)
