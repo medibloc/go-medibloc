@@ -13,7 +13,6 @@ It has these top-level messages:
 	Block
 	Data
 	Transaction
-	TxHashTarget
 */
 package corepb
 

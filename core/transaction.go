@@ -178,17 +178,6 @@ func (tx *Transaction) Hash() common.Hash {
 	return tx.hash
 }
 
-func (tx *Transaction) hashTargetProto() proto.Message {
-	return &corepb.TxHashTarget{
-		From:    tx.from.Bytes(),
-		To:      tx.to.Bytes(),
-		Value:   tx.value.Bytes(),
-		Data:    tx.data,
-		Alg:     uint32(tx.alg),
-		ChainId: tx.chainID,
-	}
-}
-
 func (tx *Transaction) String() string {
 	return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%s", "type":"%s", "alg":"%d"}`,
 		tx.chainID,
@@ -199,8 +188,4 @@ func (tx *Transaction) String() string {
 		tx.Type(),
 		tx.alg,
 	)
-}
-
-func (tx *Transaction) hashTargetBytes() ([]byte, error) {
-	return proto.Marshal(tx.hashTargetProto())
 }
