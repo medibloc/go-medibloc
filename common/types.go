@@ -2,7 +2,12 @@ package common
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
+
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -50,6 +55,20 @@ func IsHexAddress(s string) bool {
 		s = s[2:]
 	}
 	return len(s) == 2*AddressLength && isHex(s)
+}
+
+func PublicKeyToAddress(p signature.PublicKey) (Address, error) {
+	switch p.Algorithm() {
+	case algorithm.SECP256K1:
+		buf, err := p.Encoded()
+		if err != nil {
+			return Address{}, err
+		}
+		hash := sha3.Sum256(buf[1:])
+		return BytesToAddress(hash[12:]), nil
+	default:
+		return Address{}, errors.New("Invalid public key algorithm")
+	}
 }
 
 func (a Address) Str() string   { return string(a[:]) }

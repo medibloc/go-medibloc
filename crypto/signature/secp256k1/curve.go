@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"unsafe"
 
-	"github.com/medibloc/go-medibloc/common/math"
+	"github.com/medibloc/go-medibloc/util/math"
 )
 
 /*

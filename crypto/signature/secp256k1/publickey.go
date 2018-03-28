@@ -3,8 +3,7 @@ package secp256k1
 import (
 	"crypto/ecdsa"
 
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 )
 
 type PublicKey struct {
@@ -17,12 +16,8 @@ func NewPublicKey(pub ecdsa.PublicKey) *PublicKey {
 	return ecdsaPub
 }
 
-func (k *PublicKey) Algorithm() keystore.Algorithm {
-	return keystore.SECP256K1
-}
-
-func (k *PublicKey) Address() (common.Address, error) {
-	return PubkeyToAddress(k.publicKey)
+func (k *PublicKey) Algorithm() algorithm.Algorithm {
+	return algorithm.SECP256K1
 }
 
 func (k *PublicKey) Encoded() ([]byte, error) {

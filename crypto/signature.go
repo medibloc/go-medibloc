@@ -1,15 +1,20 @@
-package keystore
+package crypto
+
+import (
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+)
 
 // Signature interface of different signature algorithm
 type Signature interface {
 
 	// Algorithm returns the standard algorithm for this key.
-	Algorithm() Algorithm
+	Algorithm() algorithm.Algorithm
 
 	// InitSign this object for signing. If this method is called
 	// again with a different argument, it negates the effect
 	// of this call.
-	InitSign(privateKey PrivateKey)
+	InitSign(privateKey signature.PrivateKey)
 
 	// Sign returns the signature bytes of all the data input.
 	// The format of the signature depends on the underlying
@@ -17,12 +22,12 @@ type Signature interface {
 	Sign(data []byte) (out []byte, err error)
 
 	// RecoverPublic returns a public key, which is recoverd by data and signature
-	RecoverPublic(data []byte, signature []byte) (PublicKey, error)
+	RecoverPublic(data []byte, signature []byte) (signature.PublicKey, error)
 
 	// InitVerify initializes this object for verification. If this method is called
 	// again with a different argument, it negates the effect
 	// of this call.
-	InitVerify(publicKey PublicKey)
+	InitVerify(publicKey signature.PublicKey)
 
 	// Verify the passed-in signature.
 	//

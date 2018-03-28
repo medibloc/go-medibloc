@@ -8,7 +8,8 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
-	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -19,7 +20,7 @@ type Transaction struct {
 	value   *big.Int
 	data    *corepb.Data
 	chainID uint32
-	alg     keystore.Algorithm
+	alg     algorithm.Algorithm
 	sign    []byte
 }
 
@@ -49,7 +50,7 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 		tx.value.SetBytes(msg.Value)
 		tx.data = msg.Data
 		tx.chainID = msg.ChainId
-		alg := keystore.Algorithm(msg.Alg)
+		alg := algorithm.Algorithm(msg.Alg)
 		err := crypto.CheckAlgorithm(alg)
 		if err != nil {
 			return err
@@ -92,7 +93,7 @@ func (tx *Transaction) calcHash() (common.Hash, error) {
 	return common.BytesToHash(hash), nil
 }
 
-func (tx *Transaction) Sign(signer keystore.Signature) error {
+func (tx *Transaction) Sign(signer signature.Signature) error {
 	hash, err := tx.calcHash()
 	if err != nil {
 		return err
@@ -150,7 +151,7 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	return pubKey.Address()
+	return common.PublicKeyToAddress(pubKey)
 }
 
 func (tx *Transaction) From() common.Address {

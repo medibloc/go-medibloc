@@ -3,7 +3,8 @@ package secp256k1
 import (
 	"errors"
 
-	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 )
 
 type Signature struct {
@@ -11,11 +12,11 @@ type Signature struct {
 	publicKey  *PublicKey
 }
 
-func (s *Signature) Algorithm() keystore.Algorithm {
-	return keystore.SECP256K1
+func (s *Signature) Algorithm() algorithm.Algorithm {
+	return algorithm.SECP256K1
 }
 
-func (s *Signature) InitSign(priv keystore.PrivateKey) {
+func (s *Signature) InitSign(priv signature.PrivateKey) {
 	s.privateKey = priv.(*PrivateKey)
 }
 
@@ -31,7 +32,7 @@ func (s *Signature) Sign(data []byte) ([]byte, error) {
 	return sig, nil
 }
 
-func (s *Signature) RecoverPublic(data []byte, sig []byte) (keystore.PublicKey, error) {
+func (s *Signature) RecoverPublic(data []byte, sig []byte) (signature.PublicKey, error) {
 	pub, err := RecoverPubkey(data, sig)
 	if err != nil {
 		return nil, err
@@ -44,7 +45,7 @@ func (s *Signature) RecoverPublic(data []byte, sig []byte) (keystore.PublicKey, 
 	return NewPublicKey(*pubKey), nil
 }
 
-func (s *Signature) InitVerify(pub keystore.PublicKey) {
+func (s *Signature) InitVerify(pub signature.PublicKey) {
 	s.publicKey = pub.(*PublicKey)
 }
 

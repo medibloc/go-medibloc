@@ -9,9 +9,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/common/math"
-	"golang.org/x/crypto/sha3"
+	"github.com/medibloc/go-medibloc/util/math"
 )
 
 var (
@@ -93,15 +91,6 @@ func ToECDSAPublicKey(pub []byte) (*ecdsa.PublicKey, error) {
 	}
 	x, y := elliptic.Unmarshal(S256(), pub)
 	return &ecdsa.PublicKey{Curve: S256(), X: x, Y: y}, nil
-}
-
-func PubkeyToAddress(p ecdsa.PublicKey) (common.Address, error) {
-	pubBytes, err := FromECDSAPublicKey(&p)
-	if err != nil {
-		return common.Address{}, err
-	}
-	hash := sha3.Sum256(pubBytes[1:])
-	return common.BytesToAddress(hash[12:]), nil
 }
 
 // zeroKey zeroes the private key

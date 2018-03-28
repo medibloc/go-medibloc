@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
 )
 
@@ -33,7 +34,7 @@ const (
 func TestKeyStore(t *testing.T) {
 	ks := keystore.NewKeyStore()
 
-	key, err := crypto.GenerateKey(keystore.SECP256K1)
+	key, err := crypto.GenerateKey(algorithm.SECP256K1)
 	if err != nil {
 		t.Fatal(err)
 	}

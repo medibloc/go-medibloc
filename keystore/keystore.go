@@ -20,6 +20,7 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/crypto/signature"
 )
 
 var (
@@ -27,20 +28,20 @@ var (
 )
 
 type KeyStore struct {
-	keys map[common.Address]PrivateKey
+	keys map[common.Address]signature.PrivateKey
 }
 
 // NewKeyStore creates a keystore for the given directory.
 func NewKeyStore() *KeyStore {
 	ks := &KeyStore{}
-	ks.keys = make(map[common.Address]PrivateKey)
+	ks.keys = make(map[common.Address]signature.PrivateKey)
 	return ks
 }
 
 // NewAccount generates a new key and stores it into the key directory,
 // encrypting it with the passphrase.
-func (ks *KeyStore) SetKey(key PrivateKey) (common.Address, error) {
-	addr, err := key.Address()
+func (ks *KeyStore) SetKey(key signature.PrivateKey) (common.Address, error) {
+	addr, err := common.PublicKeyToAddress(key.PublicKey())
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -70,7 +71,7 @@ func (ks *KeyStore) Accounts() []common.Address {
 	return addresses
 }
 
-func (ks *KeyStore) GetKey(a common.Address) (PrivateKey, error) {
+func (ks *KeyStore) GetKey(a common.Address) (signature.PrivateKey, error) {
 	if !ks.HasAddress(a) {
 		return nil, ErrNoMatch
 	}

@@ -9,6 +9,8 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +21,7 @@ const (
 )
 
 func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
-	privKey, err := crypto.GenerateKey(keystore.SECP256K1)
+	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
 	assert.NoError(t, err)
 	acc, err := ks.SetKey(privKey)
 	assert.NoError(t, err)
@@ -84,7 +86,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 	type testTx struct {
 		name    string
 		tx      *Transaction
-		privKey keystore.PrivateKey
+		privKey signature.PrivateKey
 		count   int
 	}
 
@@ -102,7 +104,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 		tx, err := NewTransaction(1, from, to, big.NewInt(0), TxPayloadBinaryType, []byte("datadata"))
 		assert.NoError(t, err)
 
-		sig, err := crypto.NewSignature(keystore.SECP256K1)
+		sig, err := crypto.NewSignature(algorithm.SECP256K1)
 		assert.NoError(t, err)
 		sig.InitSign(key1)
 		assert.NoError(t, tx.Sign(sig))
@@ -112,7 +114,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 	for _, tt := range tests {
 		for index := 0; index < tt.count; index++ {
 			t.Run(tt.name, func(t *testing.T) {
-				signature, err := crypto.NewSignature(keystore.SECP256K1)
+				signature, err := crypto.NewSignature(algorithm.SECP256K1)
 				assert.NoError(t, err)
 				signature.InitSign(tt.privKey)
 				err = tt.tx.Sign(signature)

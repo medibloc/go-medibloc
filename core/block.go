@@ -6,7 +6,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -18,7 +19,7 @@ type BlockHeader struct {
 	timestamp int64
 	chainID   uint32
 
-	alg  keystore.Algorithm
+	alg  algorithm.Algorithm
 	sign []byte
 }
 
@@ -41,7 +42,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
-		b.alg = keystore.Algorithm(msg.Alg)
+		b.alg = algorithm.Algorithm(msg.Alg)
 		b.sign = msg.Sign
 		return nil
 	}
@@ -123,12 +124,12 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 	return block, nil
 }
 
-func (block *Block) SignThis(signature keystore.Signature) error {
+func (block *Block) SignThis(signature signature.Signature) error {
 	sign, err := signature.Sign(block.header.hash.Bytes())
 	if err != nil {
 		return err
 	}
-	block.header.alg = keystore.Algorithm(signature.Algorithm())
+	block.header.alg = algorithm.Algorithm(signature.Algorithm())
 	block.header.sign = sign
 	return nil
 }
@@ -141,7 +142,7 @@ func (block *Block) Coinbase() common.Address {
 	return block.header.coinbase
 }
 
-func (block *Block) Alg() keystore.Algorithm {
+func (block *Block) Alg() algorithm.Algorithm {
 	return block.header.alg
 }
 
