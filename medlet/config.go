@@ -73,6 +73,18 @@ func defaultConfig() *medletpb.Config {
 			HttpModule:       nil,
 			ConnectionLimits: 0,
 		},
+		Stats: &medletpb.StatsConfig{
+			EnableMetrics:   false,
+			ReportingModule: nil,
+			Influxdb: &medletpb.InfluxdbConfig{
+				Host:     "",
+				Port:     0,
+				Db:       "",
+				User:     "",
+				Password: "",
+			},
+			MetricsTags: nil,
+		},
 		Misc: &medletpb.MiscConfig{
 			DefaultKeystoreFileCiper: "",
 		},
