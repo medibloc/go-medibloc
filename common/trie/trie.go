@@ -34,6 +34,7 @@ const (
 // Leaf Node [flag, encodedPath, value]
 type node struct {
 	Type ty
+	// Val branch: [16 children], ext: [path, next], leaf: [path, value]
 	Val  [][]byte
 }
 
@@ -55,11 +56,12 @@ func (n *node) fromProto(msg proto.Message) error {
 
 // Trie is a Merkle Patricia Trie, consists of three kinds of nodes,
 // Branch Node: 16-elements array, value is [hash_0, hash_1, ..., hash_f, hash]
-// Extension Node: 3-elements array, value is [ext flag, prefi path, next hash]
+// Extension Node: 3-elements array, value is [ext flag, prefix path, next hash]
 // Leaf Node: 3-elements array, value is [leaf flag, suffix path, value]
 type Trie struct {
 	rootHash []byte
 	storage  storage.Storage
+	// TODO add key length
 }
 
 func NewTrie(rootHash []byte, storage storage.Storage) (*Trie, error) {
@@ -89,15 +91,8 @@ func (t *Trie) Get(key []byte) ([]byte, error) {
 
 // Put put value to Trie
 func (t *Trie) Put(key []byte, value []byte) error {
-	route := keyToRoute(key)
-	var hash []byte
-	var err error
-	if t.rootHash == nil {
-		leaf := newLeafNode(route, value)
-		if hash, err = t.saveNode(leaf); err != nil {
-			return err
-		}
-	} else if hash, err = t.update(t.rootHash, route, value); err != nil {
+	hash, err := t.update(t.rootHash, keyToRoute(key), value)
+	if err != nil {
 		return err
 	}
 
@@ -144,7 +139,6 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 		}
 		return t.saveNode(n)
 	case ext:
-		fmt.Println("DEL ext")
 		path := n.Val[0]
 		next := n.Val[1]
 		matchLen := prefixLen(path, route)
@@ -186,7 +180,6 @@ func (t *Trie) fetchNode(hash []byte) (*node, error) {
 }
 
 func (t *Trie) get(root []byte, route []byte) ([]byte, error) {
-	fmt.Println("GET START")
 	curRootHash := root
 	curRoute := route
 	for len(curRoute) >= 0 {
@@ -194,7 +187,6 @@ func (t *Trie) get(root []byte, route []byte) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("current type is ", rootNode.Type)
 		switch rootNode.Type {
 		case branch:
 			curRootHash = rootNode.Val[curRoute[0]]
@@ -238,6 +230,14 @@ func (t *Trie) saveNode(n *node) ([]byte, error) {
 }
 
 func (t *Trie) update(root []byte, route []byte, value []byte) ([]byte, error) {
+	if root == nil || len(root) == 0 {
+		leaf := newLeafNode(route, value)
+		hash, err := t.saveNode(leaf)
+		if err != nil {
+			return nil, err
+		}
+		return hash, nil
+	}
 	n, err := t.fetchNode(root)
 	if err != nil {
 		return nil, err
