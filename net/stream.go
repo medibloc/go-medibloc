@@ -95,7 +95,7 @@ func newStreamInstance(pid peer.ID, addr ma.Multiaddr, stream libnet.Stream, nod
 
 // Connect to the stream
 func (s *Stream) Connect() error {
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"stream": s.String(),
 	}).Debug("Connecting to peer.")
 
@@ -106,7 +106,7 @@ func (s *Stream) Connect() error {
 		MedProtocolID,
 	)
 	if err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"stream": s.String(),
 			"err":    err,
 		}).Debug("Failed to connect to host.")
@@ -141,7 +141,7 @@ func (s *Stream) String() string {
 func (s *Stream) SendProtoMessage(messageName string, pb proto.Message, priority int) error {
 	data, err := proto.Marshal(pb)
 	if err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"err":         err,
 			"messageName": messageName,
 			"stream":      s.String(),
@@ -173,7 +173,7 @@ func (s *Stream) SendMessage(messageName string, data []byte, priority int) erro
 		select {
 		case s.normalPriorityMessageChan <- message:
 		default:
-			logging.VLog().WithFields(logrus.Fields{
+			logging.WithFields(logrus.Fields{
 				"normalPriorityMessageChan.len": len(s.normalPriorityMessageChan),
 				"stream":                        s.String(),
 			}).Debug("Received too many normal priority message.")
@@ -183,7 +183,7 @@ func (s *Stream) SendMessage(messageName string, data []byte, priority int) erro
 		select {
 		case s.lowPriorityMessageChan <- message:
 		default:
-			logging.VLog().WithFields(logrus.Fields{
+			logging.WithFields(logrus.Fields{
 				"lowPriorityMessageChan.len": len(s.lowPriorityMessageChan),
 				"stream":                     s.String(),
 			}).Debug("Received too many low priority message.")
@@ -193,7 +193,7 @@ func (s *Stream) SendMessage(messageName string, data []byte, priority int) erro
 	select {
 	case s.messageNotifChan <- 1:
 	default:
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"messageNotifChan.len": len(s.messageNotifChan),
 			"stream":               s.String(),
 		}).Debug("Received too many message notifChan.")
@@ -215,7 +215,7 @@ func (s *Stream) Write(data []byte) error {
 	}
 	n, err := s.stream.Write(data)
 	if err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"err":    err,
 			"stream": s.String(),
 		}).Warn("Failed to send message to peer.")
@@ -241,7 +241,7 @@ func (s *Stream) WriteMedMessage(message *MedMessage) error {
 
 	/*
 		// debug logs.
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"stream":      s.String(),
 			"err":         err,
 			"checksum":    message.DataCheckSum(),
@@ -257,7 +257,7 @@ func (s *Stream) WriteMedMessage(message *MedMessage) error {
 func (s *Stream) WriteProtoMessage(messageName string, pb proto.Message) error {
 	data, err := proto.Marshal(pb)
 	if err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"err":         err,
 			"messageName": messageName,
 			"stream":      s.String(),
@@ -306,7 +306,7 @@ func (s *Stream) readLoop() {
 	for {
 		n, err := s.stream.Read(buf)
 		if err != nil {
-			logging.VLog().WithFields(logrus.Fields{
+			logging.WithFields(logrus.Fields{
 				"err":    err,
 				"stream": s.String(),
 			}).Debug("Error occurred when reading data from network connection.")
@@ -337,7 +337,7 @@ func (s *Stream) readLoop() {
 
 				// check ChainID.
 				if s.node.config.ChainID != message.ChainID() {
-					logging.VLog().WithFields(logrus.Fields{
+					logging.WithFields(logrus.Fields{
 						"err":             err,
 						"stream":          s.String(),
 						"conf.chainID":    s.node.config.ChainID,
@@ -367,7 +367,7 @@ func (s *Stream) readLoop() {
 
 			/*
 				nowAt := time.Now().UnixNano()
-				logging.VLog().WithFields(logrus.Fields{
+				logging.WithFields(logrus.Fields{
 					"messageName":                    message.MessageName(),
 					"checksum":                       message.DataCheckSum(),
 					"stream":                         s.String(),
@@ -400,12 +400,12 @@ func (s *Stream) writeLoop() {
 	case <-s.handshakeSucceedCh:
 		// handshake succeed.
 	case <-s.quitWriteCh:
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"stream": s.String(),
 		}).Debug("Quiting Stream Write Loop.")
 		return
 	case <-handshakeTimeoutTicker.C:
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"stream": s.String(),
 		}).Debug("Handshaking Stream timeout, quiting.")
 		s.Close(errors.New("Handshake timeout"))
@@ -415,7 +415,7 @@ func (s *Stream) writeLoop() {
 	for {
 		select {
 		case <-s.quitWriteCh:
-			logging.VLog().WithFields(logrus.Fields{
+			logging.WithFields(logrus.Fields{
 				"stream": s.String(),
 			}).Debug("Quiting Stream Write Loop.")
 			return
@@ -489,7 +489,7 @@ func (s *Stream) Close(reason error) {
 	}
 	s.status = streamStatusClosed
 
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"stream": s.String(),
 		"reason": reason,
 	}).Debug("Closing stream.")
@@ -514,7 +514,7 @@ func (s *Stream) Bye() {
 }
 
 func (s *Stream) onBye(message *MedMessage) error {
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"stream": s.String(),
 	}).Debug("Received Bye message, close the connection.")
 	return ErrShouldCloseConnectionAndExitLoop
@@ -537,7 +537,7 @@ func (s *Stream) onHello(message *MedMessage) error {
 
 	if msg.NodeId != s.pid.String() || !CheckClientVersionCompatibility(ClientVersion, msg.ClientVersion) {
 		// invalid client, bye().
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"pid":               s.pid.Pretty(),
 			"address":           s.addr,
 			"ok.node_id":        msg.NodeId,
@@ -574,7 +574,7 @@ func (s *Stream) onOk(message *MedMessage) error {
 
 	if msg.NodeId != s.pid.String() || !CheckClientVersionCompatibility(ClientVersion, msg.ClientVersion) {
 		// invalid client, bye().
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"pid":               s.pid.Pretty(),
 			"address":           s.addr,
 			"ok.node_id":        msg.NodeId,
@@ -622,7 +622,7 @@ func (s *Stream) RouteTable() error {
 		msg.Peers[i] = pi
 	}
 
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"stream":          s.String(),
 		"routetableCount": len(peers),
 	}).Debug("Replied sync route message.")
@@ -633,7 +633,7 @@ func (s *Stream) RouteTable() error {
 func (s *Stream) onRouteTable(message *MedMessage) error {
 	peers := new(netpb.Peers)
 	if err := proto.Unmarshal(message.Data(), peers); err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Debug("Invalid Peers proto message.")
 		return ErrShouldCloseConnectionAndExitLoop
@@ -657,7 +657,7 @@ func (s *Stream) onRecvedMsg(message *MedMessage) error {
 }
 
 func (s *Stream) finishHandshake() {
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"stream": s.String(),
 	}).Debug("Finished handshake.")
 

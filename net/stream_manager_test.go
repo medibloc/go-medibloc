@@ -86,7 +86,7 @@ func run() {
 
 func cleanup(sm *StreamManager) {
 	if sm.activePeersCount < maxstreamnumber {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"maxNum":      maxstreamnumber,
 			"reservedNum": reservednumber,
 			"currentNum":  sm.activePeersCount,

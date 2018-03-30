@@ -49,7 +49,7 @@ type Node struct {
 func NewNode(config *Config) (*Node, error) {
 	// check Listen port.
 	if err := checkPortAvailable(config.Listen); err != nil {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err":    err,
 			"listen": config.Listen,
 		}).Error("Listen port is not available.")
@@ -76,7 +76,7 @@ func NewNode(config *Config) (*Node, error) {
 
 // Start host & route table discovery
 func (node *Node) Start() error {
-	logging.CLog().Info("Starting MedService Node...")
+	logging.Console().Info("Starting MedService Node...")
 
 	node.streamManager.Start()
 
@@ -86,7 +86,7 @@ func (node *Node) Start() error {
 
 	node.routeTable.Start()
 
-	logging.CLog().WithFields(logrus.Fields{
+	logging.Console().WithFields(logrus.Fields{
 		"id":                node.ID(),
 		"listening address": node.host.Addrs(),
 	}).Info("Started MedService Node.")
@@ -96,7 +96,7 @@ func (node *Node) Start() error {
 
 // Stop stop a node.
 func (node *Node) Stop() {
-	logging.CLog().WithFields(logrus.Fields{
+	logging.Console().WithFields(logrus.Fields{
 		"id":                node.ID(),
 		"listening address": node.host.Addrs(),
 	}).Info("Stopping MedService Node...")
@@ -112,7 +112,7 @@ func (node *Node) startHost() error {
 	options.NATManager = basichost.NewNATManager(node.network)
 	host, err := basichost.NewHost(node.context, node.network, options)
 	if err != nil {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err":            err,
 			"listen address": node.config.Listen,
 		}).Error("Failed to start node.")
@@ -174,7 +174,7 @@ func initP2PNetworkKey(config *Config, node *Node) {
 	// init p2p network key.
 	networkKey, err := LoadNetworkKeyFromFileOrCreateNew(config.PrivateKeyPath)
 	if err != nil {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err":        err,
 			"NetworkKey": config.PrivateKeyPath,
 		}).Warn("Failed to load network private key from file.")
@@ -183,7 +183,7 @@ func initP2PNetworkKey(config *Config, node *Node) {
 	node.networkKey = networkKey
 	node.id, err = peer.IDFromPublicKey(networkKey.GetPublic())
 	if err != nil {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err":        err,
 			"NetworkKey": config.PrivateKeyPath,
 		}).Warn("Failed to generate ID from network key file.")
@@ -202,7 +202,7 @@ func initP2PSwarmNetwork(config *Config, node *Node) error {
 	for idx, v := range node.config.Listen {
 		tcpAddr, err := net.ResolveTCPAddr("tcp", v)
 		if err != nil {
-			logging.CLog().WithFields(logrus.Fields{
+			logging.Console().WithFields(logrus.Fields{
 				"err":            err,
 				"listen address": v,
 			}).Error("Invalid listen address.")
@@ -217,7 +217,7 @@ func initP2PSwarmNetwork(config *Config, node *Node) error {
 			),
 		)
 		if err != nil {
-			logging.CLog().WithFields(logrus.Fields{
+			logging.Console().WithFields(logrus.Fields{
 				"err":            err,
 				"listen address": v,
 			}).Error("Invalid listen address.")
@@ -235,7 +235,7 @@ func initP2PSwarmNetwork(config *Config, node *Node) error {
 		nil, // TODO: integrate metrics.Reporter.
 	)
 	if err != nil {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err":            err,
 			"listen address": config.Listen,
 			"node.id":        node.id.Pretty(),
@@ -254,7 +254,7 @@ func (node *Node) onStreamConnected(s libnet.Stream) {
 func (node *Node) SendMessageToPeer(messageName string, data []byte, priority int, peerID string) error {
 	stream := node.streamManager.FindByPeerID(peerID)
 	if stream == nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"pid": peerID,
 			"err": ErrPeerIsNotConnected,
 		}).Debug("Failed to send msg")

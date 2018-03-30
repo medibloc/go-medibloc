@@ -65,12 +65,12 @@ func (dp *Dispatcher) Deregister(subscribers ...*Subscriber) {
 
 // Start start message dispatch goroutine.
 func (dp *Dispatcher) Start() {
-	logging.CLog().Info("Starting MedService Dispatcher...")
+	logging.Console().Info("Starting MedService Dispatcher...")
 	go dp.loop()
 }
 
 func (dp *Dispatcher) loop() {
-	logging.CLog().Info("Started NewService Dispatcher.")
+	logging.Console().Info("Started NewService Dispatcher.")
 
 	timerChan := time.NewTicker(time.Second).C
 	for {
@@ -78,7 +78,7 @@ func (dp *Dispatcher) loop() {
 		case <-timerChan:
 			metricsDispatcherCached.Update(int64(len(dp.receivedMessageCh)))
 		case <-dp.quitCh:
-			logging.CLog().Info("Stoped MedService Dispatcher.")
+			logging.Console().Info("Stoped MedService Dispatcher.")
 			return
 		case msg := <-dp.receivedMessageCh:
 			msgType := msg.MessageType()
@@ -90,7 +90,7 @@ func (dp *Dispatcher) loop() {
 				select {
 				case key.(*Subscriber).msgChan <- msg:
 				default:
-					logging.VLog().WithFields(logrus.Fields{
+					logging.WithFields(logrus.Fields{
 						"msgType": msgType,
 					}).Debug("timeout to dispatch message.")
 				}
@@ -102,7 +102,7 @@ func (dp *Dispatcher) loop() {
 
 // Stop stop goroutine.
 func (dp *Dispatcher) Stop() {
-	logging.CLog().Info("Stopping MedService Dispatcher...")
+	logging.Console().Info("Stopping MedService Dispatcher...")
 
 	dp.quitCh <- true
 }

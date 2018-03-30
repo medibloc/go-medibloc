@@ -14,7 +14,7 @@ type MedService struct {
 // NewMedService create netService
 func NewMedService(n Medlet) (*MedService, error) {
 	if networkConf := n.Config().GetNetwork(); networkConf == nil {
-		logging.CLog().Fatal("config.conf should has network")
+		logging.Console().Fatal("config.conf should has network")
 		return nil, ErrConfigLackNetWork
 	}
 	node, err := NewNode(NewP2PConfig(n))
@@ -38,7 +38,7 @@ func (ns *MedService) Node() *Node {
 
 // Start start p2p manager.
 func (ns *MedService) Start() error {
-	logging.CLog().Info("Starting MedService...")
+	logging.Console().Info("Starting MedService...")
 
 	// start dispatcher.
 	ns.dispatcher.Start()
@@ -46,19 +46,19 @@ func (ns *MedService) Start() error {
 	// start node.
 	if err := ns.node.Start(); err != nil {
 		ns.dispatcher.Stop()
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to start MedService.")
 		return err
 	}
 
-	logging.CLog().Info("Started MedService.")
+	logging.Console().Info("Started MedService.")
 	return nil
 }
 
 // Stop stop p2p manager.
 func (ns *MedService) Stop() {
-	logging.CLog().Info("Stopping MedService...")
+	logging.Console().Info("Stopping MedService...")
 
 	ns.node.Stop()
 	ns.dispatcher.Stop()

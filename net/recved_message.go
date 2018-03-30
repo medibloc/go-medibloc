@@ -31,7 +31,7 @@ func RecordKey(key string) {
 	countOfRecvMessageInBloomFilter++
 	if countOfRecvMessageInBloomFilter > maxCountOfRecvMessageInBloomFiler {
 		// reset.
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"countOfRecvMessageInBloomFilter": countOfRecvMessageInBloomFilter,
 		}).Debug("reset bloom filter.")
 		countOfRecvMessageInBloomFilter = 0

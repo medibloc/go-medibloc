@@ -155,7 +155,7 @@ func (message *MedMessage) Length() uint64 {
 // NewMedMessage new med message
 func NewMedMessage(chainID uint32, reserved []byte, version byte, messageName string, data []byte) (*MedMessage, error) {
 	if len(data) > MaxMedMessageDataLength {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"messageName": messageName,
 			"dataLength":  len(data),
 			"limits":      MaxMedMessageDataLength,
@@ -164,7 +164,7 @@ func NewMedMessage(chainID uint32, reserved []byte, version byte, messageName st
 	}
 
 	if len(messageName) > MaxMedMessageNameLength {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"messageName":      messageName,
 			"len(messageName)": len(messageName),
 			"limits":           MaxMedMessageNameLength,
@@ -229,7 +229,7 @@ func (message *MedMessage) ParseMessageData(data []byte) error {
 // VerifyHeader verify message header
 func (message *MedMessage) VerifyHeader() error {
 	if !byteutils.Equal(MagicNumber, message.MagicNumber()) {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"expect": MagicNumber,
 			"actual": message.MagicNumber(),
 			"err":    "invalid magic number",
@@ -239,7 +239,7 @@ func (message *MedMessage) VerifyHeader() error {
 
 	expectedCheckSum := crc32.ChecksumIEEE(message.HeaderWithoutCheckSum())
 	if expectedCheckSum != message.HeaderCheckSum() {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"expect": expectedCheckSum,
 			"actual": message.HeaderCheckSum(),
 			"err":    "invalid header checksum",
@@ -248,7 +248,7 @@ func (message *MedMessage) VerifyHeader() error {
 	}
 
 	if message.DataLength() > MaxMedMessageDataLength {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"messageName": message.MessageName(),
 			"dataLength":  message.DataLength(),
 			"limit":       MaxMedMessageDataLength,
@@ -264,7 +264,7 @@ func (message *MedMessage) VerifyHeader() error {
 func (message *MedMessage) VerifyData() error {
 	expectedCheckSum := crc32.ChecksumIEEE(message.Data())
 	if expectedCheckSum != message.DataCheckSum() {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"expect": expectedCheckSum,
 			"actual": message.DataCheckSum(),
 			"err":    "invalid data checksum",
