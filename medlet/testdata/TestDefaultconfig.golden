@@ -9,6 +9,10 @@ rpc: <
   rpc_listen: "127.0.0.1:9920"
   http_listen: "127.0.0.1:9921"
 >
+stats: <
+  influxdb: <
+  >
+>
 misc: <
 >
 app: <

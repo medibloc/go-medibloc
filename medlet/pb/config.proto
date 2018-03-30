@@ -9,10 +9,12 @@ message Config {
     ChainConfig chain = 2;
     // RPC config.
     RPCConfig rpc = 3;
+    // Stats config.
+    StatsConfig stats = 100;
     // Misc config.
-    MiscConfig misc = 100;
+    MiscConfig misc = 101;
     // App Config.
-    AppConfig app = 101;
+    AppConfig app = 102;
 }
 
 message NetworkConfig {
@@ -87,4 +89,33 @@ message PprofConfig {
 message MiscConfig {
     // Default encryption ciper when create new keystore file.
     string default_keystore_file_ciper = 1;
+}
+
+message StatsConfig {
+    // Enable metrics of not.
+    bool enable_metrics = 1;
+
+    // Reporting modules.
+    enum ReportingModule {
+        Influxdb = 0;
+    }
+    repeated ReportingModule reporting_module = 2;
+
+    // Influxdb config.
+    InfluxdbConfig influxdb = 11;
+
+    repeated string metrics_tags = 12;
+}
+
+message InfluxdbConfig {
+    // Host.
+    string host = 1;
+    // Port.
+    uint32 port = 2;
+    // Database name.
+    string db = 3;
+    // Auth user.
+    string user = 4;
+    // Auth password.
+    string password = 5;
 }
