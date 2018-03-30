@@ -2,7 +2,6 @@ package trie
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common/trie/pb"
@@ -35,7 +34,7 @@ const (
 type node struct {
 	Type ty
 	// Val branch: [16 children], ext: [path, next], leaf: [path, value]
-	Val  [][]byte
+	Val [][]byte
 }
 
 func (n *node) toProto() (proto.Message, error) {
