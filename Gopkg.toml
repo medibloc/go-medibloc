@@ -57,6 +57,18 @@
   branch = "master"
   name = "golang.org/x/crypto"
 
+[[override]]
+  name = "github.com/multiformats/go-multihash"
+  revision = "468a1b73e980e5aff011d308623e43e28c582b16"
+
+[[override]]
+  name = "github.com/multiformats/go-multiaddr"
+  revision = "123a717755e0559ec8fda308019cd24e0a37bb07"
+
+[[override]]
+  name = "github.com/satori/go.uuid"
+  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
+
 [prune]
   go-tests = true
   unused-packages = true
