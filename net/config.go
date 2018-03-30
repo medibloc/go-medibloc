@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/multiformats/go-multiaddr"
 	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // const
