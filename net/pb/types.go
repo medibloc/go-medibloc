@@ -11,7 +11,7 @@ func HelloMessageFromProto(data []byte) (*Hello, error) {
 	pb := new(Hello)
 
 	if err := proto.Unmarshal(data, pb); err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Debug("Failed to unmarshal Hello message.")
 		return nil, err
@@ -25,7 +25,7 @@ func OKMessageFromProto(data []byte) (*OK, error) {
 	pb := new(OK)
 
 	if err := proto.Unmarshal(data, pb); err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Debug("Failed to unmarshal OK message.")
 		return nil, err

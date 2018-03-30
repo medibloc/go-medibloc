@@ -54,14 +54,14 @@ func (sm *StreamManager) Count() int32 {
 
 // Start stream manager service
 func (sm *StreamManager) Start() {
-	logging.CLog().Info("Starting MedService StreamManager...")
+	logging.Console().Info("Starting MedService StreamManager...")
 
 	go sm.loop()
 }
 
 // Stop stream manager service
 func (sm *StreamManager) Stop() {
-	logging.CLog().Info("Stopping MedService StreamManager...")
+	logging.Console().Info("Stopping MedService StreamManager...")
 
 	sm.quitCh <- true
 }
@@ -80,7 +80,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 		return
 	}
 
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"steam": stream.String(),
 	}).Debug("Added a new stream.")
 
@@ -91,7 +91,7 @@ func (sm *StreamManager) AddStream(stream *Stream) {
 
 // Remove the stream with the given pid from the stream manager
 func (sm *StreamManager) Remove(pid peer.ID) {
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"pid": pid.Pretty(),
 	}).Debug("Removing a stream.")
 
@@ -123,13 +123,13 @@ func (sm *StreamManager) Find(pid peer.ID) *Stream {
 }
 
 func (sm *StreamManager) loop() {
-	logging.CLog().Info("Started MedService StreamManager.")
+	logging.Console().Info("Started MedService StreamManager.")
 
 	ticker := time.NewTicker(CleanupInterval)
 	for {
 		select {
 		case <-sm.quitCh:
-			logging.CLog().Info("Stopped Stream Manager Loop.")
+			logging.Console().Info("Stopped Stream Manager Loop.")
 			return
 		case <-ticker.C:
 			sm.cleanup()
@@ -212,7 +212,7 @@ func (sm *StreamManager) CloseStream(peerID string, reason error) {
 func (sm *StreamManager) cleanup() {
 
 	if sm.activePeersCount < MaxStreamNum {
-		logging.CLog().WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"maxNum":      MaxStreamNum,
 			"reservedNum": ReservedStreamNum,
 			"currentNum":  sm.activePeersCount,
@@ -263,7 +263,7 @@ func (sm *StreamManager) cleanup() {
 	}
 
 	sort.Sort(sort.Reverse(svs))
-	logging.CLog().WithFields(logrus.Fields{
+	logging.Console().WithFields(logrus.Fields{
 		"maxNum":           MaxStreamNum,
 		"reservedNum":      ReservedStreamNum,
 		"currentNum":       sm.activePeersCount,
@@ -278,7 +278,7 @@ func (sm *StreamManager) cleanup() {
 	}
 
 	svs = svs[:MaxStreamNum-ReservedStreamNum]
-	logging.VLog().WithFields(logrus.Fields{
+	logging.WithFields(logrus.Fields{
 		"eliminatedNum": len(eliminated),
 		"retained":      svs,
 	}).Debug("Streams cleanup is done.")

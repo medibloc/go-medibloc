@@ -71,14 +71,14 @@ func NewRouteTable(config *Config, node *Node) *RouteTable {
 
 // Start start route table syncLoop.
 func (table *RouteTable) Start() {
-	logging.CLog().Info("Starting MedService RouteTable Sync...")
+	logging.Console().Info("Starting MedService RouteTable Sync...")
 
 	go table.syncLoop()
 }
 
 // Stop quit route table syncLoop.
 func (table *RouteTable) Stop() {
-	logging.CLog().Info("Stopping MedService RouteTable Sync...")
+	logging.Console().Info("Stopping MedService RouteTable Sync...")
 
 	table.quitCh <- true
 }
@@ -100,7 +100,7 @@ func (table *RouteTable) syncLoop() {
 	// trigger first sync.
 	table.SyncRouteTable()
 
-	logging.CLog().Info("Started MedService RouteTable Sync.")
+	logging.Console().Info("Started MedService RouteTable Sync.")
 
 	syncLoopTicker := time.NewTicker(RouteTableSyncLoopInterval)
 	saveRouteTableToDiskTicker := time.NewTicker(RouteTableSaveToDiskInterval)
@@ -109,7 +109,7 @@ func (table *RouteTable) syncLoop() {
 	for {
 		select {
 		case <-table.quitCh:
-			logging.CLog().Info("Stopped MedService RouteTable Sync.")
+			logging.Console().Info("Stopped MedService RouteTable Sync.")
 			return
 		case <-syncLoopTicker.C:
 			table.SyncRouteTable()
@@ -150,7 +150,7 @@ func (table *RouteTable) AddPeerInfo(prettyID string, addrStr []string) error {
 
 // AddPeer add peer to route table.
 func (table *RouteTable) AddPeer(pid peer.ID, addr ma.Multiaddr) {
-	logging.VLog().Debugf("Adding Peer: %s,%s", pid.Pretty(), addr.String())
+	logging.Debugf("Adding Peer: %s,%s", pid.Pretty(), addr.String())
 	table.peerStore.AddAddr(pid, addr, peerstore.PermanentAddrTTL)
 	table.routeTable.Update(pid)
 	table.onRouteTableChange()
@@ -239,7 +239,7 @@ func (table *RouteTable) LoadSeedNodes() {
 func (table *RouteTable) LoadRouteTableFromFile() {
 	file, err := os.Open(table.cacheFilePath)
 	if err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"cacheFilePath": table.cacheFilePath,
 			"err":           err,
 		}).Warn("Failed to open Route Table Cache file.")
@@ -260,7 +260,7 @@ func (table *RouteTable) LoadRouteTableFromFile() {
 		addr, err := ma.NewMultiaddr(line)
 		if err != nil {
 			// ignore.
-			logging.VLog().WithFields(logrus.Fields{
+			logging.WithFields(logrus.Fields{
 				"err":  err,
 				"text": line,
 			}).Warn("Invalid address in Route Table Cache file.")
@@ -275,7 +275,7 @@ func (table *RouteTable) LoadRouteTableFromFile() {
 func (table *RouteTable) SaveRouteTableToFile() {
 	file, err := os.Create(table.cacheFilePath)
 	if err != nil {
-		logging.VLog().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"cacheFilePath": table.cacheFilePath,
 			"err":           err,
 		}).Warn("Failed to open Route Table Cache file.")

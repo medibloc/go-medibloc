@@ -47,7 +47,7 @@ func EnableMetrics() {
 
 // Start metrics monitor
 func Start(med Medlet) {
-	logging.VLog().Info("Starting Metrics...")
+	logging.Info("Starting Metrics...")
 
 	go (func() {
 		tags := make(map[string]string)
@@ -63,11 +63,11 @@ func Start(med Medlet) {
 		go collectSystemMetrics()
 		InfluxDBWithTags(metrics.DefaultRegistry, interval, med.Config().Stats.Influxdb.Host, med.Config().Stats.Influxdb.Db, med.Config().Stats.Influxdb.User, med.Config().Stats.Influxdb.Password, tags)
 
-		logging.VLog().Info("Started Metrics.")
+		logging.Info("Started Metrics.")
 
 	})()
 
-	logging.VLog().Info("Started Metrics.")
+	logging.Info("Started Metrics.")
 }
 
 func collectSystemMetrics() {
@@ -101,7 +101,7 @@ func collectSystemMetrics() {
 
 // Stop metrics monitor
 func Stop() {
-	logging.VLog().Info("Stopping Metrics...")
+	logging.Info("Stopping Metrics...")
 
 	quitCh <- true
 }
