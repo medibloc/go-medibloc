@@ -12,9 +12,9 @@ import (
 	"github.com/gogo/protobuf/proto"
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
-	ma "github.com/multiformats/go-multiaddr"
 	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 

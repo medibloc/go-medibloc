@@ -12,8 +12,8 @@ import (
 	"github.com/libp2p/go-libp2p-peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	"github.com/libp2p/go-libp2p/p2p/host/basic"
-	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/medibloc/go-medibloc/util/logging"
+	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 

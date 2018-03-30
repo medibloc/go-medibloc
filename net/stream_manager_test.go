@@ -10,8 +10,8 @@ import (
 	"time"
 
 	peer "github.com/libp2p/go-libp2p-peer"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/medibloc/go-medibloc/util/logging"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
