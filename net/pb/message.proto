@@ -1,0 +1,21 @@
+syntax = "proto3";
+package netpb;
+
+message Hello {
+    string node_id = 1;
+    string client_version = 2;
+}
+
+message OK {
+    string node_id = 1;
+    string client_version = 2;
+}
+
+message Peers {
+    repeated PeerInfo peers = 1;
+}
+
+message PeerInfo {
+    string id = 1;
+    repeated string addrs = 2;
+}
