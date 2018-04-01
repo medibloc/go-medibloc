@@ -12,10 +12,12 @@ BINARY=medi
 VET_REPORT=$(REPORT_DIR)/vet.report
 LINT_REPORT=$(REPORT_DIR)/lint.report
 TEST_REPORT=$(REPORT_DIR)/test.report
+COVERAGE_REPORT=$(REPORT_DIR)/coverage.html
+COVERAGE_OUT=$(REPORT_DIR)/coverage.out
 
 LDFLAGS = -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.branch=${BRANCH}"
 
-.PHONY: clean vet fmt lint build test dep
+.PHONY: clean vet fmt lint build test dep cover
 
 all: clean vet fmt lint build test
 
@@ -24,6 +26,12 @@ dep:
 
 build:
 	cd cmd/medi; go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)
+
+cover:
+	-mkdir -p $(REPORT_DIR)
+	go test ./... -coverprofile=$(COVERAGE_OUT) 2>&1 | tee ${TEST_REPORT}
+	go tool cover -html=$(COVERAGE_OUT) -o $(COVERAGE_REPORT)
+	open $(COVERAGE_REPORT)
 
 test:
 	-mkdir -p $(REPORT_DIR)
