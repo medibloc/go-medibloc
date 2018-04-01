@@ -42,6 +42,7 @@ const (
 	Delete
 )
 
+// Batch batch interface
 type Batch interface {
 	BeginBatch() error
 	Commit() error
@@ -56,6 +57,7 @@ type Entry struct {
 	update []byte
 }
 
+// TrieBatch batch implementation for trie
 type TrieBatch struct {
 	batching    bool
 	changeLogs  []*Entry
@@ -63,14 +65,23 @@ type TrieBatch struct {
 	trie        *trie.Trie
 }
 
-func (t *TrieBatch) Get(key []byte) ([]byte, error) {
-	if !t.batching {
-		// TODO maybe possible to Get when not batching
-		return nil, ErrNotBatching
+// NewTrieBatch return new TrieBatch instance
+func NewTrieBatch(rootHash []byte, storage storage.Storage) (*TrieBatch, error) {
+	t, err := trie.NewTrie(rootHash, storage)
+	if err != nil {
+		return nil, err
 	}
+	return &TrieBatch{
+		trie: t,
+	}, nil
+}
+
+// Get get from trie
+func (t *TrieBatch) Get(key []byte) ([]byte, error) {
 	return t.trie.Get(key)
 }
 
+// Put put to trie
 func (t *TrieBatch) Put(key []byte, value []byte) error {
 	if !t.batching {
 		return ErrNotBatching
@@ -83,6 +94,19 @@ func (t *TrieBatch) Put(key []byte, value []byte) error {
 	}
 	t.changeLogs = append(t.changeLogs, entry)
 	return t.trie.Put(key, value)
+}
+
+func (t *TrieBatch) Delete(key []byte) error {
+	if !t.batching {
+		return ErrNotBatching
+	}
+	entry := &Entry{action: Delete, key: key, old: nil}
+	old, getErr := t.trie.Get(key)
+	if getErr == nil {
+		entry.old = old
+	}
+	t.changeLogs = append(t.changeLogs, entry)
+	return t.trie.Delete(key)
 }
 
 func (t *TrieBatch) RootHash() []byte {
@@ -125,7 +149,7 @@ type AccountStateBatch struct {
 	as            *accountState
 	batching      bool
 	stageAccounts map[string]*account
-	storage       *storage.Storage
+	storage       storage.Storage
 }
 
 func (as *AccountStateBatch) BeginBatch() error {
@@ -136,6 +160,7 @@ func (as *AccountStateBatch) BeginBatch() error {
 	return nil
 }
 
+// Commit WARNING: not thread-safe
 func (as *AccountStateBatch) Commit() error {
 	if !as.batching {
 		return ErrNotBatching
@@ -156,6 +181,7 @@ func (as *AccountStateBatch) Commit() error {
 	return nil
 }
 
+// Rollback WARNING: not thread-safe
 func (as *AccountStateBatch) RollBack() error {
 	if !as.batching {
 		return ErrNotBatching

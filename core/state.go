@@ -49,7 +49,7 @@ func (acc *account) toBytes() ([]byte, error) {
 	return bytes, nil
 }
 
-func loadAccount(bytes []byte, storage *storage.Storage) (*account, error) {
+func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 	pbAcc := &corepb.Account{}
 	if err := proto.Unmarshal(bytes, pbAcc); err != nil {
 		return nil, err
