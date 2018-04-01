@@ -20,6 +20,12 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/golang/snappy"
+  packages = ["."]
+  revision = "553a641470496b2327abcac10b36396bd98e45c9"
+
+[[projects]]
   name = "github.com/lestrrat-go/file-rotatelogs"
   packages = ["."]
   revision = "9df8b44f21785240553882138c5df2e9cc1db910"
@@ -68,6 +74,25 @@
   version = "v1.2.1"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/syndtr/goleveldb"
+  packages = [
+    "leveldb",
+    "leveldb/cache",
+    "leveldb/comparer",
+    "leveldb/errors",
+    "leveldb/filter",
+    "leveldb/iterator",
+    "leveldb/journal",
+    "leveldb/memdb",
+    "leveldb/opt",
+    "leveldb/storage",
+    "leveldb/table",
+    "leveldb/util"
+  ]
+  revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
+
+[[projects]]
   name = "github.com/urfave/cli"
   packages = ["."]
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
@@ -94,6 +119,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "181121b78ac9f60704498d9b138733a28086e8591c6ecb0243af7b31723c7658"
+  inputs-digest = "dfbcc4af52e70cb6ab83059342f59270868d5f25aff5ca4441d0921db34fca06"
   solver-name = "gps-cdcl"
   solver-version = 1
