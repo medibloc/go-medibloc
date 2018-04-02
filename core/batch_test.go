@@ -39,9 +39,14 @@ func testBatch(t *testing.T, batch core.Batch) {
 	assert.Equal(t, core.ErrNotBatching, err)
 }
 
-func TestTrieBatch(t *testing.T) {
+func getStorage(t *testing.T) storage.Storage {
 	s, err := storage.NewMemoryStorage()
 	assert.Nil(t, err)
+	return s
+}
+
+func TestTrieBatch(t *testing.T) {
+	s := getStorage(t)
 
 	trieBatch, err := core.NewTrieBatch(nil, s)
 	assert.Nil(t, err)
@@ -93,11 +98,15 @@ func TestTrieBatch(t *testing.T) {
 	testGetValue(key1, val1)
 }
 
-func TestAccountState(t *testing.T) {
-	s, err := storage.NewMemoryStorage()
-	assert.Nil(t, err)
+func getAddress() []byte {
+	acc1Address, _ := hex.DecodeString("account1")
+	return acc1Address
+}
 
-	asBatch, err := core.NewAccountStateBatch(s)
+func TestAccountState(t *testing.T) {
+	s := getStorage(t)
+
+	asBatch, err := core.NewAccountStateBatch(nil, s)
 	assert.Nil(t, err)
 	assert.NotNil(t, asBatch)
 
@@ -106,7 +115,8 @@ func TestAccountState(t *testing.T) {
 	err = asBatch.BeginBatch()
 	assert.Nil(t, err)
 
-	acc1Address, _ := hex.DecodeString("account1")
+	acc1Address := getAddress()
+	amount := uint64(1)
 
 	checkBalance := func(address []byte, expected uint64) {
 		as := asBatch.AccountState()
@@ -114,8 +124,6 @@ func TestAccountState(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, expected, acc.Balance())
 	}
-
-	amount := uint64(1)
 
 	err = asBatch.SubBalance(acc1Address, amount)
 	assert.Equal(t, core.ErrBalanceNotEnough, err)
@@ -158,4 +166,33 @@ func TestAccountState(t *testing.T) {
 	assert.Nil(t, err)
 
 	checkBalance(acc1Address, 2*amount)
+}
+
+func TestAccountStateBatch_Clone(t *testing.T) {
+	s := getStorage(t)
+	asBatch1, err := core.NewAccountStateBatch(nil, s)
+	assert.Nil(t, err)
+
+	asBatch2, err := asBatch1.Clone()
+	assert.Nil(t, err)
+
+	err = asBatch1.BeginBatch()
+	assert.Nil(t, err)
+
+	_, err = asBatch1.Clone()
+	assert.Equal(t, core.ErrCannotCloneOnBatching, err)
+
+	acc1Address := getAddress()
+	amount := uint64(1)
+
+	err = asBatch1.AddBalance(acc1Address, amount)
+	assert.Nil(t, err)
+
+	err = asBatch1.Commit()
+	assert.Nil(t, err)
+
+	_, err = asBatch1.AccountState().GetAccount(acc1Address)
+	assert.Nil(t, err)
+	_, err = asBatch2.AccountState().GetAccount(acc1Address)
+	assert.NotNil(t, err)
 }

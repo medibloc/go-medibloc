@@ -26,11 +26,12 @@ import (
 
 // Errors
 var (
-	ErrBalanceNotEnough  = errors.New("remaining balance is not enough")
-	ErrBeginAgainInBatch = errors.New("cannot begin with a batch task unfinished")
-	ErrNotFound          = storage.ErrKeyNotFound
-	ErrInvalidAmount     = errors.New("invalid amount")
-	ErrNotBatching       = errors.New("not batching")
+	ErrBalanceNotEnough      = errors.New("remaining balance is not enough")
+	ErrBeginAgainInBatch     = errors.New("cannot begin with a batch task unfinished")
+	ErrCannotCloneOnBatching = errors.New("cannot clone on batching")
+	ErrInvalidAmount         = errors.New("invalid amount")
+	ErrNotBatching           = errors.New("not batching")
+	ErrNotFound              = storage.ErrKeyNotFound
 )
 
 // Action represents operation types in BatchTrie
@@ -157,9 +158,9 @@ type AccountStateBatch struct {
 }
 
 // NewAccountStateBatch create and return new AccountStateBatch instance
-func NewAccountStateBatch(s storage.Storage) (*AccountStateBatch, error) {
+func NewAccountStateBatch(accountsRootHash []byte, s storage.Storage) (*AccountStateBatch, error) {
 	// TODO Get initial accounts from config or another place
-	accTrie, err := trie.NewTrie(nil, s)
+	accTrie, err := trie.NewTrie(accountsRootHash, s)
 	if err != nil {
 		return nil, err
 	}
@@ -180,9 +181,12 @@ func (as *AccountStateBatch) BeginBatch() error {
 	return nil
 }
 
-func (as *AccountStateBatch) resetBatch() {
-	as.batching = false
-	as.stageAccounts = make(map[string]*account)
+// Clone clone AccountStateBatch enable only when not batching
+func (as *AccountStateBatch) Clone() (*AccountStateBatch, error) {
+	if as.batching {
+		return nil, ErrCannotCloneOnBatching
+	}
+	return NewAccountStateBatch(as.as.accounts.RootHash(), as.storage)
 }
 
 // Commit commit batch WARNING: not thread-safe
@@ -244,6 +248,11 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 		return nil, err
 	}
 	return stageAndReturn(acc), nil
+}
+
+func (as *AccountStateBatch) resetBatch() {
+	as.batching = false
+	as.stageAccounts = make(map[string]*account)
 }
 
 // AddBalance add balance
