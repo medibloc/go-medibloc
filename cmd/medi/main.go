@@ -51,7 +51,11 @@ func runMedi(ctx *cli.Context, m *medlet.Medlet) error {
 	// Run Node
 	log.Console().Info("Start medibloc...")
 
+	m.Setup()
+	m.Start()
+
 	<-sigch
+	m.Stop()
 	log.Console().Info("Stop medibloc...")
 	return nil
 }
