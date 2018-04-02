@@ -25,16 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func getItems() {
-	var items = make(map[[5]byte][]byte)
-
-	items[[5]byte{11, 59, 53, 34, 5}] = []byte{1, 1, 1, 1, 1, 1, 1}
-	items[[5]byte{11, 49, 63, 44, 5}] = []byte{1, 1, 1, 1, 1, 1, 1}
-	items[[5]byte{21, 39, 73, 54, 5}] = []byte{1, 1, 1, 1, 1, 1, 1}
-	items[[5]byte{31, 29, 83, 64, 5}] = []byte{1, 1, 1, 1, 1, 1, 1}
-	items[[5]byte{41, 19, 93, 74, 5}] = []byte{1, 1, 1, 1, 1, 1, 1}
-}
-
 func TestNewTrie(t *testing.T) {
 	type args struct {
 		rootHash []byte
