@@ -12,40 +12,40 @@ type MedService struct {
 }
 
 // NewMedService create netService
-func NewMedService(n Medlet) (*MedService, error) {
-	if networkConf := n.Config().GetNetwork(); networkConf == nil {
+func NewMedService(m Medlet) (*MedService, error) {
+	if networkConf := m.Config().GetNetwork(); networkConf == nil {
 		logging.Console().Fatal("config.conf should has network")
 		return nil, ErrConfigLackNetWork
 	}
-	node, err := NewNode(NewP2PConfig(n))
+	node, err := NewNode(NewP2PConfig(m))
 	if err != nil {
 		return nil, err
 	}
 
-	ns := &MedService{
+	ms := &MedService{
 		node:       node,
 		dispatcher: NewDispatcher(),
 	}
-	node.SetMedService(ns)
+	node.SetMedService(ms)
 
-	return ns, nil
+	return ms, nil
 }
 
 // Node return the peer node
-func (ns *MedService) Node() *Node {
-	return ns.node
+func (ms *MedService) Node() *Node {
+	return ms.node
 }
 
 // Start start p2p manager.
-func (ns *MedService) Start() error {
+func (ms *MedService) Start() error {
 	logging.Console().Info("Starting MedService...")
 
 	// start dispatcher.
-	ns.dispatcher.Start()
+	ms.dispatcher.Start()
 
 	// start node.
-	if err := ns.node.Start(); err != nil {
-		ns.dispatcher.Stop()
+	if err := ms.node.Start(); err != nil {
+		ms.dispatcher.Stop()
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to start MedService.")
@@ -57,46 +57,46 @@ func (ns *MedService) Start() error {
 }
 
 // Stop stop p2p manager.
-func (ns *MedService) Stop() {
+func (ms *MedService) Stop() {
 	logging.Console().Info("Stopping MedService...")
 
-	ns.node.Stop()
-	ns.dispatcher.Stop()
+	ms.node.Stop()
+	ms.dispatcher.Stop()
 }
 
 // Register register the subscribers.
-func (ns *MedService) Register(subscribers ...*Subscriber) {
-	ns.dispatcher.Register(subscribers...)
+func (ms *MedService) Register(subscribers ...*Subscriber) {
+	ms.dispatcher.Register(subscribers...)
 }
 
 // Deregister Deregister the subscribers.
-func (ns *MedService) Deregister(subscribers ...*Subscriber) {
-	ns.dispatcher.Deregister(subscribers...)
+func (ms *MedService) Deregister(subscribers ...*Subscriber) {
+	ms.dispatcher.Deregister(subscribers...)
 }
 
 // PutMessage put message to dispatcher.
-func (ns *MedService) PutMessage(msg Message) {
-	ns.dispatcher.PutMessage(msg)
+func (ms *MedService) PutMessage(msg Message) {
+	ms.dispatcher.PutMessage(msg)
 }
 
 // Broadcast message.
-func (ns *MedService) Broadcast(name string, msg Serializable, priority int) {
-	ns.node.BroadcastMessage(name, msg, priority)
+func (ms *MedService) Broadcast(name string, msg Serializable, priority int) {
+	ms.node.BroadcastMessage(name, msg, priority)
 }
 
 // Relay message.
-func (ns *MedService) Relay(name string, msg Serializable, priority int) {
-	ns.node.RelayMessage(name, msg, priority)
+func (ms *MedService) Relay(name string, msg Serializable, priority int) {
+	ms.node.RelayMessage(name, msg, priority)
 }
 
 // BroadcastNetworkID broadcast networkID when changed.
-func (ns *MedService) BroadcastNetworkID(msg []byte) {
+func (ms *MedService) BroadcastNetworkID(msg []byte) {
 	// TODO: networkID.
 }
 
 // BuildRawMessageData return the raw MedMessage content data.
-func (ns *MedService) BuildRawMessageData(data []byte, msgName string) []byte {
-	message, err := NewMedMessage(ns.node.config.ChainID, DefaultReserved, 0, msgName, data)
+func (ms *MedService) BuildRawMessageData(data []byte, msgName string) []byte {
+	message, err := NewMedMessage(ms.node.config.ChainID, DefaultReserved, 0, msgName, data)
 	if err != nil {
 		return nil
 	}
@@ -105,21 +105,21 @@ func (ns *MedService) BuildRawMessageData(data []byte, msgName string) []byte {
 }
 
 // SendMsg send message to a peer.
-func (ns *MedService) SendMsg(msgName string, msg []byte, target string, priority int) error {
-	return ns.node.SendMessageToPeer(msgName, msg, priority, target)
+func (ms *MedService) SendMsg(msgName string, msg []byte, target string, priority int) error {
+	return ms.node.SendMessageToPeer(msgName, msg, priority, target)
 }
 
 // SendMessageToPeers send message to peers.
-func (ns *MedService) SendMessageToPeers(messageName string, data []byte, priority int, filter PeerFilterAlgorithm) []string {
-	return ns.node.streamManager.SendMessageToPeers(messageName, data, priority, filter)
+func (ms *MedService) SendMessageToPeers(messageName string, data []byte, priority int, filter PeerFilterAlgorithm) []string {
+	return ms.node.streamManager.SendMessageToPeers(messageName, data, priority, filter)
 }
 
 // SendMessageToPeer send message to a peer.
-func (ns *MedService) SendMessageToPeer(messageName string, data []byte, priority int, peerID string) error {
-	return ns.node.SendMessageToPeer(messageName, data, priority, peerID)
+func (ms *MedService) SendMessageToPeer(messageName string, data []byte, priority int, peerID string) error {
+	return ms.node.SendMessageToPeer(messageName, data, priority, peerID)
 }
 
 // ClosePeer close the stream to a peer.
-func (ns *MedService) ClosePeer(peerID string, reason error) {
-	ns.node.streamManager.CloseStream(peerID, reason)
+func (ms *MedService) ClosePeer(peerID string, reason error) {
+	ms.node.streamManager.CloseStream(peerID, reason)
 }
