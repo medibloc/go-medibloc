@@ -295,7 +295,7 @@ func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 }
 
 // GetAccount get account in stage(batching) or in original accountState
-func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
+func (as *AccountStateBatch) GetAccount(address []byte) (Account, error) {
 	if !as.batching {
 		return nil, ErrNotBatching
 	}
@@ -315,7 +315,7 @@ func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
 }
 
 // AccountState getter for accountState
-func (as *AccountStateBatch) AccountState() *accountState {
+func (as *AccountStateBatch) AccountState() AccountState {
 	return as.as
 }
 

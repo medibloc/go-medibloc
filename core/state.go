@@ -88,3 +88,12 @@ func (as *accountState) GetAccount(address []byte) (*account, error) {
 	}
 	return loadAccount(bytes, as.storage)
 }
+
+type Account interface {
+	Address() []byte
+	Balance() uint64
+}
+
+type AccountState interface {
+	GetAccount(address []byte) (*account, error)
+}
