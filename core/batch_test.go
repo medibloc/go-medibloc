@@ -108,7 +108,7 @@ func TestAccountState(t *testing.T) {
 
 	acc1Address, _ := hex.DecodeString("account1")
 
-	checkBalance := func (address []byte, expected uint64) {
+	checkBalance := func(address []byte, expected uint64) {
 		as := asBatch.AccountState()
 		acc, err := as.GetAccount(address)
 		assert.Nil(t, err)
@@ -148,11 +148,11 @@ func TestAccountState(t *testing.T) {
 	assert.Nil(t, err)
 
 	acc, err = asBatch.GetAccount(acc1Address)
-	assert.Equal(t, 2 * amount, acc.Balance())
+	assert.Equal(t, 2*amount, acc.Balance())
 	checkBalance(acc1Address, amount)
 
 	err = asBatch.Commit()
 	assert.Nil(t, err)
 
-	checkBalance(acc1Address, 2 * amount)
+	checkBalance(acc1Address, 2*amount)
 }

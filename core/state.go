@@ -78,7 +78,7 @@ func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 // accountState
 type accountState struct {
 	accounts *trie.Trie
-	storage storage.Storage
+	storage  storage.Storage
 }
 
 func (as *accountState) GetAccount(address []byte) (*account, error) {

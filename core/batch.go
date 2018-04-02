@@ -282,7 +282,7 @@ func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
 	return nil, ErrNotFound
 }
 
-func (as *AccountStateBatch) AccountState() (*accountState) {
+func (as *AccountStateBatch) AccountState() *accountState {
 	return as.as
 }
 
