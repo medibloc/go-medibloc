@@ -48,9 +48,9 @@ type Medlet interface {
 }
 
 // NewP2PConfig return new config object.
-func NewP2PConfig(n Medlet) *Config {
-	chainConf := n.Config().Chain
-	networkConf := n.Config().Network
+func NewP2PConfig(m Medlet) *Config {
+	chainConf := m.Config().Chain
+	networkConf := m.Config().Network
 	config := NewConfigFromDefaults()
 
 	// listen.
