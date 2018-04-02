@@ -108,15 +108,21 @@ func TestTrie_Operations(t *testing.T) {
 	assert.Nil(t, tr.RootHash())
 }
 
-func TestUpdateExtBranch(t *testing.T) {
-	kvs := []struct {
-		key []byte
-		val []byte
-	}{
+type kvs struct {
+	key []byte
+	val []byte
+}
+
+func getKVs() []kvs {
+	return []kvs{
 		{[]byte("aaabbb"), []byte("val1")},
 		{[]byte("aaaccc"), []byte("val2")},
 		{[]byte("zzzccc"), []byte("val3")},
 	}
+}
+
+func TestUpdateExtBranch(t *testing.T) {
+	kvs := getKVs()
 	s, err := storage.NewMemoryStorage()
 	assert.Nil(t, err)
 
@@ -133,4 +139,27 @@ func TestUpdateExtBranch(t *testing.T) {
 		assert.Nil(t, err)
 		assert.EqualValues(t, kv.val, val)
 	}
+}
+
+func TestTrie_Clone(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+
+	tr1, err := trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	tr2, err := tr1.Clone()
+	assert.Nil(t, err)
+
+	kvs := getKVs()
+	for _, kv := range kvs {
+		err = tr1.Put(kv.key, kv.val)
+		assert.Nil(t, err)
+	}
+	assert.Nil(t, tr2.RootHash())
+	for _, kv := range kvs {
+		err = tr2.Put(kv.key, kv.val)
+		assert.Nil(t, err)
+	}
+	assert.Equal(t, tr1.RootHash(), tr2.RootHash())
 }

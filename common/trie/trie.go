@@ -74,6 +74,11 @@ func NewTrie(rootHash []byte, storage storage.Storage) (*Trie, error) {
 	return &Trie{rootHash: rootHash, storage: storage}, nil
 }
 
+// Clone clone trie
+func (t *Trie) Clone() (*Trie, error) {
+	return &Trie{rootHash: t.rootHash, storage: t.storage}, nil
+}
+
 // Delete delete value from Trie
 func (t *Trie) Delete(key []byte) error {
 	hash, err := t.delete(t.rootHash, keyToRoute(key))
