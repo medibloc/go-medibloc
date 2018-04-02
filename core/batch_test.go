@@ -144,6 +144,9 @@ func TestAccountState(t *testing.T) {
 	err = asBatch.BeginBatch()
 	assert.Nil(t, err)
 
+	acc, err = asBatch.GetAccount(acc1Address)
+	assert.Nil(t, err)
+
 	err = asBatch.AddBalance(acc1Address, amount)
 	assert.Nil(t, err)
 

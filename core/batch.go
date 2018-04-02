@@ -180,6 +180,11 @@ func (as *AccountStateBatch) BeginBatch() error {
 	return nil
 }
 
+func (as *AccountStateBatch) resetBatch() {
+	as.batching = false
+	as.stageAccounts = make(map[string]*account)
+}
+
 // Commit commit batch WARNING: not thread-safe
 func (as *AccountStateBatch) Commit() error {
 	if !as.batching {
@@ -197,7 +202,8 @@ func (as *AccountStateBatch) Commit() error {
 		}
 		as.as.accounts.Put(acc.address, bytes)
 	}
-	as.batching = false
+
+	as.resetBatch()
 	return nil
 }
 
@@ -206,8 +212,7 @@ func (as *AccountStateBatch) RollBack() error {
 	if !as.batching {
 		return ErrNotBatching
 	}
-	as.batching = false
-	as.stageAccounts = make(map[string]*account)
+	as.resetBatch()
 	return nil
 }
 
@@ -270,13 +275,21 @@ func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	return nil
 }
 
-// GetAccount get account in stage(batching)
+// GetAccount get account in stage(batching) or in original accountState
 func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
 	if !as.batching {
 		return nil, ErrNotBatching
 	}
 	s := hex.EncodeToString(address)
 	if acc, ok := as.stageAccounts[s]; ok {
+		return acc, nil
+	}
+	accBytes, err := as.as.accounts.Get(address)
+	if err == nil {
+		acc, err := loadAccount(accBytes, as.storage)
+		if err != nil {
+			return nil, err
+		}
 		return acc, nil
 	}
 	return nil, ErrNotFound
