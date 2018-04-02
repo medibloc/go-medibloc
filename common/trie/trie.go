@@ -108,16 +108,16 @@ func (t *Trie) SetRootHash(rootHash []byte) {
 }
 
 func (t *Trie) addExtToBranch(branchHash []byte, path []byte) ([]byte, error) {
-	var hash []byte
-	var err error
-	if len(path) > 0 {
+	if path != nil && len(path) > 0 {
+		var hash []byte
+		var err error
 		ext := newExtNode(path, branchHash)
 		if hash, err = t.saveNode(ext); err != nil {
 			return nil, err
 		}
 		return hash, nil
 	}
-	return hash, nil
+	return branchHash, nil
 }
 
 func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
