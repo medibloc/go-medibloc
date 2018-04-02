@@ -126,7 +126,7 @@ func (t *TrieBatch) BeginBatch() error {
 	return nil
 }
 
-// Commit WARNING: not thread-safe
+// Commit commit batch WARNING: not thread-safe
 func (t *TrieBatch) Commit() error {
 	if !t.batching {
 		return ErrNotBatching
@@ -136,7 +136,7 @@ func (t *TrieBatch) Commit() error {
 	return nil
 }
 
-// Rollback WARNING: not thread-safe
+// RollBack rollback batch WARNING: not thread-safe
 func (t *TrieBatch) RollBack() error {
 	if !t.batching {
 		return ErrNotBatching
@@ -148,7 +148,7 @@ func (t *TrieBatch) RollBack() error {
 	return nil
 }
 
-// AccountStateBatch
+// AccountStateBatch batch for AccountState
 type AccountStateBatch struct {
 	as            *accountState
 	batching      bool
@@ -180,7 +180,7 @@ func (as *AccountStateBatch) BeginBatch() error {
 	return nil
 }
 
-// Commit WARNING: not thread-safe
+// Commit commit batch WARNING: not thread-safe
 func (as *AccountStateBatch) Commit() error {
 	if !as.batching {
 		return ErrNotBatching
@@ -201,7 +201,7 @@ func (as *AccountStateBatch) Commit() error {
 	return nil
 }
 
-// Rollback WARNING: not thread-safe
+// RollBack rollback batch WARNING: not thread-safe
 func (as *AccountStateBatch) RollBack() error {
 	if !as.batching {
 		return ErrNotBatching
@@ -241,7 +241,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 	return stageAndReturn(acc), nil
 }
 
-// AddB Balance add balance
+// AddBalance add balance
 func (as *AccountStateBatch) AddBalance(address []byte, amount uint64) error {
 	if amount <= 0 {
 		return ErrInvalidAmount
@@ -282,6 +282,7 @@ func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
 	return nil, ErrNotFound
 }
 
+// AccountState getter for accountState
 func (as *AccountStateBatch) AccountState() *accountState {
 	return as.as
 }

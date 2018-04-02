@@ -63,6 +63,7 @@ type Trie struct {
 	// TODO add key length
 }
 
+// NewTrie create and return new Trie instance
 func NewTrie(rootHash []byte, storage storage.Storage) (*Trie, error) {
 	switch {
 	case rootHash != nil:
@@ -99,10 +100,12 @@ func (t *Trie) Put(key []byte, value []byte) error {
 	return nil
 }
 
+// RootHash getter for rootHash
 func (t *Trie) RootHash() []byte {
 	return t.rootHash
 }
 
+// SetRootHash setter for rootHash
 func (t *Trie) SetRootHash(rootHash []byte) {
 	t.rootHash = rootHash
 }
@@ -384,7 +387,7 @@ func prefixLen(a, b []byte) int {
 	if len(b) < length {
 		length = len(b)
 	}
-	for i := 0; i < length; i += 1 {
+	for i := 0; i < length; i++ {
 		if a[i] != b[i] {
 			return i
 		}
