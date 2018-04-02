@@ -65,6 +65,7 @@ type TrieBatch struct {
 	changeLogs  []*Entry
 	oldRootHash []byte
 	trie        *trie.Trie
+	storage     storage.Storage
 }
 
 // NewTrieBatch return new TrieBatch instance
@@ -74,8 +75,51 @@ func NewTrieBatch(rootHash []byte, storage storage.Storage) (*TrieBatch, error) 
 		return nil, err
 	}
 	return &TrieBatch{
-		trie: t,
+		trie:    t,
+		storage: storage,
 	}, nil
+}
+
+// BeginBatch begin batch
+func (t *TrieBatch) BeginBatch() error {
+	if t.batching {
+		return ErrBeginAgainInBatch
+	}
+	t.oldRootHash = t.trie.RootHash()
+	t.batching = true
+	return nil
+}
+
+// Clone clone TrieBatch
+func (t *TrieBatch) Clone() (*TrieBatch, error) {
+	if t.batching {
+		return nil, ErrCannotCloneOnBatching
+	}
+	return NewTrieBatch(t.trie.RootHash(), t.storage)
+}
+
+// Commit commit batch WARNING: not thread-safe
+func (t *TrieBatch) Commit() error {
+	if !t.batching {
+		return ErrNotBatching
+	}
+	t.changeLogs = t.changeLogs[:0]
+	t.batching = false
+	return nil
+}
+
+// Delete delete in trie
+func (t *TrieBatch) Delete(key []byte) error {
+	if !t.batching {
+		return ErrNotBatching
+	}
+	entry := &Entry{action: Delete, key: key, old: nil}
+	old, getErr := t.trie.Get(key)
+	if getErr == nil {
+		entry.old = old
+	}
+	t.changeLogs = append(t.changeLogs, entry)
+	return t.trie.Delete(key)
 }
 
 // Get get from trie
@@ -98,45 +142,6 @@ func (t *TrieBatch) Put(key []byte, value []byte) error {
 	return t.trie.Put(key, value)
 }
 
-// Delete delete in trie
-func (t *TrieBatch) Delete(key []byte) error {
-	if !t.batching {
-		return ErrNotBatching
-	}
-	entry := &Entry{action: Delete, key: key, old: nil}
-	old, getErr := t.trie.Get(key)
-	if getErr == nil {
-		entry.old = old
-	}
-	t.changeLogs = append(t.changeLogs, entry)
-	return t.trie.Delete(key)
-}
-
-// RootHash getter for rootHash
-func (t *TrieBatch) RootHash() []byte {
-	return t.trie.RootHash()
-}
-
-// BeginBatch begin batch
-func (t *TrieBatch) BeginBatch() error {
-	if t.batching {
-		return ErrBeginAgainInBatch
-	}
-	t.oldRootHash = t.trie.RootHash()
-	t.batching = true
-	return nil
-}
-
-// Commit commit batch WARNING: not thread-safe
-func (t *TrieBatch) Commit() error {
-	if !t.batching {
-		return ErrNotBatching
-	}
-	t.changeLogs = t.changeLogs[:0]
-	t.batching = false
-	return nil
-}
-
 // RollBack rollback batch WARNING: not thread-safe
 func (t *TrieBatch) RollBack() error {
 	if !t.batching {
@@ -147,6 +152,11 @@ func (t *TrieBatch) RollBack() error {
 	t.trie.SetRootHash(t.oldRootHash)
 	t.batching = false
 	return nil
+}
+
+// RootHash getter for rootHash
+func (t *TrieBatch) RootHash() []byte {
+	return t.trie.RootHash()
 }
 
 // AccountStateBatch batch for AccountState

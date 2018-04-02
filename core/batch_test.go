@@ -98,6 +98,49 @@ func TestTrieBatch(t *testing.T) {
 	testGetValue(key1, val1)
 }
 
+func TestTrieBatch_Clone(t *testing.T) {
+	s := getStorage(t)
+
+	trBatch1, err := core.NewTrieBatch(nil, s)
+	assert.Nil(t, err)
+
+	trBatch2, err := trBatch1.Clone()
+
+	err = trBatch1.BeginBatch()
+	assert.Nil(t, err)
+
+	_, err = trBatch1.Clone()
+	assert.Equal(t, core.ErrCannotCloneOnBatching, err)
+
+	key1, _ := hex.DecodeString("2ed1b10c")
+	val1 := []byte("leafmedi1")
+
+	err = trBatch1.Put(key1, val1)
+	assert.Nil(t, err)
+
+	err = trBatch1.Commit()
+	assert.Nil(t, err)
+
+	_, err = trBatch1.Get(key1)
+	assert.Nil(t, err)
+	_, err = trBatch2.Get(key1)
+	assert.Equal(t, core.ErrNotFound, err)
+
+	err = trBatch2.BeginBatch()
+	assert.Nil(t, err)
+
+	err = trBatch2.Put(key1, val1)
+	assert.Nil(t, err)
+
+	err = trBatch2.Commit()
+	assert.Nil(t, err)
+	getVal1, err := trBatch1.Get(key1)
+	assert.Nil(t, err)
+	getVal2, err := trBatch2.Get(key1)
+	assert.Nil(t, err)
+	assert.Equal(t, getVal1, getVal2)
+}
+
 func getAddress() []byte {
 	acc1Address, _ := hex.DecodeString("account1")
 	return acc1Address
