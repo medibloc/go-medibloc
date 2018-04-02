@@ -35,6 +35,14 @@ type account struct {
 	observations *TrieBatch
 }
 
+func (acc *account) Address() []byte {
+	return acc.address
+}
+
+func (acc *account) Balance() uint64 {
+	return acc.balance
+}
+
 func (acc *account) toBytes() ([]byte, error) {
 	pbAcc := &corepb.Account{
 		Address:          acc.address,
@@ -70,17 +78,13 @@ func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 // accountState
 type accountState struct {
 	accounts *trie.Trie
+	storage storage.Storage
 }
 
-func (as *accountState) Accounts() {
-
-}
-
-type Account interface {
-	Address() []byte
-}
-
-type AccountState interface {
-	Accounts()
-	GetOrCreateUserAccount()
+func (as *accountState) GetAccount(address []byte) (*account, error) {
+	bytes, err := as.accounts.Get(address)
+	if err != nil {
+		return nil, err
+	}
+	return loadAccount(bytes, as.storage)
 }

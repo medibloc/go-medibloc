@@ -28,6 +28,7 @@ import (
 var (
 	ErrBalanceNotEnough  = errors.New("remaining balance is not enough")
 	ErrBeginAgainInBatch = errors.New("cannot begin with a batch task unfinished")
+	ErrNotFound          = storage.ErrKeyNotFound
 	ErrInvalidAmount     = errors.New("invalid amount")
 	ErrNotBatching       = errors.New("not batching")
 )
@@ -96,6 +97,7 @@ func (t *TrieBatch) Put(key []byte, value []byte) error {
 	return t.trie.Put(key, value)
 }
 
+// Delete delete in trie
 func (t *TrieBatch) Delete(key []byte) error {
 	if !t.batching {
 		return ErrNotBatching
@@ -109,10 +111,12 @@ func (t *TrieBatch) Delete(key []byte) error {
 	return t.trie.Delete(key)
 }
 
+// RootHash getter for rootHash
 func (t *TrieBatch) RootHash() []byte {
 	return t.trie.RootHash()
 }
 
+// BeginBatch begin batch
 func (t *TrieBatch) BeginBatch() error {
 	if t.batching {
 		return ErrBeginAgainInBatch
@@ -152,6 +156,22 @@ type AccountStateBatch struct {
 	storage       storage.Storage
 }
 
+// NewAccountStateBatch create and return new AccountStateBatch instance
+func NewAccountStateBatch(s storage.Storage) (*AccountStateBatch, error) {
+	// TODO Get initial accounts from config or another place
+	accTrie, err := trie.NewTrie(nil, s)
+	if err != nil {
+		return nil, err
+	}
+	return &AccountStateBatch{
+		as:            &accountState{accounts: accTrie, storage: s},
+		batching:      false,
+		stageAccounts: make(map[string]*account),
+		storage:       s,
+	}, nil
+}
+
+// BeginBatch begin batch
 func (as *AccountStateBatch) BeginBatch() error {
 	if as.batching {
 		return ErrBeginAgainInBatch
@@ -221,6 +241,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 	return stageAndReturn(acc), nil
 }
 
+// AddB Balance add balance
 func (as *AccountStateBatch) AddBalance(address []byte, amount uint64) error {
 	if amount <= 0 {
 		return ErrInvalidAmount
@@ -236,6 +257,7 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount uint64) error {
 	return nil
 }
 
+// AddObservation add observation
 func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	if !as.batching {
 		return ErrNotBatching
@@ -248,6 +270,23 @@ func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	return nil
 }
 
+// GetAccount get account in stage(batching)
+func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
+	if !as.batching {
+		return nil, ErrNotBatching
+	}
+	s := hex.EncodeToString(address)
+	if acc, ok := as.stageAccounts[s]; ok {
+		return acc, nil
+	}
+	return nil, ErrNotFound
+}
+
+func (as *AccountStateBatch) AccountState() (*accountState) {
+	return as.as
+}
+
+// SubBalance subtract balance
 func (as *AccountStateBatch) SubBalance(address []byte, amount uint64) error {
 	if amount <= 0 {
 		return ErrInvalidAmount

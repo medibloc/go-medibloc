@@ -25,12 +25,28 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func testBatch(t *testing.T, batch core.Batch) {
+	err := batch.BeginBatch()
+	assert.Nil(t, err)
+
+	err = batch.BeginBatch()
+	assert.Equal(t, core.ErrBeginAgainInBatch, err)
+
+	err = batch.RollBack()
+	assert.Nil(t, err)
+
+	err = batch.RollBack()
+	assert.Equal(t, core.ErrNotBatching, err)
+}
+
 func TestTrieBatch(t *testing.T) {
 	s, err := storage.NewMemoryStorage()
 	assert.Nil(t, err)
 
 	trieBatch, err := core.NewTrieBatch(nil, s)
 	assert.Nil(t, err)
+
+	testBatch(t, trieBatch)
 
 	err = trieBatch.BeginBatch()
 	assert.Nil(t, err)
@@ -42,7 +58,7 @@ func TestTrieBatch(t *testing.T) {
 	val1 := []byte("leafmedi1")
 	val2 := []byte("leafmedi2")
 
-	testGetValue := func (key []byte, val []byte) {
+	testGetValue := func(key []byte, val []byte) {
 		getVal, err := trieBatch.Get(key1)
 		if val == nil {
 			assert.NotNil(t, err)
@@ -75,4 +91,68 @@ func TestTrieBatch(t *testing.T) {
 	testGetValue(key1, nil)
 	trieBatch.RollBack()
 	testGetValue(key1, val1)
+}
+
+func TestAccountState(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+
+	asBatch, err := core.NewAccountStateBatch(s)
+	assert.Nil(t, err)
+	assert.NotNil(t, asBatch)
+
+	testBatch(t, asBatch)
+
+	err = asBatch.BeginBatch()
+	assert.Nil(t, err)
+
+	acc1Address, _ := hex.DecodeString("account1")
+
+	checkBalance := func (address []byte, expected uint64) {
+		as := asBatch.AccountState()
+		acc, err := as.GetAccount(address)
+		assert.Nil(t, err)
+		assert.Equal(t, expected, acc.Balance())
+	}
+
+	amount := uint64(1)
+
+	err = asBatch.SubBalance(acc1Address, amount)
+	assert.Equal(t, core.ErrBalanceNotEnough, err)
+	err = asBatch.AddBalance(acc1Address, amount)
+	assert.Nil(t, err)
+
+	acc, err := asBatch.GetAccount(acc1Address)
+	assert.Nil(t, err)
+	assert.Equal(t, acc1Address, acc.Address())
+
+	err = asBatch.RollBack()
+	assert.Nil(t, err)
+
+	err = asBatch.BeginBatch()
+	assert.Nil(t, err)
+
+	_, err = asBatch.GetAccount(acc1Address)
+	assert.NotNil(t, err)
+
+	err = asBatch.AddBalance(acc1Address, amount)
+	assert.Nil(t, err)
+
+	err = asBatch.Commit()
+	assert.Nil(t, err)
+
+	err = asBatch.BeginBatch()
+	assert.Nil(t, err)
+
+	err = asBatch.AddBalance(acc1Address, amount)
+	assert.Nil(t, err)
+
+	acc, err = asBatch.GetAccount(acc1Address)
+	assert.Equal(t, 2 * amount, acc.Balance())
+	checkBalance(acc1Address, amount)
+
+	err = asBatch.Commit()
+	assert.Nil(t, err)
+
+	checkBalance(acc1Address, 2 * amount)
 }
