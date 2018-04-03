@@ -15,7 +15,6 @@ type BlockPool struct {
 	cache *lru.Cache
 
 	mu sync.RWMutex
-	// TODO LIB(Latest Irreversible Block) pruning
 }
 
 // NewBlockPool returns BlockPool.
@@ -54,8 +53,6 @@ func (bp *BlockPool) Push(block *Block) error {
 		}).Debug("Found duplicated block.")
 		return ErrDuplicatedBlock
 	}
-
-	// TODO block Verify
 
 	lb := newLinkedBlock(block)
 
