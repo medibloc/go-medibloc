@@ -36,8 +36,8 @@ func (h *Hash) SetBytes(b []byte) {
 	copy(h[HashLength-len(b):], b)
 }
 
-func (a Hash) Equals(b Hash) bool {
-	return bytes.Compare(a[:], b[:]) == 0
+func (h Hash) Equals(b Hash) bool {
+	return bytes.Compare(h[:], b[:]) == 0
 }
 
 type Address [AddressLength]byte
