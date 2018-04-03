@@ -10,6 +10,7 @@ const (
 
 var (
 	ErrCannotConvertTransaction  = errors.New("proto message cannot be converted into Transaction")
+	ErrDuplicatedBlock           = errors.New("duplicated block")
 	ErrInvalidTransactionHash    = errors.New("invalid transaction hash")
 	ErrInvalidTransactionSigner  = errors.New("transaction recover public key address not equal to from")
 	ErrInvalidProtoToBlock       = errors.New("protobuf message cannot be converted into Block")
