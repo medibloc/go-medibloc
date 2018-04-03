@@ -6,5 +6,7 @@ all: $(GO)
 %.pb.go: %.proto
 	protoc --gogo_out=. $<
 
+%.proto:
+
 clean:
 	rm *.pb.go
