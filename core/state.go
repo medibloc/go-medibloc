@@ -21,6 +21,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util"
 )
 
 // account default item in state
@@ -28,7 +29,7 @@ type account struct {
 	// address account key
 	address []byte
 	// balance account's coin amount
-	balance uint64
+	balance *util.Uint128
 	// nonce account sequential number
 	nonce uint64
 	// observations
@@ -39,18 +40,22 @@ func (acc *account) Address() []byte {
 	return acc.address
 }
 
-func (acc *account) Balance() uint64 {
+func (acc *account) Balance() *util.Uint128 {
 	return acc.balance
 }
 
 func (acc *account) toBytes() ([]byte, error) {
+	bytes, err := acc.balance.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
 	pbAcc := &corepb.Account{
 		Address:          acc.address,
-		Balance:          acc.balance,
+		Balance:          bytes,
 		Nonce:            acc.nonce,
 		ObservationsHash: acc.observations.RootHash(),
 	}
-	bytes, err := proto.Marshal(pbAcc)
+	bytes, err = proto.Marshal(pbAcc)
 	if err != nil {
 		return nil, err
 	}
@@ -62,9 +67,11 @@ func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 	if err := proto.Unmarshal(bytes, pbAcc); err != nil {
 		return nil, err
 	}
+	balance := util.NewUint128()
+	balance.FromFixedSizeByteSlice(pbAcc.Balance)
 	acc := &account{
 		address: pbAcc.Address,
-		balance: pbAcc.Balance,
+		balance: balance,
 		nonce:   pbAcc.Nonce,
 	}
 	t, err := trie.NewTrie(pbAcc.ObservationsHash, storage)
@@ -81,7 +88,8 @@ type accountState struct {
 	storage  storage.Storage
 }
 
-func (as *accountState) GetAccount(address []byte) (*account, error) {
+// GetAccount get account for address
+func (as *accountState) GetAccount(address []byte) (Account, error) {
 	bytes, err := as.accounts.Get(address)
 	if err != nil {
 		return nil, err
@@ -89,11 +97,17 @@ func (as *accountState) GetAccount(address []byte) (*account, error) {
 	return loadAccount(bytes, as.storage)
 }
 
+// Account account interface
 type Account interface {
+	// Address getter for address
 	Address() []byte
-	Balance() uint64
+
+	// Balance getter for balance
+	Balance() *util.Uint128
 }
 
+// AccountState account state interface
 type AccountState interface {
-	GetAccount(address []byte) (*account, error)
+	// GetAccount get account for address
+	GetAccount(address []byte) (Account, error)
 }
