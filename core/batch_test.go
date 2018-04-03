@@ -22,6 +22,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -146,6 +147,11 @@ func getAddress() []byte {
 	return acc1Address
 }
 
+func getAmount() *util.Uint128 {
+	amount, _ := util.NewUint128FromInt(1)
+	return amount
+}
+
 func TestAccountState(t *testing.T) {
 	s := getStorage(t)
 
@@ -159,9 +165,9 @@ func TestAccountState(t *testing.T) {
 	assert.Nil(t, err)
 
 	acc1Address := getAddress()
-	amount := uint64(1)
+	amount := getAmount()
 
-	checkBalance := func(address []byte, expected uint64) {
+	checkBalance := func(address []byte, expected *util.Uint128) {
 		as := asBatch.AccountState()
 		acc, err := as.GetAccount(address)
 		assert.Nil(t, err)
@@ -202,13 +208,15 @@ func TestAccountState(t *testing.T) {
 	assert.Nil(t, err)
 
 	acc, err = asBatch.GetAccount(acc1Address)
-	assert.Equal(t, 2*amount, acc.Balance())
+	two, _ := util.NewUint128FromInt(2)
+	twoAmount, _ := amount.Mul(two)
+	assert.Equal(t, twoAmount, acc.Balance())
 	checkBalance(acc1Address, amount)
 
 	err = asBatch.Commit()
 	assert.Nil(t, err)
 
-	checkBalance(acc1Address, 2*amount)
+	checkBalance(acc1Address, twoAmount)
 }
 
 func TestAccountStateBatch_Clone(t *testing.T) {
@@ -226,7 +234,7 @@ func TestAccountStateBatch_Clone(t *testing.T) {
 	assert.Equal(t, core.ErrCannotCloneOnBatching, err)
 
 	acc1Address := getAddress()
-	amount := uint64(1)
+	amount := getAmount()
 
 	err = asBatch1.AddBalance(acc1Address, amount)
 	assert.Nil(t, err)

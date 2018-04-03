@@ -22,6 +22,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util"
 )
 
 // Errors
@@ -248,7 +249,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 		}
 		return stageAndReturn(&account{
 			address:      address,
-			balance:      0,
+			balance:      util.NewUint128(),
 			nonce:        1,
 			observations: &TrieBatch{trie: observations},
 		}), nil
@@ -266,10 +267,7 @@ func (as *AccountStateBatch) resetBatch() {
 }
 
 // AddBalance add balance
-func (as *AccountStateBatch) AddBalance(address []byte, amount uint64) error {
-	if amount <= 0 {
-		return ErrInvalidAmount
-	}
+func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
@@ -277,7 +275,11 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount uint64) error {
 	if err != nil {
 		return err
 	}
-	acc.balance += amount
+	balance, err := acc.balance.Add(amount)
+	if err != nil {
+		return err
+	}
+	acc.balance = balance
 	return nil
 }
 
@@ -320,10 +322,7 @@ func (as *AccountStateBatch) AccountState() AccountState {
 }
 
 // SubBalance subtract balance
-func (as *AccountStateBatch) SubBalance(address []byte, amount uint64) error {
-	if amount <= 0 {
-		return ErrInvalidAmount
-	}
+func (as *AccountStateBatch) SubBalance(address []byte, amount *util.Uint128) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
@@ -331,9 +330,13 @@ func (as *AccountStateBatch) SubBalance(address []byte, amount uint64) error {
 	if err != nil {
 		return err
 	}
-	if amount > acc.balance {
+	if amount.Cmp(acc.balance) > 0 {
 		return ErrBalanceNotEnough
 	}
-	acc.balance -= amount
+	balance, err := acc.balance.Sub(amount)
+	if err != nil {
+		return err
+	}
+	acc.balance = balance
 	return nil
 }

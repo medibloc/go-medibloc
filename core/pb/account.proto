@@ -3,7 +3,7 @@ package corepb;
 
 message Account {
     bytes address = 1;
-    uint64 balance = 2;
+    bytes balance = 2;
     uint64 nonce = 3;
     bytes observations_hash = 4;
 }
