@@ -22,3 +22,13 @@ var (
 	ErrBlockAlreadySealed        = errors.New("cannot seal an already sealed block")
 	ErrNilArgument               = errors.New("argument(s) is nil")
 )
+
+// BlockPool interface
+type BlockPool interface {
+	FindChildren(block *Block) (childBlocks []*Block)
+	FindUnlinkedAncestor(block *Block) (ancestorBlock *Block)
+	FindParent(block *Block) (parentBlock *Block)
+	Has(block *Block) bool
+	Push(block *Block) error
+	Remove(block *Block)
+}

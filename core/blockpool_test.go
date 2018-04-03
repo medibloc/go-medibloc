@@ -3,12 +3,13 @@ package core_test
 import (
 	"testing"
 
+	"crypto/rand"
+	"io"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"crypto/rand"
-	"io"
 )
 
 var (
@@ -74,7 +75,7 @@ func TestBlockPoolPush(t *testing.T) {
 					continue
 				}
 				expected := blocks[parent]
-				actual := bp.GetParentBlock(blocks[i])
+				actual := bp.FindParent(blocks[i])
 				assert.Equal(t, expected, actual)
 
 				// Check children blocks
@@ -87,10 +88,10 @@ func TestBlockPoolPush(t *testing.T) {
 				if len(childBlocks) == 0 {
 					continue
 				}
-				assert.EqualValues(t, childBlocks, bp.GetChildBlocks(blocks[i]))
+				assert.EqualValues(t, childBlocks, bp.FindChildren(blocks[i]))
 
 				// Check ancestor block
-				assert.EqualValues(t, core.TODOTestGenesisBlock, bp.GetAncestorBlock(blocks[i]))
+				assert.EqualValues(t, core.TODOTestGenesisBlock, bp.FindUnlinkedAncestor(blocks[i]))
 			}
 		})
 	}

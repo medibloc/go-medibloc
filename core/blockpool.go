@@ -9,17 +9,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//BlockPool is a pool of all received blocks from network.
-type BlockPool struct {
-	size  int
+//BlockPoolImpl is a pool of all received blocks from network.
+type BlockPoolImpl struct {
 	cache *lru.Cache
-
-	mu sync.RWMutex
+	mu    sync.RWMutex
+	size  int
 }
 
 // NewBlockPool returns BlockPool.
-func NewBlockPool(size int) (bp *BlockPool, err error) {
-	bp = &BlockPool{
+func NewBlockPool(size int) (bp *BlockPoolImpl, err error) {
+	bp = &BlockPoolImpl{
 		size: size,
 	}
 	bp.cache, err = lru.NewWithEvict(size, func(key interface{}, value interface{}) {
@@ -39,7 +38,7 @@ func NewBlockPool(size int) (bp *BlockPool, err error) {
 }
 
 // Push links the block with parent and children blocks and push to the BlockPool.
-func (bp *BlockPool) Push(block *Block) error {
+func (bp *BlockPoolImpl) Push(block *Block) error {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -47,7 +46,7 @@ func (bp *BlockPool) Push(block *Block) error {
 		return ErrNilArgument
 	}
 
-	if bp.HasBlock(block) {
+	if bp.Has(block) {
 		logging.WithFields(logrus.Fields{
 			"block": block,
 		}).Debug("Found duplicated block.")
@@ -64,20 +63,20 @@ func (bp *BlockPool) Push(block *Block) error {
 		clb.linkParent(lb)
 	}
 
-	bp.cache.Add(lb.block.Hash(), lb)
+	bp.cache.Add(block.Hash(), lb)
 	return nil
 }
 
 // Remove removes block in BlockPool.
-func (bp *BlockPool) Remove(block *Block) {
+func (bp *BlockPoolImpl) Remove(block *Block) {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
 	bp.cache.Remove(block.Hash())
 }
 
-// GetParentBlock finds parent block.
-func (bp *BlockPool) GetParentBlock(block *Block) *Block {
+// FindParent finds parent block.
+func (bp *BlockPoolImpl) FindParent(block *Block) *Block {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -87,25 +86,24 @@ func (bp *BlockPool) GetParentBlock(block *Block) *Block {
 	return nil
 }
 
-// GetAncestorBlock finds oldest ancestor block in BlockPool.
-func (bp *BlockPool) GetAncestorBlock(block *Block) *Block {
+// FindUnlinkedAncestor finds block's unlinked ancestor in BlockPool.
+func (bp *BlockPoolImpl) FindUnlinkedAncestor(block *Block) *Block {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
-	v, ok := bp.cache.Get(block.Hash())
-	if !ok {
-		return nil
+	lb := bp.findParentLinkedBlock(block)
+	if lb == nil {
+		return block
 	}
 
-	lb := v.(*linkedBlock)
 	for lb.parentLinkedBlock != nil {
 		lb = lb.parentLinkedBlock
 	}
 	return lb.block
 }
 
-// GetChildBlocks finds children blocks.
-func (bp *BlockPool) GetChildBlocks(block *Block) (childBlocks []*Block) {
+// FindChildren finds children blocks.
+func (bp *BlockPoolImpl) FindChildren(block *Block) (childBlocks []*Block) {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -121,12 +119,12 @@ func (bp *BlockPool) GetChildBlocks(block *Block) (childBlocks []*Block) {
 	return childBlocks
 }
 
-// HasBlock returns true if BlockPool contains block.
-func (bp *BlockPool) HasBlock(block *Block) bool {
+// Has returns true if BlockPool contains block.
+func (bp *BlockPoolImpl) Has(block *Block) bool {
 	return bp.cache.Contains(block.Hash())
 }
 
-func (bp *BlockPool) findParentLinkedBlock(block *Block) *linkedBlock {
+func (bp *BlockPoolImpl) findParentLinkedBlock(block *Block) *linkedBlock {
 	if plb, ok := bp.cache.Get(block.ParentHash()); ok {
 		return plb.(*linkedBlock)
 	}
@@ -134,7 +132,7 @@ func (bp *BlockPool) findParentLinkedBlock(block *Block) *linkedBlock {
 }
 
 // TODO Improve lookup by adding another index of parent hash(?)
-func (bp *BlockPool) findChildLinkedBlocks(block *Block) (childBlocks []*linkedBlock) {
+func (bp *BlockPoolImpl) findChildLinkedBlocks(block *Block) (childBlocks []*linkedBlock) {
 	for _, key := range bp.cache.Keys() {
 		v, ok := bp.cache.Get(key)
 		if !ok {
@@ -152,7 +150,6 @@ func (bp *BlockPool) findChildLinkedBlocks(block *Block) (childBlocks []*linkedB
 	return childBlocks
 }
 
-// TODO separate file (linked_block.go)
 type linkedBlock struct {
 	block             *Block
 	parentLinkedBlock *linkedBlock
@@ -166,6 +163,7 @@ func newLinkedBlock(block *Block) *linkedBlock {
 	}
 }
 
+// Dispose cut the links. So, the block can be collected by GC.
 func (lb *linkedBlock) dispose() {
 	lb.block = nil
 	if lb.parentLinkedBlock != nil {
