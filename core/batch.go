@@ -250,7 +250,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 		return stageAndReturn(&account{
 			address:      address,
 			balance:      util.NewUint128(),
-			nonce:        1,
+			nonce:        0,
 			observations: &TrieBatch{trie: observations},
 		}), nil
 	}
@@ -339,4 +339,21 @@ func (as *AccountStateBatch) SubBalance(address []byte, amount *util.Uint128) er
 	}
 	acc.balance = balance
 	return nil
+}
+
+// IncrementNonce increment account's nonce
+func (as *AccountStateBatch) IncrementNonce(address []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	acc.nonce++
+	return nil
+}
+
+func (as *AccountStateBatch) RootHash() []byte {
+	return as.as.accounts.RootHash()
 }

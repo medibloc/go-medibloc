@@ -44,6 +44,10 @@ func (acc *account) Balance() *util.Uint128 {
 	return acc.balance
 }
 
+func (acc *account) Nonce() uint64 {
+	return acc.nonce
+}
+
 func (acc *account) toBytes() ([]byte, error) {
 	bytes, err := acc.balance.ToFixedSizeByteSlice()
 	if err != nil {
@@ -104,6 +108,8 @@ type Account interface {
 
 	// Balance getter for balance
 	Balance() *util.Uint128
+
+	Nonce() uint64
 }
 
 // AccountState account state interface

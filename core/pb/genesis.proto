@@ -1,0 +1,21 @@
+syntax = "proto3";
+package corepb;
+
+message Genesis {
+    // genesis meta
+    GenesisMeta meta = 1;
+
+    // genesis token distribution address
+    // map<string, string> token_distribution = 3;
+    repeated GenesisTokenDistribution token_distribution = 3;
+}
+
+message GenesisMeta {
+    // ChainID.
+    uint32 chain_id = 1;
+}
+
+message GenesisTokenDistribution {
+    string address = 1;
+    string value = 2;
+}

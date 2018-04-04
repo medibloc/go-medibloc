@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -10,6 +9,8 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -17,8 +18,9 @@ type Transaction struct {
 	hash    common.Hash
 	from    common.Address
 	to      common.Address
-	value   *big.Int
+	value   *util.Uint128
 	data    *corepb.Data
+	nonce   uint64
 	chainID uint32
 	alg     algorithm.Algorithm
 	sign    []byte
@@ -27,7 +29,10 @@ type Transaction struct {
 type Transactions []*Transaction
 
 func (tx *Transaction) ToProto() (proto.Message, error) {
-	value := tx.value.Bytes()
+	value, err := tx.value.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
 
 	return &corepb.Transaction{
 		Hash:    tx.hash.Bytes(),
@@ -35,6 +40,7 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
 		To:      tx.to.Bytes(),
 		Value:   value,
 		Data:    tx.data,
+		Nonce:   tx.nonce,
 		ChainId: tx.chainID,
 		Alg:     uint32(tx.alg),
 		Sign:    tx.sign,
@@ -46,12 +52,17 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 		tx.hash = common.BytesToHash(msg.Hash)
 		tx.from = common.BytesToAddress(msg.From)
 		tx.to = common.BytesToAddress(msg.To)
-		tx.value = big.NewInt(0)
-		tx.value.SetBytes(msg.Value)
+
+		value, err := util.NewUint128FromFixedSizeByteSlice(msg.Value)
+		if err != nil {
+			return err
+		}
+		tx.value = value
 		tx.data = msg.Data
+		tx.nonce = msg.Nonce
 		tx.chainID = msg.ChainId
 		alg := algorithm.Algorithm(msg.Alg)
-		err := crypto.CheckAlgorithm(alg)
+		err = crypto.CheckAlgorithm(alg)
 		if err != nil {
 			return err
 		}
@@ -64,12 +75,13 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 	return ErrCannotConvertTransaction
 }
 
-func NewTransaction(chainID uint32, from, to common.Address, value *big.Int, payloadType string, payload []byte) (*Transaction, error) {
+func NewTransaction(chainID uint32, from, to common.Address, value *util.Uint128, nonce uint64, payloadType string, payload []byte) (*Transaction, error) {
 	tx := &Transaction{
 		from:    from,
 		to:      to,
 		value:   value,
 		data:    &corepb.Data{Type: payloadType, Payload: payload},
+		nonce:   nonce,
 		chainID: chainID,
 		hash:    common.BytesToHash([]byte{}),
 		sign:    []byte{},
@@ -81,19 +93,25 @@ func NewTransaction(chainID uint32, from, to common.Address, value *big.Int, pay
 func (tx *Transaction) calcHash() (common.Hash, error) {
 	hasher := sha3.New256()
 
+	value, err := tx.value.ToFixedSizeByteSlice()
+	if err != nil {
+		return common.Hash{}, err
+	}
 	hasher.Write(tx.from.Bytes())
 	hasher.Write(tx.to.Bytes())
-	hasher.Write(tx.value.Bytes())
+	hasher.Write(value)
 	hasher.Write([]byte(tx.data.Type))
 	hasher.Write(tx.data.Payload)
-	hasher.Write(common.FromUint32(uint32(tx.alg)))
+	hasher.Write(byteutils.FromUint64(tx.nonce))
 	hasher.Write(common.FromUint32(tx.chainID))
+	hasher.Write(common.FromUint32(uint32(tx.alg)))
 
 	hash := hasher.Sum(nil)
 	return common.BytesToHash(hash), nil
 }
 
-func (tx *Transaction) Sign(signer signature.Signature) error {
+func (tx *Transaction) SignThis(signer signature.Signature) error {
+	tx.alg = signer.Algorithm()
 	hash, err := tx.calcHash()
 	if err != nil {
 		return err
@@ -104,7 +122,6 @@ func (tx *Transaction) Sign(signer signature.Signature) error {
 		return err
 	}
 	tx.hash = hash
-	tx.alg = signer.Algorithm()
 	tx.sign = sig
 	return nil
 }
@@ -162,7 +179,7 @@ func (tx *Transaction) To() common.Address {
 	return tx.to
 }
 
-func (tx *Transaction) Value() *big.Int {
+func (tx *Transaction) Value() *util.Uint128 {
 	return tx.value
 }
 
@@ -172,6 +189,10 @@ func (tx *Transaction) Type() string {
 
 func (tx *Transaction) Data() []byte {
 	return tx.data.Payload
+}
+
+func (tx *Transaction) Nonce() uint64 {
+	return tx.nonce
 }
 
 func (tx *Transaction) Hash() common.Hash {
@@ -188,4 +209,30 @@ func (tx *Transaction) String() string {
 		tx.Type(),
 		tx.alg,
 	)
+}
+
+func (tx *Transaction) Execute(block *Block) error {
+	switch tx.Type() {
+	default:
+		if tx.value.Cmp(util.Uint128Zero()) > 0 {
+			return tx.transfer(block)
+		} else {
+			return ErrVoidTransaction
+		}
+	}
+}
+
+func (tx *Transaction) transfer(block *Block) error {
+	var err error
+
+	accState := block.accState
+	if err = accState.SubBalance(tx.from.Bytes(), tx.value); err != nil {
+		return err
+	}
+
+	if err = accState.AddBalance(tx.to.Bytes(), tx.value); err != nil {
+		return err
+	}
+
+	return nil
 }

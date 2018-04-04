@@ -1,7 +1,6 @@
 package core
 
 import (
-	"math/big"
 	"reflect"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,19 +28,12 @@ func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
 	return acc
 }
 
-func mockTransaction(t *testing.T, ks *keystore.KeyStore, chainID uint32, payloadType string, payload []byte) *Transaction {
-	from := mockAddress(t, ks)
-	to := mockAddress(t, ks)
-	tx, _ := NewTransaction(chainID, from, to, big.NewInt(0), payloadType, payload)
-	return tx
-}
-
 func TestTransaction(t *testing.T) {
 	type fields struct {
 		hash  common.Hash
 		from  common.Address
 		to    common.Address
-		value *big.Int
+		value *util.Uint128
 		data  *corepb.Data
 	}
 	ks := keystore.NewKeyStore()
@@ -54,7 +47,7 @@ func TestTransaction(t *testing.T) {
 				common.BytesToHash([]byte("123455")),
 				mockAddress(t, ks),
 				mockAddress(t, ks),
-				big.NewInt(0),
+				util.Uint128Zero(),
 				&corepb.Data{Type: TxPayloadBinaryType, Payload: []byte("hwllo")},
 			}),
 		},
@@ -101,13 +94,13 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 		key1, err := ks.GetKey(from)
 		assert.NoError(t, err)
 
-		tx, err := NewTransaction(1, from, to, big.NewInt(0), TxPayloadBinaryType, []byte("datadata"))
+		tx, err := NewTransaction(1, from, to, util.Uint128Zero(), 1, TxPayloadBinaryType, []byte("datadata"))
 		assert.NoError(t, err)
 
 		sig, err := crypto.NewSignature(algorithm.SECP256K1)
 		assert.NoError(t, err)
 		sig.InitSign(key1)
-		assert.NoError(t, tx.Sign(sig))
+		assert.NoError(t, tx.SignThis(sig))
 		test := testTx{string(index), tx, key1, 1}
 		tests = append(tests, test)
 	}
@@ -117,7 +110,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 				signature, err := crypto.NewSignature(algorithm.SECP256K1)
 				assert.NoError(t, err)
 				signature.InitSign(tt.privKey)
-				err = tt.tx.Sign(signature)
+				err = tt.tx.SignThis(signature)
 				if err != nil {
 					t.Errorf("Sign() error = %v", err)
 					return

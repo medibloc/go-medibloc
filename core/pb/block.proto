@@ -7,12 +7,15 @@ message BlockHeader {
   bytes hash  = 1;
   bytes parent_hash = 2;
 
-  bytes coinbase = 3;
-  int64 timestamp = 4;
-  uint32 chain_id = 5;
+  bytes accs_root = 3;
+  bytes txs_root = 4;
 
-  uint32 alg = 6;
-  bytes sign = 7;
+  bytes coinbase = 5;
+  int64 timestamp = 6;
+  uint32 chain_id = 7;
+
+  uint32 alg = 8;
+  bytes sign = 9;
 }
 
 message Block {

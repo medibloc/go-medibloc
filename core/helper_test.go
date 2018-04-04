@@ -13,10 +13,17 @@ import (
 type blockID int
 
 var (
-	chainID          uint32  = 1010
-	genesisID        blockID = -1
-	testGenesisBlock         = core.TODOTestGenesisBlock
+	chainID              uint32  = 1010
+	genesisID            blockID = -1
+	genesisBlock         *core.Block
+	blockpoolTestDataDir = "./testdata/blockpool"
 )
+
+func init() {
+	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
+	genesisBlock, _ = core.NewGenesisBlock(conf, blockpoolTestDataDir)
+	chainId = conf.Meta.ChainId
+}
 
 // newBlockTestSet generates test block set from blockID to parentBlockID index
 //
@@ -34,7 +41,7 @@ func newBlockTestSet(t *testing.T, idxToParent []blockID) (blocks map[blockID]*c
 	blocks = make(map[blockID]*core.Block)
 	for i, parentID := range idxToParent {
 		if parentID == genesisID {
-			blocks[genesisID] = testGenesisBlock
+			blocks[genesisID] = genesisBlock
 		}
 		parentBlock, ok := blocks[parentID]
 		require.True(t, ok)

@@ -8,12 +8,17 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/crypto/sha3"
 )
 
 type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
+
+	accsRoot common.Hash
+	txsRoot  common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -27,6 +32,8 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	return &corepb.BlockHeader{
 		Hash:       b.hash.Bytes(),
 		ParentHash: b.parentHash.Bytes(),
+		AccsRoot:   b.accsRoot.Bytes(),
+		TxsRoot:    b.txsRoot.Bytes(),
 		Coinbase:   b.coinbase.Bytes(),
 		Timestamp:  b.timestamp,
 		ChainId:    b.chainID,
@@ -39,6 +46,8 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.BlockHeader); ok {
 		b.hash = common.BytesToHash(msg.Hash)
 		b.parentHash = common.BytesToHash(msg.ParentHash)
+		b.accsRoot = common.BytesToHash(msg.AccsRoot)
+		b.txsRoot = common.BytesToHash(msg.TxsRoot)
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
@@ -53,9 +62,12 @@ type Block struct {
 	header       *BlockHeader
 	transactions Transactions
 
-	sealed      bool
-	height      uint64
-	parentBlock *Block
+	storage  storage.Storage
+	accState *AccountStateBatch
+	txsState *TrieBatch
+
+	sealed bool
+	height uint64
 }
 
 func (block *Block) ToProto() (proto.Message, error) {
@@ -107,30 +119,32 @@ func (block *Block) FromProto(msg proto.Message) error {
 }
 
 func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, error) {
+	accState, err := parent.accState.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	txsState, err := parent.txsState.Clone()
+	if err != nil {
+		return nil, err
+	}
+
 	block := &Block{
 		header: &BlockHeader{
-
 			parentHash: parent.Hash(),
 			coinbase:   coinbase,
 			timestamp:  time.Now().Unix(),
 			chainID:    chainID,
 		},
 		transactions: make(Transactions, 0),
+		storage:      parent.storage,
+		accState:     accState,
+		txsState:     txsState,
 		height:       parent.height + 1,
 		sealed:       false,
 	}
 
 	return block, nil
-}
-
-func (block *Block) SignThis(signature signature.Signature) error {
-	sign, err := signature.Sign(block.header.hash.Bytes())
-	if err != nil {
-		return err
-	}
-	block.header.alg = algorithm.Algorithm(signature.Algorithm())
-	block.header.sign = sign
-	return nil
 }
 
 func (block *Block) ChainID() uint32 {
@@ -169,12 +183,30 @@ func (block *Block) ParentHash() common.Hash {
 	return block.header.parentHash
 }
 
+func (block *Block) AccountsRoot() common.Hash {
+	return block.header.accsRoot
+}
+
+func (block *Block) TransactionsRoot() common.Hash {
+	return block.header.txsRoot
+}
+
 func (block *Block) Height() uint64 {
 	return block.height
 }
 
 func (block *Block) Transactions() Transactions {
 	return block.transactions
+}
+
+// TO BE REMOVED: For test without block pool
+func (block *Block) SetTransactions(txs Transactions) error {
+	block.transactions = txs
+	return nil
+}
+
+func (block *Block) Storage() storage.Storage {
+	return block.storage
 }
 
 func (block *Block) Sealed() bool {
@@ -185,6 +217,10 @@ func (block *Block) Seal() error {
 	if block.sealed {
 		return ErrBlockAlreadySealed
 	}
+
+	block.header.accsRoot = common.BytesToHash(block.accState.RootHash())
+	block.header.txsRoot = common.BytesToHash(block.txsState.RootHash())
+
 	var err error
 	block.header.hash, err = HashBlock(block)
 	if err != nil {
@@ -211,4 +247,154 @@ func HashBlock(block *Block) (common.Hash, error) {
 	}
 
 	return common.BytesToHash(hasher.Sum(nil)), nil
+}
+
+func (block *Block) VerifyExecution() error {
+	block.Begin()
+
+	if err := block.Execute(); err != nil {
+		block.RollBack()
+		return err
+	}
+
+	if err := block.VerifyState(); err != nil {
+		block.RollBack()
+		return err
+	}
+
+	block.Commit()
+
+	return nil
+}
+
+func (block *Block) Execute() error {
+	for _, tx := range block.transactions {
+		giveback, err := block.checkNonce(tx)
+		if giveback {
+			//TODO: return to tx pool
+		}
+		if err != nil {
+			return err
+		}
+
+		if err = tx.Execute(block); err != nil {
+			return err
+		}
+
+		if err = block.acceptTransaction(tx); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (block *Block) checkNonce(tx *Transaction) (bool, error) {
+	fromAcc, err := block.accState.GetAccount(tx.from.Bytes())
+	if err != nil {
+		return true, err
+	}
+
+	expectedNonce := fromAcc.Nonce() + 1
+	if tx.nonce > expectedNonce {
+		return true, ErrLargeTransactionNonce
+	} else if tx.nonce < expectedNonce {
+		return false, ErrSmallTransactionNonce
+	}
+	return false, nil
+}
+
+func (block *Block) acceptTransaction(tx *Transaction) error {
+	pbTx, err := tx.ToProto()
+	if err != nil {
+		return err
+	}
+
+	txBytes, err := proto.Marshal(pbTx)
+	if err != nil {
+		return err
+	}
+
+	if err := block.txsState.Put(tx.hash.Bytes(), txBytes); err != nil {
+		return err
+	}
+
+	if err = block.accState.IncrementNonce(tx.from.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (block *Block) VerifyState() error {
+	if !byteutils.Equal(block.accState.RootHash(), block.AccountsRoot().Bytes()) {
+		return ErrInvalidBlockAccountsRoot
+	}
+	if !byteutils.Equal(block.txsState.RootHash(), block.TransactionsRoot().Bytes()) {
+		return ErrInvalidBlockTxsRoot
+	}
+	return nil
+}
+
+func (block *Block) SignThis(signer signature.Signature) error {
+	if !block.Sealed() {
+		return ErrBlockNotSealed
+	}
+
+	sig, err := signer.Sign(block.header.hash.Bytes())
+	if err != nil {
+		return err
+	}
+	block.header.alg = signer.Algorithm()
+	block.header.sign = sig
+	return nil
+}
+
+func (block *Block) VerifyIntegrity() error {
+	for _, tx := range block.transactions {
+		if err := tx.VerifyIntegrity(block.header.chainID); err != nil {
+			return err
+		}
+	}
+
+	wantedHash, err := HashBlock(block)
+	if err != nil {
+		return err
+	}
+	if !wantedHash.Equals(block.header.hash) {
+		return ErrInvalidBlockHash
+	}
+
+	// TODO: Verify according to consensus algorithm
+
+	return nil
+}
+
+func (block *Block) Begin() error {
+	if err := block.accState.BeginBatch(); err != nil {
+		return err
+	}
+	if err := block.txsState.BeginBatch(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (block *Block) RollBack() error {
+	if err := block.accState.RollBack(); err != nil {
+		return err
+	}
+	if err := block.txsState.RollBack(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (block *Block) Commit() error {
+	if err := block.accState.Commit(); err != nil {
+		return err
+	}
+	if err := block.txsState.Commit(); err != nil {
+		return err
+	}
+	return nil
 }

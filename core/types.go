@@ -5,6 +5,15 @@ import (
 )
 
 const (
+	TxOperationSend         = ""
+	TxOperationAddData      = "add_data"
+	TxOperationDeposit      = "deposit"
+	TxOperationWidthdraw    = "widthdraw"
+	TxOperationRegisterRKey = "register_rkey"
+	TxOperationRegisterWKey = "register_wkey"
+)
+
+const (
 	TxPayloadBinaryType = "binary"
 )
 
@@ -18,7 +27,14 @@ var (
 	ErrInvalidChainID            = errors.New("invalid transaction chainID")
 	ErrTransactionHashFailed     = errors.New("failed to hash transaction")
 	ErrInvalidBlockToProto       = errors.New("block cannot be converted into proto")
+	ErrInvalidBlockHash          = errors.New("invalid block hash")
 	ErrInvalidSetTimestamp       = errors.New("cannot set timestamp to a sealed block")
 	ErrBlockAlreadySealed        = errors.New("cannot seal an already sealed block")
 	ErrNilArgument               = errors.New("argument(s) is nil")
+	ErrVoidTransaction           = errors.New("nothing to do with transaction")
+	ErrLargeTransactionNonce     = errors.New("transaction nonce is larger than expected")
+	ErrSmallTransactionNonce     = errors.New("transaction nonce is smaller than expected")
+	ErrBlockNotSealed            = errors.New("block should be sealed first to be signed")
+	ErrInvalidBlockAccountsRoot  = errors.New("invalid account state root hash")
+	ErrInvalidBlockTxsRoot       = errors.New("invalid transactions state root hash")
 )

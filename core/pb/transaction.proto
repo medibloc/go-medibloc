@@ -12,8 +12,9 @@ message Transaction {
   bytes to = 3;
   bytes value = 4;
   Data data = 5;
-  uint32 chain_id = 6;
+  uint64 nonce = 6;
+  uint32 chain_id = 7;
 
-  uint32 alg = 7;
-  bytes sign = 8;
+  uint32 alg = 8;
+  bytes sign = 9;
 }
