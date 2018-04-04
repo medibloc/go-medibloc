@@ -3,96 +3,174 @@ package core_test
 import (
 	"testing"
 
-	"crypto/rand"
-	"io"
-
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	chainID   uint32 = 1010
-	genesisID        = 0
-	coinbase         = common.Address{}
-)
-
-func randomAddress(t *testing.T) (addr common.Address) {
-	nw, err := io.ReadFull(rand.Reader, addr[:])
-	require.Nil(t, err)
-	require.EqualValues(t, common.AddressLength, nw)
-	return addr
-}
-
-func generateBlocks(t *testing.T, parentIndex []int) (blocks []*core.Block) {
-	blocks = make([]*core.Block, len(parentIndex))
-	for i, parentID := range parentIndex {
-		parentBlock := core.TODOTestGenesisBlock
-		if parentID != genesisID {
-			require.True(t, parentID < i)
-			parentBlock = blocks[parentID]
-		}
-
-		blocks[i] = generateChildBlock(t, parentBlock)
-	}
-	blocks = append(blocks, core.TODOTestGenesisBlock)
-	return blocks
-}
-
-func generateChildBlock(t *testing.T, parent *core.Block) *core.Block {
-	block, err := core.NewBlock(chainID, randomAddress(t), parent)
-	require.Nil(t, err)
-	require.EqualValues(t, block.ParentHash(), parent.Hash())
-	err = block.Seal()
-	require.Nil(t, err)
-	return block
-}
-
 func TestBlockPoolPush(t *testing.T) {
 	tests := []struct {
 		name        string
-		parentIndex []int
+		idxToParent []blockID
 	}{
-		{"case 1", []int{0, 0, 1, 2, 1, 3, 1}},
-		{"case 2", []int{0, 0, 1, 1, 1, 1, 1}},
-		{"case 3", []int{0, 0, 1, 2, 3, 4, 5}},
+		{"case 1", []blockID{genesisID, 0, 0, 1, 1, 2, 2}},
+		{"case 2", []blockID{genesisID, 0, 1, 2, 3, 4, 5}},
+		{"case 3", []blockID{genesisID, 0, 0, 0, 0, 0, 0}},
 	}
-
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			bp, err := core.NewBlockPool(128)
 			assert.Nil(t, err)
 
-			blocks := generateBlocks(t, test.parentIndex)
+			blocks := newBlockTestSet(t, test.idxToParent)
 			for _, block := range blocks {
 				err = bp.Push(block)
 				assert.Nil(t, err)
 			}
-			for i, parent := range test.parentIndex {
-				// Check parent block
-				if test.parentIndex[i] == genesisID {
-					continue
-				}
-				expected := blocks[parent]
-				actual := bp.FindParent(blocks[i])
+
+			for i, parentID := range test.idxToParent {
+				id := blockID(i)
+				block := blocks[id]
+
+				// Check finding parent block
+				expected := blocks[parentID]
+				actual := bp.FindParent(block)
 				assert.Equal(t, expected, actual)
 
-				// Check children blocks
+				// Check finding children blocks
+				childIDs := findChildIDs(test.idxToParent, id)
 				childBlocks := make([]*core.Block, 0)
-				for j, parent := range test.parentIndex {
-					if parent == i {
-						childBlocks = append(childBlocks, blocks[j])
-					}
+				for _, cid := range childIDs {
+					childBlocks = append(childBlocks, blocks[cid])
 				}
-				if len(childBlocks) == 0 {
-					continue
-				}
-				assert.EqualValues(t, childBlocks, bp.FindChildren(blocks[i]))
+				assert.True(t, equalBlocks(childBlocks, bp.FindChildren(block)))
 
 				// Check ancestor block
-				assert.EqualValues(t, core.TODOTestGenesisBlock, bp.FindUnlinkedAncestor(blocks[i]))
+				assert.Equal(t, testGenesisBlock, bp.FindUnlinkedAncestor(block))
 			}
 		})
 	}
+}
+
+func TestBlockPoolEvict(t *testing.T) {
+	cacheSize := 3
+	bp, err := core.NewBlockPool(cacheSize)
+	require.Nil(t, err)
+
+	idxToParent := []blockID{genesisID, 0, 1, 2, 3, 4, 5}
+	blockMap := newBlockTestSet(t, idxToParent)
+
+	blocks := mapToSlice(blockMap)
+	for i, block := range blocks {
+		err = bp.Push(block)
+		assert.Nil(t, err)
+
+		if i >= cacheSize {
+			assert.False(t, bp.Has(blocks[i-cacheSize]))
+		}
+	}
+}
+
+func TestWrongCacheSize(t *testing.T) {
+	_, err := core.NewBlockPool(-1)
+	require.NotNil(t, err)
+}
+
+func TestDuplicatedBlock(t *testing.T) {
+	bp, err := core.NewBlockPool(128)
+	require.Nil(t, err)
+
+	block := newTestBlock(t, testGenesisBlock)
+	err = bp.Push(block)
+	assert.Nil(t, err)
+
+	err = bp.Push(block)
+	assert.Equal(t, core.ErrDuplicatedBlock, err)
+}
+
+func TestWrongPushArgument(t *testing.T) {
+	bp, err := core.NewBlockPool(128)
+	require.Nil(t, err)
+
+	err = bp.Push(nil)
+	assert.Equal(t, core.ErrNilArgument, err)
+}
+
+func TestRemove(t *testing.T) {
+	bp, err := core.NewBlockPool(128)
+	require.Nil(t, err)
+
+	// Push genesis
+	err = bp.Push(testGenesisBlock)
+	assert.Nil(t, err)
+
+	// Push genesis's child
+	block := newTestBlock(t, testGenesisBlock)
+	err = bp.Push(block)
+	assert.Nil(t, err)
+
+	// Check genesis's child
+	blocks := bp.FindChildren(testGenesisBlock)
+	assert.Len(t, blocks, 1)
+	assert.Equal(t, block, blocks[0])
+
+	// Check block's parent
+	parent := bp.FindParent(block)
+	assert.Equal(t, testGenesisBlock, parent)
+
+	// Remove block
+	bp.Remove(block)
+
+	// Check again
+	assert.False(t, bp.Has(block))
+	blocks = bp.FindChildren(testGenesisBlock)
+	assert.Len(t, blocks, 0)
+}
+
+func TestNotFound(t *testing.T) {
+	bp, err := core.NewBlockPool(128)
+	require.Nil(t, err)
+
+	blocks := bp.FindChildren(testGenesisBlock)
+	assert.Len(t, blocks, 0)
+
+	block := bp.FindUnlinkedAncestor(testGenesisBlock)
+	assert.Equal(t, testGenesisBlock, block)
+
+	block = bp.FindParent(block)
+	assert.Nil(t, err)
+}
+
+func findChildIDs(idxToParent []blockID, id blockID) (childIDs []blockID) {
+	for i, parentID := range idxToParent {
+		if parentID == id {
+			childIDs = append(childIDs, blockID(i))
+		}
+	}
+	return childIDs
+}
+
+func equalBlocks(expected, actual []*core.Block) bool {
+	if len(expected) != len(actual) {
+		return false
+	}
+	for _, b1 := range expected {
+		found := false
+		for _, b2 := range actual {
+			if b1 == b2 {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func mapToSlice(blocks map[blockID]*core.Block) (slice []*core.Block) {
+	for _, block := range blocks {
+		slice = append(slice, block)
+	}
+	return slice
 }
