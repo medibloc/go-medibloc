@@ -17,22 +17,6 @@ var (
   GenesisCoinbase  = common.HexToAddress("ff7b1d22d234bde673bfa783d6c0c6b835aab407")
 )
 
-// TODO Remove when Genesis module is implemented and test dependency to this functionis removed.
-var TODOTestGenesisBlock = &Block{
-  header: &BlockHeader{
-    hash:       common.Hash{},
-    parentHash: common.Hash{},
-    coinbase:   common.Address{},
-    timestamp:  0,
-    chainID:    0,
-    alg:        0,
-    sign:       nil,
-  },
-  transactions: nil,
-  sealed:       false,
-  height:       0,
-}
-
 func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
   buf, err := ioutil.ReadFile(filePath)
   if err != nil {
