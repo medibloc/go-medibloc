@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/influxdata/influxdb/client"
-	"github.com/rcrowley/go-metrics"
 )
 
 const (

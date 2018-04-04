@@ -9,9 +9,7 @@ import (
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	libnet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
 	swarm "github.com/libp2p/go-libp2p-swarm"
-	"github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/medibloc/go-medibloc/util/logging"
 	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"

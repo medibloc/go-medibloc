@@ -14,7 +14,6 @@ import (
 
 	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/multiformats/go-multiaddr"
 
 	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	peer "github.com/libp2p/go-libp2p-peer"

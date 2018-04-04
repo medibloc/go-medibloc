@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/multiformats/go-multiaddr"
 )
 
 // const
