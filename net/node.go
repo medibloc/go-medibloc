@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"errors"
-	"fmt"
-	"net"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	libnet "github.com/libp2p/go-libp2p-net"
@@ -13,7 +11,6 @@ import (
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	"github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/medibloc/go-medibloc/util/logging"
-	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -198,34 +195,8 @@ func initP2PRouteTable(config *Config, node *Node) error {
 
 func initP2PSwarmNetwork(config *Config, node *Node) error {
 	// init p2p multiaddr and swarm network.
-	multiaddrs := make([]multiaddr.Multiaddr, len(config.Listen))
-	for idx, v := range node.config.Listen {
-		tcpAddr, err := net.ResolveTCPAddr("tcp", v)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":            err,
-				"listen address": v,
-			}).Error("Invalid listen address.")
-			return err
-		}
 
-		addr, err := multiaddr.NewMultiaddr(
-			fmt.Sprintf(
-				"/ip4/%s/tcp/%d",
-				tcpAddr.IP,
-				tcpAddr.Port,
-			),
-		)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":            err,
-				"listen address": v,
-			}).Error("Invalid listen address.")
-			return err
-		}
-
-		multiaddrs[idx] = addr
-	}
+	multiaddrs, err := convertListenAddrToMultiAddr(node.config.Listen)
 
 	network, err := swarm.NewNetwork(
 		node.context,

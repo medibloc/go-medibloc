@@ -7,8 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
+
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/sirupsen/logrus"
 )
 
 // Errors
@@ -69,4 +73,38 @@ func checkPortAvailable(listen []string) error {
 		}
 	}
 	return nil
+}
+
+func convertListenAddrToMultiAddr(listen []string) ([]ma.Multiaddr, error) {
+
+	multiaddrs := make([]ma.Multiaddr, len(listen))
+	for idx, v := range listen {
+		tcpAddr, err := net.ResolveTCPAddr("tcp", v)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":            err,
+				"listen address": v,
+			}).Error("Invalid listen address.")
+			return nil, err
+		}
+
+		addr, err := ma.NewMultiaddr(
+			fmt.Sprintf(
+				"/ip4/%s/tcp/%d",
+				tcpAddr.IP,
+				tcpAddr.Port,
+			),
+		)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":            err,
+				"listen address": v,
+			}).Error("Invalid listen address.")
+			return nil, err
+		}
+
+		multiaddrs[idx] = addr
+	}
+
+	return multiaddrs, nil
 }
