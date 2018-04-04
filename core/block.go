@@ -116,7 +116,6 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 			chainID:    chainID,
 		},
 		transactions: make(Transactions, 0),
-		parentBlock:  parent,
 		height:       parent.height + 1,
 		sealed:       false,
 	}
