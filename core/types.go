@@ -22,4 +22,3 @@ var (
 	ErrBlockAlreadySealed        = errors.New("cannot seal an already sealed block")
 	ErrNilArgument               = errors.New("argument(s) is nil")
 )
-
