@@ -109,7 +109,7 @@ func (bp *BlockPool) FindChildren(block *Block) (childBlocks []*Block) {
 
 	v, ok := bp.cache.Get(block.Hash())
 	if !ok {
-		return nil
+		return childBlocks
 	}
 
 	lb := v.(*linkedBlock)
@@ -165,18 +165,22 @@ func newLinkedBlock(block *Block) *linkedBlock {
 
 // Dispose cut the links. So, the block can be collected by GC.
 func (lb *linkedBlock) dispose() {
-	lb.block = nil
-	if lb.parentLinkedBlock != nil {
-		delete(lb.parentLinkedBlock.childLinkedBlocks, lb.block.Hash())
-		lb.parentLinkedBlock = nil
+	if plb := lb.parentLinkedBlock; plb != nil {
+		lb.unlinkParent(plb)
 	}
-	for _, v := range lb.childLinkedBlocks {
-		v.parentLinkedBlock = nil
+	for _, clb := range lb.childLinkedBlocks {
+		clb.unlinkParent(lb)
 	}
 	lb.childLinkedBlocks = nil
+	lb.block = nil
 }
 
 func (lb *linkedBlock) linkParent(plb *linkedBlock) {
 	plb.childLinkedBlocks[lb.block.Hash()] = lb
 	lb.parentLinkedBlock = plb
+}
+
+func (lb *linkedBlock) unlinkParent(plb *linkedBlock) {
+	delete(plb.childLinkedBlocks, lb.block.Hash())
+	lb.parentLinkedBlock = nil
 }
