@@ -9,16 +9,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//BlockPoolImpl is a pool of all received blocks from network.
-type BlockPoolImpl struct {
+//BlockPool is a pool of all received blocks from network.
+type BlockPool struct {
 	cache *lru.Cache
 	mu    sync.RWMutex
 	size  int
 }
 
 // NewBlockPool returns BlockPool.
-func NewBlockPool(size int) (bp *BlockPoolImpl, err error) {
-	bp = &BlockPoolImpl{
+func NewBlockPool(size int) (bp *BlockPool, err error) {
+	bp = &BlockPool{
 		size: size,
 	}
 	bp.cache, err = lru.NewWithEvict(size, func(key interface{}, value interface{}) {
@@ -38,7 +38,7 @@ func NewBlockPool(size int) (bp *BlockPoolImpl, err error) {
 }
 
 // Push links the block with parent and children blocks and push to the BlockPool.
-func (bp *BlockPoolImpl) Push(block *Block) error {
+func (bp *BlockPool) Push(block *Block) error {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -68,7 +68,7 @@ func (bp *BlockPoolImpl) Push(block *Block) error {
 }
 
 // Remove removes block in BlockPool.
-func (bp *BlockPoolImpl) Remove(block *Block) {
+func (bp *BlockPool) Remove(block *Block) {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -76,7 +76,7 @@ func (bp *BlockPoolImpl) Remove(block *Block) {
 }
 
 // FindParent finds parent block.
-func (bp *BlockPoolImpl) FindParent(block *Block) *Block {
+func (bp *BlockPool) FindParent(block *Block) *Block {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -87,7 +87,7 @@ func (bp *BlockPoolImpl) FindParent(block *Block) *Block {
 }
 
 // FindUnlinkedAncestor finds block's unlinked ancestor in BlockPool.
-func (bp *BlockPoolImpl) FindUnlinkedAncestor(block *Block) *Block {
+func (bp *BlockPool) FindUnlinkedAncestor(block *Block) *Block {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -103,7 +103,7 @@ func (bp *BlockPoolImpl) FindUnlinkedAncestor(block *Block) *Block {
 }
 
 // FindChildren finds children blocks.
-func (bp *BlockPoolImpl) FindChildren(block *Block) (childBlocks []*Block) {
+func (bp *BlockPool) FindChildren(block *Block) (childBlocks []*Block) {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -120,11 +120,11 @@ func (bp *BlockPoolImpl) FindChildren(block *Block) (childBlocks []*Block) {
 }
 
 // Has returns true if BlockPool contains block.
-func (bp *BlockPoolImpl) Has(block *Block) bool {
+func (bp *BlockPool) Has(block *Block) bool {
 	return bp.cache.Contains(block.Hash())
 }
 
-func (bp *BlockPoolImpl) findParentLinkedBlock(block *Block) *linkedBlock {
+func (bp *BlockPool) findParentLinkedBlock(block *Block) *linkedBlock {
 	if plb, ok := bp.cache.Get(block.ParentHash()); ok {
 		return plb.(*linkedBlock)
 	}
@@ -132,7 +132,7 @@ func (bp *BlockPoolImpl) findParentLinkedBlock(block *Block) *linkedBlock {
 }
 
 // TODO Improve lookup by adding another index of parent hash(?)
-func (bp *BlockPoolImpl) findChildLinkedBlocks(block *Block) (childBlocks []*linkedBlock) {
+func (bp *BlockPool) findChildLinkedBlocks(block *Block) (childBlocks []*linkedBlock) {
 	for _, key := range bp.cache.Keys() {
 		v, ok := bp.cache.Get(key)
 		if !ok {
