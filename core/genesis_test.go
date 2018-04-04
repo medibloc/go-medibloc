@@ -16,7 +16,7 @@ var (
   initialDist1 = "ff7b1d22d234bde673bfa783d6c0c6b835aab407"
 )
 
-func TestNewGenesis(t *testing.T) {
+func TestNewGenesisBlock(t *testing.T) {
   conf, err := core.LoadGenesisConf(defaultGenesisConfPath)
   assert.NoError(t, err)
   genesisBlock, err := core.NewGenesisBlock(conf, genesisTestDataDir)
