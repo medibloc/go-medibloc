@@ -107,13 +107,18 @@ func (bp *BlockPool) FindChildren(block *Block) (childBlocks []*Block) {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
-	v, ok := bp.cache.Get(block.Hash())
-	if !ok {
+	// Found parameter block.
+	if v, ok := bp.cache.Get(block.Hash()); ok {
+		lb := v.(*linkedBlock)
+		for _, v := range lb.childLinkedBlocks {
+			childBlocks = append(childBlocks, v.block)
+		}
 		return childBlocks
 	}
 
-	lb := v.(*linkedBlock)
-	for _, v := range lb.childLinkedBlocks {
+	// Not found parameter block.
+	childs := bp.findChildLinkedBlocks(block)
+	for _, v := range childs {
 		childBlocks = append(childBlocks, v.block)
 	}
 	return childBlocks

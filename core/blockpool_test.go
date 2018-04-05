@@ -141,6 +141,37 @@ func TestNotFound(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestFindBlockWithoutPush(t *testing.T) {
+	bp, err := core.NewBlockPool(128)
+	require.Nil(t, err)
+
+	grandParent := newTestBlock(t, genesisBlock)
+	parent := newTestBlock(t, grandParent)
+	child1 := newTestBlock(t, parent)
+	child2 := newTestBlock(t, parent)
+
+	err = bp.Push(genesisBlock)
+	assert.Nil(t, err)
+	err = bp.Push(grandParent)
+	assert.Nil(t, err)
+	err = bp.Push(child1)
+	assert.Nil(t, err)
+	err = bp.Push(child2)
+	assert.Nil(t, err)
+
+	assert.False(t, bp.Has(parent))
+
+	block := bp.FindParent(parent)
+	assert.Equal(t, grandParent, block)
+
+	block = bp.FindUnlinkedAncestor(parent)
+	assert.Equal(t, genesisBlock, block)
+
+	blocks := bp.FindChildren(parent)
+	assert.Len(t, blocks, 2)
+	assert.True(t, equalBlocks([]*core.Block{child1, child2}, blocks))
+}
+
 func findChildIDs(idxToParent []blockID, id blockID) (childIDs []blockID) {
 	for i, parentID := range idxToParent {
 		if parentID == id {
