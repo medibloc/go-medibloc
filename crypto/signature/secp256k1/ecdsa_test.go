@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/crypto/secp256k1"
+	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +25,7 @@ func TestSign(t *testing.T) {
 	addr := common.HexToAddress(testAddrHex)
 
 	msg := common.Hex2Bytes("39de21d6905bebd5b76371170b7097b85bd3bc48b76371170b7097b85bd3bc48")
-	sig, err := secp256k1.Sign(msg, FromECDSAPrivateKey(key))
+	sig, err := secp256k1.Sign(msg, secp256k1.FromECDSAPrivateKey(key))
 	assert.NoErrorf(err, "Sign error: %s", err)
 
 	recoveredPub, err := secp256k1.RecoverPubkey(msg, sig)
@@ -33,7 +33,7 @@ func TestSign(t *testing.T) {
 
 	pubKey, err := secp256k1.ToECDSAPublicKey(recoveredPub)
 	assert.NoError(err)
-	recoveredAddr, err := common.PubkeyToAddress(*pubKey)
+	recoveredAddr, err := common.PublicKeyToAddress(secp256k1.NewPublicKey(*pubKey))
 	assert.NoError(err)
 	assert.Equalf(addr, recoveredAddr, "Address mismatch: want: %x have: %x", addr, recoveredAddr)
 
@@ -44,7 +44,7 @@ func TestSign(t *testing.T) {
 	recoveredPubKey2, err := secp256k1.ToECDSAPublicKey(recoveredPub2)
 	assert.NoErrorf(err, "ToECDSAPublicKey error: %s", err)
 
-	recoveredAddr2, err := secp256k1.PubkeyToAddress(*recoveredPubKey2)
+	recoveredAddr2, err := common.PublicKeyToAddress(secp256k1.NewPublicKey(*recoveredPubKey2))
 	assert.NoError(err)
 	assert.Equalf(addr, recoveredAddr2, "Address mismatch: want: %x have: %x", addr, recoveredAddr2)
 }

@@ -16,7 +16,6 @@ var (
 type Medlet struct {
 	config     *medletpb.Config
 	netService mednet.Service
-	storage    Storage
 }
 
 // New returns a new medlet.
@@ -67,13 +66,4 @@ func (m *Medlet) Stop() {
 // Config returns medlet configuration.
 func (m *Medlet) Config() *medletpb.Config {
 	return m.config
-}
-
-func (m *Medlet) Setup() {
-	var err error
-
-	m.storage, err = NewStorage(m.config.Chain.Datadir)
-	if err != nil {
-		panic("storage load failed")
-	}
 }
