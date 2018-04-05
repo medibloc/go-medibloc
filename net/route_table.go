@@ -357,3 +357,16 @@ func (table *RouteTable) SyncWithPeer(pid peer.ID) {
 
 	stream.SyncRoute()
 }
+
+// PrintPeers prints peers in route table
+func (table *RouteTable) PrintPeers() {
+	logging.Console().WithFields(logrus.Fields{
+		"peerCount": len(table.peerStore.Peers()),
+	}).Info(fmt.Sprintf("routeTable peer count of nodeID: %s", table.node.ID()))
+
+	for idx, p := range table.peerStore.Peers() {
+		logging.Console().WithFields(logrus.Fields{
+			"peerID": p.Pretty(),
+		}).Info(fmt.Sprintf("routeTable peer of index %d", idx))
+	}
+}
