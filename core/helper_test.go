@@ -22,7 +22,7 @@ var (
 func init() {
 	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
 	genesisBlock, _ = core.NewGenesisBlock(conf, blockpoolTestDataDir)
-	chainId = conf.Meta.ChainId
+	chainID = conf.Meta.ChainId
 }
 
 // newBlockTestSet generates test block set from blockID to parentBlockID index

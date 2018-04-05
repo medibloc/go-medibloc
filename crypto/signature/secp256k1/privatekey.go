@@ -24,6 +24,15 @@ func GeneratePrivateKey() *PrivateKey {
 	return priv
 }
 
+func NewPrivateKeyFromHex(b string) (*PrivateKey, error) {
+	ecdsaKey, err := HexToECDSA(b)
+	if err != nil {
+		return nil, err
+	}
+	privKey := NewPrivateKey(ecdsaKey)
+	return privKey, nil
+}
+
 func (k *PrivateKey) Algorithm() algorithm.Algorithm {
 	return algorithm.SECP256K1
 }
