@@ -108,3 +108,35 @@ func convertListenAddrToMultiAddr(listen []string) ([]ma.Multiaddr, error) {
 
 	return multiaddrs, nil
 }
+
+func convertMultiAddrToAddrString(multiaddrs []ma.Multiaddr) ([]string, error) {
+
+	addrStr := make([]string, len(multiaddrs))
+	for idx, v := range multiaddrs {
+		addrStr[idx] = v.String()
+	}
+
+	return addrStr, nil
+}
+
+func convertMultiAddrToIPFSMultiAddr(multiaddrs []ma.Multiaddr, id string) ([]ma.Multiaddr, error) {
+
+	ipfsMultiAddrs := make([]ma.Multiaddr, len(multiaddrs))
+	addrStr, err := convertMultiAddrToAddrString(multiaddrs)
+	if err != nil {
+		return nil, err
+	}
+	for idx, v := range addrStr {
+		addr, err := ma.NewMultiaddr(fmt.Sprintf("%s/ipfs/%s", v, id))
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":            err,
+				"listen address": v,
+			}).Error("Invalid listen address.")
+			return nil, err
+		}
+		ipfsMultiAddrs[idx] = addr
+	}
+
+	return ipfsMultiAddrs, nil
+}
