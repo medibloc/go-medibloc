@@ -191,6 +191,10 @@ func (bs *BlockState) Commit() error {
 
 // ExecuteTx and update internal states
 func (bs *BlockState) ExecuteTx(tx *Transaction) error {
+	if err := bs.checkNonce(tx); err != nil {
+		return err
+	}
+
 	switch tx.Type() {
 	default:
 		if tx.Value().Cmp(util.Uint128Zero()) > 0 {
@@ -232,6 +236,21 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction) error {
 
 	if err = bs.IncrementNonce(tx.from); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (bs *BlockState) checkNonce(tx *Transaction) error {
+	fromAcc, err := bs.GetAccount(tx.from)
+	if err != nil {
+		return err
+	}
+
+	expectedNonce := fromAcc.Nonce() + 1
+	if tx.nonce > expectedNonce {
+		return ErrLargeTransactionNonce
+	} else if tx.nonce < expectedNonce {
+		return ErrSmallTransactionNonce
 	}
 	return nil
 }

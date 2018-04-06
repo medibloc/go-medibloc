@@ -297,39 +297,16 @@ func (block *Block) VerifyExecution() error {
 // ExecuteAll executes all txs in block
 func (block *Block) ExecuteAll() error {
 	for _, tx := range block.transactions {
-		giveback, err := block.checkNonce(tx)
-		if giveback {
-			//TODO: return to tx pool
-		}
-		if err != nil {
+		if err := block.ExecuteTransaction(tx); err != nil {
 			return err
 		}
 
-		if err = block.ExecuteTransaction(tx); err != nil {
-			return err
-		}
-
-		if err = block.AcceptTransaction(tx); err != nil {
+		if err := block.AcceptTransaction(tx); err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func (block *Block) checkNonce(tx *Transaction) (bool, error) {
-	fromAcc, err := block.state.GetAccount(tx.from)
-	if err != nil {
-		return true, err
-	}
-
-	expectedNonce := fromAcc.Nonce() + 1
-	if tx.nonce > expectedNonce {
-		return true, ErrLargeTransactionNonce
-	} else if tx.nonce < expectedNonce {
-		return false, ErrSmallTransactionNonce
-	}
-	return false, nil
 }
 
 // AcceptTransaction adds tx in block state
