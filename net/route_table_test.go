@@ -116,7 +116,7 @@ func TestRouteTable_SyncWithPeer(t *testing.T) {
 
 			// for debug
 			//for i := 0; i < nodeNum; i++ {
-			//	nodeArr[i].routeTable.PrintPeers()
+			//	PrintRouteTablePeers(nodeArr[i].routeTable)
 			//}
 
 			// stop all nodes

@@ -8,7 +8,9 @@ import (
 
 	"fmt"
 
+	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/sirupsen/logrus"
 )
 
 // const for test
@@ -74,4 +76,17 @@ func makeRandomListen(low int64, high int64) []string {
 	randomListen := []string{"localhost:" + randomPortString}
 
 	return randomListen
+}
+
+// PrintRouteTablePeers prints peers in route table
+func PrintRouteTablePeers(table *RouteTable) {
+	logging.Console().WithFields(logrus.Fields{
+		"peerCount": len(table.peerStore.Peers()),
+	}).Info(fmt.Sprintf("routeTable peer count of nodeID: %s", table.node.ID()))
+
+	for idx, p := range table.peerStore.Peers() {
+		logging.Console().WithFields(logrus.Fields{
+			"peerID": p.Pretty(),
+		}).Info(fmt.Sprintf("routeTable peer of index %d", idx))
+	}
 }
