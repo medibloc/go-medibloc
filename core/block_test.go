@@ -95,7 +95,7 @@ func TestSendExecution(t *testing.T) {
 	newBlock.SetTransactions(txs)
 
 	newBlock.BeginBatch()
-	assert.NoError(t, newBlock.Execute())
+	assert.NoError(t, newBlock.ExecuteAll())
 	newBlock.Commit()
 	assert.NoError(t, newBlock.Seal())
 
@@ -147,9 +147,9 @@ func TestSendMoreThanBalance(t *testing.T) {
 	signer.InitSign(privKey)
 	assert.NoError(t, tx.SignThis(signer))
 
-	newBlock.SetTransactions(core.Transactions{tx})
+	blockState := newBlock.State()
 
 	newBlock.BeginBatch()
-	assert.Equal(t, newBlock.Execute(), core.ErrBalanceNotEnough)
-	newBlock.Commit()
+	assert.Equal(t, core.ExecuteTransaction(tx, blockState), core.ErrBalanceNotEnough)
+	newBlock.RollBack()
 }
