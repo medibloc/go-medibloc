@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+// Transaction struct represents transaction
 type Transaction struct {
 	hash    common.Hash
 	from    common.Address
@@ -26,8 +27,10 @@ type Transaction struct {
 	sign    []byte
 }
 
+// Transactions is just multiple txs
 type Transactions []*Transaction
 
+// ToProto converts Transaction to corepb.Transaction
 func (tx *Transaction) ToProto() (proto.Message, error) {
 	value, err := tx.value.ToFixedSizeByteSlice()
 	if err != nil {
@@ -47,6 +50,7 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
 	}, nil
 }
 
+// FromProto converts corepb.Transaction to Transaction
 func (tx *Transaction) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Transaction); ok {
 		tx.hash = common.BytesToHash(msg.Hash)
@@ -75,6 +79,7 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 	return ErrCannotConvertTransaction
 }
 
+// NewTransaction generates a Transaction instance
 func NewTransaction(chainID uint32, from, to common.Address, value *util.Uint128, nonce uint64, payloadType string, payload []byte) (*Transaction, error) {
 	tx := &Transaction{
 		from:    from,
@@ -110,6 +115,7 @@ func (tx *Transaction) calcHash() (common.Hash, error) {
 	return common.BytesToHash(hash), nil
 }
 
+// SignThis signs tx with given signature interface
 func (tx *Transaction) SignThis(signer signature.Signature) error {
 	tx.alg = signer.Algorithm()
 	hash, err := tx.calcHash()
@@ -126,7 +132,7 @@ func (tx *Transaction) SignThis(signer signature.Signature) error {
 	return nil
 }
 
-// VerifyIntegrity return transaction verify result, including Hash and Signature.
+// VerifyIntegrity returns transaction verify result, including Hash and Signature.
 func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
 	// check ChainID.
 	if tx.chainID != chainID {
@@ -171,34 +177,42 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 	return common.PublicKeyToAddress(pubKey)
 }
 
+// From returns from
 func (tx *Transaction) From() common.Address {
 	return tx.from
 }
 
+// To returns to
 func (tx *Transaction) To() common.Address {
 	return tx.to
 }
 
+// Value returns value
 func (tx *Transaction) Value() *util.Uint128 {
 	return tx.value
 }
 
+// Type returns tx type
 func (tx *Transaction) Type() string {
 	return tx.data.Type
 }
 
+// Data returns tx payload
 func (tx *Transaction) Data() []byte {
 	return tx.data.Payload
 }
 
+// Nonce returns tx nonce
 func (tx *Transaction) Nonce() uint64 {
 	return tx.nonce
 }
 
+// Hash returns hash
 func (tx *Transaction) Hash() common.Hash {
 	return tx.hash
 }
 
+// String returns string representation of tx
 func (tx *Transaction) String() string {
 	return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%s", "type":"%s", "alg":"%d"}`,
 		tx.chainID,
@@ -211,26 +225,26 @@ func (tx *Transaction) String() string {
 	)
 }
 
+// Execute executes tx and update block state
 func (tx *Transaction) Execute(block *Block) error {
 	switch tx.Type() {
 	default:
 		if tx.value.Cmp(util.Uint128Zero()) > 0 {
 			return tx.transfer(block)
-		} else {
-			return ErrVoidTransaction
 		}
 	}
+	return ErrVoidTransaction
 }
 
 func (tx *Transaction) transfer(block *Block) error {
 	var err error
 
-	accState := block.accState
-	if err = accState.SubBalance(tx.from.Bytes(), tx.value); err != nil {
+	blockState := block.state
+	if err = blockState.SubBalance(tx.from, tx.value); err != nil {
 		return err
 	}
 
-	if err = accState.AddBalance(tx.to.Bytes(), tx.value); err != nil {
+	if err = blockState.AddBalance(tx.to, tx.value); err != nil {
 		return err
 	}
 

@@ -12,11 +12,15 @@ import (
 )
 
 var (
-	GenesisHash      = common.BytesToHash(make([]byte, common.HashLength))
+	// GenesisHash is hash of genesis block
+	GenesisHash = common.BytesToHash(make([]byte, common.HashLength))
+	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
-	GenesisCoinbase  = common.HexToAddress("ff7b1d22d234bde673bfa783d6c0c6b835aab407")
+	// GenesisCoinbase coinbase address of genesis block
+	GenesisCoinbase = common.HexToAddress("ff7b1d22d234bde673bfa783d6c0c6b835aab407")
 )
 
+// LoadGenesisConf loads genesis conf file
 func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 	buf, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -31,7 +35,7 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 	return genesis, nil
 }
 
-// TEST VERSION
+// NewGenesisBlock generates genesis block
 func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
 	if conf == nil {
 		return nil, ErrNilArgument
@@ -42,12 +46,7 @@ func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
 		return nil, err
 	}
 
-	accState, err := NewAccountStateBatch(nil, sto)
-	if err != nil {
-		return nil, err
-	}
-
-	txsState, err := NewTrieBatch(nil, sto)
+	blockState, err := NewBlockState(sto)
 	if err != nil {
 		return nil, err
 	}
@@ -63,13 +62,12 @@ func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
 		},
 		transactions: make(Transactions, 0),
 		storage:      sto,
-		accState:     accState,
-		txsState:     txsState,
+		state:        blockState,
 		height:       1,
 		sealed:       false,
 	}
 
-	if err := genesisBlock.Begin(); err != nil {
+	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
 
@@ -83,7 +81,7 @@ func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
 			return nil, err
 		}
 
-		err = genesisBlock.accState.AddBalance(addr.Bytes(), balance)
+		err = genesisBlock.state.AddBalance(addr, balance)
 		if err != nil {
 			if err := genesisBlock.RollBack(); err != nil {
 				return nil, err
@@ -123,7 +121,7 @@ func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
 	}
 
 	genesisBlock.transactions = append(genesisBlock.transactions, initialTx)
-	if err := genesisBlock.txsState.Put(initialTx.hash.Bytes(), txBytes); err != nil {
+	if err := genesisBlock.state.PutTx(initialTx.hash, txBytes); err != nil {
 		return nil, err
 	}
 
@@ -131,14 +129,15 @@ func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
 		return nil, err
 	}
 
-	genesisBlock.header.accsRoot = common.BytesToHash(genesisBlock.accState.RootHash())
-	genesisBlock.header.txsRoot = common.BytesToHash(genesisBlock.txsState.RootHash())
+	genesisBlock.header.accsRoot = genesisBlock.state.AccountsRoot()
+	genesisBlock.header.txsRoot = genesisBlock.state.TransactionsRoot()
 
 	genesisBlock.sealed = true
 
 	return genesisBlock, nil
 }
 
+// CheckGenesisBlock checks if a block is genesis block
 func CheckGenesisBlock(block *Block) bool {
 	if block == nil {
 		return false

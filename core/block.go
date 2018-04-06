@@ -62,9 +62,8 @@ type Block struct {
 	header       *BlockHeader
 	transactions Transactions
 
-	storage  storage.Storage
-	accState *AccountStateBatch
-	txsState *TrieBatch
+	storage storage.Storage
+	state   *BlockState
 
 	sealed bool
 	height uint64
@@ -119,12 +118,7 @@ func (block *Block) FromProto(msg proto.Message) error {
 }
 
 func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, error) {
-	accState, err := parent.accState.Clone()
-	if err != nil {
-		return nil, err
-	}
-
-	txsState, err := parent.txsState.Clone()
+	state, err := parent.state.Clone()
 	if err != nil {
 		return nil, err
 	}
@@ -138,8 +132,7 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 		},
 		transactions: make(Transactions, 0),
 		storage:      parent.storage,
-		accState:     accState,
-		txsState:     txsState,
+		state:        state,
 		height:       parent.height + 1,
 		sealed:       false,
 	}
@@ -218,8 +211,8 @@ func (block *Block) Seal() error {
 		return ErrBlockAlreadySealed
 	}
 
-	block.header.accsRoot = common.BytesToHash(block.accState.RootHash())
-	block.header.txsRoot = common.BytesToHash(block.txsState.RootHash())
+	block.header.accsRoot = block.state.AccountsRoot()
+	block.header.txsRoot = block.state.TransactionsRoot()
 
 	var err error
 	block.header.hash, err = HashBlock(block)
@@ -250,7 +243,7 @@ func HashBlock(block *Block) (common.Hash, error) {
 }
 
 func (block *Block) VerifyExecution() error {
-	block.Begin()
+	block.BeginBatch()
 
 	if err := block.Execute(); err != nil {
 		block.RollBack()
@@ -290,7 +283,7 @@ func (block *Block) Execute() error {
 }
 
 func (block *Block) checkNonce(tx *Transaction) (bool, error) {
-	fromAcc, err := block.accState.GetAccount(tx.from.Bytes())
+	fromAcc, err := block.state.GetAccount(tx.from)
 	if err != nil {
 		return true, err
 	}
@@ -315,21 +308,21 @@ func (block *Block) acceptTransaction(tx *Transaction) error {
 		return err
 	}
 
-	if err := block.txsState.Put(tx.hash.Bytes(), txBytes); err != nil {
+	if err := block.state.PutTx(tx.hash, txBytes); err != nil {
 		return err
 	}
 
-	if err = block.accState.IncrementNonce(tx.from.Bytes()); err != nil {
+	if err = block.state.IncrementNonce(tx.from); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (block *Block) VerifyState() error {
-	if !byteutils.Equal(block.accState.RootHash(), block.AccountsRoot().Bytes()) {
+	if !byteutils.Equal(block.state.AccountsRoot().Bytes(), block.AccountsRoot().Bytes()) {
 		return ErrInvalidBlockAccountsRoot
 	}
-	if !byteutils.Equal(block.txsState.RootHash(), block.TransactionsRoot().Bytes()) {
+	if !byteutils.Equal(block.state.TransactionsRoot().Bytes(), block.TransactionsRoot().Bytes()) {
 		return ErrInvalidBlockTxsRoot
 	}
 	return nil
@@ -369,31 +362,22 @@ func (block *Block) VerifyIntegrity() error {
 	return nil
 }
 
-func (block *Block) Begin() error {
-	if err := block.accState.BeginBatch(); err != nil {
-		return err
-	}
-	if err := block.txsState.BeginBatch(); err != nil {
+func (block *Block) BeginBatch() error {
+	if err := block.state.BeginBatch(); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (block *Block) RollBack() error {
-	if err := block.accState.RollBack(); err != nil {
-		return err
-	}
-	if err := block.txsState.RollBack(); err != nil {
+	if err := block.state.RollBack(); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (block *Block) Commit() error {
-	if err := block.accState.Commit(); err != nil {
-		return err
-	}
-	if err := block.txsState.Commit(); err != nil {
+	if err := block.state.Commit(); err != nil {
 		return err
 	}
 	return nil

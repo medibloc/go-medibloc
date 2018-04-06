@@ -94,7 +94,7 @@ func TestSendExecution(t *testing.T) {
 
 	newBlock.SetTransactions(txs)
 
-	newBlock.Begin()
+	newBlock.BeginBatch()
 	assert.NoError(t, newBlock.Execute())
 	newBlock.Commit()
 	assert.NoError(t, newBlock.Seal())
@@ -149,7 +149,7 @@ func TestSendMoreThanBalance(t *testing.T) {
 
 	newBlock.SetTransactions(core.Transactions{tx})
 
-	newBlock.Begin()
+	newBlock.BeginBatch()
 	assert.Equal(t, newBlock.Execute(), core.ErrBalanceNotEnough)
 	newBlock.Commit()
 }
