@@ -150,6 +150,6 @@ func TestSendMoreThanBalance(t *testing.T) {
 	blockState := newBlock.State()
 
 	newBlock.BeginBatch()
-	assert.Equal(t, core.ExecuteTransaction(tx, blockState), core.ErrBalanceNotEnough)
+	assert.Equal(t, blockState.ExecuteTx(tx), core.ErrBalanceNotEnough)
 	newBlock.RollBack()
 }

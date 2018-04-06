@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -185,5 +186,52 @@ func (bs *BlockState) Commit() error {
 		return err
 	}
 	bs.snapshot = nil
+	return nil
+}
+
+// ExecuteTx and update internal states
+func (bs *BlockState) ExecuteTx(tx *Transaction) error {
+	switch tx.Type() {
+	default:
+		if tx.Value().Cmp(util.Uint128Zero()) > 0 {
+			return bs.executeTransfer(tx)
+		}
+	}
+	return ErrVoidTransaction
+}
+
+func (bs *BlockState) executeTransfer(tx *Transaction) error {
+	var err error
+
+	if err = bs.SubBalance(tx.From(), tx.Value()); err != nil {
+		return err
+	}
+
+	if err = bs.AddBalance(tx.To(), tx.Value()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AcceptTransaction and update internal txsStates
+func (bs *BlockState) AcceptTransaction(tx *Transaction) error {
+	pbTx, err := tx.ToProto()
+	if err != nil {
+		return err
+	}
+
+	txBytes, err := proto.Marshal(pbTx)
+	if err != nil {
+		return err
+	}
+
+	if err := bs.PutTx(tx.hash, txBytes); err != nil {
+		return err
+	}
+
+	if err = bs.IncrementNonce(tx.from); err != nil {
+		return err
+	}
 	return nil
 }

@@ -224,28 +224,3 @@ func (tx *Transaction) String() string {
 		tx.alg,
 	)
 }
-
-// Execute executes tx and update block state
-func (tx *Transaction) Execute(bs *BlockState) error {
-	switch tx.Type() {
-	default:
-		if tx.value.Cmp(util.Uint128Zero()) > 0 {
-			return tx.transfer(bs)
-		}
-	}
-	return ErrVoidTransaction
-}
-
-func (tx *Transaction) transfer(bs *BlockState) error {
-	var err error
-
-	if err = bs.SubBalance(tx.from, tx.value); err != nil {
-		return err
-	}
-
-	if err = bs.AddBalance(tx.to, tx.value); err != nil {
-		return err
-	}
-
-	return nil
-}

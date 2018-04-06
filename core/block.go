@@ -271,8 +271,8 @@ func HashBlock(block *Block) (common.Hash, error) {
 }
 
 // ExecuteTransaction on given block state
-func ExecuteTransaction(tx *Transaction, bs *BlockState) error {
-	return tx.Execute(bs)
+func (block *Block) ExecuteTransaction(tx *Transaction) error {
+	return block.state.ExecuteTx(tx)
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
@@ -305,11 +305,11 @@ func (block *Block) ExecuteAll() error {
 			return err
 		}
 
-		if err = ExecuteTransaction(tx, block.state); err != nil {
+		if err = block.ExecuteTransaction(tx); err != nil {
 			return err
 		}
 
-		if err = block.acceptTransaction(tx); err != nil {
+		if err = block.AcceptTransaction(tx); err != nil {
 			return err
 		}
 	}
@@ -332,25 +332,9 @@ func (block *Block) checkNonce(tx *Transaction) (bool, error) {
 	return false, nil
 }
 
-func (block *Block) acceptTransaction(tx *Transaction) error {
-	pbTx, err := tx.ToProto()
-	if err != nil {
-		return err
-	}
-
-	txBytes, err := proto.Marshal(pbTx)
-	if err != nil {
-		return err
-	}
-
-	if err := block.state.PutTx(tx.hash, txBytes); err != nil {
-		return err
-	}
-
-	if err = block.state.IncrementNonce(tx.from); err != nil {
-		return err
-	}
-	return nil
+// AcceptTransaction adds tx in block state
+func (block *Block) AcceptTransaction(tx *Transaction) error {
+	return block.state.AcceptTransaction(tx)
 }
 
 // VerifyState verifies block states comparing with root hashes in header
