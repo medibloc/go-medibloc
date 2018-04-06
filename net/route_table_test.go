@@ -14,15 +14,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const (
-	RouteTableCheckIntervalSec = 10
+var (
+	RouteTableCheckInterval = 100 * time.Millisecond
 )
 
-func waitRouteTableSyncLoop(wg *sync.WaitGroup, node *Node, nodeIDs []peer.ID, sec time.Duration) {
+func waitRouteTableSyncLoop(wg *sync.WaitGroup, node *Node, nodeIDs []peer.ID) {
 	defer wg.Done()
 	ids := make([]peer.ID, len(nodeIDs))
 	copy(ids, nodeIDs)
-	remainIteration := len(ids)
+	remainIteration := 100
 
 	for len(ids) > 0 {
 		i := 0
@@ -34,7 +34,7 @@ func waitRouteTableSyncLoop(wg *sync.WaitGroup, node *Node, nodeIDs []peer.ID, s
 		}
 		ids = ids[:i]
 
-		time.Sleep(sec * time.Second)
+		time.Sleep(RouteTableCheckInterval)
 
 		remainIteration--
 		// fail if (sec * len(nodeIDs)) seconds left
@@ -91,7 +91,7 @@ func TestRouteTable_SyncWithPeer(t *testing.T) {
 	for i := 0; i < seedNum; i++ {
 		nodeArr[i].Start()
 		wg.Add(1)
-		go waitRouteTableSyncLoop(&wg, nodeArr[i], seedNodeIDs, RouteTableCheckIntervalSec)
+		go waitRouteTableSyncLoop(&wg, nodeArr[i], seedNodeIDs)
 	}
 
 	// wait until seed nodes are synced
@@ -107,7 +107,7 @@ func TestRouteTable_SyncWithPeer(t *testing.T) {
 	// wait
 	for i := 0; i < nodeNum; i++ {
 		wg.Add(1)
-		go waitRouteTableSyncLoop(&wg, nodeArr[i], allNodeIDs, RouteTableCheckIntervalSec)
+		go waitRouteTableSyncLoop(&wg, nodeArr[i], allNodeIDs)
 	}
 
 	// wait until all nodes are synced

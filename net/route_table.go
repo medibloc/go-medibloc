@@ -38,6 +38,8 @@ type RouteTable struct {
 	seedNodes                []ma.Multiaddr
 	node                     *Node
 	streamManager            *StreamManager
+	syncLoopInterval         time.Duration
+	saveToDiskInterval       time.Duration
 	latestUpdatedAt          int64
 }
 
@@ -52,6 +54,8 @@ func NewRouteTable(config *Config, node *Node) *RouteTable {
 		seedNodes:                config.BootNodes,
 		node:                     node,
 		streamManager:            node.streamManager,
+		syncLoopInterval:         config.RouteTableSyncLoopInterval,
+		saveToDiskInterval:       config.RouteTableSaveToDiskInterval,
 		latestUpdatedAt:          0,
 	}
 
@@ -102,8 +106,8 @@ func (table *RouteTable) syncLoop() {
 
 	logging.Console().Info("Started MedService RouteTable Sync.")
 
-	syncLoopTicker := time.NewTicker(RouteTableSyncLoopInterval)
-	saveRouteTableToDiskTicker := time.NewTicker(RouteTableSaveToDiskInterval)
+	syncLoopTicker := time.NewTicker(table.syncLoopInterval)
+	saveRouteTableToDiskTicker := time.NewTicker(table.saveToDiskInterval)
 	latestUpdatedAt := table.latestUpdatedAt
 
 	for {

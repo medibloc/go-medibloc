@@ -11,6 +11,17 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+// const for test
+const (
+	TestBucketCapacity               = 8
+	TestRoutingTableMaxLatency       = 2
+	TestMaxSyncNodes                 = 8
+	TestChainID                      = 123
+	TestRoutingTableDir              = "./testdata/cache/"
+	TestRouteTableSyncLoopInterval   = 300 * time.Millisecond
+	TestRouteTableSaveToDiskInterval = 1 * time.Second
+)
+
 func makeNewTestNode(privateKeyPath string) (*Node, error) {
 	config := makeNewTestP2PConfig(privateKeyPath)
 	node, err := NewNode(config)
@@ -35,14 +46,16 @@ func makeNewTestP2PConfig(privateKeyPath string) *Config {
 	}
 
 	config := &Config{
-		DefaultBucketCapacity,
-		DefaultRoutingTableMaxLatency,
+		TestBucketCapacity,
+		TestRoutingTableMaxLatency,
 		[]multiaddr.Multiaddr{},
 		privateKeyPath,
 		randomListen,
-		DefaultMaxSyncNodes,
-		DefaultChainID,
-		"./testdata/cache/",
+		TestMaxSyncNodes,
+		TestChainID,
+		TestRoutingTableDir,
+		TestRouteTableSyncLoopInterval,
+		TestRouteTableSaveToDiskInterval,
 	}
 
 	return config
