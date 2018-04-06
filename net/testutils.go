@@ -18,7 +18,7 @@ const (
 	TestMaxSyncNodes                 = 8
 	TestChainID                      = 123
 	TestRoutingTableDir              = "./testdata/cache/"
-	TestRouteTableSyncLoopInterval   = 300 * time.Millisecond
+	TestRouteTableSyncLoopInterval   = 100 * time.Millisecond
 	TestRouteTableSaveToDiskInterval = 1 * time.Second
 )
 
