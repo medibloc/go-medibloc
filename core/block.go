@@ -9,7 +9,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/byteutils"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -260,8 +260,8 @@ func HashBlock(block *Block) (common.Hash, error) {
 
 	hasher.Write(block.ParentHash().Bytes())
 	hasher.Write(block.header.coinbase.Bytes())
-	hasher.Write(common.FromInt64(block.Timestamp()))
-	hasher.Write(common.FromUint32(block.ChainID()))
+	hasher.Write(byteutils.FromInt64(block.Timestamp()))
+	hasher.Write(byteutils.FromUint32(block.ChainID()))
 
 	for _, tx := range block.transactions {
 		hasher.Write(tx.Hash().Bytes())

@@ -1,4 +1,4 @@
-package byteutils
+package bytes
 
 // Encoder is encoder for bytes.Encode().
 type Encoder interface {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -23,7 +24,7 @@ func BytesToHash(b []byte) Hash {
 	return h
 }
 func BigToHash(b *big.Int) Hash { return BytesToHash(b.Bytes()) }
-func HexToHash(s string) Hash   { return BytesToHash(FromHex(s)) }
+func HexToHash(s string) Hash   { return BytesToHash(byteutils.FromHex(s)) }
 
 func (h Hash) Str() string   { return string(h[:]) }
 func (h Hash) Bytes() []byte { return h[:] }
@@ -48,13 +49,13 @@ func BytesToAddress(b []byte) Address {
 	return a
 }
 func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
-func HexToAddress(s string) Address   { return BytesToAddress(FromHex(s)) }
+func HexToAddress(s string) Address   { return BytesToAddress(byteutils.FromHex(s)) }
 
 func IsHexAddress(s string) bool {
-	if hasHexPrefix(s) {
+	if byteutils.HasHexPrefix(s) {
 		s = s[2:]
 	}
-	return len(s) == 2*AddressLength && isHex(s)
+	return len(s) == 2*AddressLength && byteutils.IsHex(s)
 }
 
 func PublicKeyToAddress(p signature.PublicKey) (Address, error) {

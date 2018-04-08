@@ -10,7 +10,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/byteutils"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -108,8 +108,8 @@ func (tx *Transaction) calcHash() (common.Hash, error) {
 	hasher.Write([]byte(tx.data.Type))
 	hasher.Write(tx.data.Payload)
 	hasher.Write(byteutils.FromUint64(tx.nonce))
-	hasher.Write(common.FromUint32(tx.chainID))
-	hasher.Write(common.FromUint32(uint32(tx.alg)))
+	hasher.Write(byteutils.FromUint32(tx.chainID))
+	hasher.Write(byteutils.FromUint32(uint32(tx.alg)))
 
 	hash := hasher.Sum(nil)
 	return common.BytesToHash(hash), nil

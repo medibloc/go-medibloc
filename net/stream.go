@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/medibloc/go-medibloc/util/byteutils"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 
 	"github.com/gogo/protobuf/proto"
 	libnet "github.com/libp2p/go-libp2p-net"

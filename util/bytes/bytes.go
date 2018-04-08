@@ -1,47 +1,9 @@
-package byteutils
+package bytes
 
 import (
-	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"hash/fnv"
-
-	"github.com/btcsuite/btcutil/base58"
 )
-
-// Hash by Sha3-256
-type Hash []byte
-
-// HexHash is the hex string of a hash
-type HexHash string
-
-// Hex return hex encoded hash.
-func (h Hash) Hex() HexHash {
-	return HexHash(Hex(h))
-}
-
-// Base58 return base58 encodes string
-func (h Hash) Base58() string {
-	return base58.Encode(h)
-}
-
-// Equals compare two Hash. True is equal, otherwise false.
-func (h Hash) Equals(b Hash) bool {
-	return bytes.Compare(h, b) == 0
-}
-
-func (h Hash) String() string {
-	return string(h.Hex())
-}
-
-// Hash return hex decoded hash.
-func (hh HexHash) Hash() (Hash, error) {
-	v, err := FromHex(string(hh))
-	if err != nil {
-		return nil, err
-	}
-	return Hash(v), nil
-}
 
 // Encode encodes object to Encoder.
 func Encode(s interface{}, enc Encoder) ([]byte, error) {
@@ -51,16 +13,6 @@ func Encode(s interface{}, enc Encoder) ([]byte, error) {
 // Decode decodes []byte from Decoder.
 func Decode(data []byte, dec Decoder) (interface{}, error) {
 	return dec.DecodeFromBytes(data)
-}
-
-// Hex encodes []byte to Hex.
-func Hex(data []byte) string {
-	return hex.EncodeToString(data)
-}
-
-// FromHex decodes string from Hex.
-func FromHex(data string) ([]byte, error) {
-	return hex.DecodeString(data)
 }
 
 // Uint64 encodes []byte.
@@ -148,14 +100,85 @@ func Equal(a []byte, b []byte) bool {
 	return true
 }
 
-// HashBytes return bytes hash
-func HashBytes(a []byte) uint32 {
-	hasherA := fnv.New32a()
-	hasherA.Write(a)
-	return hasherA.Sum32()
+func CopyBytes(b []byte) (copiedBytes []byte) {
+	if b == nil {
+		return nil
+	}
+	copiedBytes = make([]byte, len(b))
+	copy(copiedBytes, b)
+
+	return
 }
 
-// Less return if a < b
-func Less(a []byte, b []byte) bool {
-	return HashBytes(a) < HashBytes(b)
+func ToHex(b []byte) string {
+	hex := Bytes2Hex(b)
+	if len(hex) == 0 {
+		hex = "0"
+	}
+
+	return "0x" + hex
+}
+
+func FromHex(s string) []byte {
+	if len(s) > 1 {
+		if s[0:2] == "0x" || s[0:2] == "0X" {
+			s = s[2:]
+		}
+	}
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+	return Hex2Bytes(s)
+}
+
+func Bytes2Hex(d []byte) string {
+	return hex.EncodeToString(d)
+}
+
+func Hex2Bytes(str string) []byte {
+	h, _ := hex.DecodeString(str)
+
+	return h
+}
+
+func RightPadBytes(slice []byte, l int) []byte {
+	if l <= len(slice) {
+		return slice
+	}
+
+	padded := make([]byte, l)
+	copy(padded, slice)
+
+	return padded
+}
+
+func LeftPadBytes(slice []byte, l int) []byte {
+	if l <= len(slice) {
+		return slice
+	}
+
+	padded := make([]byte, l)
+	copy(padded[l-len(slice):], slice)
+
+	return padded
+}
+
+func HasHexPrefix(str string) bool {
+	return len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')
+}
+
+func isHexCharacter(c byte) bool {
+	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
+}
+
+func IsHex(str string) bool {
+	if len(str)%2 != 0 {
+		return false
+	}
+	for _, c := range []byte(str) {
+		if !isHexCharacter(c) {
+			return false
+		}
+	}
+	return true
 }

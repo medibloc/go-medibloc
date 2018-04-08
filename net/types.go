@@ -6,7 +6,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
-	"github.com/medibloc/go-medibloc/util/byteutils"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 )
 
 // Message Priority.
@@ -172,7 +172,7 @@ func (msg *BaseMessage) Data() []byte {
 
 // Hash return the message hash
 func (msg *BaseMessage) Hash() string {
-	return byteutils.Hex(hash.Sha3256(msg.data))
+	return byteutils.Bytes2Hex(hash.Sha3256(msg.data))
 }
 
 // String get the message to string
