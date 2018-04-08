@@ -7,6 +7,8 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,4 +70,10 @@ func RandomAddress(t *testing.T) (addr common.Address) {
 	require.Nil(t, err)
 	require.EqualValues(t, common.AddressLength, nw)
 	return addr
+}
+
+func getStorage(t *testing.T) storage.Storage {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+	return s
 }

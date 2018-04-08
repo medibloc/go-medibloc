@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,12 +37,6 @@ func testBatch(t *testing.T, batch core.Batch) {
 
 	err = batch.RollBack()
 	assert.Equal(t, core.ErrNotBatching, err)
-}
-
-func getStorage(t *testing.T) storage.Storage {
-	s, err := storage.NewMemoryStorage()
-	assert.Nil(t, err)
-	return s
 }
 
 func TestTrieBatch(t *testing.T) {
