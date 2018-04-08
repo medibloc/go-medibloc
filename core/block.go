@@ -10,6 +10,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	byteutils "github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/logging"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -383,4 +384,18 @@ func (block *Block) Commit() error {
 		return err
 	}
 	return nil
+}
+
+func bytesToBlock(bytes []byte) (*Block, error) {
+	pb := new(corepb.Block)
+	if err := proto.Unmarshal(bytes, pb); err != nil {
+		logging.Debug("") // TODO
+		return nil, err
+	}
+	block := new(Block)
+	if err := block.FromProto(pb); err != nil {
+		logging.Debug("") // TODO
+		return nil, err
+	}
+	return block, nil
 }
