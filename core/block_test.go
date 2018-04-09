@@ -17,12 +17,6 @@ var (
 	blockTestDataDir = "./testdata/block"
 )
 
-func init() {
-	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
-	genesisBlock, _ = core.NewGenesisBlock(conf, blockTestDataDir)
-	chainID = conf.Meta.ChainId
-}
-
 func TestNewBlock(t *testing.T) {
 	assert.NotNil(t, genesisBlock)
 

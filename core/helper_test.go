@@ -23,7 +23,8 @@ var (
 
 func init() {
 	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
-	genesisBlock, _ = core.NewGenesisBlock(conf, blockpoolTestDataDir)
+	s, _ := storage.NewMemoryStorage()
+	genesisBlock, _ = core.NewGenesisBlock(conf, s)
 	chainID = conf.Meta.ChainId
 }
 

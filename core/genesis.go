@@ -36,14 +36,9 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 }
 
 // NewGenesisBlock generates genesis block
-func NewGenesisBlock(conf *corepb.Genesis, storagePath string) (*Block, error) {
+func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) {
 	if conf == nil {
 		return nil, ErrNilArgument
-	}
-
-	sto, err := storage.NewStorage(storagePath)
-	if err != nil {
-		return nil, err
 	}
 
 	blockState, err := NewBlockState(sto)

@@ -30,7 +30,6 @@ var (
 var (
 	chainID                uint32 = 1010 // TODO
 	defaultGenesisConfPath        = "conf/default/genesis.conf"
-	blockDataDir                  = "temp.temp"
 	blockPoolSize                 = 128
 )
 
@@ -70,7 +69,7 @@ func StartBlockSubscriber(netService net.Service, storage storage.Storage) error
 	if err != nil {
 		return err
 	}
-	genesisBlock, err := NewGenesisBlock(conf, blockDataDir)
+	genesisBlock, err := NewGenesisBlock(conf, storage)
 	if err != nil {
 		return err
 	}

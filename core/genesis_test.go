@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +20,8 @@ var (
 func TestNewGenesisBlock(t *testing.T) {
 	conf, err := core.LoadGenesisConf(defaultGenesisConfPath)
 	assert.NoError(t, err)
-	genesisBlock, err := core.NewGenesisBlock(conf, genesisTestDataDir)
+	s, _ := storage.NewMemoryStorage()
+	genesisBlock, err := core.NewGenesisBlock(conf, s)
 	assert.NoError(t, err)
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
