@@ -8,8 +8,11 @@ import (
 
 	"fmt"
 
+	"sync"
+
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/multiformats/go-multiaddr"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,6 +25,7 @@ const (
 	TestRoutingTableDir              = "./testdata/cache/"
 	TestRouteTableSyncLoopInterval   = 100 * time.Millisecond
 	TestRouteTableSaveToDiskInterval = 1 * time.Second
+	RouteTableCheckInterval          = 100 * time.Millisecond
 )
 
 func makeNewTestNode(privateKeyPath string) (*Node, error) {
@@ -33,6 +37,50 @@ func makeNewTestNode(privateKeyPath string) (*Node, error) {
 	node.routeTable.cacheFilePath += fmt.Sprintf(".%s", node.ID())
 
 	return node, err
+}
+
+// makeAndSetNewTestNodes returns nodes(seed nodes first) and its IDs with seedNodes configuration
+func makeAndSetNewTestNodes(nodeNum int, seedNum int) ([]*Node, []peer.ID, error) {
+	nodeArr := make([]*Node, nodeNum)
+	var seedNodes []ma.Multiaddr
+	var seedNodeIDs, allNodeIDs []peer.ID
+	var err error
+
+	// make all test nodes
+	for i := 0; i < nodeNum; i++ {
+		nodeArr[i], err = makeNewTestNode("")
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// set value of seedNodes, seedNodeIDs
+	for i := 0; i < seedNum; i++ {
+		seedMultiaddrs, err := convertListenAddrToMultiAddr(nodeArr[i].config.Listen)
+		if err != nil {
+			return nil, nil, err
+		}
+		newSeedNodes, err := convertMultiAddrToIPFSMultiAddr(seedMultiaddrs, nodeArr[i].ID())
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, v := range newSeedNodes {
+			seedNodes = append(seedNodes, v)
+		}
+		seedNodeIDs = append(seedNodeIDs, nodeArr[i].id)
+	}
+
+	// set value of allNodeIDs
+	for i := 0; i < nodeNum; i++ {
+		allNodeIDs = append(allNodeIDs, nodeArr[i].id)
+	}
+
+	// setup seedNodes to every nodes
+	for i := 0; i < nodeNum; i++ {
+		nodeArr[i].routeTable.seedNodes = seedNodes
+	}
+
+	return nodeArr, allNodeIDs, nil
 }
 
 func makeNewTestP2PConfig(privateKeyPath string) *Config {
@@ -50,7 +98,7 @@ func makeNewTestP2PConfig(privateKeyPath string) *Config {
 	config := &Config{
 		TestBucketCapacity,
 		TestRoutingTableMaxLatency,
-		[]multiaddr.Multiaddr{},
+		[]ma.Multiaddr{},
 		privateKeyPath,
 		randomListen,
 		TestMaxSyncNodes,
@@ -76,6 +124,36 @@ func makeRandomListen(low int64, high int64) []string {
 	randomListen := []string{"localhost:" + randomPortString}
 
 	return randomListen
+}
+
+func waitRouteTableSyncLoop(wg *sync.WaitGroup, node *Node, nodeIDs []peer.ID) {
+	defer wg.Done()
+	ids := make([]peer.ID, len(nodeIDs))
+	copy(ids, nodeIDs)
+	remainIteration := 100
+
+	for len(ids) > 0 {
+		i := 0
+		for _, v := range ids {
+			if node.routeTable.peerStore.Addrs(v) == nil {
+				ids[i] = v
+				i++
+			}
+		}
+		ids = ids[:i]
+
+		time.Sleep(RouteTableCheckInterval)
+
+		remainIteration--
+		// fail if (sec * len(nodeIDs)) seconds left
+		if remainIteration < 1 && len(ids) > 0 {
+			logging.Console().WithFields(logrus.Fields{
+				"node ID":                          node.ID(),
+				"routeTable not synced node count": len(ids),
+			}).Warn("route table not synced in time")
+			return
+		}
+	}
 }
 
 // PrintRouteTablePeers prints peers in route table
