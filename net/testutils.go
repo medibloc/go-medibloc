@@ -1,14 +1,12 @@
 package net
 
 import (
+	"errors"
+	"fmt"
 	"math/rand"
 	"strconv"
-
-	"time"
-
-	"fmt"
-
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -27,6 +25,76 @@ const (
 	TestRouteTableSaveToDiskInterval = 1 * time.Second
 	RouteTableCheckInterval          = 100 * time.Millisecond
 )
+
+// error for test
+var (
+	ErrInvalidTestNodeIndex = errors.New("invalid test node index")
+)
+
+// NodeTestManager manages test nodes
+type NodeTestManager struct {
+	nodeIDs []peer.ID
+	nodeNum int
+	nodes   []*Node
+	seedNum int
+}
+
+// NewNodeTestManager returns nodeTestManager
+func NewNodeTestManager(nodeNum int, seedNum int) *NodeTestManager {
+	if nodeNum < 1 {
+		return nil
+	}
+	if nodeNum < seedNum {
+		seedNum = nodeNum
+	}
+	return &NodeTestManager{
+		nodeNum: nodeNum,
+		seedNum: seedNum,
+	}
+}
+
+// MakeNewTestNodes returns nodes.
+// seed nodes are first seedNum nodes in nodes
+func (ntm *NodeTestManager) MakeNewTestNodes() ([]*Node, error) {
+	if ntm.nodes != nil {
+		return ntm.nodes, nil
+	}
+	var err error
+	ntm.nodes, ntm.nodeIDs, err = makeAndSetNewTestNodes(ntm.nodeNum, ntm.seedNum)
+	return ntm.nodes, err
+}
+
+// Node returns node of specific index
+func (ntm *NodeTestManager) Node(idx int) (*Node, error) {
+	if idx < 0 && idx >= ntm.nodeNum {
+		return nil, ErrInvalidTestNodeIndex
+	}
+	return ntm.nodes[idx], nil
+}
+
+// StartTestNodes starts nodes
+func (ntm *NodeTestManager) StartTestNodes() {
+	for _, n := range ntm.nodes {
+		n.Start()
+	}
+}
+
+// StopTestNodes stops nodes
+func (ntm *NodeTestManager) StopTestNodes() {
+	for _, n := range ntm.nodes {
+		n.Stop()
+	}
+}
+
+// WaitRouteTableSync waits until routing tables are synced
+func (ntm *NodeTestManager) WaitRouteTableSync() {
+	var wg sync.WaitGroup
+	for _, n := range ntm.nodes {
+		wg.Add(1)
+		waitRouteTableSyncLoop(&wg, n, ntm.nodeIDs)
+	}
+	wg.Wait()
+}
 
 func makeNewTestNode(privateKeyPath string) (*Node, error) {
 	config := makeNewTestP2PConfig(privateKeyPath)
