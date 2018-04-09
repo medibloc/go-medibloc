@@ -18,11 +18,20 @@ package core
 
 import (
 	"github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 var (
 	MessageTypeNewBlock = "newblock"
+)
+
+var (
+	chainID                uint32 = 1010 // TODO
+	defaultGenesisConfPath        = "conf/default/genesis.conf"
+	blockDataDir                  = "temp.temp"
+	blockPoolSize                 = 128
 )
 
 func findChildren(block *Block, bp *BlockPool) ([]*Block, []*Block) {
@@ -52,24 +61,53 @@ type BlockSubscriber struct {
 var bs *BlockSubscriber
 
 // StartBlockHandler
-func StartBlockSubscriber(netService net.Service, bc *BlockChain, bp *BlockPool) {
+func StartBlockSubscriber(netService net.Service, storage storage.Storage) error {
+	bp, err := NewBlockPool(blockPoolSize)
+	if err != nil {
+		return err
+	}
+	conf, err := LoadGenesisConf(defaultGenesisConfPath)
+	if err != nil {
+		return err
+	}
+	genesisBlock, err := NewGenesisBlock(conf, blockDataDir)
+	if err != nil {
+		return err
+	}
+	bc, err := NewBlockChain(chainID, genesisBlock, storage)
+	if err != nil {
+		return err
+	}
+
 	bs = &BlockSubscriber{
 		msgCh:  make(chan net.Message),
 		quitCh: make(chan int),
 	}
 	netService.Register(net.NewSubscriber(bs, bs.msgCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
-	for {
-		select {
-		case msg := <-bs.msgCh:
-			block, err := bytesToBlock(msg.Data())
-			if err != nil {
-				logging.Error("failed to parse Block") // TODO
-				continue
+	go func() {
+		for {
+			select {
+			case msg := <-bs.msgCh:
+				block, err := bytesToBlock(msg.Data())
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("failed to parse Block")
+					continue
+				}
+				// logging.Console().Info("New Block Arrived")
+				handleReceivedBlock(block, bc, bp)
+			case <-bs.quitCh:
+				return
 			}
-			handleReceivedBlock(block, bc, bp)
-		case <-bs.quitCh:
-			return
 		}
+	}()
+	return nil
+}
+
+func StopBlockSubscriber() {
+	if bs != nil {
+		bs.quitCh <- 0
 	}
 }
 

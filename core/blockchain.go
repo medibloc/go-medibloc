@@ -63,6 +63,10 @@ func NewBlockChain(chainID uint32, genesisBlock *Block, storage storage.Storage)
 	return blockChain, nil
 }
 
+func (bc *BlockChain) ChainID() uint32 {
+	return bc.chainID
+}
+
 func (bc *BlockChain) GetTailBlock(hash common.Hash) *Block {
 	if v, ok := bc.tailBlocks.Get(hash.Str()); ok {
 		return v.(*Block)

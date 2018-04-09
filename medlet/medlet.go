@@ -1,8 +1,10 @@
 package medlet
 
 import (
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	mednet "github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
 	m "github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
@@ -46,9 +48,25 @@ func (m *Medlet) Start() {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Fatal("Failed to start net service.")
+		return
 	}
 
 	metricsMedstartGauge.Update(1)
+
+	s, err := storage.NewLeveldbStorage(m.config.Chain.Datadir)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to create leveldb storage")
+		return
+	}
+	err = core.StartBlockSubscriber(m.netService, s)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to start block subscriber")
+		return
+	}
 
 	logging.Console().Info("Started Medlet.")
 }
@@ -59,6 +77,8 @@ func (m *Medlet) Stop() {
 		m.netService.Stop()
 		m.netService = nil
 	}
+
+	core.StopBlockSubscriber()
 
 	logging.Console().Info("Stopped Medlet.")
 }

@@ -59,7 +59,7 @@ func defaultConfig() *medletpb.Config {
 		Chain: &medletpb.ChainConfig{
 			ChainId:          1010,
 			Genesis:          "",
-			Datadir:          "",
+			Datadir:          "data.db",
 			Keydir:           "",
 			StartMine:        false,
 			Coinbase:         "",
