@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type msgFields struct {
+type medMsgFields struct {
 	chainID     uint32
 	reserved    []byte
 	version     byte
@@ -17,12 +17,12 @@ type msgFields struct {
 func TestNewMedMessageWithLimits(t *testing.T) {
 	tests := []struct {
 		name          string
-		field         msgFields
+		field         medMsgFields
 		expectedError error
 	}{
 		{
 			"ExceedMaxDataLength",
-			msgFields(msgFields{
+			medMsgFields(medMsgFields{
 				100,
 				[]byte{0x0, 0x0, 0x0},
 				0,
@@ -33,7 +33,7 @@ func TestNewMedMessageWithLimits(t *testing.T) {
 		},
 		{
 			"ExceedMaxMessageNameLength",
-			msgFields(msgFields{
+			medMsgFields(medMsgFields{
 				100,
 				[]byte{0x0, 0x0, 0x0},
 				0,
@@ -61,12 +61,12 @@ func TestNewMedMessageWithLimits(t *testing.T) {
 func TestNewMedMessage(t *testing.T) {
 	tests := []struct {
 		name            string
-		field           msgFields
+		field           medMsgFields
 		expectedContent []byte
 	}{
 		{
 			"NewMedMessage1",
-			msgFields(msgFields{
+			medMsgFields(medMsgFields{
 				100,
 				[]byte{0x0, 0x0, 0x0},
 				0,
@@ -88,7 +88,7 @@ func TestNewMedMessage(t *testing.T) {
 		},
 		{
 			"NewMedMessage2",
-			msgFields(msgFields{
+			medMsgFields(medMsgFields{
 				1001,
 				[]byte{0x0, 0x0, 0x1},
 				1,
