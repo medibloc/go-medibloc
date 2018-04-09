@@ -19,8 +19,9 @@ type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
 
-	accsRoot common.Hash
-	txsRoot  common.Hash
+	accsRoot  common.Hash
+	txsRoot   common.Hash
+	usageRoot common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -37,6 +38,7 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		ParentHash: b.parentHash.Bytes(),
 		AccsRoot:   b.accsRoot.Bytes(),
 		TxsRoot:    b.txsRoot.Bytes(),
+		UsageRoot:  b.usageRoot.Bytes(),
 		Coinbase:   b.coinbase.Bytes(),
 		Timestamp:  b.timestamp,
 		ChainId:    b.chainID,
@@ -52,6 +54,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.parentHash = common.BytesToHash(msg.ParentHash)
 		b.accsRoot = common.BytesToHash(msg.AccsRoot)
 		b.txsRoot = common.BytesToHash(msg.TxsRoot)
+		b.usageRoot = common.BytesToHash(msg.UsageRoot)
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
@@ -312,7 +315,7 @@ func (block *Block) ExecuteAll() error {
 
 // AcceptTransaction adds tx in block state
 func (block *Block) AcceptTransaction(tx *Transaction) error {
-	return block.state.AcceptTransaction(tx)
+	return block.state.AcceptTransaction(tx, block.Timestamp())
 }
 
 // VerifyState verifies block states comparing with root hashes in header

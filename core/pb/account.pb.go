@@ -9,6 +9,7 @@ It is generated from these files:
 	block.proto
 	genesis.proto
 	transaction.proto
+	usage.proto
 
 It has these top-level messages:
 	Account
@@ -19,6 +20,8 @@ It has these top-level messages:
 	GenesisTokenDistribution
 	Data
 	Transaction
+	Usage
+	TxTimestamp
 */
 package corepb
 

@@ -37,4 +37,5 @@ var (
 	ErrBlockNotSealed            = errors.New("block should be sealed first to be signed")
 	ErrInvalidBlockAccountsRoot  = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot       = errors.New("invalid transactions state root hash")
+	ErrTooOldTransaction         = errors.New("transaction timestamp is too old")
 )

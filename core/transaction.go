@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -16,15 +17,16 @@ import (
 
 // Transaction struct represents transaction
 type Transaction struct {
-	hash    common.Hash
-	from    common.Address
-	to      common.Address
-	value   *util.Uint128
-	data    *corepb.Data
-	nonce   uint64
-	chainID uint32
-	alg     algorithm.Algorithm
-	sign    []byte
+	hash      common.Hash
+	from      common.Address
+	to        common.Address
+	value     *util.Uint128
+	timestamp int64
+	data      *corepb.Data
+	nonce     uint64
+	chainID   uint32
+	alg       algorithm.Algorithm
+	sign      []byte
 }
 
 // Transactions is just multiple txs
@@ -38,15 +40,16 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
 	}
 
 	return &corepb.Transaction{
-		Hash:    tx.hash.Bytes(),
-		From:    tx.from.Bytes(),
-		To:      tx.to.Bytes(),
-		Value:   value,
-		Data:    tx.data,
-		Nonce:   tx.nonce,
-		ChainId: tx.chainID,
-		Alg:     uint32(tx.alg),
-		Sign:    tx.sign,
+		Hash:      tx.hash.Bytes(),
+		From:      tx.from.Bytes(),
+		To:        tx.to.Bytes(),
+		Value:     value,
+		Timestamp: tx.timestamp,
+		Data:      tx.data,
+		Nonce:     tx.nonce,
+		ChainId:   tx.chainID,
+		Alg:       uint32(tx.alg),
+		Sign:      tx.sign,
 	}, nil
 }
 
@@ -62,6 +65,7 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 			return err
 		}
 		tx.value = value
+		tx.timestamp = msg.Timestamp
 		tx.data = msg.Data
 		tx.nonce = msg.Nonce
 		tx.chainID = msg.ChainId
@@ -82,14 +86,15 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 // NewTransaction generates a Transaction instance
 func NewTransaction(chainID uint32, from, to common.Address, value *util.Uint128, nonce uint64, payloadType string, payload []byte) (*Transaction, error) {
 	tx := &Transaction{
-		from:    from,
-		to:      to,
-		value:   value,
-		data:    &corepb.Data{Type: payloadType, Payload: payload},
-		nonce:   nonce,
-		chainID: chainID,
-		hash:    common.BytesToHash([]byte{}),
-		sign:    []byte{},
+		from:      from,
+		to:        to,
+		value:     value,
+		timestamp: time.Now().Unix(),
+		data:      &corepb.Data{Type: payloadType, Payload: payload},
+		nonce:     nonce,
+		chainID:   chainID,
+		hash:      common.BytesToHash([]byte{}),
+		sign:      []byte{},
 	}
 
 	return tx, nil
@@ -105,6 +110,7 @@ func (tx *Transaction) calcHash() (common.Hash, error) {
 	hasher.Write(tx.from.Bytes())
 	hasher.Write(tx.to.Bytes())
 	hasher.Write(value)
+	hasher.Write(byteutils.FromInt64(tx.timestamp))
 	hasher.Write([]byte(tx.data.Type))
 	hasher.Write(tx.data.Payload)
 	hasher.Write(byteutils.FromUint64(tx.nonce))
@@ -190,6 +196,16 @@ func (tx *Transaction) To() common.Address {
 // Value returns value
 func (tx *Transaction) Value() *util.Uint128 {
 	return tx.value
+}
+
+// Timestamp returns tx timestamp
+func (tx *Transaction) Timestamp() int64 {
+	return tx.timestamp
+}
+
+// SetTimestamp sets tx timestamp
+func (tx *Transaction) SetTimestamp(t int64) {
+	tx.timestamp = t
 }
 
 // Type returns tx type
