@@ -44,3 +44,20 @@ func (k *PublicKey) Verify(msg []byte, sig []byte) (bool, error) {
 	}
 	return VerifySignature(pub, msg, sig), nil
 }
+
+func (k *PublicKey) Compressed() ([]byte, error) {
+	return CompressPubkey(k.publicKey.X, k.publicKey.Y)
+}
+
+func (k *PublicKey) Decompress(data []byte) error {
+	x, y, err := DecompressPubkey(data)
+	if err != nil {
+		return err
+	}
+
+	k.publicKey = ecdsa.PublicKey{
+		S256(), x, y,
+	}
+
+	return nil
+}

@@ -26,20 +26,20 @@ func init() {
 func TestNewBlock(t *testing.T) {
 	assert.NotNil(t, genesisBlock)
 
-	coinbase := common.HexToAddress("ca2d63635cae0d8e307ff9ae4af169ee103492dc")
+	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
 	_, err := core.NewBlock(chainID, coinbase, genesisBlock)
 	assert.NoError(t, err)
 }
 
 func TestSendExecution(t *testing.T) {
-	coinbase := common.HexToAddress("ca2d63635cae0d8e307ff9ae4af169ee103492dc")
+	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
 	newBlock, err := core.NewBlock(chainID, coinbase, genesisBlock)
 	assert.NoError(t, err)
 
 	privHexes := []string{
-		"7f1947c1b4a6dbec0606993ef33266a17afbca07a19cc0e38b40e7dc6dede893",
-		"a073b44d582ec1128f0fd2b172ff506908e43d1a036557630ac87828456020a7",
-		"83835554d63e35faebb4d5d2bc7f8208ca7c6d6f4a055a62125873fb6f50726b",
+		"bd516113ecb3ad02f3a5bf750b65a545d56835e3d7ef92159dc655ed3745d5c0",
+		"b108356a113edaaf537b6cd4f506f72787d69de3c3465adc30741653949e2173",
+		"a396832a6aac41cb5844ecf86b2ec0406daa5aad4a6612964aa5e8c65abdf451",
 	}
 
 	privKeys := make([]signature.PrivateKey, len(privHexes))
@@ -57,23 +57,23 @@ func TestSendExecution(t *testing.T) {
 		expectedResultAmount *util.Uint128
 	}{
 		{
-			common.HexToAddress("0a7bad9acdfc5770a0239f8fd8939946c3b7f7f4"),
+			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
 			privKeys[0],
-			common.HexToAddress("fff4183e08bf9c2b38b490582fb9398cdcd875b0"),
+			common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
 			util.NewUint128FromUint(10),
 			util.NewUint128FromUint(1000000090),
 		},
 		{
-			common.HexToAddress("fff4183e08bf9c2b38b490582fb9398cdcd875b0"),
+			common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
 			privKeys[1],
-			common.HexToAddress("87eb7f380a02f7a451188524f8d83b6107b4c573"),
+			common.HexToAddress("027064502450c5192fabba2ac9714606edd724a9b03cc79d26327159435eba99a7"),
 			util.NewUint128FromUint(20),
 			util.NewUint128FromUint(999999990),
 		},
 		{
-			common.HexToAddress("87eb7f380a02f7a451188524f8d83b6107b4c573"),
+			common.HexToAddress("027064502450c5192fabba2ac9714606edd724a9b03cc79d26327159435eba99a7"),
 			privKeys[2],
-			common.HexToAddress("0a7bad9acdfc5770a0239f8fd8939946c3b7f7f4"),
+			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
 			util.NewUint128FromUint(100),
 			util.NewUint128FromUint(999999920),
 		},
@@ -99,7 +99,7 @@ func TestSendExecution(t *testing.T) {
 	newBlock.Commit()
 	assert.NoError(t, newBlock.Seal())
 
-	coinbaseKey, err := secp256k1.HexToECDSA("4bad60a1096693414a1e7251784b5c456ab1861d3d80f02dfb7e4b86968999e2")
+	coinbaseKey, err := secp256k1.HexToECDSA("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
 
 	blockSigner, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
@@ -124,17 +124,17 @@ func TestSendExecution(t *testing.T) {
 }
 
 func TestSendMoreThanBalance(t *testing.T) {
-	coinbase := common.HexToAddress("ca2d63635cae0d8e307ff9ae4af169ee103492dc")
+	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
 	newBlock, err := core.NewBlock(chainID, coinbase, genesisBlock)
 	assert.NoError(t, err)
 
-	privHex := "7f1947c1b4a6dbec0606993ef33266a17afbca07a19cc0e38b40e7dc6dede893"
+	privHex := "ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea"
 
 	privKey, err := secp256k1.NewPrivateKeyFromHex(privHex)
 	assert.NoError(t, err)
 
-	from := common.HexToAddress("87eb7f380a02f7a451188524f8d83b6107b4c573")
-	to := common.HexToAddress("0a7bad9acdfc5770a0239f8fd8939946c3b7f7f4")
+	from := common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939")
+	to := common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21")
 
 	balance := util.NewUint128FromUint(1000000090)
 	sendingAmount, err := balance.Add(util.NewUint128FromUint(1))

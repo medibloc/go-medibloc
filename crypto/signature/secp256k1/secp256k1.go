@@ -138,9 +138,9 @@ func VerifySignature(pubkey, msg, signature []byte) bool {
 
 // DecompressPubkey parses a public key in the 33-byte compressed format.
 // It returns non-nil coordinates if the public key is valid.
-func DecompressPubkey(pubkey []byte) (x, y *big.Int) {
+func DecompressPubkey(pubkey []byte) (x, y *big.Int, err error) {
 	if len(pubkey) != 33 {
-		return nil, nil
+		return nil, nil, errors.New("compressed pubkey length should be 33")
 	}
 	var (
 		pubkeydata = (*C.uchar)(unsafe.Pointer(&pubkey[0]))
@@ -150,13 +150,13 @@ func DecompressPubkey(pubkey []byte) (x, y *big.Int) {
 		outlen     = C.size_t(len(out))
 	)
 	if C.secp256k1_ext_reencode_pubkey(context, outdata, outlen, pubkeydata, pubkeylen) == 0 {
-		return nil, nil
+		return nil, nil, errors.New("secp256k1_ext_reencode_pubkey error")
 	}
-	return new(big.Int).SetBytes(out[1:33]), new(big.Int).SetBytes(out[33:])
+	return new(big.Int).SetBytes(out[1:33]), new(big.Int).SetBytes(out[33:]), nil
 }
 
 // CompressPubkey encodes a public key to 33-byte compressed format.
-func CompressPubkey(x, y *big.Int) []byte {
+func CompressPubkey(x, y *big.Int) ([]byte, error) {
 	var (
 		pubkey     = S256().Marshal(x, y)
 		pubkeydata = (*C.uchar)(unsafe.Pointer(&pubkey[0]))
@@ -166,9 +166,9 @@ func CompressPubkey(x, y *big.Int) []byte {
 		outlen     = C.size_t(len(out))
 	)
 	if C.secp256k1_ext_reencode_pubkey(context, outdata, outlen, pubkeydata, pubkeylen) == 0 {
-		panic("libsecp256k1 error")
+		return nil, errors.New("libsecp256k1 error")
 	}
-	return out
+	return out, nil
 }
 
 func checkSignature(sig []byte) error {

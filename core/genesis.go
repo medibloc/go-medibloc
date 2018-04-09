@@ -17,7 +17,7 @@ var (
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
-	GenesisCoinbase = common.HexToAddress("ff7b1d22d234bde673bfa783d6c0c6b835aab407")
+	GenesisCoinbase = common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
 )
 
 // LoadGenesisConf loads genesis conf file

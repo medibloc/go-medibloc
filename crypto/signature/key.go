@@ -62,6 +62,10 @@ type PublicKey interface {
 	// Decode decode data to key
 	Decode(data []byte) error
 
+	Compressed() ([]byte, error)
+
+	Decompress(data []byte) error
+
 	// Clear clear key content
 	Clear()
 }

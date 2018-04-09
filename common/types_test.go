@@ -21,15 +21,15 @@ func TestIsHexAddress(t *testing.T) {
 		str string
 		exp bool
 	}{
-		{"0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed", true},
-		{"5aaeb6053f3e94c9b9a09f33669435e7ef1beaed", true},
-		{"0X5aaeb6053f3e94c9b9a09f33669435e7ef1beaed", true},
-		{"0XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", true},
-		{"0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", true},
-		{"0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed1", false},
-		{"0x5aaeb6053f3e94c9b9a09f33669435e7ef1beae", false},
-		{"5aaeb6053f3e94c9b9a09f33669435e7ef1beaed11", false},
-		{"0xxaaeb6053f3e94c9b9a09f33669435e7ef1beaed", false},
+		{"0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed5aaeb6053f3e94c9b9a09f3366", true},
+		{"5aaeb6053f3e94c9b9a09f33669435e7ef1beaed5aaeb6053f3e94c9b9a09f3366", true},
+		{"0X5aaeb6053f3e94c9b9a09f33669435e7ef1beaed5aaeb6053f3e94c9b9a09f3366", true},
+		{"0XAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", true},
+		{"0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", true},
+		{"0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed15aaeb6053f3e94c9b9a09f3366", false},
+		{"0x5aaeb6053f3e94c9b9a09f33669435e7ef1beae5aaeb6053f3e94c9b9a09f3366", false},
+		{"5aaeb6053f3e94c9b9a09f33669435e7ef1beaed115aaeb6053f3e94c9b9a09f3366", false},
+		{"0xxaaeb6053f3e94c9b9a09f33669435e7ef1beaedaaeb6053f3e94c9b9a09f33669", false},
 	}
 
 	for _, test := range tests {

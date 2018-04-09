@@ -13,7 +13,7 @@ var (
 	defaultGenesisConfPath = "../conf/default/genesis.conf"
 	genesisTestDataDir     = "./testdata/genesis"
 
-	initialDist1 = "ff7b1d22d234bde673bfa783d6c0c6b835aab407"
+	initialDist1 = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 )
 
 func TestNewGenesisBlock(t *testing.T) {
@@ -32,7 +32,7 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.NoError(t, err)
 	accState := accStateBatch.AccountState()
 
-	addr, err := hex.DecodeString("ff7b1d22d234bde673bfa783d6c0c6b835aab407")
+	addr, err := hex.DecodeString("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
 	assert.NoError(t, err)
 	acc, err := accState.GetAccount(addr)
 	assert.NoError(t, err)
