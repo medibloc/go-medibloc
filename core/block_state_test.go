@@ -10,6 +10,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +22,8 @@ var (
 
 func init() {
 	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
-	blockStateGenesisBlock, _ = core.NewGenesisBlock(conf, blockStateTestDataDir)
+	s, _ := storage.NewMemoryStorage()
+	blockStateGenesisBlock, _ = core.NewGenesisBlock(conf, s)
 	chainID = conf.Meta.ChainId
 }
 
