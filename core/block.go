@@ -366,7 +366,7 @@ func (block *Block) ExecuteAll() error {
 			return err
 		}
 
-		if err := block.AcceptTransaction(tx); err != nil {
+		if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
 			block.RollBack()
 			return err
 		}
