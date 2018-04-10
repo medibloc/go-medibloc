@@ -159,7 +159,10 @@ func (ntm *NodeTestManager) WaitRouteTableSync() {
 	var wg sync.WaitGroup
 	for _, n := range ntm.nodes {
 		wg.Add(1)
-		waitRouteTableSyncLoop(&wg, n, ntm.nodeIDs)
+		go func() {
+			defer wg.Done()
+			waitRouteTableSyncLoop(n, ntm.nodeIDs)
+		}()
 	}
 	wg.Wait()
 }
@@ -262,8 +265,7 @@ func makeRandomListen(low int64, high int64) []string {
 	return randomListen
 }
 
-func waitRouteTableSyncLoop(wg *sync.WaitGroup, node *Node, nodeIDs []peer.ID) {
-	defer wg.Done()
+func waitRouteTableSyncLoop(node *Node, nodeIDs []peer.ID) {
 	ids := make([]peer.ID, len(nodeIDs))
 	copy(ids, nodeIDs)
 	remainIteration := 100
