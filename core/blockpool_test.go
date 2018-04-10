@@ -39,7 +39,7 @@ func TestBlockPoolPush(t *testing.T) {
 
 				// Check finding children blocks
 				childIDs := findChildIDs(test.idxToParent, id)
-				childBlocks := make([]*core.Block, 0)
+				childBlocks := make([]core.HashableBlock, 0)
 				for _, cid := range childIDs {
 					childBlocks = append(childBlocks, blocks[cid])
 				}
@@ -169,7 +169,7 @@ func TestFindBlockWithoutPush(t *testing.T) {
 
 	blocks := bp.FindChildren(parent)
 	assert.Len(t, blocks, 2)
-	assert.True(t, equalBlocks([]*core.Block{child1, child2}, blocks))
+	assert.True(t, equalBlocks([]core.HashableBlock{child1, child2}, blocks))
 }
 
 func findChildIDs(idxToParent []blockID, id blockID) (childIDs []blockID) {
@@ -181,7 +181,7 @@ func findChildIDs(idxToParent []blockID, id blockID) (childIDs []blockID) {
 	return childIDs
 }
 
-func equalBlocks(expected, actual []*core.Block) bool {
+func equalBlocks(expected, actual []core.HashableBlock) bool {
 	if len(expected) != len(actual) {
 		return false
 	}

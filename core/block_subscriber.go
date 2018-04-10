@@ -36,7 +36,7 @@ var (
 func findChildren(block *Block, bp *BlockPool) ([]*Block, []*Block) {
 	allBlocks := make([]*Block, 0)
 	tailBlocks := make([]*Block, 0)
-	blocks := make([]*Block, 0)
+	blocks := make([]HashableBlock, 0)
 	blocks = append(blocks, block)
 	for len(blocks) > 0 {
 		curBlock := blocks[0]
@@ -44,7 +44,7 @@ func findChildren(block *Block, bp *BlockPool) ([]*Block, []*Block) {
 		blocks = blocks[1:]
 		children := bp.FindChildren(curBlock)
 		if len(children) == 0 {
-			tailBlocks = append(tailBlocks, curBlock)
+			tailBlocks = append(tailBlocks, curBlock.(*Block))
 		} else {
 			blocks = append(blocks, children...)
 		}

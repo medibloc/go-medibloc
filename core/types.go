@@ -2,6 +2,8 @@ package core
 
 import (
 	"errors"
+
+	"github.com/medibloc/go-medibloc/common"
 )
 
 const (
@@ -20,6 +22,7 @@ const (
 var (
 	ErrCannotConvertTransaction  = errors.New("proto message cannot be converted into Transaction")
 	ErrDuplicatedBlock           = errors.New("duplicated block")
+	ErrDuplicatedTransaction     = errors.New("duplicated transaction")
 	ErrInvalidTransactionHash    = errors.New("invalid transaction hash")
 	ErrInvalidTransactionSigner  = errors.New("transaction recover public key address not equal to from")
 	ErrInvalidProtoToBlock       = errors.New("protobuf message cannot be converted into Block")
@@ -39,3 +42,9 @@ var (
 	ErrInvalidBlockTxsRoot       = errors.New("invalid transactions state root hash")
 	ErrTooOldTransaction         = errors.New("transaction timestamp is too old")
 )
+
+// HashableBlock is an interface that can get its own or parent's hash.
+type HashableBlock interface {
+	Hash() common.Hash
+	ParentHash() common.Hash
+}

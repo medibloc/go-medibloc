@@ -38,7 +38,7 @@ func NewBlockPool(size int) (bp *BlockPool, err error) {
 }
 
 // Push links the block with parent and children blocks and push to the BlockPool.
-func (bp *BlockPool) Push(block *Block) error {
+func (bp *BlockPool) Push(block HashableBlock) error {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -68,7 +68,7 @@ func (bp *BlockPool) Push(block *Block) error {
 }
 
 // Remove removes block in BlockPool.
-func (bp *BlockPool) Remove(block *Block) {
+func (bp *BlockPool) Remove(block HashableBlock) {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -76,7 +76,7 @@ func (bp *BlockPool) Remove(block *Block) {
 }
 
 // FindParent finds parent block.
-func (bp *BlockPool) FindParent(block *Block) *Block {
+func (bp *BlockPool) FindParent(block HashableBlock) HashableBlock {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -87,7 +87,7 @@ func (bp *BlockPool) FindParent(block *Block) *Block {
 }
 
 // FindUnlinkedAncestor finds block's unlinked ancestor in BlockPool.
-func (bp *BlockPool) FindUnlinkedAncestor(block *Block) *Block {
+func (bp *BlockPool) FindUnlinkedAncestor(block HashableBlock) HashableBlock {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -103,7 +103,7 @@ func (bp *BlockPool) FindUnlinkedAncestor(block *Block) *Block {
 }
 
 // FindChildren finds children blocks.
-func (bp *BlockPool) FindChildren(block *Block) (childBlocks []*Block) {
+func (bp *BlockPool) FindChildren(block HashableBlock) (childBlocks []HashableBlock) {
 	bp.mu.RLock()
 	defer bp.mu.RUnlock()
 
@@ -125,11 +125,11 @@ func (bp *BlockPool) FindChildren(block *Block) (childBlocks []*Block) {
 }
 
 // Has returns true if BlockPool contains block.
-func (bp *BlockPool) Has(block *Block) bool {
+func (bp *BlockPool) Has(block HashableBlock) bool {
 	return bp.cache.Contains(block.Hash())
 }
 
-func (bp *BlockPool) findParentLinkedBlock(block *Block) *linkedBlock {
+func (bp *BlockPool) findParentLinkedBlock(block HashableBlock) *linkedBlock {
 	if plb, ok := bp.cache.Get(block.ParentHash()); ok {
 		return plb.(*linkedBlock)
 	}
@@ -137,7 +137,7 @@ func (bp *BlockPool) findParentLinkedBlock(block *Block) *linkedBlock {
 }
 
 // TODO Improve lookup by adding another index of parent hash(?)
-func (bp *BlockPool) findChildLinkedBlocks(block *Block) (childBlocks []*linkedBlock) {
+func (bp *BlockPool) findChildLinkedBlocks(block HashableBlock) (childBlocks []*linkedBlock) {
 	for _, key := range bp.cache.Keys() {
 		v, ok := bp.cache.Get(key)
 		if !ok {
@@ -156,12 +156,12 @@ func (bp *BlockPool) findChildLinkedBlocks(block *Block) (childBlocks []*linkedB
 }
 
 type linkedBlock struct {
-	block             *Block
+	block             HashableBlock
 	parentLinkedBlock *linkedBlock
 	childLinkedBlocks map[common.Hash]*linkedBlock
 }
 
-func newLinkedBlock(block *Block) *linkedBlock {
+func newLinkedBlock(block HashableBlock) *linkedBlock {
 	return &linkedBlock{
 		block:             block,
 		childLinkedBlocks: make(map[common.Hash]*linkedBlock),
