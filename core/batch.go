@@ -298,9 +298,6 @@ func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 
 // GetAccount get account in stage(batching) or in original accountState
 func (as *AccountStateBatch) GetAccount(address []byte) (Account, error) {
-	if !as.batching {
-		return nil, ErrNotBatching
-	}
 	s := hex.EncodeToString(address)
 	if acc, ok := as.stageAccounts[s]; ok {
 		return acc, nil

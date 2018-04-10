@@ -126,7 +126,7 @@ func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
 	return nil
 }
 
-func (st *states) LoadTxsRoot(rootHash common.Hash) error {
+func (st *states) LoadTransactionsRoot(rootHash common.Hash) error {
 	txsState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
 	if err != nil {
 		return err

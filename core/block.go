@@ -65,27 +65,30 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlockHeader
 }
 
-// Block represents a block
-type Block struct {
+// BlockData represents a block
+type BlockData struct {
 	header       *BlockHeader
 	transactions Transactions
+	height       uint64
+}
 
+// Block represents block with actual state tries
+type Block struct {
+	*BlockData
 	storage storage.Storage
 	state   *BlockState
-
-	sealed bool
-	height uint64
+	sealed  bool
 }
 
 // ToProto converts Block to corepb.Block
-func (block *Block) ToProto() (proto.Message, error) {
-	header, err := block.header.ToProto()
+func (bd *BlockData) ToProto() (proto.Message, error) {
+	header, err := bd.header.ToProto()
 	if err != nil {
 		return nil, err
 	}
 	if header, ok := header.(*corepb.BlockHeader); ok {
-		txs := make([]*corepb.Transaction, len(block.transactions))
-		for idx, v := range block.transactions {
+		txs := make([]*corepb.Transaction, len(bd.transactions))
+		for idx, v := range bd.transactions {
 			tx, err := v.ToProto()
 			if err != nil {
 				return nil, err
@@ -99,35 +102,35 @@ func (block *Block) ToProto() (proto.Message, error) {
 		return &corepb.Block{
 			Header:       header,
 			Transactions: txs,
-			Height:       block.height,
+			Height:       bd.height,
 		}, nil
 	}
 	return nil, ErrInvalidBlockToProto
 }
 
 // FromProto converts corepb.Block to Block
-func (block *Block) FromProto(msg proto.Message) error {
+func (bd *BlockData) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Block); ok {
-		block.header = new(BlockHeader)
-		if err := block.header.FromProto(msg.Header); err != nil {
+		bd.header = new(BlockHeader)
+		if err := bd.header.FromProto(msg.Header); err != nil {
 			return err
 		}
 
-		block.transactions = make(Transactions, len(msg.Transactions))
+		bd.transactions = make(Transactions, len(msg.Transactions))
 		for idx, v := range msg.Transactions {
 			tx := new(Transaction)
 			if err := tx.FromProto(v); err != nil {
 				return err
 			}
-			block.transactions[idx] = tx
+			bd.transactions[idx] = tx
 		}
-		block.height = msg.Height
+		bd.height = msg.Height
 		return nil
 	}
 	return ErrInvalidProtoToBlock
 }
 
-// NewBlock initialize new block pointing parent
+// NewBlock initialize new block data
 func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, error) {
 	state, err := parent.state.Clone()
 	if err != nil {
@@ -135,64 +138,110 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 	}
 
 	block := &Block{
-		header: &BlockHeader{
-			parentHash: parent.Hash(),
-			coinbase:   coinbase,
-			timestamp:  time.Now().Unix(),
-			chainID:    chainID,
+		BlockData: &BlockData{
+			header: &BlockHeader{
+				parentHash: parent.Hash(),
+				coinbase:   coinbase,
+				timestamp:  time.Now().Unix(),
+				chainID:    chainID,
+			},
+			transactions: make(Transactions, 0),
+			height:       parent.height + 1,
 		},
-		transactions: make(Transactions, 0),
-		storage:      parent.storage,
-		state:        state,
-		height:       parent.height + 1,
-		sealed:       false,
+		storage: parent.storage,
+		state:   state,
+		sealed:  false,
 	}
 
 	return block, nil
 }
 
+// ExecuteOnParentBlock returns Block object with state after block execution
+func (bd *BlockData) ExecuteOnParentBlock(parent *Block) (*Block, error) {
+	block, err := prepareExecution(bd, parent)
+	if err != nil {
+		return nil, err
+	}
+	if err := block.ExecuteAll(); err != nil {
+		return nil, err
+	}
+	return block, err
+}
+
+// prepareExecution by setting states and storage as those of parents
+func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
+	var err error
+	block := &Block{
+		BlockData: bd,
+	}
+	if block.state, err = parent.state.Clone(); err != nil {
+		return nil, err
+	}
+	block.storage = parent.storage
+	return block, nil
+}
+
+// GetExecutedBlock converts BlockData instance to an already executed Block instance
+func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
+	var err error
+	block := &Block{
+		BlockData: bd,
+	}
+	if block.state, err = NewBlockState(storage); err != nil {
+		return nil, err
+	}
+	if err := block.state.LoadAccountsRoot(block.header.accsRoot); err != nil {
+		return nil, err
+	}
+	if err := block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
+		return nil, err
+	}
+	if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
+		return nil, err
+	}
+	block.storage = storage
+	return block, nil
+}
+
 // ChainID returns chain id
-func (block *Block) ChainID() uint32 {
-	return block.header.chainID
+func (bd *BlockData) ChainID() uint32 {
+	return bd.header.chainID
 }
 
 // Coinbase returns coinbase address
-func (block *Block) Coinbase() common.Address {
-	return block.header.coinbase
+func (bd *BlockData) Coinbase() common.Address {
+	return bd.header.coinbase
 }
 
 // Alg returns sign altorithm
-func (block *Block) Alg() algorithm.Algorithm {
-	return block.header.alg
+func (bd *BlockData) Alg() algorithm.Algorithm {
+	return bd.header.alg
 }
 
 // Signature returns block signature
-func (block *Block) Signature() []byte {
-	return block.header.sign
+func (bd *BlockData) Signature() []byte {
+	return bd.header.sign
 }
 
 // Timestamp returns timestamp
-func (block *Block) Timestamp() int64 {
-	return block.header.timestamp
+func (bd *BlockData) Timestamp() int64 {
+	return bd.header.timestamp
 }
 
 // SetTimestamp set block timestamp
-func (block *Block) SetTimestamp(timestamp int64) error {
-	if block.sealed {
-		return ErrBlockAlreadySealed
-	}
-	block.header.timestamp = timestamp
+func (bd *BlockData) SetTimestamp(timestamp int64) error {
+	bd.header.timestamp = timestamp
 	return nil
 }
 
 // Hash returns block hash
-func (block *Block) Hash() common.Hash {
-	return block.header.hash
+func (bd *BlockData) Hash() common.Hash {
+	return bd.header.hash
 }
 
 // ParentHash returns hash of parent block
-func (block *Block) ParentHash() common.Hash {
-	return block.header.parentHash
+func (bd *BlockData) ParentHash() common.Hash {
+	return bd.header.parentHash
 }
 
 // State returns block state
@@ -201,28 +250,33 @@ func (block *Block) State() *BlockState {
 }
 
 // AccountsRoot returns root hash of accounts trie
-func (block *Block) AccountsRoot() common.Hash {
-	return block.header.accsRoot
+func (bd *BlockData) AccountsRoot() common.Hash {
+	return bd.header.accsRoot
 }
 
 // TransactionsRoot returns root hash of txs trie
-func (block *Block) TransactionsRoot() common.Hash {
-	return block.header.txsRoot
+func (bd *BlockData) TransactionsRoot() common.Hash {
+	return bd.header.txsRoot
+}
+
+// UsageRoot returns root hash of usage trie
+func (bd *BlockData) UsageRoot() common.Hash {
+	return bd.header.txsRoot
 }
 
 // Height returns height
-func (block *Block) Height() uint64 {
-	return block.height
+func (bd *BlockData) Height() uint64 {
+	return bd.height
 }
 
 // Transactions returns txs in block
-func (block *Block) Transactions() Transactions {
-	return block.transactions
+func (bd *BlockData) Transactions() Transactions {
+	return bd.transactions
 }
 
 // SetTransactions sets transactions TO BE REMOVED: For test without block pool
-func (block *Block) SetTransactions(txs Transactions) error {
-	block.transactions = txs
+func (bd *BlockData) SetTransactions(txs Transactions) error {
+	bd.transactions = txs
 	return nil
 }
 
@@ -244,9 +298,10 @@ func (block *Block) Seal() error {
 
 	block.header.accsRoot = block.state.AccountsRoot()
 	block.header.txsRoot = block.state.TransactionsRoot()
+	block.header.usageRoot = block.state.UsageRoot()
 
 	var err error
-	block.header.hash, err = HashBlock(block)
+	block.header.hash, err = HashBlockData(block.BlockData)
 	if err != nil {
 		return err
 	}
@@ -254,20 +309,23 @@ func (block *Block) Seal() error {
 	return nil
 }
 
-// HashBlock returns hash of block
-func HashBlock(block *Block) (common.Hash, error) {
-	if block == nil {
+// HashBlockData returns hash of block
+func HashBlockData(bd *BlockData) (common.Hash, error) {
+	if bd == nil {
 		return common.Hash{}, ErrNilArgument
 	}
 
 	hasher := sha3.New256()
 
-	hasher.Write(block.ParentHash().Bytes())
-	hasher.Write(block.header.coinbase.Bytes())
-	hasher.Write(byteutils.FromInt64(block.Timestamp()))
-	hasher.Write(byteutils.FromUint32(block.ChainID()))
+	hasher.Write(bd.ParentHash().Bytes())
+	hasher.Write(bd.Coinbase().Bytes())
+	hasher.Write(bd.AccountsRoot().Bytes())
+	hasher.Write(bd.TransactionsRoot().Bytes())
+	hasher.Write(bd.UsageRoot().Bytes())
+	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
+	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
-	for _, tx := range block.transactions {
+	for _, tx := range bd.transactions {
 		hasher.Write(tx.Hash().Bytes())
 	}
 
@@ -300,22 +358,32 @@ func (block *Block) VerifyExecution() error {
 
 // ExecuteAll executes all txs in block
 func (block *Block) ExecuteAll() error {
+	block.BeginBatch()
+
 	for _, tx := range block.transactions {
 		if err := block.ExecuteTransaction(tx); err != nil {
+			block.RollBack()
 			return err
 		}
 
 		if err := block.AcceptTransaction(tx); err != nil {
+			block.RollBack()
 			return err
 		}
 	}
+
+	block.Commit()
 
 	return nil
 }
 
 // AcceptTransaction adds tx in block state
 func (block *Block) AcceptTransaction(tx *Transaction) error {
-	return block.state.AcceptTransaction(tx, block.Timestamp())
+	if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
+		return err
+	}
+	block.transactions = append(block.transactions, tx)
+	return nil
 }
 
 // VerifyState verifies block states comparing with root hashes in header
@@ -329,34 +397,39 @@ func (block *Block) VerifyState() error {
 	return nil
 }
 
+// SignThis sets signature info in block data
+func (bd *BlockData) SignThis(signer signature.Signature) error {
+	sig, err := signer.Sign(bd.header.hash.Bytes())
+	if err != nil {
+		return err
+	}
+	bd.header.alg = signer.Algorithm()
+	bd.header.sign = sig
+	return nil
+}
+
 // SignThis sets signature info in block
 func (block *Block) SignThis(signer signature.Signature) error {
 	if !block.Sealed() {
 		return ErrBlockNotSealed
 	}
 
-	sig, err := signer.Sign(block.header.hash.Bytes())
-	if err != nil {
-		return err
-	}
-	block.header.alg = signer.Algorithm()
-	block.header.sign = sig
-	return nil
+	return block.BlockData.SignThis(signer)
 }
 
 // VerifyIntegrity verifies if block signature is valid
-func (block *Block) VerifyIntegrity() error {
-	for _, tx := range block.transactions {
-		if err := tx.VerifyIntegrity(block.header.chainID); err != nil {
+func (bd *BlockData) VerifyIntegrity() error {
+	for _, tx := range bd.transactions {
+		if err := tx.VerifyIntegrity(bd.header.chainID); err != nil {
 			return err
 		}
 	}
 
-	wantedHash, err := HashBlock(block)
+	wantedHash, err := HashBlockData(bd)
 	if err != nil {
 		return err
 	}
-	if !wantedHash.Equals(block.header.hash) {
+	if !wantedHash.Equals(bd.header.hash) {
 		return ErrInvalidBlockHash
 	}
 
@@ -389,16 +462,16 @@ func (block *Block) Commit() error {
 	return nil
 }
 
-func bytesToBlock(bytes []byte) (*Block, error) {
+func bytesToBlockData(bytes []byte) (*BlockData, error) {
 	pb := new(corepb.Block)
 	if err := proto.Unmarshal(bytes, pb); err != nil {
 		logging.Debug("") // TODO
 		return nil, err
 	}
-	block := new(Block)
-	if err := block.FromProto(pb); err != nil {
+	bd := new(BlockData)
+	if err := bd.FromProto(pb); err != nil {
 		logging.Debug("") // TODO
 		return nil, err
 	}
-	return block, nil
+	return bd, nil
 }

@@ -147,3 +147,91 @@ func TestSendMoreThanBalance(t *testing.T) {
 	assert.Equal(t, blockState.ExecuteTx(tx), core.ErrBalanceNotEnough)
 	newBlock.RollBack()
 }
+
+func TestExecuteOnParentBlock(t *testing.T) {
+	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	firstBlock, err := core.NewBlock(chainID, coinbase, genesisBlock)
+	assert.NoError(t, err)
+
+	privHexes := []string{
+		"052d3fe0617187f4cc8653fad79a57c60e02dcfe09b2657bfba3329f15bb5632",
+		"61c20c132a21a7494af9ca5665b5525a3d59f31265f283a21640264e9a78665f",
+	}
+
+	privKeys := make([]signature.PrivateKey, len(privHexes))
+	for i, privHex := range privHexes {
+		var err error
+		privKeys[i], err = secp256k1.NewPrivateKeyFromHex(privHex)
+		assert.NoError(t, err)
+	}
+
+	cases := []struct {
+		from    common.Address
+		privKey signature.PrivateKey
+		to      common.Address
+		amount  *util.Uint128
+	}{
+		{
+			common.HexToAddress("03ff359a06dbe3129cc0e4effe0c65f5653361685ea65972edd1ece0b3005508b0"),
+			privKeys[0],
+			common.HexToAddress("020adfe522f0737ce376f9428c206b7cb5e11c0ecb1a6429209595125a37c2b5d6"),
+			util.NewUint128FromUint(1),
+		},
+		{
+			common.HexToAddress("020adfe522f0737ce376f9428c206b7cb5e11c0ecb1a6429209595125a37c2b5d6"),
+			privKeys[1],
+			common.HexToAddress("03ff359a06dbe3129cc0e4effe0c65f5653361685ea65972edd1ece0b3005508b0"),
+			util.NewUint128FromUint(1000000001),
+		},
+	}
+
+	txs := make(core.Transactions, len(cases))
+	signers := make([]signature.Signature, len(cases))
+
+	for i, c := range cases {
+		txs[i], err = core.NewTransaction(chainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		assert.NoError(t, err)
+
+		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
+		assert.NoError(t, err)
+		signers[i].InitSign(c.privKey)
+		assert.NoError(t, txs[i].SignThis(signers[i]))
+	}
+
+	firstBlock.BeginBatch()
+	assert.NoError(t, firstBlock.ExecuteTransaction(txs[0]))
+	assert.NoError(t, firstBlock.AcceptTransaction(txs[0]))
+	firstBlock.Commit()
+
+	assert.NoError(t, firstBlock.Seal())
+
+	coinbaseKey, err := secp256k1.HexToECDSA("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+
+	blockSigner, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	blockSigner.InitSign(secp256k1.NewPrivateKey(coinbaseKey))
+
+	assert.NoError(t, firstBlock.SignThis(blockSigner))
+	assert.NoError(t, firstBlock.VerifyState())
+
+	secondBlock, err := core.NewBlock(chainID, coinbase, firstBlock)
+	assert.NoError(t, err)
+
+	secondBlock.BeginBatch()
+	assert.NoError(t, secondBlock.ExecuteTransaction(txs[1]))
+	assert.NoError(t, secondBlock.AcceptTransaction(txs[1]))
+	secondBlock.Commit()
+
+	// state := secondBlock.State()
+	// acc, err := state.GetAccount(cases[1].from)
+	// assert.NoError(t, err)
+	// fmt.Println(acc.Balance())
+
+	assert.NoError(t, secondBlock.Seal())
+
+	assert.NoError(t, secondBlock.SignThis(blockSigner))
+	assert.NoError(t, secondBlock.VerifyState())
+	assert.Error(t, secondBlock.ExecuteAll())
+	_, err = secondBlock.BlockData.ExecuteOnParentBlock(firstBlock)
+	assert.NoError(t, err)
+}

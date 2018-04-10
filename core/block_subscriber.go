@@ -87,7 +87,7 @@ func StartBlockSubscriber(netService net.Service, storage storage.Storage) error
 		for {
 			select {
 			case msg := <-bs.msgCh:
-				block, err := bytesToBlock(msg.Data())
+				block, err := bytesToBlockData(msg.Data())
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,

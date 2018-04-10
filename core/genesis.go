@@ -47,19 +47,21 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 	}
 
 	genesisBlock := &Block{
-		header: &BlockHeader{
-			hash:       GenesisHash,
-			parentHash: GenesisHash,
-			chainID:    conf.Meta.ChainId,
-			coinbase:   GenesisCoinbase,
-			timestamp:  GenesisTimestamp,
-			alg:        algorithm.SECP256K1,
+		BlockData: &BlockData{
+			header: &BlockHeader{
+				hash:       GenesisHash,
+				parentHash: GenesisHash,
+				chainID:    conf.Meta.ChainId,
+				coinbase:   GenesisCoinbase,
+				timestamp:  GenesisTimestamp,
+				alg:        algorithm.SECP256K1,
+			},
+			transactions: make(Transactions, 0),
+			height:       1,
 		},
-		transactions: make(Transactions, 0),
-		storage:      sto,
-		state:        blockState,
-		height:       1,
-		sealed:       false,
+		storage: sto,
+		state:   blockState,
+		sealed:  false,
 	}
 
 	if err := genesisBlock.BeginBatch(); err != nil {
