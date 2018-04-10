@@ -28,8 +28,76 @@ const (
 
 // error for test
 var (
-	ErrInvalidTestNodeIndex = errors.New("invalid test node index")
+	ErrInvalidTestNodeIndex       = errors.New("invalid test node index")
+	ErrInvalidTestMedServiceIndex = errors.New("invalid test MedService index")
 )
+
+// MedServiceTestManager manages test MedServices
+type MedServiceTestManager struct {
+	serviceNum      int
+	nodeTestManager *NodeTestManager
+	medServices     []*MedService
+	seedNum         int
+}
+
+// NewMedServiceTestManager returns medServicesTestManager
+func NewMedServiceTestManager(nodeNum int, seedNum int) *MedServiceTestManager {
+	if nodeNum < 1 {
+		return nil
+	}
+	if nodeNum < seedNum {
+		seedNum = nodeNum
+	}
+	return &MedServiceTestManager{
+		nodeTestManager: NewNodeTestManager(nodeNum, seedNum),
+		serviceNum:      nodeNum,
+		seedNum:         seedNum,
+	}
+}
+
+// MakeNewTestMedService returns medServices
+func (mstm *MedServiceTestManager) MakeNewTestMedService() ([]*MedService, error) {
+	nodes, err := mstm.nodeTestManager.MakeNewTestNodes()
+	mstm.medServices = make([]*MedService, len(nodes))
+	if err != nil {
+		return nil, err
+	}
+	for i, n := range nodes {
+		mstm.medServices[i] = &MedService{
+			node:       n,
+			dispatcher: NewDispatcher(),
+		}
+		n.SetMedService(mstm.medServices[i])
+	}
+	return mstm.medServices, nil
+}
+
+// MedService returns MedService of specific index
+func (mstm *MedServiceTestManager) MedService(idx int) (*MedService, error) {
+	if idx < 0 && idx >= mstm.serviceNum {
+		return nil, ErrInvalidTestMedServiceIndex
+	}
+	return mstm.medServices[idx], nil
+}
+
+// StartMedServices starts medServices
+func (mstm *MedServiceTestManager) StartMedServices() {
+	for _, m := range mstm.medServices {
+		m.Start()
+	}
+}
+
+// StopMedServices stops medServices
+func (mstm *MedServiceTestManager) StopMedServices() {
+	for _, m := range mstm.medServices {
+		m.Stop()
+	}
+}
+
+// WaitRouteTableSync waits until routing tables are synced
+func (mstm *MedServiceTestManager) WaitRouteTableSync() {
+	mstm.nodeTestManager.WaitRouteTableSync()
+}
 
 // NodeTestManager manages test nodes
 type NodeTestManager struct {
