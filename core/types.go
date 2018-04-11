@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 )
 
 const (
@@ -58,4 +59,9 @@ var (
 type HashableBlock interface {
 	Hash() common.Hash
 	ParentHash() common.Hash
+}
+
+// Medlet interface for component discovery.
+type Medlet interface {
+	Config() *medletpb.Config
 }
