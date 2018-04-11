@@ -303,6 +303,29 @@ func (as *AccountStateBatch) AddWriter(address []byte, newWriter []byte) error {
 	return nil
 }
 
+// RemoveWriter removes a writer from account's writers list
+func (as *AccountStateBatch) RemoveWriter(address []byte, writer []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	writers := [][]byte{}
+	for _, w := range acc.writers {
+		if byteutils.Equal(writer, w) {
+			continue
+		}
+		writers = append(writers, w)
+	}
+	if len(acc.writers) == len(writers) {
+		return ErrWriterNotFound
+	}
+	acc.writers = writers
+	return nil
+}
+
 // AddObservation add observation
 func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	if !as.batching {

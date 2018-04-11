@@ -152,6 +152,14 @@ func (st *states) AddBalance(address common.Address, amount *util.Uint128) error
 	return st.accState.AddBalance(address.Bytes(), amount)
 }
 
+func (st *states) AddWriter(address common.Address, writer common.Address) error {
+	return st.accState.AddWriter(address.Bytes(), writer.Bytes())
+}
+
+func (st *states) RemoveWriter(address common.Address, writer common.Address) error {
+	return st.accState.RemoveWriter(address.Bytes(), writer.Bytes())
+}
+
 func (st *states) SubBalance(address common.Address, amount *util.Uint128) error {
 	return st.accState.SubBalance(address.Bytes(), amount)
 }
@@ -293,31 +301,7 @@ func (bs *BlockState) Commit() error {
 
 // ExecuteTx and update internal states
 func (bs *BlockState) ExecuteTx(tx *Transaction) error {
-	if err := bs.checkNonce(tx); err != nil {
-		return err
-	}
-
-	switch tx.Type() {
-	default:
-		if tx.Value().Cmp(util.Uint128Zero()) > 0 {
-			return bs.executeTransfer(tx)
-		}
-	}
-	return ErrVoidTransaction
-}
-
-func (bs *BlockState) executeTransfer(tx *Transaction) error {
-	var err error
-
-	if err = bs.SubBalance(tx.From(), tx.Value()); err != nil {
-		return err
-	}
-
-	if err = bs.AddBalance(tx.To(), tx.Value()); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.ExecuteOnState(bs)
 }
 
 // AcceptTransaction and update internal txsStates

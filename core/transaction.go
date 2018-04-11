@@ -84,7 +84,12 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 }
 
 // NewTransaction generates a Transaction instance
-func NewTransaction(chainID uint32, from, to common.Address, value *util.Uint128, nonce uint64, payloadType string, payload []byte) (*Transaction, error) {
+func NewTransaction(
+	chainID uint32,
+	from, to common.Address,
+	value *util.Uint128,
+	nonce uint64,
+	payloadType string, payload []byte) (*Transaction, error) {
 	tx := &Transaction{
 		from:      from,
 		to:        to,
@@ -163,7 +168,7 @@ func (tx *Transaction) verifySign() error {
 	if err != nil {
 		return err
 	}
-	if !tx.from.Equals(signer) {
+	if tx.Type() == TxOperationAddRecord || !tx.from.Equals(signer) {
 		return ErrInvalidTransactionSigner
 	}
 	return nil
@@ -181,6 +186,27 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 	}
 
 	return common.PublicKeyToAddress(pubKey)
+}
+
+// VerifyDelegation verifies if tx signer is equal to tx.from or one of tx.from's writers
+func (tx *Transaction) VerifyDelegation(bs *BlockState) error {
+	signer, err := tx.recoverSigner()
+	if err != nil {
+		return err
+	}
+	if byteutils.Equal(tx.from.Bytes(), signer.Bytes()) {
+		return nil
+	}
+	acc, err := bs.GetAccount(tx.from)
+	if err != nil {
+		return err
+	}
+	for _, w := range acc.Writers() {
+		if byteutils.Equal(signer.Bytes(), w) {
+			return nil
+		}
+	}
+	return ErrInvalidTxDelegation
 }
 
 // From returns from
@@ -239,4 +265,53 @@ func (tx *Transaction) String() string {
 		tx.Type(),
 		tx.alg,
 	)
+}
+
+// ExecuteOnState executes tx on block state and change the state if valid
+func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
+	if err := bs.checkNonce(tx); err != nil {
+		return err
+	}
+
+	switch tx.Type() {
+	case TxOperationRegisterWKey:
+		return tx.registerWriteKey(bs)
+	case TxOperationRemoveWKey:
+		return tx.removeWriteKey(bs)
+	default:
+		return tx.transfer(bs)
+	}
+	return ErrVoidTransaction
+}
+
+func (tx *Transaction) transfer(bs *BlockState) error {
+	if tx.value.Cmp(util.Uint128Zero()) == 0 {
+		return ErrVoidTransaction
+	}
+
+	var err error
+	if err = bs.SubBalance(tx.from, tx.value); err != nil {
+		return err
+	}
+	if err = bs.AddBalance(tx.to, tx.value); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tx *Transaction) registerWriteKey(bs *BlockState) error {
+	payload, err := BytesToRegisterWriterPayload(tx.Data())
+	if err != nil {
+		return err
+	}
+	return bs.AddWriter(tx.from, payload.Writer)
+}
+
+func (tx *Transaction) removeWriteKey(bs *BlockState) error {
+	payload, err := BytesToRemoveWriterPayload(tx.Data())
+	if err != nil {
+		return err
+	}
+	return bs.RemoveWriter(tx.from, payload.Writer)
 }
