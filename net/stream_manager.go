@@ -149,7 +149,7 @@ func (sm *StreamManager) BroadcastMessage(messageName string, messageContent Ser
 
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
-		if stream.IsHandshakeSucceed() && !HasRecvMessage(stream, dataCheckSum) {
+		if stream.IsHandshakeSucceed() && !stream.node.bloomFilter.HasRecvMessage(stream, dataCheckSum) {
 			stream.SendMessage(messageName, data, priority)
 		}
 		return true
@@ -168,7 +168,7 @@ func (sm *StreamManager) RelayMessage(messageName string, messageContent Seriali
 
 	sm.allStreams.Range(func(key, value interface{}) bool {
 		stream := value.(*Stream)
-		if stream.IsHandshakeSucceed() && !HasRecvMessage(stream, dataCheckSum) {
+		if stream.IsHandshakeSucceed() && !stream.node.bloomFilter.HasRecvMessage(stream, dataCheckSum) {
 			stream.SendMessage(messageName, data, priority)
 		}
 		return true

@@ -472,7 +472,7 @@ func (s *Stream) handleMessage(message *MedMessage) error {
 	default:
 		s.node.netService.PutMessage(NewBaseMessage(message.MessageName(), s.pid.Pretty(), message.Data()))
 		// record recv message.
-		RecordRecvMessage(s, message.DataCheckSum())
+		s.node.bloomFilter.RecordRecvMessage(s, message.DataCheckSum())
 	}
 
 	return nil
@@ -651,7 +651,7 @@ func (s *Stream) RecvedMsg(hash uint32) error {
 
 func (s *Stream) onRecvedMsg(message *MedMessage) error {
 	hash := byteutils.Uint32(message.Data())
-	RecordRecvMessage(s, hash)
+	s.node.bloomFilter.RecordRecvMessage(s, hash)
 
 	return nil
 }
