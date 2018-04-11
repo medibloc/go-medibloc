@@ -23,6 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 )
 
 var (
-	ErrNotTailBlock = errors.New("Not Tail Block")
+	ErrBlockNotExist = errors.New("block not exist")
 )
 
 // BlockChain
@@ -45,38 +46,50 @@ type BlockChain struct {
 
 // NewBlockChain return new BlockChain instance
 func NewBlockChain(chainID uint32, genesisBlock *Block, storage storage.Storage) (*BlockChain, error) {
-	blockChain := &BlockChain{
+	bc := &BlockChain{
 		chainID:       chainID,
 		mainTailBlock: genesisBlock,
 		storage:       storage,
 	}
 	var err error
-	blockChain.cachedBlocks, err = lru.New(cacheSize)
+	bc.cachedBlocks, err = lru.New(cacheSize)
 	if err != nil {
 		return nil, err
 	}
-	blockChain.tailBlocks, err = lru.New(cacheSize)
+	bc.tailBlocks, err = lru.New(cacheSize)
 	if err != nil {
 		return nil, err
 	}
-	blockChain.addBlockToTail(genesisBlock)
-	return blockChain, nil
+	addBlockToCache(genesisBlock, bc.cachedBlocks)
+	addBlockToCache(genesisBlock, bc.tailBlocks)
+	return bc, nil
 }
 
+// ChainID
 func (bc *BlockChain) ChainID() uint32 {
 	return bc.chainID
 }
 
-func (bc *BlockChain) GetTailBlock(hash common.Hash) *Block {
-	if v, ok := bc.tailBlocks.Get(hash.Str()); ok {
+// GetBlock
+func (bc *BlockChain) GetBlock(hash common.Hash) *Block {
+	if v, ok := bc.cachedBlocks.Get(hash.Str()); ok {
 		return v.(*Block)
 	}
-	// Get TailBlock from storage (may be deleted unwillingly by LRU cache)
+	// Get BlockData from storage (may be deleted unwillingly by LRU cache)
 	bytes, err := bc.storage.Get(hash.Bytes())
 	if err == nil {
-		block, err := bytesToBlock(bytes)
+		blockData, err := bytesToBlockData(bytes)
 		if err != nil {
-			logging.Errorf("Failed to recover Stored Block %s", bytes)
+			logging.WithFields(logrus.Fields{
+				"err": err,
+			}).Errorf("failed to parse stored block data %s", bytes)
+			return nil
+		}
+		block, err := blockData.GetExecutedBlock(bc.storage)
+		if err != nil {
+			logging.WithFields(logrus.Fields{
+				"err": err,
+			}).Errorf("failed to recover stored block %s", bytes)
 			return nil
 		}
 		return block
@@ -104,38 +117,35 @@ func (bc *BlockChain) TailBlocks() []*Block {
 // PutVerifiedNewBlocks put verified blocks and change tailBlocks
 func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks []*Block) error {
 	parentKey := parent.Hash().Str()
-	_, isTail := bc.tailBlocks.Get(parentKey)
-	if !isTail {
-		// parent may not be tail
+	if _, ok := bc.cachedBlocks.Get(parentKey); !ok {
 		if _, err := bc.storage.Get(parent.Hash().Bytes()); err != nil {
-			return ErrNotTailBlock
+			return ErrBlockNotExist
 		}
 	}
 	for _, block := range allBlocks {
 		bc.cachedBlocks.Add(block.Hash().Str(), block)
 		if err := bc.storeBlock(block); err != nil {
-			logging.Error("Failed to store the verified block") // TODO
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("ailed to store the verified block")
 			return err
 		}
 
 		// TODO handle metrics
 	}
 
-	if isTail {
+	if _, ok := bc.tailBlocks.Get(parentKey); ok {
 		bc.tailBlocks.Remove(parentKey)
 	}
 	for _, block := range tailBlocks {
-		bc.addBlockToTail(block)
+		addBlockToCache(block, bc.tailBlocks)
 	}
+	// TODO fork choice
 	if bc.mainTailBlock.Hash() == parent.Hash() {
 		bc.changeMainTailBlock(tailBlocks)
 	}
 
 	return nil
-}
-
-func (bc *BlockChain) addBlockToTail(block *Block) {
-	bc.tailBlocks.Add(block.Hash().Str(), block)
 }
 
 func (bc *BlockChain) changeMainTailBlock(tailBlocks []*Block) {
@@ -164,4 +174,8 @@ func (bc *BlockChain) storeBlock(block *Block) error {
 		return err
 	}
 	return nil
+}
+
+func addBlockToCache(block *Block, cache *lru.Cache) {
+	cache.Add(block.Hash().Str(), block)
 }

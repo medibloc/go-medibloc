@@ -33,25 +33,6 @@ var (
 	blockPoolSize                 = 128
 )
 
-func findChildren(block *Block, bp *BlockPool) ([]*Block, []*Block) {
-	allBlocks := make([]*Block, 0)
-	tailBlocks := make([]*Block, 0)
-	blocks := make([]HashableBlock, 0)
-	blocks = append(blocks, block)
-	for len(blocks) > 0 {
-		curBlock := blocks[0]
-		allBlocks = append(allBlocks)
-		blocks = blocks[1:]
-		children := bp.FindChildren(curBlock)
-		if len(children) == 0 {
-			tailBlocks = append(tailBlocks, curBlock.(*Block))
-		} else {
-			blocks = append(blocks, children...)
-		}
-	}
-	return allBlocks, tailBlocks
-}
-
 type BlockSubscriber struct {
 	msgCh  chan net.Message
 	quitCh chan int
@@ -59,25 +40,29 @@ type BlockSubscriber struct {
 
 var bs *BlockSubscriber
 
-// StartBlockHandler
-func StartBlockSubscriber(netService net.Service, storage storage.Storage) error {
+// GetBlockPoolBlockChain
+func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, error) {
 	bp, err := NewBlockPool(blockPoolSize)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	conf, err := LoadGenesisConf(defaultGenesisConfPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	genesisBlock, err := NewGenesisBlock(conf, storage)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	bc, err := NewBlockChain(chainID, genesisBlock, storage)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
+	return bp, bc, nil
+}
 
+// StartBlockHandler
+func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) error {
 	bs = &BlockSubscriber{
 		msgCh:  make(chan net.Message),
 		quitCh: make(chan int),
@@ -87,6 +72,10 @@ func StartBlockSubscriber(netService net.Service, storage storage.Storage) error
 		for {
 			select {
 			case msg := <-bs.msgCh:
+				logging.Console().Info("Block Message arrived")
+				// TODO set storage to block
+				// TODO make tries
+				// TODO test
 				block, err := bytesToBlockData(msg.Data())
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
@@ -97,6 +86,7 @@ func StartBlockSubscriber(netService net.Service, storage storage.Storage) error
 				// logging.Console().Info("New Block Arrived")
 				handleReceivedBlock(block, bc, bp)
 			case <-bs.quitCh:
+				logging.Console().Info("Stop Block Subscriber")
 				return
 			}
 		}
@@ -111,18 +101,48 @@ func StopBlockSubscriber() {
 }
 
 // PushBlock Temporarily for Test
-func PushBlock(block *Block, bc *BlockChain, bp *BlockPool) error {
-	return handleReceivedBlock(block, bc, bp)
+func PushBlock(blockData *BlockData, bc *BlockChain, bp *BlockPool) error {
+	return handleReceivedBlock(blockData, bc, bp)
 }
 
-func handleReceivedBlock(block *Block, bc *BlockChain, bp *BlockPool) error {
+func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]*Block, []*Block, error) {
+	allBlocks := make([]*Block, 0)
+	tailBlocks := make([]*Block, 0)
+	queue := make([]*Block, 0)
+	block, err := blockData.ExecuteOnParentBlock(parent)
+	if err != nil {
+		return nil, nil, err
+	}
+	queue = append(queue, block)
+	for len(queue) > 0 {
+		curBlock := queue[0]
+		allBlocks = append(allBlocks, curBlock)
+		queue = queue[1:]
+		children1 := bp.FindChildren(curBlock)
+		if len(children1) == 0 {
+			tailBlocks = append(tailBlocks, curBlock)
+		} else {
+			children2 := make([]*Block, len(children1))
+			for i, child := range children1 {
+				children2[i], err = child.(*BlockData).ExecuteOnParentBlock(curBlock)
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+			queue = append(queue, children2...)
+		}
+	}
+	return allBlocks, tailBlocks, nil
+}
+
+func handleReceivedBlock(block *BlockData, bc *BlockChain, bp *BlockPool) error {
 	// TODO check if block already exist in storage
 	err := block.VerifyIntegrity()
 	if err != nil {
 		return err
 	}
 	parentHash := block.ParentHash()
-	parentBlock := bc.GetTailBlock(parentHash)
+	parentBlock := bc.GetBlock(parentHash)
 	if parentBlock == nil {
 		// Add to BlockPool
 		bp.Push(block)
@@ -130,14 +150,12 @@ func handleReceivedBlock(block *Block, bc *BlockChain, bp *BlockPool) error {
 		return nil
 	}
 	// Find all blocks from this block
-	allBlocks, tailBlocks := findChildren(block, bp)
-	// TODO verify execution in parallel
-	for _, b := range allBlocks {
-		err = b.VerifyExecution()
-		if err != nil {
-			return err
-		}
+	// TODO allBlocks => better name
+	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, bp)
+	if err != nil {
+		return err
 	}
+
 	// Add to tail
 	err = bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
 	if err != nil {
