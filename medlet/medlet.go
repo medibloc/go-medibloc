@@ -60,7 +60,15 @@ func (m *Medlet) Start() {
 		}).Fatal("Failed to create leveldb storage")
 		return
 	}
-	err = core.StartBlockSubscriber(m.netService, s)
+
+	bp, bc, err := core.GetBlockPoolBlockChain(s)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to create block pool or block chain")
+		return
+	}
+	err = core.StartBlockSubscriber(m.netService, bp, bc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
