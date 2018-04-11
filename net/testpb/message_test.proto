@@ -1,0 +1,6 @@
+syntax = "proto3";
+package netpb;
+
+message TestMsg {
+    bytes data = 1;
+}

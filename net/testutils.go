@@ -24,6 +24,7 @@ const (
 	TestRouteTableSyncLoopInterval   = 100 * time.Millisecond
 	TestRouteTableSaveToDiskInterval = 1 * time.Second
 	RouteTableCheckInterval          = 100 * time.Millisecond
+	StreamReadyCheckInterval         = 100 * time.Millisecond
 )
 
 // error for test
@@ -99,6 +100,11 @@ func (mstm *MedServiceTestManager) WaitRouteTableSync() {
 	mstm.nodeTestManager.WaitRouteTableSync()
 }
 
+// WaitStreamReady waits until streams are ready
+func (mstm *MedServiceTestManager) WaitStreamReady() {
+	mstm.nodeTestManager.WaitStreamReady()
+}
+
 // NodeTestManager manages test nodes
 type NodeTestManager struct {
 	nodeIDs []peer.ID
@@ -156,15 +162,32 @@ func (ntm *NodeTestManager) StopTestNodes() {
 
 // WaitRouteTableSync waits until routing tables are synced
 func (ntm *NodeTestManager) WaitRouteTableSync() {
+	logging.Console().Debug("WaitRouteTableSync Start...")
 	var wg sync.WaitGroup
-	for _, n := range ntm.nodes {
+	for i := range ntm.nodes {
 		wg.Add(1)
-		go func() {
+		go func(n *Node) {
 			defer wg.Done()
 			waitRouteTableSyncLoop(n, ntm.nodeIDs)
-		}()
+		}(ntm.nodes[i])
 	}
 	wg.Wait()
+	logging.Console().Debug("WaitRouteTableSync Finish.")
+}
+
+// WaitStreamReady waits until streams are ready
+func (ntm *NodeTestManager) WaitStreamReady() {
+	logging.Console().Debug("WaitStreamReady Start...")
+	var wg sync.WaitGroup
+	for i := range ntm.nodes {
+		wg.Add(1)
+		go func(n *Node) {
+			defer wg.Done()
+			waitStreamReadyLoop(n, ntm.nodeIDs)
+		}(ntm.nodes[i])
+	}
+	wg.Wait()
+	logging.Console().Debug("WaitStreamReady Finish.")
 }
 
 func makeNewTestNode(privateKeyPath string) (*Node, error) {
@@ -283,12 +306,41 @@ func waitRouteTableSyncLoop(node *Node, nodeIDs []peer.ID) {
 		time.Sleep(RouteTableCheckInterval)
 
 		remainIteration--
-		// fail if (sec * len(nodeIDs)) seconds left
+		// fail if (remainIteration * RouteTableCheckInterval) Duration left
 		if remainIteration < 1 && len(ids) > 0 {
 			logging.Console().WithFields(logrus.Fields{
 				"node ID":                          node.ID(),
 				"routeTable not synced node count": len(ids),
 			}).Warn("route table not synced in time")
+			return
+		}
+	}
+}
+
+func waitStreamReadyLoop(node *Node, nodeIDs []peer.ID) {
+	ids := make([]peer.ID, len(nodeIDs))
+	copy(ids, nodeIDs)
+	remainIteration := 100
+
+	for len(ids) > 0 {
+		i := 0
+		for _, v := range ids {
+			if node.streamManager.Find(v) == nil && node.id != v {
+				ids[i] = v
+				i++
+			}
+		}
+		ids = ids[:i]
+
+		time.Sleep(StreamReadyCheckInterval)
+
+		remainIteration--
+		// fail if (remainIteration * RouteTableCheckInterval) Duration left
+		if remainIteration < 1 && len(ids) > 0 {
+			logging.Console().WithFields(logrus.Fields{
+				"node ID":               node.ID(),
+				"streams are not ready": len(ids),
+			}).Warn("streams not ready in time")
 			return
 		}
 	}
