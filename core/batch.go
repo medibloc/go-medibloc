@@ -23,6 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 )
 
 // Errors
@@ -283,6 +284,25 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 	return nil
 }
 
+// AddWriter adds writer address of this account
+// writers can use the account's bandwidth and add record of her
+func (as *AccountStateBatch) AddWriter(address []byte, newWriter []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	for _, w := range acc.writers {
+		if byteutils.Equal(newWriter, w) {
+			return ErrWriterAlreadyRegistered
+		}
+	}
+	acc.writers = append(acc.writers, newWriter)
+	return nil
+}
+
 // AddObservation add observation
 func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	if !as.batching {
@@ -351,6 +371,7 @@ func (as *AccountStateBatch) IncrementNonce(address []byte) error {
 	return nil
 }
 
+// RootHash returns root hash of accounts trie
 func (as *AccountStateBatch) RootHash() []byte {
 	return as.as.accounts.RootHash()
 }

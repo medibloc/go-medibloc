@@ -13,6 +13,7 @@ const (
 	TxOperationWidthdraw    = "widthdraw"
 	TxOperationRegisterRKey = "register_rkey"
 	TxOperationRegisterWKey = "register_wkey"
+	TxOperationRemoveWKey   = "remove_wkey"
 )
 
 const (
@@ -47,6 +48,7 @@ var (
 	ErrInvalidBlockAccountsRoot  = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot       = errors.New("invalid transactions state root hash")
 	ErrTooOldTransaction         = errors.New("transaction timestamp is too old")
+	ErrWriterAlreadyRegistered   = errors.New("writer address already registered")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
