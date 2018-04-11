@@ -20,14 +20,6 @@ const (
 	veryLightScryptP = 1
 )
 
-func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
-	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	acc, err := ks.SetKey(privKey)
-	assert.NoError(t, err)
-	return acc
-}
-
 func TestTransaction_VerifyIntegrity(t *testing.T) {
 	testCount := 3
 	type testTx struct {
