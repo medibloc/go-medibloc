@@ -40,6 +40,7 @@ type Node struct {
 	host          *basichost.BasicHost
 	streamManager *StreamManager
 	routeTable    *RouteTable
+	bloomFilter   *BloomFilter
 }
 
 // NewNode return new Node according to the config.
@@ -59,6 +60,11 @@ func NewNode(config *Config) (*Node, error) {
 		context:       context.Background(),
 		streamManager: NewStreamManager(),
 		synchronizing: false,
+		bloomFilter: NewBloomFilter(
+			bloomFilterOfRecvMessageArgM,
+			bloomFilterOfRecvMessageArgK,
+			maxCountOfRecvMessageInBloomFiler,
+		),
 	}
 
 	initP2PNetworkKey(config, node)
