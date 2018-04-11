@@ -1,8 +1,9 @@
-package hashheap
+package hashheap_test
 
 import (
 	"testing"
 
+	. "github.com/medibloc/go-medibloc/common/hashheap"
 	"github.com/stretchr/testify/assert"
 )
 
