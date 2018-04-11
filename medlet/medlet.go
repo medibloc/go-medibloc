@@ -18,6 +18,7 @@ var (
 type Medlet struct {
 	config     *medletpb.Config
 	netService mednet.Service
+	miner      *core.Miner
 }
 
 // New returns a new medlet.
@@ -76,6 +77,10 @@ func (m *Medlet) Start() {
 		return
 	}
 
+	if m.Config().Chain.StartMine {
+		m.miner = core.StartMiner(m.netService, bc)
+	}
+
 	logging.Console().Info("Started Medlet.")
 }
 
@@ -87,6 +92,9 @@ func (m *Medlet) Stop() {
 	}
 
 	core.StopBlockSubscriber()
+	if m.miner != nil {
+		m.miner.StopMiner()
+	}
 
 	logging.Console().Info("Stopped Medlet.")
 }
