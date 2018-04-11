@@ -19,6 +19,12 @@ const (
 	TxPayloadBinaryType = "binary"
 )
 
+// MessageType from network.
+const (
+	MessageTypeNewTx = "newtx"
+)
+
+// Error types of core package.
 var (
 	ErrCannotConvertTransaction  = errors.New("proto message cannot be converted into Transaction")
 	ErrDuplicatedBlock           = errors.New("duplicated block")
