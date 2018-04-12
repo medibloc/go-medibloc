@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package rpcpb;
+
+import "google/api/annotations.proto";
+
+service ApiService {
+	rpc GetAccountState (GetAccountStateRequest) returns (GetAccountStateResponse) {
+		option (google.api.http) = {
+			post: "/v1/user/accountstate"
+			body: "*"
+		};
+	}
+}
+
+service AdminService {
+	rpc SendTransaction (TransactionRequest) returns (TransactionResponse) {
+		option (google.api.http) = {
+			post: "/v1/admin/transaction"
+			body: "*"
+		};
+	}
+}
+
+
+message GetAccountStateRequest {
+	// Hex string of the account addresss.
+	string address = 1;
+	// block account state with height. If not specified, use 0 as tail height.
+	uint64 height = 2;
+}
+
+message GetAccountStateResponse {
+	// Current balance in unit of 1/(10^18) nas.
+	float balance = 1; // uint128, len=16
+	// Current transaction count.
+	uint64 nonce = 2;
+	// Account type
+	uint32 type = 3;
+}
+
+message TransactionRequest {
+	// Hex string of the sender account addresss.
+	string from = 1;
+	// Hex string of the receiver account addresss.
+	string to = 2;
+	// Amount of value sending with this transaction.
+	string value = 3; // uint128, len=16
+	// Transaction nonce.
+	uint64 nonce = 4;
+}
+
+message TransactionResponse {
+	// Hex string of transaction hash.
+	string txhash = 1;
+}
