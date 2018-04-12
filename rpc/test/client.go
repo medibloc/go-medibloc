@@ -4,22 +4,20 @@ import (
 	"flag"
 	"log"
 
-	"golang.org/x/net/context"
 	"github.com/medibloc/go-medibloc/rpc"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"golang.org/x/net/context"
 )
-
 
 var (
-	ttype = flag.String("ttype", "", "Type admin or api")
+	ttype   = flag.String("ttype", "", "Type admin or api")
 	address = flag.String("addr", "", "Address")
-	height = flag.Int("height", 1, "Height")
-	from = flag.String("from", "", "From")
-	to = flag.String("to", "", "To")
-	value = flag.String("amount", "", "Amount")
-	nonce = flag.Int("nonce", 0, "Nonce")
+	height  = flag.Int("height", 1, "Height")
+	from    = flag.String("from", "", "From")
+	to      = flag.String("to", "", "To")
+	value   = flag.String("amount", "", "Amount")
+	nonce   = flag.Int("nonce", 0, "Nonce")
 )
-
 
 func main() {
 	flag.Parse()
@@ -32,8 +30,8 @@ func main() {
 	switch *ttype {
 	case "admin":
 		res, err := adminClient.SendTransaction(context.Background(), &rpcpb.TransactionRequest{
-			From: *from,
-			To: *to,
+			From:  *from,
+			To:    *to,
 			Value: *value,
 			Nonce: uint64(*nonce),
 		})
@@ -44,7 +42,7 @@ func main() {
 	case "api":
 		res, err := apiClient.GetAccountState(context.Background(), &rpcpb.GetAccountStateRequest{
 			Address: *address,
-			Height: uint64(*height),
+			Height:  uint64(*height),
 		})
 		if err != nil {
 			log.Printf("Somethins is wrong in client main : %v", err)

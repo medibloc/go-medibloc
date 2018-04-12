@@ -7,7 +7,6 @@ import (
 	"github.com/medibloc/go-medibloc/rpc"
 )
 
-
 func main() {
 	sigch := make(chan os.Signal)
 	signal.Notify(sigch, os.Interrupt, os.Kill)
@@ -15,5 +14,5 @@ func main() {
 	server.Start("localhost:10000")
 	defer server.Stop()
 	server.RunGateway()
-	<- sigch
+	<-sigch
 }
