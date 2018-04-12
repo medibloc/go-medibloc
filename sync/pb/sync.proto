@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package syncpb;
+
+message Sync {
+  bytes tail_block_hash = 1;
+}
