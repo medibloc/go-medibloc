@@ -33,7 +33,8 @@ func versionStr() string {
 }
 
 func medi(ctx *cli.Context) error {
-	conf := medlet.LoadConfig("")
+	configFile := ctx.Args().Get(0)
+	conf := medlet.LoadConfig(configFile)
 	m, err := medlet.New(conf)
 	if err != nil {
 		return err
