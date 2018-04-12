@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	metricsMedstartGauge = m.GetOrRegisterGauge("med.start", nil)
+	metricsMedstartGauge   = m.GetOrRegisterGauge("med.start", nil)
+	transactionManagerSize = 1280
 )
 
 // Medlet manages blockchain services.
@@ -19,6 +20,7 @@ type Medlet struct {
 	config     *medletpb.Config
 	netService mednet.Service
 	miner      *core.Miner
+	txMgr      *core.TransactionManager
 }
 
 // New returns a new medlet.
@@ -62,6 +64,9 @@ func (m *Medlet) Start() {
 		return
 	}
 
+	m.txMgr = core.NewTransactionManager(m, transactionManagerSize)
+	m.txMgr.Start()
+
 	bp, bc, err := core.GetBlockPoolBlockChain(s)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -69,16 +74,10 @@ func (m *Medlet) Start() {
 		}).Fatal("Failed to create block pool or block chain")
 		return
 	}
-	err = core.StartBlockSubscriber(m.netService, bp, bc)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("Failed to start block subscriber")
-		return
-	}
+	core.StartBlockSubscriber(m.netService, bp, bc)
 
 	if m.Config().Chain.StartMine {
-		m.miner = core.StartMiner(m.netService, bc)
+		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
 	}
 
 	logging.Console().Info("Started Medlet.")
