@@ -24,3 +24,7 @@ message Block {
   repeated Transaction transactions = 2;
   uint64 height = 3;
 }
+
+message DownloadBlock {
+  bytes hash = 1;
+}

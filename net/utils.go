@@ -9,6 +9,7 @@ import (
 
 	"fmt"
 
+	"github.com/gogo/protobuf/proto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
@@ -20,6 +21,19 @@ var (
 	ErrListenPortIsNotAvailable = errors.New("listen port is not available")
 	ErrConfigLackNetWork        = errors.New("config.conf should has network")
 )
+
+// SerializableToBytes
+func SerializableToBytes(obj Serializable) ([]byte, error) {
+	pb, err := obj.ToProto()
+	data, err := proto.Marshal(pb)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
 // ParseFromIPFSAddr return pid and address parsed from ipfs address
 func ParseFromIPFSAddr(ipfsAddr ma.Multiaddr) (peer.ID, ma.Multiaddr, error) {

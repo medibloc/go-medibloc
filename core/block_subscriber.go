@@ -17,14 +17,20 @@
 package core
 
 import (
+	"errors"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	MessageTypeNewBlock = "newblock"
+const (
+	MessageTypeNewBlock     = "newblock"
+	MessageTypeRequestBlock = "reqblock"
 )
 
 var (
@@ -34,8 +40,10 @@ var (
 )
 
 type BlockSubscriber struct {
-	msgCh  chan net.Message
-	quitCh chan int
+	bc         *BlockChain
+	bp         *BlockPool
+	netService net.Service
+	quitCh     chan int
 }
 
 var bs *BlockSubscriber
@@ -62,36 +70,43 @@ func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, e
 }
 
 // StartBlockHandler
-func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) error {
+func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) {
 	bs = &BlockSubscriber{
-		msgCh:  make(chan net.Message),
-		quitCh: make(chan int),
+		bc:         bc,
+		bp:         bp,
+		quitCh:     make(chan int),
+		netService: netService,
 	}
-	netService.Register(net.NewSubscriber(bs, bs.msgCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
+	newBlockCh := make(chan net.Message)
+	requestBlockCh := make(chan net.Message)
+	netService.Register(net.NewSubscriber(bs, newBlockCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
+	netService.Register(net.NewSubscriber(bs, requestBlockCh, false, MessageTypeRequestBlock, net.MessageWeightZero))
 	go func() {
 		for {
 			select {
-			case msg := <-bs.msgCh:
-				logging.Console().Info("Block Message arrived")
-				// TODO set storage to block
-				// TODO make tries
-				// TODO test
-				block, err := bytesToBlockData(msg.Data())
+			case msg := <-newBlockCh:
+				blockData, err := bytesToBlockData(msg.Data())
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
-					}).Error("failed to parse Block")
+					}).Error("failed to parse blockData")
 					continue
 				}
-				// logging.Console().Info("New Block Arrived")
-				handleReceivedBlock(block, bc, bp)
+				logging.Console().Info("Block arrived")
+				err = bs.handleReceivedBlock(blockData, msg.MessageFrom())
+				if err != nil {
+					logging.Console().Error(err)
+				}
+			case msg := <-requestBlockCh:
+				if err := handleRequestBlockMessage(msg, netService); err != nil {
+					logging.Console().Error(err)
+				}
 			case <-bs.quitCh:
 				logging.Console().Info("Stop Block Subscriber")
 				return
 			}
 		}
 	}()
-	return nil
 }
 
 func StopBlockSubscriber() {
@@ -102,7 +117,11 @@ func StopBlockSubscriber() {
 
 // PushBlock Temporarily for Test
 func PushBlock(blockData *BlockData, bc *BlockChain, bp *BlockPool) error {
-	return handleReceivedBlock(blockData, bc, bp)
+	subscriber := &BlockSubscriber{
+		bc: bc,
+		bp: bp,
+	}
+	return subscriber.handleReceivedBlock(blockData, "")
 }
 
 func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]*Block, []*Block, error) {
@@ -135,36 +154,68 @@ func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]
 	return allBlocks, tailBlocks, nil
 }
 
-func handleReceivedBlock(block *BlockData, bc *BlockChain, bp *BlockPool) error {
+func handleRequestBlockMessage(msg net.Message, netService net.Service) error {
+	logging.Info("handle request block message")
+	pb := &corepb.DownloadBlock{}
+	err := proto.Unmarshal(msg.Data(), pb)
+	if err != nil {
+		return err
+	}
+	logging.Console().Info("Request Block Message arrived")
+	block := bs.bc.GetBlock(common.BytesToHash(pb.Hash))
+	if block == nil {
+		return errors.New("requested block does not exist")
+	}
+	data, err := net.SerializableToBytes(block)
+	if err != nil {
+		return err
+	}
+	return netService.SendMsg(MessageTypeNewBlock, data, msg.MessageFrom(), net.MessagePriorityNormal)
+}
+
+func (subscriber *BlockSubscriber) handleReceivedBlock(block *BlockData, sender string) error {
 	// TODO check if block already exist in storage
 	err := block.VerifyIntegrity()
 	if err != nil {
 		return err
 	}
 	parentHash := block.ParentHash()
-	parentBlock := bc.GetBlock(parentHash)
+	parentBlock := subscriber.bc.GetBlock(parentHash)
 	if parentBlock == nil {
-		// Add to BlockPool
-		bp.Push(block)
-		// TODO request parent block download
+		subscriber.bp.Push(block)
+		if subscriber.netService != nil && sender != "" {
+			logging.Console().Infof("try to request parent block to %s", sender)
+			downloadMsg := &corepb.DownloadBlock{
+				Hash: block.ParentHash().Bytes(),
+			}
+			bytes, err := proto.Marshal(downloadMsg)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"block": block,
+					"err":   err,
+				}).Error("failed to marshal download message")
+				return err
+			}
+			return subscriber.netService.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityHigh)
+		}
 		return nil
 	}
 	// Find all blocks from this block
 	// TODO allBlocks => better name
-	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, bp)
+	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, subscriber.bp)
 	if err != nil {
 		return err
 	}
 
 	// Add to tail
-	err = bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
+	err = subscriber.bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
 	if err != nil {
 		return err
 	}
 
 	if len(allBlocks) > 1 {
 		for _, b := range allBlocks[1:] {
-			bp.Remove(b)
+			subscriber.bp.Remove(b)
 		}
 	}
 

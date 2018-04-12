@@ -15,6 +15,7 @@
 		Account
 		BlockHeader
 		Block
+		DownloadBlock
 		Genesis
 		GenesisMeta
 		GenesisTokenDistribution
