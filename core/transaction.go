@@ -278,6 +278,8 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.registerWriteKey(bs)
 	case TxOperationRemoveWKey:
 		return tx.removeWriteKey(bs)
+	case TxOperationAddRecord:
+		return tx.addRecord(bs)
 	default:
 		return tx.transfer(bs)
 	}
@@ -314,4 +316,16 @@ func (tx *Transaction) removeWriteKey(bs *BlockState) error {
 		return err
 	}
 	return bs.RemoveWriter(tx.from, payload.Writer)
+}
+
+func (tx *Transaction) addRecord(bs *BlockState) error {
+	signer, err := tx.recoverSigner()
+	if err != nil {
+		return err
+	}
+	payload, err := BytesToAddRecordPayload(tx.Data())
+	if err != nil {
+		return err
+	}
+	return bs.AddRecord(tx, payload.Hash, payload.Storage, payload.EncKey, payload.Seed, tx.from, signer)
 }

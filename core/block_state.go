@@ -11,9 +11,10 @@ import (
 )
 
 type states struct {
-	accState   *AccountStateBatch
-	txsState   *TrieBatch
-	usageState *TrieBatch
+	accState     *AccountStateBatch
+	txsState     *TrieBatch
+	usageState   *TrieBatch
+	recordsState *TrieBatch
 
 	storage storage.Storage
 }
@@ -34,11 +35,17 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	recordsState, err := NewTrieBatch(nil, stor)
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:   accState,
-		txsState:   txsState,
-		usageState: usageState,
-		storage:    stor,
+		accState:     accState,
+		txsState:     txsState,
+		usageState:   usageState,
+		recordsState: recordsState,
+		storage:      stor,
 	}, nil
 }
 
@@ -58,11 +65,17 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	recordsState, err := NewTrieBatch(st.usageState.RootHash(), st.storage)
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:   accState,
-		txsState:   txsState,
-		usageState: usageState,
-		storage:    st.storage,
+		accState:     accState,
+		txsState:     txsState,
+		usageState:   usageState,
+		recordsState: recordsState,
+		storage:      st.storage,
 	}, nil
 }
 
@@ -74,6 +87,9 @@ func (st *states) BeginBatch() error {
 		return err
 	}
 	if err := st.usageState.BeginBatch(); err != nil {
+		return err
+	}
+	if err := st.recordsState.BeginBatch(); err != nil {
 		return err
 	}
 	return nil
@@ -89,6 +105,9 @@ func (st *states) RollBack() error {
 	if err := st.usageState.RollBack(); err != nil {
 		return err
 	}
+	if err := st.recordsState.RollBack(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -100,6 +119,9 @@ func (st *states) Commit() error {
 		return err
 	}
 	if err := st.usageState.Commit(); err != nil {
+		return err
+	}
+	if err := st.recordsState.Commit(); err != nil {
 		return err
 	}
 	return nil
@@ -115,6 +137,10 @@ func (st *states) TransactionsRoot() common.Hash {
 
 func (st *states) UsageRoot() common.Hash {
 	return common.BytesToHash(st.usageState.RootHash())
+}
+
+func (st *states) RecordsRoot() common.Hash {
+	return common.BytesToHash(st.recordsState.RootHash())
 }
 
 func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
@@ -164,6 +190,46 @@ func (st *states) SubBalance(address common.Address, amount *util.Uint128) error
 	return st.accState.SubBalance(address.Bytes(), amount)
 }
 
+func (st *states) AddRecord(tx *Transaction, hash common.Hash, storage string,
+	encKey []byte, seed []byte,
+	owner common.Address, writer common.Address) error {
+	record := &corepb.Record{
+		Hash:      hash.Bytes(),
+		Storage:   storage,
+		Owner:     tx.from.Bytes(),
+		Timestamp: tx.Timestamp(),
+		Readers: []*corepb.Reader{
+			{
+				Address: tx.from.Bytes(),
+				EncKey:  encKey,
+				Seed:    seed,
+			},
+		},
+	}
+	recordBytes, err := proto.Marshal(record)
+	if err != nil {
+		return err
+	}
+
+	if err := st.recordsState.Put(hash.Bytes(), recordBytes); err != nil {
+		return err
+	}
+
+	return st.accState.AddRecord(tx.from.Bytes(), hash.Bytes())
+}
+
+func (st *states) GetRecord(hash common.Hash) (*corepb.Record, error) {
+	recordBytes, err := st.recordsState.Get(hash.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	pbRecord := new(corepb.Record)
+	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
+		return nil, err
+	}
+	return pbRecord, nil
+}
+
 func (st *states) incrementNonce(address common.Address) error {
 	return st.accState.IncrementNonce(address.Bytes())
 }
@@ -196,6 +262,9 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 			},
 		}
 		usageBytes, err = proto.Marshal(usage)
+		if err != nil {
+			return err
+		}
 		return st.usageState.Put(tx.from.Bytes(), usageBytes)
 	default:
 		return err

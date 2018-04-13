@@ -244,15 +244,10 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 	accBytes, err := as.as.accounts.Get(address)
 	if err != nil {
 		// create account not exist in
-		observations, err := trie.NewTrie(nil, as.storage)
-		if err != nil {
-			return nil, err
-		}
 		return stageAndReturn(&account{
-			address:      address,
-			balance:      util.NewUint128(),
-			nonce:        0,
-			observations: &TrieBatch{trie: observations},
+			address: address,
+			balance: util.NewUint128(),
+			nonce:   0,
 		}), nil
 	}
 	acc, err := loadAccount(accBytes, as.storage)
@@ -326,8 +321,8 @@ func (as *AccountStateBatch) RemoveWriter(address []byte, writer []byte) error {
 	return nil
 }
 
-// AddObservation add observation
-func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
+// AddRecord adds a record hash in account's records list
+func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
@@ -335,7 +330,17 @@ func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	if err != nil {
 		return err
 	}
-	acc.observations.Put(hash, hash) // TODO
+	records := [][]byte{}
+	for _, r := range acc.records {
+		if byteutils.Equal(hash, r) {
+			continue
+		}
+		records = append(records, r)
+	}
+	if len(acc.records) == len(records) {
+		return ErrRecordAlreadyAdded
+	}
+	acc.records = records
 	return nil
 }
 

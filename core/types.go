@@ -53,6 +53,7 @@ var (
 	ErrWriterNotFound            = errors.New("writer to remove not found")
 	ErrInvalidTxPayload          = errors.New("cannot unmarshal tx payload")
 	ErrInvalidTxDelegation       = errors.New("tx signer is not owner or one of writers")
+	ErrRecordAlreadyAdded        = errors.New("record hash already added")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

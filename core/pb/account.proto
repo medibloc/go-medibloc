@@ -7,4 +7,5 @@ message Account {
     uint64 nonce = 3;
     bytes observations_hash = 4;
     repeated bytes writers = 5;
+    repeated bytes records = 6;
 }

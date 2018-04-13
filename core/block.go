@@ -19,9 +19,10 @@ type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
 
-	accsRoot  common.Hash
-	txsRoot   common.Hash
-	usageRoot common.Hash
+	accsRoot    common.Hash
+	txsRoot     common.Hash
+	usageRoot   common.Hash
+	recordsRoot common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -34,16 +35,17 @@ type BlockHeader struct {
 // ToProto converts BlockHeader to corepb.BlockHeader
 func (b *BlockHeader) ToProto() (proto.Message, error) {
 	return &corepb.BlockHeader{
-		Hash:       b.hash.Bytes(),
-		ParentHash: b.parentHash.Bytes(),
-		AccsRoot:   b.accsRoot.Bytes(),
-		TxsRoot:    b.txsRoot.Bytes(),
-		UsageRoot:  b.usageRoot.Bytes(),
-		Coinbase:   b.coinbase.Bytes(),
-		Timestamp:  b.timestamp,
-		ChainId:    b.chainID,
-		Alg:        uint32(b.alg),
-		Sign:       b.sign,
+		Hash:        b.hash.Bytes(),
+		ParentHash:  b.parentHash.Bytes(),
+		AccsRoot:    b.accsRoot.Bytes(),
+		TxsRoot:     b.txsRoot.Bytes(),
+		UsageRoot:   b.usageRoot.Bytes(),
+		RecordsRoot: b.recordsRoot.Bytes(),
+		Coinbase:    b.coinbase.Bytes(),
+		Timestamp:   b.timestamp,
+		ChainId:     b.chainID,
+		Alg:         uint32(b.alg),
+		Sign:        b.sign,
 	}, nil
 }
 
@@ -55,6 +57,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.accsRoot = common.BytesToHash(msg.AccsRoot)
 		b.txsRoot = common.BytesToHash(msg.TxsRoot)
 		b.usageRoot = common.BytesToHash(msg.UsageRoot)
+		b.recordsRoot = common.BytesToHash(msg.RecordsRoot)
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
@@ -264,6 +267,11 @@ func (bd *BlockData) UsageRoot() common.Hash {
 	return bd.header.txsRoot
 }
 
+// RecordsRoot returns root hash of usage trie
+func (bd *BlockData) RecordsRoot() common.Hash {
+	return bd.header.recordsRoot
+}
+
 // Height returns height
 func (bd *BlockData) Height() uint64 {
 	return bd.height
@@ -299,6 +307,7 @@ func (block *Block) Seal() error {
 	block.header.accsRoot = block.state.AccountsRoot()
 	block.header.txsRoot = block.state.TransactionsRoot()
 	block.header.usageRoot = block.state.UsageRoot()
+	block.header.recordsRoot = block.state.RecordsRoot()
 
 	var err error
 	block.header.hash, err = HashBlockData(block.BlockData)
@@ -322,6 +331,7 @@ func HashBlockData(bd *BlockData) (common.Hash, error) {
 	hasher.Write(bd.AccountsRoot().Bytes())
 	hasher.Write(bd.TransactionsRoot().Bytes())
 	hasher.Write(bd.UsageRoot().Bytes())
+	hasher.Write(bd.RecordsRoot().Bytes())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 

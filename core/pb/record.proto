@@ -1,0 +1,16 @@
+syntax = "proto3";
+package corepb;
+
+message Reader {
+  bytes address = 1;
+  bytes enc_key = 2;
+  bytes seed = 3;
+}
+
+message Record {
+  bytes hash = 1;
+  string storage = 2;
+  bytes owner = 3;
+  int64 timestamp = 4;
+  repeated Reader readers = 5;
+}

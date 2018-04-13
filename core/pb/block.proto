@@ -10,13 +10,14 @@ message BlockHeader {
   bytes accs_root = 3;
   bytes txs_root = 4;
   bytes usage_root = 5;
+  bytes records_root = 6;
 
-  bytes coinbase = 6;
-  int64 timestamp = 7;
-  uint32 chain_id = 8;
+  bytes coinbase = 7;
+  int64 timestamp = 8;
+  uint32 chain_id = 9;
 
-  uint32 alg = 9;
-  bytes sign = 10;
+  uint32 alg = 10;
+  bytes sign = 11;
 }
 
 message Block {
