@@ -171,6 +171,15 @@ func (st *states) LoadUsageRoot(rootHash common.Hash) error {
 	return nil
 }
 
+func (st *states) LoadRecordsRoot(rootHash common.Hash) error {
+	recordsState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+	if err != nil {
+		return err
+	}
+	st.recordsState = recordsState
+	return nil
+}
+
 func (st *states) GetAccount(address common.Address) (Account, error) {
 	return st.accState.GetAccount(address.Bytes())
 }

@@ -202,6 +202,9 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
 		return nil, err
 	}
+	if err := block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
+		return nil, err
+	}
 	block.storage = storage
 	return block, nil
 }
@@ -264,7 +267,7 @@ func (bd *BlockData) TransactionsRoot() common.Hash {
 
 // UsageRoot returns root hash of usage trie
 func (bd *BlockData) UsageRoot() common.Hash {
-	return bd.header.txsRoot
+	return bd.header.usageRoot
 }
 
 // RecordsRoot returns root hash of usage trie
@@ -402,6 +405,12 @@ func (block *Block) VerifyState() error {
 		return ErrInvalidBlockAccountsRoot
 	}
 	if !byteutils.Equal(block.state.TransactionsRoot().Bytes(), block.TransactionsRoot().Bytes()) {
+		return ErrInvalidBlockTxsRoot
+	}
+	if !byteutils.Equal(block.state.UsageRoot().Bytes(), block.UsageRoot().Bytes()) {
+		return ErrInvalidBlockTxsRoot
+	}
+	if !byteutils.Equal(block.state.RecordsRoot().Bytes(), block.RecordsRoot().Bytes()) {
 		return ErrInvalidBlockTxsRoot
 	}
 	return nil
