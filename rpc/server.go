@@ -34,7 +34,7 @@ func (s *Server) Start(addr string) error {
 	}
 	go func() {
 		if err := s.rpcServer.Serve(lis); err != nil {
-			log.Println("Somethins is wrong in Start : %v", err)
+			log.Printf("Somethins is wrong in Start : %v", err)
 		}
 	}()
 	log.Println("Server is running")
@@ -44,7 +44,7 @@ func (s *Server) Start(addr string) error {
 func (s *Server) RunGateway() error {
 	go func() {
 		if err := httpServerRun(); err != nil {
-			log.Println("Somethins is wrong in RunGateway : %v", err)
+			log.Printf("Somethins is wrong in RunGateway : %v", err)
 		}
 	}()
 	log.Println("HTTPServer is running")

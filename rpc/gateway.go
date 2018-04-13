@@ -19,13 +19,13 @@ func httpServerRun() error {
 	err1 := rpcpb.RegisterApiServiceHandlerFromEndpoint(ctx, mux, "localhost:10000", opts)
 	err2 := rpcpb.RegisterAdminServiceHandlerFromEndpoint(ctx, mux, "localhost:10000", opts)
 	if err1 != nil {
-		log.Println("Somethins is wrong in httpServerRun : %v", err1)
+		log.Printf("Somethins is wrong in httpServerRun : %v", err1)
 	}
 	if err2 != nil {
-		log.Println("Somethins is wrong in httpServerRun : %v", err2)
+		log.Printf("Somethins is wrong in httpServerRun : %v", err2)
 	}
 	if err := http.ListenAndServe("localhost:10002", mux); err != nil {
-		log.Println("Somethins is wrong in httpServerRun : %v", err)
+		log.Printf("Somethins is wrong in httpServerRun : %v", err)
 		return err
 	}
 	return nil
