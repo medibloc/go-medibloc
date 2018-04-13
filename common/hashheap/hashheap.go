@@ -13,8 +13,8 @@ type HashedHeap struct {
 	hash map[string]*entry
 }
 
-// NewHashedHeap returns HashedHeap.
-func NewHashedHeap() *HashedHeap {
+// New returns HashedHeap.
+func New() *HashedHeap {
 	return &HashedHeap{
 		pq:   make(priorityQueue, 0),
 		hash: make(map[string]*entry),

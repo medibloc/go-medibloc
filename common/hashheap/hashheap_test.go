@@ -14,7 +14,7 @@ func (c cmp) Less(b interface{}) bool {
 }
 
 func TestPushPop(t *testing.T) {
-	h := NewHashedHeap()
+	h := New()
 	h.Set("a1", cmp(1))
 	h.Set("a2", cmp(2))
 	assert.EqualValues(t, 1, h.Pop())
