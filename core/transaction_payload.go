@@ -97,7 +97,7 @@ type AddRecordReaderPayload struct {
 }
 
 // NewAddRecordReaderPayload generates a AddRecordReaderPayload
-func NewAddRecordReaderPayload(hash common.Hash, address common.Address, storage string, encKey, seed []byte) *AddRecordReaderPayload {
+func NewAddRecordReaderPayload(hash common.Hash, address common.Address, encKey, seed []byte) *AddRecordReaderPayload {
 	return &AddRecordReaderPayload{
 		Hash:    hash,
 		Address: address,

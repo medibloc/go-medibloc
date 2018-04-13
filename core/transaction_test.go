@@ -215,3 +215,65 @@ func TestAddRecord(t *testing.T) {
 	assert.Equal(t, record.Readers[0].EncKey, encKey)
 	assert.Equal(t, record.Readers[0].Seed, seed)
 }
+
+func TestAddRecordReader(t *testing.T) {
+	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	storage := "ipfs"
+	ownerEncKey := bytes.Hex2Bytes("abcdef")
+	ownerSeed := bytes.Hex2Bytes("5eed")
+	addRecordPayload := core.NewAddRecordPayload(recordHash, storage, ownerEncKey, ownerSeed)
+	addRecordPayloadBuf, err := addRecordPayload.ToBytes()
+	assert.NoError(t, err)
+	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
+	txAddRecord, err := core.NewTransaction(chainID,
+		owner,
+		common.Address{},
+		util.Uint128Zero(), 1,
+		core.TxOperationAddRecord, addRecordPayloadBuf)
+	assert.NoError(t, err)
+
+	privKey, err := secp256k1.NewPrivateKeyFromHex("0e2c9d389320398e7f09de9764e3892c6a9cc9b86b4bb1d64abc1bd995e363e7")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, txAddRecord.SignThis(sig))
+
+	reader := common.HexToAddress("03c5e1fa1ee82af7398ae8cc10ae12dc0ee9692cb06346810e3af74cbd3811276f")
+	readerEncKey := bytes.Hex2Bytes("123456")
+	readerSeed := bytes.Hex2Bytes("2eed")
+	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash, reader, readerEncKey, readerSeed)
+	addRecordReaderPayloadBuf, err := addRecordReaderPayload.ToBytes()
+	assert.NoError(t, err)
+
+	txAddRecordReader, err := core.NewTransaction(chainID,
+		owner,
+		common.Address{},
+		util.Uint128Zero(), 2,
+		core.TxOperationAddRecordReader, addRecordReaderPayloadBuf)
+	assert.NoError(t, err)
+	assert.NoError(t, txAddRecordReader.SignThis(sig))
+
+	genesisState, err := genesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, txAddRecord.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, genesisBlock.Timestamp()))
+	assert.NoError(t, txAddRecordReader.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(txAddRecordReader, genesisBlock.Timestamp()))
+	genesisState.Commit()
+
+	record, err := genesisState.GetRecord(recordHash)
+	assert.NoError(t, err)
+	assert.Equal(t, record.Hash, recordHash.Bytes())
+	assert.Equal(t, record.Storage, storage)
+	assert.Equal(t, len(record.Readers), 2)
+	assert.Equal(t, record.Readers[0].Address, owner.Bytes())
+	assert.Equal(t, record.Readers[0].EncKey, ownerEncKey)
+	assert.Equal(t, record.Readers[0].Seed, ownerSeed)
+	assert.Equal(t, record.Readers[1].Address, reader.Bytes())
+	assert.Equal(t, record.Readers[1].EncKey, readerEncKey)
+	assert.Equal(t, record.Readers[1].Seed, readerSeed)
+
+}
