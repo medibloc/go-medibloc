@@ -8,6 +8,7 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/bytes"
 )
 
 type states struct {
@@ -218,6 +219,35 @@ func (st *states) AddRecord(tx *Transaction, hash common.Hash, storage string,
 	return st.accState.AddRecord(tx.from.Bytes(), hash.Bytes())
 }
 
+func (st *states) AddRecordReader(tx *Transaction, dataHash common.Hash, reader common.Address, encKey []byte, seed []byte) error {
+	recordBytes, err := st.recordsState.Get(dataHash.Bytes())
+	if err != nil {
+		return err
+	}
+	pbRecord := new(corepb.Record)
+	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
+		return err
+	}
+	if bytes.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
+		return ErrTxIsNotFromRecordOwner
+	}
+	for _, r := range pbRecord.Readers {
+		if bytes.Equal(reader.Bytes(), r.Address) {
+			return ErrRecordReaderAlreadyAdded
+		}
+	}
+	pbRecord.Readers = append(pbRecord.Readers, &corepb.Reader{
+		Address: reader.Bytes(),
+		EncKey:  encKey,
+		Seed:    seed,
+	})
+	b, err := proto.Marshal(pbRecord)
+	if err != nil {
+		return err
+	}
+	return st.recordsState.Put(dataHash.Bytes(), b)
+}
+
 func (st *states) GetRecord(hash common.Hash) (*corepb.Record, error) {
 	recordBytes, err := st.recordsState.Get(hash.Bytes())
 	if err != nil {
@@ -282,7 +312,9 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		}
 	}
 	pbUsage.Timestamps = append(pbUsage.Timestamps[idx:], &corepb.TxTimestamp{Hash: tx.Hash().Bytes(), Timestamp: tx.Timestamp()})
-	sort.Slice(pbUsage.Timestamps, func(i, j int) bool { return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp })
+	sort.Slice(pbUsage.Timestamps, func(i, j int) bool {
+		return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp
+	})
 
 	pbBytes, err := proto.Marshal(pbUsage)
 	if err != nil {

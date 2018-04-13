@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	TxOperationSend         = ""
-	TxOperationAddRecord    = "add_record"
-	TxOperationDeposit      = "deposit"
-	TxOperationWidthdraw    = "widthdraw"
-	TxOperationRegisterRKey = "register_rkey"
-	TxOperationRegisterWKey = "register_wkey"
-	TxOperationRemoveWKey   = "remove_wkey"
+	TxOperationSend            = ""
+	TxOperationAddRecord       = "add_record"
+	TxOperationAddRecordReader = "add_record_reader"
+	TxOperationDeposit         = "deposit"
+	TxOperationWidthdraw       = "widthdraw"
+	TxOperationRegisterWKey    = "register_wkey"
+	TxOperationRemoveWKey      = "remove_wkey"
 )
 
 const (
@@ -54,6 +54,8 @@ var (
 	ErrInvalidTxPayload          = errors.New("cannot unmarshal tx payload")
 	ErrInvalidTxDelegation       = errors.New("tx signer is not owner or one of writers")
 	ErrRecordAlreadyAdded        = errors.New("record hash already added")
+	ErrRecordReaderAlreadyAdded  = errors.New("record reader hash already added")
+	ErrTxIsNotFromRecordOwner    = errors.New("adding record reader should be done by record owner")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

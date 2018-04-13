@@ -330,17 +330,12 @@ func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	if err != nil {
 		return err
 	}
-	records := [][]byte{}
 	for _, r := range acc.records {
 		if byteutils.Equal(hash, r) {
-			continue
+			return ErrRecordAlreadyAdded
 		}
-		records = append(records, r)
 	}
-	if len(acc.records) == len(records) {
-		return ErrRecordAlreadyAdded
-	}
-	acc.records = records
+	acc.records = append(acc.records, hash)
 	return nil
 }
 
