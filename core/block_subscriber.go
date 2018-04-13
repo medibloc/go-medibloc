@@ -50,6 +50,14 @@ type BlockSubscriber struct {
 
 var bs *BlockSubscriber
 
+// NewBlockSubscriber
+func NewBlockSubscriber(bp *BlockPool, bc *BlockChain) *BlockSubscriber {
+	return &BlockSubscriber{
+		bc: bc,
+		bp: bp,
+	}
+}
+
 // GetBlockPoolBlockChain returns BlockPool and BlockChain.
 func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, error) {
 	bp, err := NewBlockPool(blockPoolSize)
@@ -72,18 +80,15 @@ func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, e
 }
 
 // StartBlockSubscriber starts block subscribe service.
-func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) {
-	bs = &BlockSubscriber{
-		bc:         bc,
-		bp:         bp,
-		quitCh:     make(chan int),
-		netService: netService,
-	}
-	newBlockCh := make(chan net.Message)
-	requestBlockCh := make(chan net.Message)
-	netService.Register(net.NewSubscriber(bs, newBlockCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
-	netService.Register(net.NewSubscriber(bs, requestBlockCh, false, MessageTypeRequestBlock, net.MessageWeightZero))
+func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) *BlockSubscriber {
+	bs = NewBlockSubscriber(bp, bc)
+	bs.quitCh = make(chan int)
+	bs.netService = netService
 	go func() {
+		newBlockCh := make(chan net.Message)
+		requestBlockCh := make(chan net.Message)
+		netService.Register(net.NewSubscriber(bs, newBlockCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
+		netService.Register(net.NewSubscriber(bs, requestBlockCh, false, MessageTypeRequestBlock, net.MessageWeightZero))
 		for {
 			select {
 			case msg := <-newBlockCh:
@@ -95,7 +100,7 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 					continue
 				}
 				logging.Console().Info("Block arrived")
-				err = bs.handleReceivedBlock(blockData, msg.MessageFrom())
+				err = bs.HandleReceivedBlock(blockData, msg.MessageFrom())
 				if err != nil {
 					logging.Console().Error(err)
 				}
@@ -109,6 +114,8 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 			}
 		}
 	}()
+
+	return bs
 }
 
 //StopBlockSubscriber stops BlockSubscriber.
@@ -116,15 +123,6 @@ func StopBlockSubscriber() {
 	if bs != nil {
 		bs.quitCh <- 0
 	}
-}
-
-// PushBlock Temporarily for Test
-func PushBlock(blockData *BlockData, bc *BlockChain, bp *BlockPool) error {
-	subscriber := &BlockSubscriber{
-		bc: bc,
-		bp: bp,
-	}
-	return subscriber.handleReceivedBlock(blockData, "")
 }
 
 func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]*Block, []*Block, error) {
@@ -176,7 +174,7 @@ func handleRequestBlockMessage(msg net.Message, netService net.Service) error {
 	return netService.SendMsg(MessageTypeNewBlock, data, msg.MessageFrom(), net.MessagePriorityNormal)
 }
 
-func (subscriber *BlockSubscriber) handleReceivedBlock(block *BlockData, sender string) error {
+func (subscriber *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender string) error {
 	// TODO check if block already exist in storage
 	err := block.VerifyIntegrity()
 	if err != nil {
