@@ -37,7 +37,7 @@ func vLog() *logrus.Logger {
 func Init(path string, level string, age uint32) {
 	levelNo, err := logrus.ParseLevel(level)
 	if err != nil {
-		panic("Invald log level:" + level)
+		panic("Invalid log level:" + level)
 	}
 
 	fileHooker := NewFileRotateHooker(path, age)

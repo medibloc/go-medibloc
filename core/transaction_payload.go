@@ -26,7 +26,7 @@ func BytesToRegisterWriterPayload(b []byte) (*RegisterWriterPayload, error) {
 	return payload, nil
 }
 
-// ToBytes returns marshalled RegisterWriterPayload
+// ToBytes returns marshaled RegisterWriterPayload
 func (payload *RegisterWriterPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
@@ -51,7 +51,7 @@ func BytesToRemoveWriterPayload(b []byte) (*RemoveWriterPayload, error) {
 	return payload, nil
 }
 
-// ToBytes returns marshalled RemoveWriterPayload
+// ToBytes returns marshaled RemoveWriterPayload
 func (payload *RemoveWriterPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }

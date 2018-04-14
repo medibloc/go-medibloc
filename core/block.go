@@ -219,7 +219,7 @@ func (bd *BlockData) Coinbase() common.Address {
 	return bd.header.coinbase
 }
 
-// Alg returns sign altorithm
+// Alg returns sign algorithm
 func (bd *BlockData) Alg() algorithm.Algorithm {
 	return bd.header.alg
 }

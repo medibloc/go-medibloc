@@ -33,7 +33,7 @@ func New(config *medletpb.Config) (*Medlet, error) {
 // Setup sets up medlet.
 func (m *Medlet) Setup() {
 	var err error
-	logging.Console().Info("Setuping Medlet...")
+	logging.Console().Info("Setting up Medlet...")
 
 	m.netService, err = mednet.NewMedService(m)
 	if err != nil {
@@ -42,7 +42,7 @@ func (m *Medlet) Setup() {
 		}).Fatal("Failed to setup net service.")
 	}
 
-	logging.Console().Info("Setuped Medlet.")
+	logging.Console().Info("Set up Medlet.")
 }
 
 // Start starts the services of the medlet.
