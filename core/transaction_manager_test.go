@@ -78,7 +78,7 @@ func TestTransactionManagerDupTxFromNet(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-func TestTranactionManagerDupTxPush(t *testing.T) {
+func TestTransactionManagerDupTxPush(t *testing.T) {
 	mgrs, closeFn := newTestTransactionManagers(t, 2)
 	defer closeFn()
 
