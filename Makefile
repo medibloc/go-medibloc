@@ -20,9 +20,9 @@ LDFLAGS = -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.
 COLOR="\033[32;1m"
 ENDCOLOR="\033[0m"
 
-.PHONY: clean vet fmt lint build test dep cover
+.PHONY: clean vet fmt lint build test dep cover test-slow
 
-all: fmt build vet lint test
+all: fmt build vet lint test-slow
 
 dep:
 	dep ensure -v
@@ -42,6 +42,11 @@ test:
 	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
 	@-mkdir -p $(REPORT_DIR)
 	@go test ./... 2>&1 | tee ${TEST_REPORT}
+
+test-slow:
+	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
+	@-mkdir -p $(REPORT_DIR)
+	@go test -race -cover ./... 2>&1 | tee ${TEST_REPORT}
 
 vet:
 	@echo $(COLOR)[VET] $(VET_REPORT)$(ENDCOLOR)
