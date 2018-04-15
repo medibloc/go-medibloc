@@ -24,9 +24,11 @@ import (
 )
 
 var (
+	// ErrNoMatch address key doesn't match error.
 	ErrNoMatch = errors.New("no key for given address")
 )
 
+// KeyStore manages private keys.
 type KeyStore struct {
 	keys map[common.Address]signature.PrivateKey
 }
@@ -38,8 +40,7 @@ func NewKeyStore() *KeyStore {
 	return ks
 }
 
-// NewAccount generates a new key and stores it into the key directory,
-// encrypting it with the passphrase.
+// SetKey set key.
 func (ks *KeyStore) SetKey(key signature.PrivateKey) (common.Address, error) {
 	addr, err := common.PublicKeyToAddress(key.PublicKey())
 	if err != nil {
@@ -49,6 +50,7 @@ func (ks *KeyStore) SetKey(key signature.PrivateKey) (common.Address, error) {
 	return addr, nil
 }
 
+// Delete deletes key.
 func (ks *KeyStore) Delete(a common.Address) error {
 	if !ks.HasAddress(a) {
 		return ErrNoMatch
@@ -71,6 +73,7 @@ func (ks *KeyStore) Accounts() []common.Address {
 	return addresses
 }
 
+// GetKey gets key.
 func (ks *KeyStore) GetKey(a common.Address) (signature.PrivateKey, error) {
 	if !ks.HasAddress(a) {
 		return nil, ErrNoMatch

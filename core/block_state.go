@@ -90,10 +90,7 @@ func (st *states) BeginBatch() error {
 	if err := st.usageState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.recordsState.BeginBatch(); err != nil {
-		return err
-	}
-	return nil
+	return st.recordsState.BeginBatch()
 }
 
 func (st *states) RollBack() error {
@@ -106,10 +103,7 @@ func (st *states) RollBack() error {
 	if err := st.usageState.RollBack(); err != nil {
 		return err
 	}
-	if err := st.recordsState.RollBack(); err != nil {
-		return err
-	}
-	return nil
+	return st.recordsState.RollBack()
 }
 
 func (st *states) Commit() error {
@@ -122,10 +116,7 @@ func (st *states) Commit() error {
 	if err := st.usageState.Commit(); err != nil {
 		return err
 	}
-	if err := st.recordsState.Commit(); err != nil {
-		return err
-	}
-	return nil
+	return st.recordsState.Commit()
 }
 
 func (st *states) AccountsRoot() common.Hash {
@@ -434,10 +425,7 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 		return err
 	}
 
-	if err = bs.incrementNonce(tx.from); err != nil {
-		return err
-	}
-	return nil
+	return bs.incrementNonce(tx.from)
 }
 
 func (bs *BlockState) checkNonce(tx *Transaction) error {

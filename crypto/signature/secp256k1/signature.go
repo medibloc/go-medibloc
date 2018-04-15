@@ -7,19 +7,23 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 )
 
+// Signature signature ecdsa
 type Signature struct {
 	privateKey *PrivateKey
 	publicKey  *PublicKey
 }
 
+// Algorithm secp256k1 algorithm
 func (s *Signature) Algorithm() algorithm.Algorithm {
 	return algorithm.SECP256K1
 }
 
+// InitSign ecdsa init sign
 func (s *Signature) InitSign(priv signature.PrivateKey) {
 	s.privateKey = priv.(*PrivateKey)
 }
 
+// Sign ecdsa sign
 func (s *Signature) Sign(data []byte) ([]byte, error) {
 	if s.privateKey == nil {
 		return nil, errors.New("signature private key is nil")
@@ -32,6 +36,7 @@ func (s *Signature) Sign(data []byte) ([]byte, error) {
 	return sig, nil
 }
 
+// RecoverPublic returns a public key
 func (s *Signature) RecoverPublic(data []byte, sig []byte) (signature.PublicKey, error) {
 	pub, err := RecoverPubkey(data, sig)
 	if err != nil {
@@ -45,10 +50,12 @@ func (s *Signature) RecoverPublic(data []byte, sig []byte) (signature.PublicKey,
 	return NewPublicKey(*pubKey), nil
 }
 
+// InitVerify ecdsa verify init
 func (s *Signature) InitVerify(pub signature.PublicKey) {
 	s.publicKey = pub.(*PublicKey)
 }
 
+// Verify ecdsa verify
 func (s *Signature) Verify(data []byte, sig []byte) (bool, error) {
 	if s.publicKey == nil {
 		return false, errors.New("signature public key is nil")

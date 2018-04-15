@@ -17,13 +17,14 @@
 package rand
 
 import (
-	crand "crypto/rand"
+	"crypto/rand"
 	"io"
 )
 
+// GetEntropyCSPRNG returns random bytes.
 func GetEntropyCSPRNG(n int) []byte {
 	mainBuff := make([]byte, n)
-	_, err := io.ReadFull(crand.Reader, mainBuff)
+	_, err := io.ReadFull(rand.Reader, mainBuff)
 	if err != nil {
 		panic("reading from crypto/rand failed: " + err.Error())
 	}

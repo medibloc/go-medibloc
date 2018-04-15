@@ -8,16 +8,19 @@ import (
 	"google.golang.org/grpc"
 )
 
+// GRPCServer is GRPCServer's interface.
 type GRPCServer interface {
 	Start(string) error
 	RunGateway() error
 	Stop()
 }
 
+// Server is rpc server.
 type Server struct {
 	rpcServer *grpc.Server
 }
 
+// NewServer returns NewServer.
 func NewServer() *Server {
 	rpc := grpc.NewServer()
 	srv := &Server{rpcServer: rpc}
@@ -28,6 +31,7 @@ func NewServer() *Server {
 	return srv
 }
 
+// Start starts rpc server.
 func (s *Server) Start(addr string) error {
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -41,6 +45,7 @@ func (s *Server) Start(addr string) error {
 	return nil
 }
 
+// RunGateway runs rest gateway server.
 func (s *Server) RunGateway() error {
 	go func() {
 		if err := httpServerRun(); err != nil {
@@ -51,6 +56,7 @@ func (s *Server) RunGateway() error {
 	return nil
 }
 
+// Stop stops server.
 func (s *Server) Stop() {
 	s.rpcServer.Stop()
 }

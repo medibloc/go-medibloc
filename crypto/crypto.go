@@ -13,6 +13,7 @@ var (
 	ErrAlgorithmInvalid = errors.New("invalid Algorithm")
 )
 
+// GenerateKey generates PrivateKey.
 func GenerateKey(alg algorithm.Algorithm) (signature.PrivateKey, error) {
 	switch alg {
 	case algorithm.SECP256K1:
@@ -22,6 +23,7 @@ func GenerateKey(alg algorithm.Algorithm) (signature.PrivateKey, error) {
 	}
 }
 
+// NewSignature returns signature from algorithm.
 func NewSignature(alg algorithm.Algorithm) (signature.Signature, error) {
 	switch alg {
 	case algorithm.SECP256K1:
@@ -31,6 +33,7 @@ func NewSignature(alg algorithm.Algorithm) (signature.Signature, error) {
 	}
 }
 
+// CheckAlgorithm checks algorithm.
 func CheckAlgorithm(alg algorithm.Algorithm) error {
 	switch alg {
 	case algorithm.SECP256K1:

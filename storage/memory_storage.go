@@ -33,7 +33,7 @@ func NewMemoryStorage() (*MemoryStorage, error) {
 	}, nil
 }
 
-// Del delete the key entry in Storage.
+// Delete delete the key entry in Storage.
 func (s *MemoryStorage) Delete(key []byte) error {
 	s.data.Delete(hex.EncodeToString(key))
 	return nil

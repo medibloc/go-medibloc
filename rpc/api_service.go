@@ -54,10 +54,12 @@ func makeFakeBlockChain() map[uint64][]*account {
 // FAKE DATA ENDS
 //
 
+// APIService is blockchain api rpc service.
 type APIService struct {
 	server GRPCServer
 }
 
+// GetAccountState handles GetAccountState rpc.
 func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
 	addr := req.Address
 	height := req.Height

@@ -28,6 +28,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Block's message types.
 const (
 	MessageTypeNewBlock     = "newblock"
 	MessageTypeRequestBlock = "reqblock"
@@ -39,6 +40,7 @@ var (
 	blockPoolSize                 = 128
 )
 
+// BlockSubscriber receives blocks from network.
 type BlockSubscriber struct {
 	bc         *BlockChain
 	bp         *BlockPool
@@ -48,7 +50,7 @@ type BlockSubscriber struct {
 
 var bs *BlockSubscriber
 
-// GetBlockPoolBlockChain
+// GetBlockPoolBlockChain returns BlockPool and BlockChain.
 func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, error) {
 	bp, err := NewBlockPool(blockPoolSize)
 	if err != nil {
@@ -69,7 +71,7 @@ func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, e
 	return bp, bc, nil
 }
 
-// StartBlockHandler
+// StartBlockSubscriber starts block subscribe service.
 func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) {
 	bs = &BlockSubscriber{
 		bc:         bc,
@@ -109,6 +111,7 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 	}()
 }
 
+//StopBlockSubscriber stops BlockSubscriber.
 func StopBlockSubscriber() {
 	if bs != nil {
 		bs.quitCh <- 0

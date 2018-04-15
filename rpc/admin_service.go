@@ -18,10 +18,12 @@ import (
 // FAKE DATA ENDS
 //
 
+// AdminService is admin api rpc service.
 type AdminService struct {
 	server GRPCServer
 }
 
+// SendTransaction handles SendTransaction rpc.
 func (s *AdminService) SendTransaction(ctx context.Context, req *rpcpb.TransactionRequest) (*rpcpb.TransactionResponse, error) {
 	data := strings.Join([]string{req.From, req.To, req.Value, string(req.Nonce)}, "")
 	hasher := sha256.New()

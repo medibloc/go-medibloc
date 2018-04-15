@@ -296,11 +296,7 @@ func (tx *Transaction) transfer(bs *BlockState) error {
 	if err = bs.SubBalance(tx.from, tx.value); err != nil {
 		return err
 	}
-	if err = bs.AddBalance(tx.to, tx.value); err != nil {
-		return err
-	}
-
-	return nil
+	return bs.AddBalance(tx.to, tx.value)
 }
 
 func (tx *Transaction) registerWriteKey(bs *BlockState) error {

@@ -22,7 +22,7 @@ var (
 	ErrConfigLackNetWork        = errors.New("config.conf should has network")
 )
 
-// SerializableToBytes
+// SerializableToBytes converts serializable to bytes.
 func SerializableToBytes(obj Serializable) ([]byte, error) {
 	pb, err := obj.ToProto()
 	data, err := proto.Marshal(pb)

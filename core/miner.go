@@ -26,15 +26,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Miner default configurations.
 const (
 	Interval     = 7 * time.Second
 	MaxTxInBlock = 100
 )
 
+// Miner creates blocks.
 type Miner struct {
 	quit chan int
 }
 
+// StartMiner starts miner.
 func StartMiner(netService net.Service, bc *BlockChain, txMgr *TransactionManager) *Miner {
 	miner := &Miner{quit: make(chan int)}
 	go func() {
@@ -61,6 +64,7 @@ func StartMiner(netService net.Service, bc *BlockChain, txMgr *TransactionManage
 	return miner
 }
 
+// StopMiner stops miner.
 func (miner *Miner) StopMiner() {
 	miner.quit <- 0
 }

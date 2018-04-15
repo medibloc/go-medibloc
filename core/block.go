@@ -459,26 +459,17 @@ func (bd *BlockData) VerifyIntegrity() error {
 
 // BeginBatch makes block state update possible
 func (block *Block) BeginBatch() error {
-	if err := block.state.BeginBatch(); err != nil {
-		return err
-	}
-	return nil
+	return block.state.BeginBatch()
 }
 
 // RollBack rolls back block state batch updates
 func (block *Block) RollBack() error {
-	if err := block.state.RollBack(); err != nil {
-		return err
-	}
-	return nil
+	return block.state.RollBack()
 }
 
 // Commit saves batch updates to storage
 func (block *Block) Commit() error {
-	if err := block.state.Commit(); err != nil {
-		return err
-	}
-	return nil
+	return block.state.Commit()
 }
 
 func bytesToBlockData(bytes []byte) (*BlockData, error) {

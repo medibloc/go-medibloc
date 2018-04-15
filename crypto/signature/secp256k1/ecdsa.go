@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	secp256k1_N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
-	secp256k1_halfN = new(big.Int).Div(secp256k1_N, big.NewInt(2))
+	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
+	secp256k1Halfn = new(big.Int).Div(secp256k1N, big.NewInt(2))
 )
 
 // NewECDSAPrivateKey generate a ecdsa private key
@@ -29,7 +29,7 @@ func NewECDSAPrivateKey() *ecdsa.PrivateKey {
 	return priv
 }
 
-// FromECDSA exports a private key into a binary dump.
+// FromECDSAPrivateKey exports a private key into a binary dump.
 func FromECDSAPrivateKey(priv *ecdsa.PrivateKey) []byte {
 	if priv == nil {
 		return nil
@@ -37,6 +37,7 @@ func FromECDSAPrivateKey(priv *ecdsa.PrivateKey) []byte {
 	return math.PaddedBigBytes(priv.D, priv.Params().BitSize/8)
 }
 
+// HexToECDSA gets a private key from hex string.
 func HexToECDSA(hexkey string) (*ecdsa.PrivateKey, error) {
 	b, err := hex.DecodeString(hexkey)
 	if err != nil {
@@ -45,10 +46,12 @@ func HexToECDSA(hexkey string) (*ecdsa.PrivateKey, error) {
 	return ToECDSAPrivateKey(b)
 }
 
+// ToECDSAPrivateKey gets a private key from bytes.
 func ToECDSAPrivateKey(d []byte) (*ecdsa.PrivateKey, error) {
 	return toECDSAPrivateKey(d, true)
 }
 
+// ToECDSAPrivateKeyUnsafe is ToECDSAPrivateKey's unsafe function.
 func ToECDSAPrivateKeyUnsafe(d []byte) *ecdsa.PrivateKey {
 	priv, _ := toECDSAPrivateKey(d, false)
 	return priv
@@ -63,7 +66,7 @@ func toECDSAPrivateKey(d []byte, strict bool) (*ecdsa.PrivateKey, error) {
 	priv.D = new(big.Int).SetBytes(d)
 
 	// The priv.D must < N
-	if priv.D.Cmp(secp256k1_N) >= 0 {
+	if priv.D.Cmp(secp256k1N) >= 0 {
 		return nil, fmt.Errorf("invalid private key, >=N")
 	}
 	// The priv.D must not be zero or negative.
@@ -78,6 +81,7 @@ func toECDSAPrivateKey(d []byte, strict bool) (*ecdsa.PrivateKey, error) {
 	return priv, nil
 }
 
+// FromECDSAPublicKey exports a public key into a binary dump.
 func FromECDSAPublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
 	if pub == nil || pub.X == nil || pub.Y == nil {
 		return nil, errors.New("invalid public key input")
@@ -85,6 +89,7 @@ func FromECDSAPublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
 	return elliptic.Marshal(S256(), pub.X, pub.Y), nil
 }
 
+// ToECDSAPublicKey creates a public key with the given data value.
 func ToECDSAPublicKey(pub []byte) (*ecdsa.PublicKey, error) {
 	if len(pub) == 0 {
 		return nil, errors.New("invalid public key")

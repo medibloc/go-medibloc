@@ -22,7 +22,6 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,11 +29,7 @@ const (
 	cacheSize = 128
 )
 
-var (
-	ErrBlockNotExist = errors.New("block not exist")
-)
-
-// BlockChain
+// BlockChain manages blockchain structure.
 type BlockChain struct {
 	cachedBlocks  *lru.Cache
 	chainID       uint32
@@ -65,12 +60,12 @@ func NewBlockChain(chainID uint32, genesisBlock *Block, storage storage.Storage)
 	return bc, nil
 }
 
-// ChainID
+// ChainID returns ChainID.
 func (bc *BlockChain) ChainID() uint32 {
 	return bc.chainID
 }
 
-// GetBlock
+// GetBlock returns GetBlock.
 func (bc *BlockChain) GetBlock(hash common.Hash) *Block {
 	if v, ok := bc.cachedBlocks.Get(hash.Str()); ok {
 		return v.(*Block)
@@ -98,10 +93,12 @@ func (bc *BlockChain) GetBlock(hash common.Hash) *Block {
 	return nil
 }
 
+// MainTailBlock returns MainTailBlock.
 func (bc *BlockChain) MainTailBlock() *Block {
 	return bc.mainTailBlock
 }
 
+// TailBlocks returns TailBlocks.
 func (bc *BlockChain) TailBlocks() []*Block {
 	blocks := make([]*Block, 0)
 	for _, k := range bc.tailBlocks.Keys() {
