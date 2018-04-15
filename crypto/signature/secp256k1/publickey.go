@@ -56,7 +56,7 @@ func (k *PublicKey) Decompress(data []byte) error {
 	}
 
 	k.publicKey = ecdsa.PublicKey{
-		S256(), x, y,
+		Curve: S256(), X: x, Y: y,
 	}
 
 	return nil

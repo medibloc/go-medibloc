@@ -285,7 +285,6 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 	default:
 		return tx.transfer(bs)
 	}
-	return ErrVoidTransaction
 }
 
 func (tx *Transaction) transfer(bs *BlockState) error {
