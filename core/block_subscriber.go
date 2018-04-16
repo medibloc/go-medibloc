@@ -17,8 +17,6 @@
 package core
 
 import (
-	"errors"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -42,8 +40,7 @@ var (
 
 // BlockSubscriber receives blocks from network.
 type BlockSubscriber struct {
-	bc         *BlockChain
-	bp         *BlockPool
+	bm         *BlockManager
 	netService net.Service
 	quitCh     chan int
 }
@@ -51,8 +48,7 @@ type BlockSubscriber struct {
 // NewBlockSubscriber create BlockSubscriber
 func NewBlockSubscriber(bp *BlockPool, bc *BlockChain) *BlockSubscriber {
 	return &BlockSubscriber{
-		bc: bc,
-		bp: bp,
+		bm: &BlockManager{bc: bc, bp: bp},
 	}
 }
 
@@ -98,7 +94,7 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 					continue
 				}
 				logging.Console().Info("Block arrived")
-				err = bs.HandleReceivedBlock(blockData, msg.MessageFrom())
+				err = bs.handleReceivedBlock(blockData, msg.MessageFrom())
 				if err != nil {
 					logging.Console().Error(err)
 				}
@@ -123,66 +119,14 @@ func (bs *BlockSubscriber) StopBlockSubscriber() {
 	}
 }
 
-func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]*Block, []*Block, error) {
-	allBlocks := make([]*Block, 0)
-	tailBlocks := make([]*Block, 0)
-	queue := make([]*Block, 0)
-	block, err := blockData.ExecuteOnParentBlock(parent)
-	if err != nil {
-		return nil, nil, err
-	}
-	queue = append(queue, block)
-	for len(queue) > 0 {
-		curBlock := queue[0]
-		allBlocks = append(allBlocks, curBlock)
-		queue = queue[1:]
-		children1 := bp.FindChildren(curBlock)
-		if len(children1) == 0 {
-			tailBlocks = append(tailBlocks, curBlock)
-		} else {
-			children2 := make([]*Block, len(children1))
-			for i, child := range children1 {
-				children2[i], err = child.(*BlockData).ExecuteOnParentBlock(curBlock)
-				if err != nil {
-					return nil, nil, err
-				}
-			}
-			queue = append(queue, children2...)
-		}
-	}
-	return allBlocks, tailBlocks, nil
-}
-
-func handleRequestBlockMessage(msg net.Message, bc *BlockChain, netService net.Service) error {
-	logging.Info("handle request block message")
-	pb := &corepb.DownloadBlock{}
-	err := proto.Unmarshal(msg.Data(), pb)
-	if err != nil {
-		return err
-	}
-	logging.Console().Info("Request Block Message arrived")
-	block := bc.GetBlock(common.BytesToHash(pb.Hash))
-	if block == nil {
-		return errors.New("requested block does not exist")
-	}
-	data, err := net.SerializableToBytes(block)
-	if err != nil {
-		return err
-	}
-	return netService.SendMsg(MessageTypeNewBlock, data, msg.MessageFrom(), net.MessagePriorityNormal)
+// GetBlockManager getter for BlockManager
+func (bs *BlockSubscriber) GetBlockManager() *BlockManager {
+	return bs.bm
 }
 
 // HandleReceivedBlock handle received BlockData
-func (bs *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender string) error {
-	// TODO check if block already exist in storage
-	err := block.VerifyIntegrity()
-	if err != nil {
-		return err
-	}
-	parentHash := block.ParentHash()
-	parentBlock := bs.bc.GetBlock(parentHash)
-	if parentBlock == nil {
-		bs.bp.Push(block)
+func (bs *BlockSubscriber) handleReceivedBlock(block *BlockData, sender string) error {
+	return bs.bm.HandleReceivedBlock(block, func(parentHash common.Hash) {
 		if bs.netService != nil && sender != "" {
 			logging.Console().Info("try to request parent block")
 			downloadMsg := &corepb.DownloadBlock{
@@ -194,28 +138,11 @@ func (bs *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender string) 
 					"block": block,
 					"err":   err,
 				}).Error("failed to marshal download message")
-				return err
 			}
-			return bs.netService.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityHigh)
+			err = bs.netService.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityHigh)
+			if err != nil {
+				logging.Console().Error(err)
+			}
 		}
-		return nil
-	}
-	// TODO allBlocks => better name
-	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, bs.bp)
-	if err != nil {
-		return err
-	}
-
-	err = bs.bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
-	if err != nil {
-		return err
-	}
-
-	if len(allBlocks) > 1 {
-		for _, b := range allBlocks[1:] {
-			bs.bp.Remove(b)
-		}
-	}
-
-	return nil
+	})
 }

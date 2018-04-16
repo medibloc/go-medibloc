@@ -76,7 +76,7 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 	for idx, parentId := range idxToParent {
 		blockData := nextBlockData(t, blockMap[parentId])
 
-		err := subscriber.HandleReceivedBlock(blockData, "")
+		err := subscriber.GetBlockManager().HandleReceivedBlock(blockData, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, bc.MainTailBlock().Hash(), blockData.Hash())
 		assert.Equal(t, false, bp.Has(blockData))
@@ -93,7 +93,7 @@ func TestBlockSubscriber_Reverse(t *testing.T) {
 
 	for i := len(idxToParent) - 1; i >= 0; i-- {
 		blockData := blockDatas[i]
-		err := subscriber.HandleReceivedBlock(blockData, "")
+		err := subscriber.GetBlockManager().HandleReceivedBlock(blockData, nil)
 		require.Nil(t, err)
 		if i > 0 {
 			require.Equal(t, genesisBlock.Hash(), bc.MainTailBlock().Hash())
@@ -124,7 +124,7 @@ func TestBlockSubscriber_Tree(t *testing.T) {
 			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
 		}
 		for _, blockData := range blockDatas {
-			err := subscriber.HandleReceivedBlock(blockData, "")
+			err := subscriber.GetBlockManager().HandleReceivedBlock(blockData, nil)
 			require.Nil(t, err)
 		}
 	}
