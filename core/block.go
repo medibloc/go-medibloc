@@ -202,8 +202,10 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
 		return nil, err
 	}
-	if err := block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
-		return nil, err
+	if common.IsZeroHash(block.header.recordsRoot) == false {
+		if err := block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
+			return nil, err
+		}
 	}
 	block.storage = storage
 	return block, nil
@@ -470,6 +472,34 @@ func (block *Block) RollBack() error {
 // Commit saves batch updates to storage
 func (block *Block) Commit() error {
 	return block.state.Commit()
+}
+
+// GetBlockData returns data part of block
+func (block *Block) GetBlockData() *BlockData {
+	bd := &BlockData{
+		header: &BlockHeader{
+			hash:        block.Hash(),
+			parentHash:  block.ParentHash(),
+			accsRoot:    block.AccountsRoot(),
+			txsRoot:     block.TransactionsRoot(),
+			usageRoot:   block.UsageRoot(),
+			recordsRoot: block.RecordsRoot(),
+			coinbase:    block.Coinbase(),
+			timestamp:   block.Timestamp(),
+			chainID:     block.ChainID(),
+			alg:         block.Alg(),
+			sign:        block.Signature(),
+		},
+		height: block.Height(),
+	}
+
+	txs := make(Transactions, len(block.transactions))
+	for i, t := range block.transactions {
+		txs[i] = t
+	}
+	bd.transactions = txs
+
+	return bd
 }
 
 func bytesToBlockData(bytes []byte) (*BlockData, error) {
