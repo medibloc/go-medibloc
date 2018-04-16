@@ -199,8 +199,10 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	if err := block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
 		return nil, err
 	}
-	if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
-		return nil, err
+	if common.IsZeroHash(block.header.usageRoot) == false {
+		if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
+			return nil, err
+		}
 	}
 	if common.IsZeroHash(block.header.recordsRoot) == false {
 		if err := block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
