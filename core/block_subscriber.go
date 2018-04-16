@@ -85,7 +85,7 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 	go func() {
 		newBlockCh := make(chan net.Message)
 		requestBlockCh := make(chan net.Message)
-		netService.Register(net.NewSubscriber(bs, newBlockCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
+		netService.Register(net.NewSubscriber(bs, newBlockCh, false, MessageTypeNewBlock, net.MessageWeightNewBlock))
 		netService.Register(net.NewSubscriber(bs, requestBlockCh, false, MessageTypeRequestBlock, net.MessageWeightZero))
 		for {
 			select {
@@ -183,7 +183,7 @@ func (subscriber *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender 
 	if parentBlock == nil {
 		subscriber.bp.Push(block)
 		if subscriber.netService != nil && sender != "" {
-			logging.Console().Infof("try to request parent block to %s", sender)
+			logging.Console().Info("try to request parent block")
 			downloadMsg := &corepb.DownloadBlock{
 				Hash: block.ParentHash().Bytes(),
 			}
