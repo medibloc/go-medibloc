@@ -9,8 +9,6 @@ import (
 
 	proto "github.com/gogo/protobuf/proto"
 	nettestpb "github.com/medibloc/go-medibloc/net/testpb"
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -183,8 +181,6 @@ func TestNetService_SendMessageToPeer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logging.Console().Infof("MedService Test %s Start...", tt.name)
-
 			// create message channels
 			messageChs := make([]chan Message, tt.nodeNum)
 			for i := 0; i < tt.nodeNum; i++ {
@@ -236,17 +232,8 @@ func TestNetService_SendMessageToPeer(t *testing.T) {
 			for receivedTotalCount < expectedTotalCount {
 				chosen, value, ok := reflect.Select(cases)
 
-				logging.Console().WithFields(logrus.Fields{
-					"chosen": chosen,
-					"value":  value,
-					"ok":     ok,
-				}).Debug("Chosen")
-
 				if chosen == len(messageChs) {
-					logging.Console().WithFields(logrus.Fields{
-						"expectedTotalCount": expectedTotalCount,
-						"receivedTotalCount": receivedTotalCount,
-					}).Info("Timeout")
+					t.Logf("Timeout with expectedTotalCount: %d, receivedTotalCount: %d", +expectedTotalCount, receivedTotalCount)
 					break waitMessageLoop
 				}
 
@@ -271,8 +258,6 @@ func TestNetService_SendMessageToPeer(t *testing.T) {
 			if !reflect.DeepEqual(tt.expectedCounts, receivedCounts) {
 				t.Errorf("receivedCounts() = %v, want %v", receivedCounts, tt.expectedCounts)
 			}
-
-			logging.Console().Infof("MedService Test %s Finished", tt.name)
 		})
 	}
 }
@@ -372,8 +357,6 @@ func TestNetService_SendBroadcast(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logging.Console().Infof("MedService Test %s Start...", tt.name)
-
 			// create message channels
 			messageChs := make([]chan Message, tt.nodeNum)
 			for i := 0; i < tt.nodeNum; i++ {
@@ -426,10 +409,7 @@ func TestNetService_SendBroadcast(t *testing.T) {
 				chosen, value, ok := reflect.Select(cases)
 
 				if chosen == len(messageChs) {
-					logging.Console().WithFields(logrus.Fields{
-						"expectedTotalCount": expectedTotalCount,
-						"receivedTotalCount": receivedTotalCount,
-					}).Info("Timeout")
+					t.Logf("Timeout with expectedTotalCount: %d, receivedTotalCount: %d", +expectedTotalCount, receivedTotalCount)
 					break waitMessageLoop
 				}
 
@@ -454,8 +434,6 @@ func TestNetService_SendBroadcast(t *testing.T) {
 			if !reflect.DeepEqual(tt.expectedCounts, receivedCounts) {
 				t.Errorf("receivedCounts() = %v, want %v", receivedCounts, tt.expectedCounts)
 			}
-
-			logging.Console().Infof("MedService Test %s Finished", tt.name)
 		})
 	}
 }

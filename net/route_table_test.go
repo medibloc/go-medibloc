@@ -1,11 +1,8 @@
 package net
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,8 +30,6 @@ func TestRouteTable_SyncWithPeer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logging.Console().Info(fmt.Sprintf("Test %s with %d nodes Start...", tt.name, tt.nodeNum))
-
 			nodeTestManager := NewNodeTestManager(tt.nodeNum, tt.seedNum)
 			_, err := nodeTestManager.MakeNewTestNodes()
 			assert.Nil(t, err)
@@ -44,11 +39,7 @@ func TestRouteTable_SyncWithPeer(t *testing.T) {
 			// test whether route table peer list is correct
 			for i := 0; i < tt.nodeNum; i++ {
 				node, err := nodeTestManager.Node(i)
-				if err != nil {
-					logging.Console().WithFields(logrus.Fields{
-						"err": err,
-					}).Warn("Error while fetching nodes")
-				}
+				assert.Nil(t, err)
 				got := node.routeTable.peerStore.Peers()
 				want := nodeTestManager.nodeIDs
 				assert.Subset(t, got, want)
@@ -56,8 +47,6 @@ func TestRouteTable_SyncWithPeer(t *testing.T) {
 			}
 
 			nodeTestManager.StopTestNodes()
-
-			logging.Console().Info(fmt.Sprintf("Test %s with %d nodes Finished", tt.name, tt.nodeNum))
 		})
 	}
 }

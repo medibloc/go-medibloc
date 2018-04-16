@@ -43,6 +43,7 @@ type MedServiceTestManager struct {
 
 // NewMedServiceTestManager returns medServicesTestManager
 func NewMedServiceTestManager(nodeNum int, seedNum int) *MedServiceTestManager {
+	logging.TestHook()
 	if nodeNum < 1 {
 		return nil
 	}
@@ -66,7 +67,7 @@ func (mstm *MedServiceTestManager) MakeNewTestMedService() ([]*MedService, error
 	for i, n := range nodes {
 		mstm.medServices[i] = &MedService{
 			node:       n,
-			dispatcher: NewDispatcher(),
+			dispatcher: makeNewTestDispatcher(),
 		}
 		n.SetMedService(mstm.medServices[i])
 	}
@@ -115,6 +116,7 @@ type NodeTestManager struct {
 
 // NewNodeTestManager returns nodeTestManager
 func NewNodeTestManager(nodeNum int, seedNum int) *NodeTestManager {
+	logging.TestHook()
 	if nodeNum < 1 {
 		return nil
 	}
@@ -188,6 +190,11 @@ func (ntm *NodeTestManager) WaitStreamReady() {
 	}
 	wg.Wait()
 	logging.Console().Debug("WaitStreamReady Finish.")
+}
+
+func makeNewTestDispatcher() *Dispatcher {
+	logging.TestHook()
+	return NewDispatcher()
 }
 
 func makeNewTestNode(privateKeyPath string) (*Node, error) {

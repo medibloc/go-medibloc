@@ -1,13 +1,10 @@
 package net
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/medibloc/go-medibloc/util/logging"
 )
 
 // Message Type
@@ -203,9 +200,6 @@ func TestDispatcher_PutMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logging.Console().Info(fmt.Sprintf("Dispatcher Test %s Start...", tt.name))
-
-			//resultChan := make(chan []int, 1)
 			receivedCounts := make([]int, len(tt.msgTypes))
 			receivedTotalCount := 0
 			expectedTotalCount := 0
@@ -214,7 +208,7 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			}
 
 			// make new dispatcher
-			dp := NewDispatcher()
+			dp := makeNewTestDispatcher()
 			// register msgTypes
 			for _, msgType := range tt.msgTypes {
 				dp.Register(NewSubscriber(t, tt.messageCh, msgType.doFilter, msgType.msgType, MessageWeightZero))
@@ -245,7 +239,7 @@ func TestDispatcher_PutMessage(t *testing.T) {
 					receivedCounts[idx]++
 					receivedTotalCount++
 				case <-timer.C:
-					logging.Console().Info(fmt.Sprintf("Timeout"))
+					t.Log("Timeout")
 					break waitMessageLoop
 				}
 			}
@@ -257,8 +251,6 @@ func TestDispatcher_PutMessage(t *testing.T) {
 
 			// stop dispatcher
 			dp.Stop()
-
-			logging.Console().Info(fmt.Sprintf("Dispatcher Test %s End", tt.name))
 		})
 	}
 }
