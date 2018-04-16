@@ -20,6 +20,7 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	multiaddr "github.com/multiformats/go-multiaddr"
+	"sync/atomic"
 )
 
 // Route Table Errors
@@ -108,7 +109,8 @@ func (table *RouteTable) syncLoop() {
 
 	syncLoopTicker := time.NewTicker(table.syncLoopInterval)
 	saveRouteTableToDiskTicker := time.NewTicker(table.saveToDiskInterval)
-	latestUpdatedAt := table.latestUpdatedAt
+	latestUpdatedAt := atomic.LoadInt64(&table.latestUpdatedAt)
+	latestSavedAt := latestUpdatedAt
 
 	for {
 		select {
@@ -118,9 +120,10 @@ func (table *RouteTable) syncLoop() {
 		case <-syncLoopTicker.C:
 			table.SyncRouteTable()
 		case <-saveRouteTableToDiskTicker.C:
-			if latestUpdatedAt < table.latestUpdatedAt {
+			latestUpdatedAt = atomic.LoadInt64(&table.latestUpdatedAt)
+			if latestSavedAt < latestUpdatedAt {
 				table.SaveRouteTableToFile()
-				latestUpdatedAt = table.latestUpdatedAt
+				latestSavedAt = latestUpdatedAt
 			}
 		}
 	}
@@ -200,7 +203,7 @@ func (table *RouteTable) RemovePeerStream(s *Stream) {
 }
 
 func (table *RouteTable) onRouteTableChange() {
-	table.latestUpdatedAt = time.Now().Unix()
+	atomic.StoreInt64(&table.latestUpdatedAt, time.Now().Unix())
 }
 
 // GetRandomPeers get random peers
