@@ -48,7 +48,7 @@ type BlockSubscriber struct {
 	quitCh     chan int
 }
 
-// NewBlockSubscriber
+// NewBlockSubscriber create BlockSubscriber
 func NewBlockSubscriber(bp *BlockPool, bc *BlockChain) *BlockSubscriber {
 	return &BlockSubscriber{
 		bc: bc,
@@ -172,17 +172,18 @@ func handleRequestBlockMessage(msg net.Message, bc *BlockChain, netService net.S
 	return netService.SendMsg(MessageTypeNewBlock, data, msg.MessageFrom(), net.MessagePriorityNormal)
 }
 
-func (subscriber *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender string) error {
+// HandleReceivedBlock handle received BlockData
+func (bs *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender string) error {
 	// TODO check if block already exist in storage
 	err := block.VerifyIntegrity()
 	if err != nil {
 		return err
 	}
 	parentHash := block.ParentHash()
-	parentBlock := subscriber.bc.GetBlock(parentHash)
+	parentBlock := bs.bc.GetBlock(parentHash)
 	if parentBlock == nil {
-		subscriber.bp.Push(block)
-		if subscriber.netService != nil && sender != "" {
+		bs.bp.Push(block)
+		if bs.netService != nil && sender != "" {
 			logging.Console().Info("try to request parent block")
 			downloadMsg := &corepb.DownloadBlock{
 				Hash: block.ParentHash().Bytes(),
@@ -195,24 +196,24 @@ func (subscriber *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender 
 				}).Error("failed to marshal download message")
 				return err
 			}
-			return subscriber.netService.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityHigh)
+			return bs.netService.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityHigh)
 		}
 		return nil
 	}
 	// TODO allBlocks => better name
-	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, subscriber.bp)
+	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, bs.bp)
 	if err != nil {
 		return err
 	}
 
-	err = subscriber.bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
+	err = bs.bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
 	if err != nil {
 		return err
 	}
 
 	if len(allBlocks) > 1 {
 		for _, b := range allBlocks[1:] {
-			subscriber.bp.Remove(b)
+			bs.bp.Remove(b)
 		}
 	}
 
