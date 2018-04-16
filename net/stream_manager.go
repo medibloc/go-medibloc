@@ -49,7 +49,7 @@ func NewStreamManager() *StreamManager {
 
 // Count return active peers count in the stream manager
 func (sm *StreamManager) Count() int32 {
-	return sm.activePeersCount
+	return atomic.LoadInt32(&sm.activePeersCount)
 }
 
 // Start stream manager service
@@ -75,7 +75,7 @@ func (sm *StreamManager) Add(s libnet.Stream, node *Node) {
 // AddStream into the stream manager
 func (sm *StreamManager) AddStream(stream *Stream) {
 
-	if sm.activePeersCount >= MaxStreamNum {
+	if atomic.LoadInt32(&sm.activePeersCount) >= MaxStreamNum {
 		stream.Close(ErrExceedMaxStreamNum)
 		return
 	}
@@ -211,11 +211,11 @@ func (sm *StreamManager) CloseStream(peerID string, reason error) {
 // cleanup eliminating low value streams if reaching the limit
 func (sm *StreamManager) cleanup() {
 
-	if sm.activePeersCount < MaxStreamNum {
+	if atomic.LoadInt32(&sm.activePeersCount) < MaxStreamNum {
 		logging.Console().WithFields(logrus.Fields{
 			"maxNum":      MaxStreamNum,
 			"reservedNum": ReservedStreamNum,
-			"currentNum":  sm.activePeersCount,
+			"currentNum":  atomic.LoadInt32(&sm.activePeersCount),
 		}).Debug("No need for streams cleanup.")
 		return
 	}
@@ -266,7 +266,7 @@ func (sm *StreamManager) cleanup() {
 	logging.Console().WithFields(logrus.Fields{
 		"maxNum":           MaxStreamNum,
 		"reservedNum":      ReservedStreamNum,
-		"currentNum":       sm.activePeersCount,
+		"currentNum":       atomic.LoadInt32(&sm.activePeersCount),
 		"msgTotal":         msgTotal,
 		"msgWeight":        msgWeight,
 		"streamValueSlice": svs,
