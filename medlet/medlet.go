@@ -17,6 +17,7 @@ var (
 
 // Medlet manages blockchain services.
 type Medlet struct {
+	bs         *core.BlockSubscriber
 	config     *medletpb.Config
 	netService mednet.Service
 	miner      *core.Miner
@@ -65,6 +66,7 @@ func (m *Medlet) Start() {
 	}
 
 	m.txMgr = core.NewTransactionManager(m, transactionManagerSize)
+	m.txMgr.RegisterInNetwork(m.netService)
 	m.txMgr.Start()
 
 	bp, bc, err := core.GetBlockPoolBlockChain(s)
@@ -74,7 +76,7 @@ func (m *Medlet) Start() {
 		}).Fatal("Failed to create block pool or block chain")
 		return
 	}
-	core.StartBlockSubscriber(m.netService, bp, bc)
+	m.bs = core.StartBlockSubscriber(m.netService, bp, bc)
 
 	if m.Config().Chain.StartMine {
 		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
@@ -90,7 +92,9 @@ func (m *Medlet) Stop() {
 		m.netService = nil
 	}
 
-	core.StopBlockSubscriber()
+	m.txMgr.Stop()
+
+	m.bs.StopBlockSubscriber()
 	if m.miner != nil {
 		m.miner.StopMiner()
 	}

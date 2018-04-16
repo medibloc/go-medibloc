@@ -28,8 +28,8 @@ import (
 
 // Miner default configurations.
 const (
-	Interval     = 7 * time.Second
-	MaxTxInBlock = 100
+	MinerInterval = 7 * time.Second
+	MaxTxInBlock  = 100
 )
 
 // Miner creates blocks.
@@ -41,7 +41,7 @@ type Miner struct {
 func StartMiner(netService net.Service, bc *BlockChain, txMgr *TransactionManager) *Miner {
 	miner := &Miner{quit: make(chan int)}
 	go func() {
-		ticker := time.NewTicker(Interval)
+		ticker := time.NewTicker(MinerInterval)
 		logging.Info("Start Miner")
 		for {
 			select {
@@ -51,7 +51,7 @@ func StartMiner(netService net.Service, bc *BlockChain, txMgr *TransactionManage
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
-					}).Fatal("Failed to make block")
+					}).Error("Failed to make block")
 				}
 				logging.Console().Info("[Miner] New Block Created")
 			case <-miner.quit:
@@ -71,7 +71,7 @@ func (miner *Miner) StopMiner() {
 
 func makeBlock(netService net.Service, bc *BlockChain, txMgr *TransactionManager) error {
 	curTail := bc.MainTailBlock()
-	// TODO how to get coinbase ?
+	// TODO get coinbase from config file
 	var addr common.Address
 	_, err := rand.Read(addr[:])
 	if err != nil {
@@ -100,6 +100,7 @@ func makeBlock(netService net.Service, bc *BlockChain, txMgr *TransactionManager
 	if err != nil {
 		return err
 	}
+	// TODO block sign
 	blocks := []*Block{block}
 	err = bc.PutVerifiedNewBlocks(curTail, blocks, blocks)
 	if err != nil {

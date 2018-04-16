@@ -48,8 +48,6 @@ type BlockSubscriber struct {
 	quitCh     chan int
 }
 
-var bs *BlockSubscriber
-
 // NewBlockSubscriber
 func NewBlockSubscriber(bp *BlockPool, bc *BlockChain) *BlockSubscriber {
 	return &BlockSubscriber{
@@ -81,7 +79,7 @@ func GetBlockPoolBlockChain(storage storage.Storage) (*BlockPool, *BlockChain, e
 
 // StartBlockSubscriber starts block subscribe service.
 func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain) *BlockSubscriber {
-	bs = NewBlockSubscriber(bp, bc)
+	bs := NewBlockSubscriber(bp, bc)
 	bs.quitCh = make(chan int)
 	bs.netService = netService
 	go func() {
@@ -105,7 +103,7 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 					logging.Console().Error(err)
 				}
 			case msg := <-requestBlockCh:
-				if err := handleRequestBlockMessage(msg, netService); err != nil {
+				if err := handleRequestBlockMessage(msg, bc, netService); err != nil {
 					logging.Console().Error(err)
 				}
 			case <-bs.quitCh:
@@ -118,8 +116,8 @@ func StartBlockSubscriber(netService net.Service, bp *BlockPool, bc *BlockChain)
 	return bs
 }
 
-//StopBlockSubscriber stops BlockSubscriber.
-func StopBlockSubscriber() {
+// StopBlockSubscriber stops BlockSubscriber.
+func (bs *BlockSubscriber) StopBlockSubscriber() {
 	if bs != nil {
 		bs.quitCh <- 0
 	}
@@ -155,7 +153,7 @@ func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]
 	return allBlocks, tailBlocks, nil
 }
 
-func handleRequestBlockMessage(msg net.Message, netService net.Service) error {
+func handleRequestBlockMessage(msg net.Message, bc *BlockChain, netService net.Service) error {
 	logging.Info("handle request block message")
 	pb := &corepb.DownloadBlock{}
 	err := proto.Unmarshal(msg.Data(), pb)
@@ -163,7 +161,7 @@ func handleRequestBlockMessage(msg net.Message, netService net.Service) error {
 		return err
 	}
 	logging.Console().Info("Request Block Message arrived")
-	block := bs.bc.GetBlock(common.BytesToHash(pb.Hash))
+	block := bc.GetBlock(common.BytesToHash(pb.Hash))
 	if block == nil {
 		return errors.New("requested block does not exist")
 	}
@@ -201,14 +199,12 @@ func (subscriber *BlockSubscriber) HandleReceivedBlock(block *BlockData, sender 
 		}
 		return nil
 	}
-	// Find all blocks from this block
 	// TODO allBlocks => better name
 	allBlocks, tailBlocks, err := blocksFromBlockPool(parentBlock, block, subscriber.bp)
 	if err != nil {
 		return err
 	}
 
-	// Add to tail
 	err = subscriber.bc.PutVerifiedNewBlocks(parentBlock, allBlocks, tailBlocks)
 	if err != nil {
 		return err
