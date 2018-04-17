@@ -15,12 +15,13 @@ import (
 	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 
+	"sync/atomic"
+
 	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	multiaddr "github.com/multiformats/go-multiaddr"
-	"sync/atomic"
 )
 
 // Route Table Errors

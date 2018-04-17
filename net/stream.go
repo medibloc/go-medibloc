@@ -203,6 +203,10 @@ func (s *Stream) SendMessage(messageName string, data []byte, priority int) erro
 }
 
 func (s *Stream) Write(data []byte) error {
+	// TODO: @cl9200 Small writes set deadline small when big write is in progress. Currently, lock is used as a temporary solution.
+	s.syncMutex.Lock()
+	defer s.syncMutex.Unlock()
+
 	if s.stream == nil {
 		s.Close(ErrStreamIsNotConnected)
 		return ErrStreamIsNotConnected
