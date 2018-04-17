@@ -119,8 +119,8 @@ func (bs *BlockSubscriber) StopBlockSubscriber() {
 	}
 }
 
-// GetBlockManager getter for BlockManager
-func (bs *BlockSubscriber) GetBlockManager() *BlockManager {
+// BlockManager getter for BlockManager
+func (bs *BlockSubscriber) BlockManager() *BlockManager {
 	return bs.bm
 }
 
