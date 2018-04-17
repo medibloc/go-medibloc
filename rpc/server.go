@@ -4,9 +4,16 @@ import (
 	"log"
 	"net"
 
+	"github.com/medibloc/go-medibloc/core"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
 	"google.golang.org/grpc"
 )
+
+// Bridge getters to external services
+type Bridge interface {
+	// BlockManager return core.BlockManager
+	BlockManager() *core.BlockManager
+}
 
 // GRPCServer is GRPCServer's interface.
 type GRPCServer interface {
@@ -21,10 +28,10 @@ type Server struct {
 }
 
 // NewServer returns NewServer.
-func NewServer() *Server {
+func NewServer(bridge Bridge) GRPCServer {
 	rpc := grpc.NewServer()
 	srv := &Server{rpcServer: rpc}
-	api := &APIService{server: srv}
+	api := &APIService{bridge: bridge, server: srv}
 	admin := &AdminService{server: srv}
 	rpcpb.RegisterApiServiceServer(rpc, api)
 	rpcpb.RegisterAdminServiceServer(rpc, admin)

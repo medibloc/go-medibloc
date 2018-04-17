@@ -7,8 +7,13 @@ import "google/api/annotations.proto";
 service ApiService {
 	rpc GetAccountState (GetAccountStateRequest) returns (GetAccountStateResponse) {
 		option (google.api.http) = {
-			post: "/v1/user/accountstate"
-			body: "*"
+			get: "/v1/user/accountstate"
+		};
+	}
+
+	rpc GetMedState (NonParamsRequest) returns (GetMedStateResponse) {
+		option (google.api.http) = {
+			get: "/v1/user/medstate"
 		};
 	}
 }
@@ -32,11 +37,31 @@ message GetAccountStateRequest {
 
 message GetAccountStateResponse {
 	// Current balance in unit of 1/(10^18) nas.
-	float balance = 1; // uint128, len=16
+	string balance = 1; // uint128, len=16
 	// Current transaction count.
 	uint64 nonce = 2;
 	// Account type
 	uint32 type = 3;
+}
+
+message NonParamsRequest {
+}
+
+message GetMedStateResponse {
+	// Block chain id
+	uint32 chain_id = 1;
+
+	// Current tail block hash
+	string tail = 2;
+
+	// Current tail block height
+	uint64 height = 3;
+
+	// The current med protocol version.
+	string protocol_version = 7;
+
+	// Med version
+	string version = 8;
 }
 
 message TransactionRequest {

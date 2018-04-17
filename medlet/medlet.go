@@ -4,6 +4,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	mednet "github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
 	m "github.com/rcrowley/go-metrics"
@@ -19,9 +20,19 @@ var (
 type Medlet struct {
 	bs         *core.BlockSubscriber
 	config     *medletpb.Config
-	netService mednet.Service
 	miner      *core.Miner
+	netService mednet.Service
+	rpc        rpc.GRPCServer
 	txMgr      *core.TransactionManager
+}
+
+type rpcBridge struct {
+	bm *core.BlockManager
+}
+
+// BlockManager return core.BlockManager
+func (gb *rpcBridge) BlockManager() *core.BlockManager {
+	return gb.bm
 }
 
 // New returns a new medlet.
@@ -82,6 +93,9 @@ func (m *Medlet) Start() {
 		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
 	}
 
+	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager()})
+	m.rpc.Start(m.config.Rpc.RpcListen[0]) // TODO
+
 	logging.Console().Info("Started Medlet.")
 }
 
@@ -98,6 +112,8 @@ func (m *Medlet) Stop() {
 	if m.miner != nil {
 		m.miner.StopMiner()
 	}
+
+	m.rpc.Stop()
 
 	logging.Console().Info("Stopped Medlet.")
 }

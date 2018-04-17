@@ -70,6 +70,11 @@ func (bm *BlockManager) HandleReceivedBlock(block *BlockData, cb onParentNotExis
 	return nil
 }
 
+// TailBlock getter for mainTailBlock
+func (bm *BlockManager) TailBlock() *Block {
+	return bm.bc.MainTailBlock()
+}
+
 func blocksFromBlockPool(parent *Block, blockData *BlockData, bp *BlockPool) ([]*Block, []*Block, error) {
 	allBlocks := make([]*Block, 0)
 	tailBlocks := make([]*Block, 0)
