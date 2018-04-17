@@ -222,11 +222,6 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	assert.NoError(t, secondBlock.AcceptTransaction(txs[1]))
 	secondBlock.Commit()
 
-	// state := secondBlock.State()
-	// acc, err := state.GetAccount(cases[1].from)
-	// assert.NoError(t, err)
-	// fmt.Println(acc.Balance())
-
 	assert.NoError(t, secondBlock.Seal())
 
 	assert.NoError(t, secondBlock.SignThis(blockSigner))
