@@ -2,14 +2,13 @@ package net
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
 
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
@@ -50,7 +49,7 @@ func TestAllMsg(t *testing.T) {
 	}
 
 	MsgTypes = append(MsgTypes, msgtypes...)
-	run()
+	run(t)
 }
 
 func TestUnvaluedMsg(t *testing.T) {
@@ -60,10 +59,10 @@ func TestUnvaluedMsg(t *testing.T) {
 	}
 
 	MsgTypes = append(MsgTypes, msgtypes...)
-	run()
+	run(t)
 }
 
-func run() {
+func run(t *testing.T) {
 
 	cleanupTicker := time.NewTicker(CleanupInterval / 12)
 	stopTicker := time.NewTicker(CleanupInterval / 12)
@@ -76,15 +75,15 @@ func run() {
 			return
 		case <-cleanupTicker.C:
 			times++
-			fmt.Printf("mock %d\n: max num = %d, reserved = %d\n", times, maxstreamnumber, reservednumber)
+			t.Logf("mock %d\n: max num = %d, reserved = %d\n", times, maxstreamnumber, reservednumber)
 			sm := NewStreamManager()
-			sm.fillMockStreams(maxstreamnumber)
-			cleanup(sm)
+			sm.fillMockStreams(t, maxstreamnumber)
+			cleanup(t, sm)
 		}
 	}
 }
 
-func cleanup(sm *StreamManager) {
+func cleanup(t *testing.T, sm *StreamManager) {
 	if sm.activePeersCount < maxstreamnumber {
 		logging.Console().WithFields(logrus.Fields{
 			"maxNum":      maxstreamnumber,
@@ -113,8 +112,8 @@ func cleanup(sm *StreamManager) {
 		return true
 	})
 
-	fmt.Println("total:")
-	fmt.Println(orderedString(&msgTotal))
+	t.Log("total:")
+	t.Log(orderedString(&msgTotal))
 
 	for _, sv := range svs {
 		for t, c := range sv.stream.msgCount {
@@ -125,22 +124,22 @@ func cleanup(sm *StreamManager) {
 
 	sort.Sort(sort.Reverse(svs))
 
-	fmt.Println("sorted:")
+	t.Log("sorted:")
 	for _, sv := range svs {
-		fmt.Println(strconv.FormatFloat(sv.value, 'f', 3, 64), orderedString(&sv.stream.msgCount))
+		t.Log(strconv.FormatFloat(sv.value, 'f', 3, 64), orderedString(&sv.stream.msgCount))
 	}
 
-	fmt.Println("eliminated:")
+	t.Log("eliminated:")
 	eliminated := svs[maxstreamnumber-reservednumber:]
 	for _, sv := range eliminated {
-		fmt.Println(strconv.FormatFloat(sv.value, 'f', 3, 64), orderedString(&sv.stream.msgCount))
+		t.Log(strconv.FormatFloat(sv.value, 'f', 3, 64), orderedString(&sv.stream.msgCount))
 	}
-	fmt.Println("")
+	t.Log("")
 }
 
-func (sm *StreamManager) fillMockStreams(num int32) {
+func (sm *StreamManager) fillMockStreams(t *testing.T, num int32) {
 	sm.activePeersCount = num
-	fmt.Println("details:")
+	t.Log("details:")
 
 	addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9999")
 
@@ -160,7 +159,7 @@ func (sm *StreamManager) fillMockStreams(num int32) {
 			msgCount: msgCount,
 		})
 
-		fmt.Println(key, orderedString(&msgCount))
+		t.Log(key, orderedString(&msgCount))
 	}
 }
 
