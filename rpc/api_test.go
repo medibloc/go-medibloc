@@ -16,8 +16,48 @@
 
 package rpc_test
 
-import "testing"
+import (
+	"context"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/medibloc/go-medibloc/rpc/mock_pb"
+	"github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/util"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestAPIService_GetMedState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	client := mock_rpcpb.NewMockApiServiceClient(ctrl)
 
+	{
+		expected := &rpcpb.GetMedStateResponse{Tail: "meditail"}
+		client.EXPECT().GetMedState(gomock.Any(), gomock.Any()).Return(expected, nil)
+		req := &rpcpb.NonParamsRequest{}
+		resp, err := client.GetMedState(context.Background(), req)
+		assert.Nil(t, err)
+		assert.Equal(t, expected, resp)
+	}
+
+	// TODO test with datas
+}
+
+func TestAPIService_GetAccountState(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	client := mock_rpcpb.NewMockApiServiceClient(ctrl)
+
+	{
+		balance, _ := util.NewUint128FromInt(11223344)
+		balstr := balance.String()
+		expected := &rpcpb.GetAccountStateResponse{Balance: balstr, Nonce: 1}
+		client.EXPECT().GetAccountState(gomock.Any(), gomock.Any()).Return(expected, nil)
+		req := &rpcpb.GetAccountStateRequest{Address: "0xabcdef"}
+		resp, _ := client.GetAccountState(context.Background(), req)
+		assert.Equal(t, expected, resp)
+	}
+
+	// TODO test with datas
 }

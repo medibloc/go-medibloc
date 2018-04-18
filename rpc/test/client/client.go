@@ -21,7 +21,7 @@ var (
 
 func main() {
 	flag.Parse()
-	addr := "localhost:10000"
+	addr := "localhost:9920"
 	conn := rpc.Dial(addr)
 	defer conn.Close()
 
@@ -39,7 +39,7 @@ func main() {
 			log.Printf("Somethins is wrong in client main : %v", err)
 		}
 		log.Println(res)
-	case "api":
+	case "accountstate":
 		res, err := apiClient.GetAccountState(context.Background(), &rpcpb.GetAccountStateRequest{
 			Address: *address,
 			Height:  uint64(*height),
@@ -48,5 +48,12 @@ func main() {
 			log.Printf("Somethins is wrong in client main : %v", err)
 		}
 		log.Println(res)
+	case "medstate":
+		res, err := apiClient.GetMedState(context.Background(), &rpcpb.NonParamsRequest{})
+		if err != nil {
+			log.Println(err)
+		} else {
+			log.Println(res)
+		}
 	}
 }
