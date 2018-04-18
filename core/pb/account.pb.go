@@ -19,6 +19,8 @@
 		DownloadBlock
 		Genesis
 		GenesisMeta
+		GenesisConsensus
+		GenesisConsensusDpos
 		GenesisTokenDistribution
 		Reader
 		Record
