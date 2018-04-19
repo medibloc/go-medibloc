@@ -9,10 +9,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Bridge getters to external services
+// Bridge interface for getters
 type Bridge interface {
 	// BlockManager return core.BlockManager
 	BlockManager() *core.BlockManager
+
+	// TransactionManager return core.TransactionManager
+	TransactionManager() *core.TransactionManager
 }
 
 // GRPCServer is GRPCServer's interface.
@@ -32,7 +35,7 @@ func NewServer(bridge Bridge) GRPCServer {
 	rpc := grpc.NewServer()
 	srv := &Server{rpcServer: rpc}
 	api := &APIService{bridge: bridge, server: srv}
-	admin := &AdminService{server: srv}
+	admin := &AdminService{bridge: bridge, server: srv}
 	rpcpb.RegisterApiServiceServer(rpc, api)
 	rpcpb.RegisterAdminServiceServer(rpc, admin)
 	return srv

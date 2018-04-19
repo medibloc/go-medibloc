@@ -89,8 +89,23 @@ func NewTransaction(
 	from, to common.Address,
 	value *util.Uint128,
 	nonce uint64,
-	payloadType string, payload []byte) (*Transaction, error) {
-	tx := &Transaction{
+	payloadType string,
+	payload []byte) (*Transaction, error) {
+	return NewTransactionWithSign(chainID, from, to, value, nonce, payloadType, payload, common.BytesToHash([]byte{}), []byte{})
+}
+
+// NewTransactionWithSign generates a Transaction instance with sign
+func NewTransactionWithSign(
+	chainID uint32,
+	from, to common.Address,
+	value *util.Uint128,
+	nonce uint64,
+	payloadType string,
+	payload []byte,
+	hash common.Hash,
+	sign []byte) (*Transaction, error) {
+
+	return &Transaction{
 		from:      from,
 		to:        to,
 		value:     value,
@@ -98,11 +113,9 @@ func NewTransaction(
 		data:      &corepb.Data{Type: payloadType, Payload: payload},
 		nonce:     nonce,
 		chainID:   chainID,
-		hash:      common.BytesToHash([]byte{}),
-		sign:      []byte{},
-	}
-
-	return tx, nil
+		hash:      hash,
+		sign:      sign,
+	}, nil
 }
 
 func (tx *Transaction) calcHash() (common.Hash, error) {

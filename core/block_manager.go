@@ -32,6 +32,11 @@ type BlockManager struct {
 	bp *BlockPool
 }
 
+// ChainID return BlockChain.ChainID
+func (bm *BlockManager) ChainID() uint32 {
+	return bm.bc.ChainID()
+}
+
 type onParentNotExist func(common.Hash)
 
 // HandleReceivedBlock handle received BlockData

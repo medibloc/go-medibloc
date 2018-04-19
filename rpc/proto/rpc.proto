@@ -73,6 +73,10 @@ message TransactionRequest {
 	string value = 3; // uint128, len=16
 	// Transaction nonce.
 	uint64 nonce = 4;
+	// Transaction hash
+	bytes hash = 5;
+	// Transaction sign
+	bytes sign = 6;
 }
 
 message TransactionResponse {

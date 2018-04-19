@@ -27,12 +27,17 @@ type Medlet struct {
 }
 
 type rpcBridge struct {
-	bm *core.BlockManager
+	bm    *core.BlockManager
+	txMgr *core.TransactionManager
 }
 
 // BlockManager return core.BlockManager
-func (gb *rpcBridge) BlockManager() *core.BlockManager {
-	return gb.bm
+func (rb *rpcBridge) BlockManager() *core.BlockManager {
+	return rb.bm
+}
+
+func (rb *rpcBridge) TransactionManager() *core.TransactionManager {
+	return rb.txMgr
 }
 
 // New returns a new medlet.
@@ -93,7 +98,7 @@ func (m *Medlet) Start() {
 		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
 	}
 
-	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager()})
+	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr})
 	m.rpc.Start(m.config.Rpc.RpcListen[0]) // TODO
 
 	logging.Console().Info("Started Medlet.")
