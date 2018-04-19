@@ -4,3 +4,4 @@ protoc -I/usr/local/include -I. \
   --grpc-gateway_out=logtostderr=true:. \
   --go_out=plugins=grpc:. \
   ./rpc.proto
+mockgen -source ./rpc.pb.go -destination ../mock_pb/mock_pb.go
