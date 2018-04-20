@@ -364,6 +364,15 @@ func keyToRoute(key []byte) []byte {
 	return route
 }
 
+func routeToKey(route []byte) []byte {
+	l := len(route) / 2
+	key := make([]byte, l)
+	for i := 0; i < l; i++ {
+		key[i] = route[i*2]<<4 + route[i*2+1]
+	}
+	return key
+}
+
 func isBranchEmpty(n *node) bool {
 	for _, v := range n.Val {
 		if v != nil && len(v) > 0 {
