@@ -13,7 +13,7 @@ import (
 
 var (
 	// GenesisHash is hash of genesis block
-	GenesisHash = common.BytesToHash(make([]byte, common.HashLength))
+	GenesisHash = common.Hash{}
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block

@@ -55,18 +55,12 @@ func (h Hash) Equals(b Hash) bool {
 
 // IsZeroHash checks if hash h is zero hash (0x00000...)
 func IsZeroHash(h Hash) bool {
-	for i := 0; i < HashLength; i++ {
-		if h[i] != 0 {
-			return false
-		}
-	}
-	return true
+	return h == Hash{}
 }
 
 // ZeroHash returns hash with zero value
 func ZeroHash() Hash {
-	b := make([]byte, HashLength)
-	return BytesToHash(b)
+	return Hash{}
 }
 
 // Address represents Address.
