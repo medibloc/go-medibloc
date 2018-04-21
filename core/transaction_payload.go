@@ -58,7 +58,8 @@ func (payload *RemoveWriterPayload) ToBytes() ([]byte, error) {
 
 // AddRecordPayload is payload type for TxOperationAddRecord
 type AddRecordPayload struct {
-	Hash    common.Hash
+	Hash common.Hash
+	// TODO: Signature []byte
 	Storage string
 	EncKey  []byte
 	Seed    []byte
