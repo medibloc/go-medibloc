@@ -16,14 +16,6 @@ const (
 	MessagePriorityLow
 )
 
-// Sync Message Type
-const (
-	ChainSync      = "sync"
-	ChainChunks    = "chunks"
-	ChainGetChunk  = "getchunk"
-	ChainChunkData = "chunkdata"
-)
-
 // Sync Errors
 var (
 	ErrPeersIsNotEnough = errors.New("peers is not enough")
@@ -89,6 +81,14 @@ const (
 	MessageWeightRouteTable
 	MessageWeightChainChunks
 	MessageWeightChainChunkData
+)
+
+// SyncService messages
+const (
+	SyncMetaRequest       = "sync_meta_request"
+	SyncMeta              = "sync_meta"
+	SyncBlockChunkRequest = "sync_block_chunk_request"
+	SyncBlockChunk        = "sync_block_chunk"
 )
 
 // Subscriber subscriber.

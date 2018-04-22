@@ -1,7 +1,35 @@
 syntax = "proto3";
 
+import "github.com/medibloc/go-medibloc/core/pb/block.proto";
+
 package syncpb;
 
-message Sync {
-  bytes tail_block_hash = 1;
+// Request HashMeta
+message MetaQuery {
+  // LIB hash or tail block hash
+  bytes Hash = 1;
+  // LIB height or tail block height
+  uint64 From = 2;
+  uint64 To = 3;
+  uint64 ChunkSize = 4;
 }
+
+// Response RootHashMeta
+message RootHashMeta {
+  uint64 From = 1;
+  uint64 ChunkSize = 2;
+  repeated bytes RootHashes = 3;
+}
+
+// Request BlockChunk
+message BlockChunkQuery {
+  uint64 From = 1;
+  uint64 ChunkSize = 2;
+}
+
+// Response BlockChunk
+message BlockChunk {
+  uint64 From = 1;
+  repeated corepb.Block Blocks = 3;
+}
+

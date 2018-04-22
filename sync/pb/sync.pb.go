@@ -8,13 +8,17 @@ It is generated from these files:
 	sync.proto
 
 It has these top-level messages:
-	Sync
+	MetaQuery
+	RootHashMeta
+	BlockChunkQuery
+	BlockChunk
 */
 package syncpb
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
+import corepb1 "github.com/medibloc/go-medibloc/core/pb"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -27,34 +31,157 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
-type Sync struct {
-	TailBlockHash []byte `protobuf:"bytes,1,opt,name=tail_block_hash,json=tailBlockHash,proto3" json:"tail_block_hash,omitempty"`
+// Request HashMeta
+type MetaQuery struct {
+	// LIB hash or tail block hash
+	Hash []byte `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
+	// LIB height or tail block height
+	From      uint64 `protobuf:"varint,2,opt,name=From,proto3" json:"From,omitempty"`
+	To        uint64 `protobuf:"varint,3,opt,name=To,proto3" json:"To,omitempty"`
+	ChunkSize uint64 `protobuf:"varint,4,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
 }
 
-func (m *Sync) Reset()                    { *m = Sync{} }
-func (m *Sync) String() string            { return proto.CompactTextString(m) }
-func (*Sync) ProtoMessage()               {}
-func (*Sync) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{0} }
+func (m *MetaQuery) Reset()                    { *m = MetaQuery{} }
+func (m *MetaQuery) String() string            { return proto.CompactTextString(m) }
+func (*MetaQuery) ProtoMessage()               {}
+func (*MetaQuery) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{0} }
 
-func (m *Sync) GetTailBlockHash() []byte {
+func (m *MetaQuery) GetHash() []byte {
 	if m != nil {
-		return m.TailBlockHash
+		return m.Hash
+	}
+	return nil
+}
+
+func (m *MetaQuery) GetFrom() uint64 {
+	if m != nil {
+		return m.From
+	}
+	return 0
+}
+
+func (m *MetaQuery) GetTo() uint64 {
+	if m != nil {
+		return m.To
+	}
+	return 0
+}
+
+func (m *MetaQuery) GetChunkSize() uint64 {
+	if m != nil {
+		return m.ChunkSize
+	}
+	return 0
+}
+
+// Response RootHashMeta
+type RootHashMeta struct {
+	From       uint64   `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
+	ChunkSize  uint64   `protobuf:"varint,2,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
+	RootHashes [][]byte `protobuf:"bytes,3,rep,name=RootHashes" json:"RootHashes,omitempty"`
+}
+
+func (m *RootHashMeta) Reset()                    { *m = RootHashMeta{} }
+func (m *RootHashMeta) String() string            { return proto.CompactTextString(m) }
+func (*RootHashMeta) ProtoMessage()               {}
+func (*RootHashMeta) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{1} }
+
+func (m *RootHashMeta) GetFrom() uint64 {
+	if m != nil {
+		return m.From
+	}
+	return 0
+}
+
+func (m *RootHashMeta) GetChunkSize() uint64 {
+	if m != nil {
+		return m.ChunkSize
+	}
+	return 0
+}
+
+func (m *RootHashMeta) GetRootHashes() [][]byte {
+	if m != nil {
+		return m.RootHashes
+	}
+	return nil
+}
+
+// Request BlockChunk
+type BlockChunkQuery struct {
+	From      uint64 `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
+	ChunkSize uint64 `protobuf:"varint,2,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
+}
+
+func (m *BlockChunkQuery) Reset()                    { *m = BlockChunkQuery{} }
+func (m *BlockChunkQuery) String() string            { return proto.CompactTextString(m) }
+func (*BlockChunkQuery) ProtoMessage()               {}
+func (*BlockChunkQuery) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{2} }
+
+func (m *BlockChunkQuery) GetFrom() uint64 {
+	if m != nil {
+		return m.From
+	}
+	return 0
+}
+
+func (m *BlockChunkQuery) GetChunkSize() uint64 {
+	if m != nil {
+		return m.ChunkSize
+	}
+	return 0
+}
+
+// Response BlockChunk
+type BlockChunk struct {
+	From   uint64           `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
+	Blocks []*corepb1.Block `protobuf:"bytes,3,rep,name=Blocks" json:"Blocks,omitempty"`
+}
+
+func (m *BlockChunk) Reset()                    { *m = BlockChunk{} }
+func (m *BlockChunk) String() string            { return proto.CompactTextString(m) }
+func (*BlockChunk) ProtoMessage()               {}
+func (*BlockChunk) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{3} }
+
+func (m *BlockChunk) GetFrom() uint64 {
+	if m != nil {
+		return m.From
+	}
+	return 0
+}
+
+func (m *BlockChunk) GetBlocks() []*corepb1.Block {
+	if m != nil {
+		return m.Blocks
 	}
 	return nil
 }
 
 func init() {
-	proto.RegisterType((*Sync)(nil), "syncpb.Sync")
+	proto.RegisterType((*MetaQuery)(nil), "syncpb.MetaQuery")
+	proto.RegisterType((*RootHashMeta)(nil), "syncpb.RootHashMeta")
+	proto.RegisterType((*BlockChunkQuery)(nil), "syncpb.BlockChunkQuery")
+	proto.RegisterType((*BlockChunk)(nil), "syncpb.BlockChunk")
 }
 
 func init() { proto.RegisterFile("sync.proto", fileDescriptorSync) }
 
 var fileDescriptorSync = []byte{
-	// 91 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2a, 0xae, 0xcc, 0x4b,
-	0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x03, 0xb1, 0x0b, 0x92, 0x94, 0xf4, 0xb8, 0x58,
-	0x82, 0x2b, 0xf3, 0x92, 0x85, 0xd4, 0xb8, 0xf8, 0x4b, 0x12, 0x33, 0x73, 0xe2, 0x93, 0x72, 0xf2,
-	0x93, 0xb3, 0xe3, 0x33, 0x12, 0x8b, 0x33, 0x24, 0x18, 0x15, 0x18, 0x35, 0x78, 0x82, 0x78, 0x41,
-	0xc2, 0x4e, 0x20, 0x51, 0x8f, 0xc4, 0xe2, 0x8c, 0x24, 0x36, 0xb0, 0x76, 0x63, 0x40, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0xba, 0x65, 0xd7, 0xe7, 0x4c, 0x00, 0x00, 0x00,
+	// 245 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x90, 0xcf, 0x4a, 0xc4, 0x30,
+	0x10, 0x87, 0xe9, 0x1f, 0x0a, 0x3b, 0x56, 0x85, 0x9c, 0x82, 0x88, 0x94, 0x82, 0xd0, 0x8b, 0x0d,
+	0xb8, 0x6f, 0xe0, 0x82, 0x7a, 0xf1, 0x60, 0xdc, 0x07, 0xb0, 0x89, 0x61, 0x5b, 0xd6, 0xee, 0x84,
+	0x34, 0x3d, 0xac, 0x4f, 0x2f, 0x99, 0xd5, 0x6e, 0x15, 0x2f, 0xde, 0x7e, 0xf9, 0x92, 0xf9, 0x26,
+	0x33, 0x00, 0xc3, 0x7e, 0xa7, 0x6b, 0xeb, 0xd0, 0x23, 0xcb, 0x42, 0xb6, 0xea, 0x62, 0xb9, 0xe9,
+	0x7c, 0x3b, 0xaa, 0x5a, 0x63, 0x2f, 0x7a, 0xf3, 0xd6, 0xa9, 0x77, 0xd4, 0x62, 0x83, 0x37, 0x53,
+	0xd6, 0xe8, 0x8c, 0xb0, 0x4a, 0x84, 0xc3, 0xf6, 0x50, 0x5c, 0x36, 0xb0, 0x78, 0x32, 0xbe, 0x79,
+	0x1e, 0x8d, 0xdb, 0x33, 0x06, 0xe9, 0x63, 0x33, 0xb4, 0x3c, 0x2a, 0xa2, 0x2a, 0x97, 0x94, 0x03,
+	0xbb, 0x77, 0xd8, 0xf3, 0xb8, 0x88, 0xaa, 0x54, 0x52, 0x66, 0x67, 0x10, 0xaf, 0x91, 0x27, 0x44,
+	0xe2, 0x35, 0xb2, 0x4b, 0x58, 0xac, 0xda, 0x71, 0xb7, 0x7d, 0xe9, 0x3e, 0x0c, 0x4f, 0x09, 0x1f,
+	0x41, 0xf9, 0x0a, 0xb9, 0x44, 0xf4, 0xc1, 0x16, 0x5a, 0x4d, 0xc6, 0x68, 0x66, 0xfc, 0x61, 0x88,
+	0x7f, 0x19, 0xd8, 0x15, 0xc0, 0xb7, 0xc1, 0x0c, 0x3c, 0x29, 0x92, 0x2a, 0x97, 0x33, 0x52, 0xae,
+	0xe0, 0xfc, 0x2e, 0xcc, 0x44, 0x15, 0xd3, 0x28, 0xff, 0x6b, 0x52, 0x3e, 0x00, 0x1c, 0x25, 0x7f,
+	0xd6, 0x5f, 0x43, 0x46, 0x2f, 0x0e, 0x5f, 0x38, 0xb9, 0x3d, 0xad, 0xc3, 0x46, 0xad, 0xaa, 0x89,
+	0xca, 0xaf, 0x4b, 0x95, 0xd1, 0x66, 0x97, 0x9f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xe4, 0x81, 0x94,
+	0x5c, 0xa4, 0x01, 0x00, 0x00,
 }

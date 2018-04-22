@@ -4,7 +4,7 @@ GO = $(PB:.proto=.pb.go)
 all: $(GO)
 
 %.pb.go: %.proto
-	protoc --gogo_out=. $<
+	protoc -I${GOPATH}/src -I. -I ../../core/pb --gogo_out=. $<
 
 %.proto:
 
