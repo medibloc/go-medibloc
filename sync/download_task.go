@@ -13,7 +13,7 @@ import (
 	"math/rand"
 )
 
-type DownloadTask struct {
+type downloadTask struct {
 	netService          net.Service
 	query               []byte
 	from                uint64
@@ -26,11 +26,11 @@ type DownloadTask struct {
 	endTime             time.Time
 	blockChunkMessageCh chan net.Message
 	quitCh              chan bool
-	doneCh              chan *DownloadTask
+	doneCh              chan *downloadTask
 }
 
-func NewDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash common.Hash, doneCh chan *DownloadTask) *DownloadTask {
-	return &DownloadTask{
+func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash common.Hash, doneCh chan *downloadTask) *downloadTask {
+	return &downloadTask{
 		netService:          netService,
 		query:               nil,
 		from:                from,
@@ -47,18 +47,18 @@ func NewDownloadTask(netService net.Service, peers map[string]struct{}, from uin
 	}
 }
 
-func (dt *DownloadTask) start() {
+func (dt *downloadTask) start() {
 	dt.generateBlockChunkQuery()
 	dt.sendBlockChunkRequest()
 	dt.startTime = time.Now()
 	go dt.startLoop()
 }
 
-func (dt *DownloadTask) stop() {
+func (dt *downloadTask) stop() {
 	dt.quitCh <- true
 }
 
-func (dt *DownloadTask) startLoop() {
+func (dt *downloadTask) startLoop() {
 	timerChan := time.NewTicker(time.Second * 60).C //TODO: 대기시간 설정
 	for {
 		select {
@@ -71,14 +71,14 @@ func (dt *DownloadTask) startLoop() {
 		case <-dt.quitCh:
 			logging.Console().WithFields(logrus.Fields{
 				"from": dt.from,
-			}).Info("Partial Download from %v is succeed", dt.from)
+			}).Info("Partial download from %v is succeed", dt.from)
 			dt.doneCh <- dt
 			return
 		}
 	}
 }
 
-func (dt *DownloadTask) verifyBlockChunkMessage(message net.Message) {
+func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 
 	blockChunk := new(syncpb.BlockChunk)
 	err := proto.Unmarshal(message.Data(), blockChunk)
@@ -144,12 +144,12 @@ func (dt *DownloadTask) verifyBlockChunkMessage(message net.Message) {
 	dt.stop()
 }
 
-func (dt *DownloadTask) removePeer(peer string, errMsg string) {
+func (dt *downloadTask) removePeer(peer string, errMsg string) {
 	delete(dt.peers, peer)
 	dt.netService.ClosePeer(peer, errors.New(errMsg))
 }
 
-func (dt *DownloadTask) generateBlockChunkQuery() {
+func (dt *downloadTask) generateBlockChunkQuery() {
 	q := &syncpb.BlockChunkQuery{
 		From:      dt.from,
 		ChunkSize: dt.chunkSize,
@@ -165,7 +165,7 @@ func (dt *DownloadTask) generateBlockChunkQuery() {
 	dt.query = query
 }
 
-func (dt *DownloadTask) sendBlockChunkRequest() {
+func (dt *downloadTask) sendBlockChunkRequest() {
 	randomIndex := rand.Intn(len(dt.peers))
 	var randomPeer string
 	index := 0

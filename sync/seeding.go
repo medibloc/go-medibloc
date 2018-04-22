@@ -11,7 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 )
 
-type Seeding struct {
+type seeding struct {
 	netService net.Service
 	bm         BlockManager
 
@@ -19,8 +19,8 @@ type Seeding struct {
 	messageCh chan net.Message
 }
 
-func newSeeding(netService net.Service, bm BlockManager) *Seeding {
-	return &Seeding{
+func newSeeding(netService net.Service, bm BlockManager) *seeding {
+	return &seeding{
 		netService: netService,
 		bm:         bm,
 		quitCh:     make(chan bool, 2),
@@ -28,23 +28,23 @@ func newSeeding(netService net.Service, bm BlockManager) *Seeding {
 	}
 }
 
-func (s *Seeding) Start() {
+func (s *seeding) start() {
 	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncMetaRequest, net.MessageWeightZero))
 	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncBlockChunkRequest, net.MessageWeightZero))
 	go s.startLoop()
 }
 
-func (s *Seeding) Stop() {
+func (s *seeding) stop() {
 	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, net.SyncMetaRequest, net.MessageWeightZero))
 	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, net.SyncBlockChunkRequest, net.MessageWeightZero))
 	s.quitCh <- true
 }
 
-func (s *Seeding) startLoop() {
+func (s *seeding) startLoop() {
 	for {
 		select {
 		case <-s.quitCh:
-			logging.Console().Info("Sync: Seeding Service Stopped")
+			logging.Console().Info("Sync: seeding Service Stopped")
 			return
 		case message := <-s.messageCh:
 			switch message.MessageType() {
@@ -57,7 +57,7 @@ func (s *Seeding) startLoop() {
 	}
 }
 
-func (s *Seeding) sendRootHashMeta(message net.Message) {
+func (s *seeding) sendRootHashMeta(message net.Message) {
 	q := new(syncpb.MetaQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *Seeding) sendRootHashMeta(message net.Message) {
 	logging.Info("RootHashMeta response succeeded")
 }
 
-func (s *Seeding) sendBlockChunk(message net.Message) {
+func (s *seeding) sendBlockChunk(message net.Message) {
 	q := new(syncpb.BlockChunkQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {

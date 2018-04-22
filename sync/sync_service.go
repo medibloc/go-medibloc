@@ -9,13 +9,15 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 )
 
+//Service Sync
 type Service struct {
-	Seeding  *Seeding
-	Download *Download
+	Seeding  *seeding
+	Download *download
 
 	quitCh chan bool
 }
 
+//NewService Generate syncService
 func NewService(m medlet.Medlet) *Service {
 	return &Service{
 		Seeding:  newSeeding(m.NetService(), m.blockManager),
@@ -24,11 +26,12 @@ func NewService(m medlet.Medlet) *Service {
 	}
 }
 
+// Start Sync Service
 func (ss *Service) Start() {
-	ss.Seeding.Start()
-	go ss.startLoop()
+	ss.Seeding.start()
 }
 
+//Stop Sync Service
 func (ss *Service) Stop() {
 	ss.quitCh <- true
 }
@@ -42,8 +45,8 @@ func (ss *Service) startLoop() {
 		//case <-timerChan:
 		//	metricsCachedSync.Update(int64(len(ss.messageCh)))
 		case <-ss.quitCh:
-			ss.Seeding.Stop()
-			ss.Download.Stop()
+			ss.Seeding.stop()
+			ss.Download.stop()
 			logging.Console().Info("Stopped Sync Service.")
 			return
 		}
@@ -52,7 +55,7 @@ func (ss *Service) startLoop() {
 
 func (ss *Service) activeDownload(chunkSize uint64) {
 	if ss.Download.activated == true {
-		logging.Console().Error("Sync: Download Manager is already activated.")
+		logging.Console().Error("Sync: download Manager is already activated.")
 		return
 	}
 	ss.Download.setup(chunkSize)

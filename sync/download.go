@@ -10,7 +10,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 )
 
-type Download struct {
+type download struct {
 	netService     net.Service
 	bm             BlockManager
 	messageCh      chan net.Message
@@ -24,18 +24,18 @@ type Download struct {
 	pidRootHashesMap        map[string][]common.Hash
 	rootHashPIDsMap         map[common.Hash]map[string]struct{}
 	majorityThreshold       int
-	taskQue                 []*DownloadTask
-	runningTasks            []*DownloadTask
-	finishedTasks           []*DownloadTask
-	taskAddCh               chan *DownloadTask
-	taskDoneCh              chan *DownloadTask
+	taskQue                 []*downloadTask
+	runningTasks            []*downloadTask
+	finishedTasks           []*downloadTask
+	taskAddCh               chan *downloadTask
+	taskDoneCh              chan *downloadTask
 	recentFinishedTaskIndex uint64
 	recentStartedTaskIndex  uint64
 	maxRunningTask          uint64
 }
 
-func newDownload(netService net.Service, bm BlockManager) *Download {
-	return &Download{
+func newDownload(netService net.Service, bm BlockManager) *download {
+	return &download{
 		netService:              netService,
 		bm:                      bm,
 		messageCh:               make(chan net.Message, 128),
@@ -48,23 +48,23 @@ func newDownload(netService net.Service, bm BlockManager) *Download {
 		pidRootHashesMap:        make(map[string][]common.Hash),
 		rootHashPIDsMap:         make(map[common.Hash]map[string]struct{}),
 		majorityThreshold:       11, //TODO: 다수의 기준 config? peers?
-		taskQue:                 make([]*DownloadTask, 0),
-		runningTasks:            make([]*DownloadTask, 0),
-		finishedTasks:           make([]*DownloadTask, 0),
-		taskAddCh:               make(chan *DownloadTask, 2),
-		taskDoneCh:              make(chan *DownloadTask),
+		taskQue:                 make([]*downloadTask, 0),
+		runningTasks:            make([]*downloadTask, 0),
+		finishedTasks:           make([]*downloadTask, 0),
+		taskAddCh:               make(chan *downloadTask, 2),
+		taskDoneCh:              make(chan *downloadTask),
 		recentFinishedTaskIndex: 0,
 		recentStartedTaskIndex:  0,
 		maxRunningTask:          5, //TODO: maxTask
 	}
 }
 
-func (d *Download) setup(chunkSize uint64) {
+func (d *download) setup(chunkSize uint64) {
 	d.from = d.bm.LIB().Height()
 	d.chunkSize = chunkSize
 }
 
-func (d *Download) start() {
+func (d *download) start() {
 
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
@@ -74,18 +74,18 @@ func (d *Download) start() {
 
 }
 
-func (d *Download) Stop() {
+func (d *download) stop() {
 	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 
 	d.quitCh <- true
 }
 
-func (d *Download) subscribeLoop() {
+func (d *download) subscribeLoop() {
 	for {
 		select {
 		case <-d.quitCh:
-			logging.Console().Info("Sync: Download Service Stopped")
+			logging.Console().Info("Sync: download Service Stopped")
 			d.quitTaskLoopCh <- true
 			return
 		case message := <-d.messageCh:
@@ -99,7 +99,7 @@ func (d *Download) subscribeLoop() {
 	}
 }
 
-func (d *Download) taskLoop() {
+func (d *download) taskLoop() {
 	for {
 		select {
 		case <-d.quitTaskLoopCh:
@@ -115,7 +115,7 @@ func (d *Download) taskLoop() {
 	}
 }
 
-func (d *Download) runNextTask() {
+func (d *download) runNextTask() {
 	if len(d.runningTasks) < int(d.maxRunningTask) {
 		t := d.taskQue[0]
 		addTask(d.runningTasks, t)
@@ -124,7 +124,7 @@ func (d *Download) runNextTask() {
 	}
 }
 
-func (d *Download) updateMeta(message net.Message) {
+func (d *download) updateMeta(message net.Message) {
 	rootHashMeta := new(syncpb.RootHashMeta)
 	err := proto.Unmarshal(message.Data(), rootHashMeta)
 	if err != nil {
@@ -149,7 +149,7 @@ func (d *Download) updateMeta(message net.Message) {
 	d.checkMajorMeta()
 }
 
-func (d *Download) setPIDRootHashesMap(pid string, rootHashesByte [][]byte) {
+func (d *download) setPIDRootHashesMap(pid string, rootHashesByte [][]byte) {
 	rootHashes := make([]common.Hash, len(rootHashesByte))
 	for i, rootHash := range rootHashesByte {
 		rootHashes[i] = common.BytesToHash(rootHash)
@@ -157,13 +157,13 @@ func (d *Download) setPIDRootHashesMap(pid string, rootHashesByte [][]byte) {
 	d.pidRootHashesMap[pid] = rootHashes
 }
 
-func (d *Download) setRootHashPIDsMap(pid string, rootHashesByte [][]byte) {
+func (d *download) setRootHashPIDsMap(pid string, rootHashesByte [][]byte) {
 	for _, rootHash := range rootHashesByte {
 		d.rootHashPIDsMap[common.BytesToHash(rootHash)][pid] = struct{}{}
 	}
 }
 
-func (d *Download) checkMajorMeta() {
+func (d *download) checkMajorMeta() {
 	if len(d.pidRootHashesMap) < d.majorityThreshold {
 		return
 	}
@@ -181,7 +181,7 @@ func (d *Download) checkMajorMeta() {
 			if len(peers) > d.majorityThreshold {
 				//createDownloadTask
 				majorNotFound = false
-				t := NewDownloadTask(d.netService, d.rootHashPIDsMap[rootHash], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHash, d.taskDoneCh)
+				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHash], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHash, d.taskDoneCh)
 				d.taskAddCh <- t
 			}
 		}
@@ -192,7 +192,7 @@ func (d *Download) checkMajorMeta() {
 	}
 }
 
-func (d *Download) findTaskForBlockChunk(message net.Message) {
+func (d *download) findTaskForBlockChunk(message net.Message) {
 
 	blockChunk := new(syncpb.BlockChunk)
 	err := proto.Unmarshal(message.Data(), blockChunk)
@@ -212,7 +212,7 @@ func (d *Download) findTaskForBlockChunk(message net.Message) {
 	}
 }
 
-func (d *Download) sendMetaQuery() error {
+func (d *download) sendMetaQuery() error {
 	mq := new(syncpb.MetaQuery)
 	mq.From = d.from
 	mq.Hash = d.bm.LIB().Hash().Bytes()
@@ -229,11 +229,11 @@ func (d *Download) sendMetaQuery() error {
 	return nil
 }
 
-func addTask(tasks []*DownloadTask, task *DownloadTask) {
+func addTask(tasks []*downloadTask, task *downloadTask) {
 	tasks = append(tasks, task)
 }
 
-func removeTask(tasks []*DownloadTask, task *DownloadTask) {
+func removeTask(tasks []*downloadTask, task *downloadTask) {
 	for i, t := range tasks {
 		if t == task {
 			tasks = append(tasks[:i], tasks[i+1:]...)
