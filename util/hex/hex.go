@@ -25,6 +25,7 @@ import (
 
 const uintBits = 32 << (uint64(^uint(0)) >> 63)
 
+// Error types.
 var (
 	ErrEmptyString   = &decError{"empty hex string"}
 	ErrSyntax        = &decError{"invalid hex string"}

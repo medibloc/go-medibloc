@@ -1,9 +1,10 @@
 package core_test
 
 import (
-	"crypto/rand"
-	"io"
 	"testing"
+
+	"crypto/rand"
+	"math/big"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
@@ -12,6 +13,9 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/medlet"
+	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +69,7 @@ func newBlockTestSet(t *testing.T, idxToParent []blockID) (blocks map[blockID]*c
 func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block {
 	var coinbase common.Address
 	if coinbaseHex == "" {
-		coinbase = RandomAddress(t)
+		coinbase = newAddress(t)
 	} else {
 		coinbase = common.HexToAddress(coinbaseHex)
 	}
@@ -125,40 +129,69 @@ func newTestTransactions(t *testing.T, block *core.Block) core.Transactions {
 
 	return txs
 }
-
-func newTestTransaction(t *testing.T, from common.Address, to common.Address, nonce uint64) *core.Transaction {
+func newTransaction(t *testing.T, fromKey signature.PrivateKey, toKey signature.PrivateKey, nonce uint64) *core.Transaction {
+	from, err := common.PublicKeyToAddress(fromKey.PublicKey())
+	require.Nil(t, err)
+	to, err := common.PublicKeyToAddress(toKey.PublicKey())
+	require.Nil(t, err)
 	tx, err := core.NewTransaction(chainID, from, to, util.Uint128Zero(), nonce, "", nil)
 	require.Nil(t, err)
 	return tx
 }
 
-func RandomAddress(t *testing.T) (addr common.Address) {
-	nw, err := io.ReadFull(rand.Reader, addr[:])
-	require.Nil(t, err)
-	require.EqualValues(t, common.AddressLength, nw)
-	return addr
-
+func newSignedTransaction(t *testing.T, from signature.PrivateKey, to signature.PrivateKey, nonce uint64) *core.Transaction {
+	tx := newTransaction(t, from, to, nonce)
+	signTx(t, tx, from)
+	return tx
 }
 
 func newPrivateKey(t *testing.T) signature.PrivateKey {
 	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return privKey
 }
 
-func signTx(t *testing.T, tx *core.Transaction) {
+func newAddress(t *testing.T) common.Address {
 	key := newPrivateKey(t)
+	addr, err := common.PublicKeyToAddress(key.PublicKey())
+	require.NoError(t, err)
+	return addr
+}
+
+func newNonce(t *testing.T) uint64 {
+	n, err := rand.Int(rand.Reader, big.NewInt(1000))
+	require.NoError(t, err)
+	return n.Uint64()
+}
+
+func newRandomTransaction(t *testing.T) *core.Transaction {
+	from := newPrivateKey(t)
+	to := newPrivateKey(t)
+	tx := newTransaction(t, from, to, newNonce(t))
+	return tx
+}
+
+func newRandomSignedTransaction(t *testing.T) *core.Transaction {
+	from := newPrivateKey(t)
+	to := newPrivateKey(t)
+	tx := newTransaction(t, from, to, newNonce(t))
+	signTx(t, tx, from)
+	return tx
+}
+
+func signTx(t *testing.T, tx *core.Transaction, key signature.PrivateKey) {
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
 	sig.InitSign(key)
 	tx.SignThis(sig)
 }
 
-func newTestAddrSet(t *testing.T, n int) (addrs []common.Address) {
+func newKeySlice(t *testing.T, n int) []signature.PrivateKey {
+	var keys []signature.PrivateKey
 	for i := 0; i < n; i++ {
-		addrs = append(addrs, RandomAddress(t))
+		keys = append(keys, newPrivateKey(t))
 	}
-	return addrs
+	return keys
 }
 
 func getStorage(t *testing.T) storage.Storage {
@@ -173,4 +206,37 @@ func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
 	acc, err := ks.SetKey(privKey)
 	assert.NoError(t, err)
 	return acc
+}
+
+func newTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionManager, closeFn func()) {
+	// New test network
+	tm := net.NewMedServiceTestManager(n, 1)
+	svc, err := tm.MakeNewTestMedService()
+	require.Nil(t, err)
+	require.Len(t, svc, n)
+
+	tm.StartMedServices()
+	tm.WaitStreamReady()
+	tm.WaitRouteTableSync()
+
+	med, err := medlet.New(&medletpb.Config{
+		Chain: &medletpb.ChainConfig{
+			ChainId: chainID,
+		},
+	})
+	require.Nil(t, err)
+
+	for i := 0; i < n; i++ {
+		mgr := core.NewTransactionManager(med, 1024)
+		mgr.RegisterInNetwork(svc[i])
+		mgr.Start()
+		mgrs = append(mgrs, mgr)
+	}
+
+	return mgrs, func() {
+		for _, mgr := range mgrs {
+			mgr.Stop()
+		}
+		tm.StopMedServices()
+	}
 }

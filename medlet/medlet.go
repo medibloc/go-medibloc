@@ -4,6 +4,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	mednet "github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
 	m "github.com/rcrowley/go-metrics"
@@ -11,14 +12,32 @@ import (
 )
 
 var (
-	metricsMedstartGauge = m.GetOrRegisterGauge("med.start", nil)
+	metricsMedstartGauge   = m.GetOrRegisterGauge("med.start", nil)
+	transactionManagerSize = 1280
 )
 
 // Medlet manages blockchain services.
 type Medlet struct {
+	bs         *core.BlockSubscriber
 	config     *medletpb.Config
-	netService mednet.Service
 	miner      *core.Miner
+	netService mednet.Service
+	rpc        rpc.GRPCServer
+	txMgr      *core.TransactionManager
+}
+
+type rpcBridge struct {
+	bm    *core.BlockManager
+	txMgr *core.TransactionManager
+}
+
+// BlockManager return core.BlockManager
+func (rb *rpcBridge) BlockManager() *core.BlockManager {
+	return rb.bm
+}
+
+func (rb *rpcBridge) TransactionManager() *core.TransactionManager {
+	return rb.txMgr
 }
 
 // New returns a new medlet.
@@ -31,7 +50,7 @@ func New(config *medletpb.Config) (*Medlet, error) {
 // Setup sets up medlet.
 func (m *Medlet) Setup() {
 	var err error
-	logging.Console().Info("Setuping Medlet...")
+	logging.Console().Info("Setting up Medlet...")
 
 	m.netService, err = mednet.NewMedService(m)
 	if err != nil {
@@ -40,7 +59,7 @@ func (m *Medlet) Setup() {
 		}).Fatal("Failed to setup net service.")
 	}
 
-	logging.Console().Info("Setuped Medlet.")
+	logging.Console().Info("Set up Medlet.")
 }
 
 // Start starts the services of the medlet.
@@ -62,6 +81,10 @@ func (m *Medlet) Start() {
 		return
 	}
 
+	m.txMgr = core.NewTransactionManager(m, transactionManagerSize)
+	m.txMgr.RegisterInNetwork(m.netService)
+	m.txMgr.Start()
+
 	bp, bc, err := core.GetBlockPoolBlockChain(s)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -69,17 +92,14 @@ func (m *Medlet) Start() {
 		}).Fatal("Failed to create block pool or block chain")
 		return
 	}
-	err = core.StartBlockSubscriber(m.netService, bp, bc)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("Failed to start block subscriber")
-		return
-	}
+	m.bs = core.StartBlockSubscriber(m.netService, bp, bc)
 
 	if m.Config().Chain.StartMine {
-		m.miner = core.StartMiner(m.netService, bc)
+		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
 	}
+
+	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr})
+	m.rpc.Start(m.config.Rpc.RpcListen[0]) // TODO
 
 	logging.Console().Info("Started Medlet.")
 }
@@ -91,10 +111,14 @@ func (m *Medlet) Stop() {
 		m.netService = nil
 	}
 
-	core.StopBlockSubscriber()
+	m.txMgr.Stop()
+
+	m.bs.StopBlockSubscriber()
 	if m.miner != nil {
 		m.miner.StopMiner()
 	}
+
+	m.rpc.Stop()
 
 	logging.Console().Info("Stopped Medlet.")
 }

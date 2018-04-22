@@ -17,29 +17,28 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/golang-lru"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	cacheSize = 128
+	cacheSize             = 128
+	tailBlockKeyInStorage = "tailBlock"
 )
 
-var (
-	ErrBlockNotExist = errors.New("block not exist")
-)
-
-// BlockChain
+// BlockChain manages blockchain structure.
 type BlockChain struct {
 	cachedBlocks  *lru.Cache
 	chainID       uint32
 	mainTailBlock *Block
-	// tailBlocks tail blocks except main branch's
+	mu            sync.RWMutex
+	// tailBlocks all tail blocks including mainTailBlock
 	tailBlocks *lru.Cache
 	storage    storage.Storage
 }
@@ -50,6 +49,16 @@ func NewBlockChain(chainID uint32, genesisBlock *Block, storage storage.Storage)
 		chainID:       chainID,
 		mainTailBlock: genesisBlock,
 		storage:       storage,
+	}
+	if v, err := storage.Get([]byte(tailBlockKeyInStorage)); err == nil {
+		blockData, err := bytesToBlockData(v)
+		if err != nil {
+			return nil, err
+		}
+		bc.mainTailBlock, err = blockData.GetExecutedBlock(storage)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var err error
 	bc.cachedBlocks, err = lru.New(cacheSize)
@@ -65,13 +74,15 @@ func NewBlockChain(chainID uint32, genesisBlock *Block, storage storage.Storage)
 	return bc, nil
 }
 
-// ChainID
+// ChainID returns ChainID.
 func (bc *BlockChain) ChainID() uint32 {
 	return bc.chainID
 }
 
-// GetBlock
+// GetBlock returns GetBlock.
 func (bc *BlockChain) GetBlock(hash common.Hash) *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	if v, ok := bc.cachedBlocks.Get(hash.Str()); ok {
 		return v.(*Block)
 	}
@@ -98,11 +109,19 @@ func (bc *BlockChain) GetBlock(hash common.Hash) *Block {
 	return nil
 }
 
+// MainTailBlock returns MainTailBlock.
 func (bc *BlockChain) MainTailBlock() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+
 	return bc.mainTailBlock
 }
 
+// TailBlocks returns TailBlocks.
 func (bc *BlockChain) TailBlocks() []*Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+
 	blocks := make([]*Block, 0)
 	for _, k := range bc.tailBlocks.Keys() {
 		v, _ := bc.tailBlocks.Get(k)
@@ -116,6 +135,9 @@ func (bc *BlockChain) TailBlocks() []*Block {
 
 // PutVerifiedNewBlocks put verified blocks and change tailBlocks
 func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks []*Block) error {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+
 	parentKey := parent.Hash().Str()
 	if _, ok := bc.cachedBlocks.Get(parentKey); !ok {
 		if _, err := bc.storage.Get(parent.Hash().Bytes()); err != nil {
@@ -158,9 +180,16 @@ func (bc *BlockChain) changeMainTailBlock(tailBlocks []*Block) {
 			maxHeight = height
 		}
 	}
+	if err := bc.storeBlockWithKey([]byte(tailBlockKeyInStorage), bc.mainTailBlock); err != nil {
+		logging.Console().Error(err)
+	}
 }
 
 func (bc *BlockChain) storeBlock(block *Block) error {
+	return bc.storeBlockWithKey(block.Hash().Bytes(), block)
+}
+
+func (bc *BlockChain) storeBlockWithKey(key []byte, block *Block) error {
 	pbBlock, err := block.ToProto()
 	if err != nil {
 		return err
@@ -169,7 +198,7 @@ func (bc *BlockChain) storeBlock(block *Block) error {
 	if err != nil {
 		return err
 	}
-	err = bc.storage.Put(block.Hash().Bytes(), value)
+	err = bc.storage.Put(key, value)
 	if err != nil {
 		return err
 	}

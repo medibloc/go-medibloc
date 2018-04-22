@@ -288,7 +288,9 @@ func (t *Trie) updateExt(n *node, route []byte, value []byte) ([]byte, error) {
 		return t.saveNode(n)
 	}
 	branch := emptyBranchNode()
-	if len(path) > 1 {
+	if matchLen+1 == len(path) {
+		branch.Val[path[matchLen]] = next
+	} else if len(path) > 1 {
 		n.Val[0] = path[matchLen+1:]
 		if hash, err = t.saveNode(n); err != nil {
 			return nil, err
@@ -362,6 +364,15 @@ func keyToRoute(key []byte) []byte {
 		route[i*2+1] = b % 16
 	}
 	return route
+}
+
+func routeToKey(route []byte) []byte {
+	l := len(route) / 2
+	key := make([]byte, l)
+	for i := 0; i < l; i++ {
+		key[i] = route[i*2]<<4 + route[i*2+1]
+	}
+	return key
 }
 
 func isBranchEmpty(n *node) bool {

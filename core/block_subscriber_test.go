@@ -68,6 +68,7 @@ func getBlockDataList(t *testing.T, idxToParent []blockID) []*core.BlockData {
 
 func TestBlockSubscriber_Sequential(t *testing.T) {
 	bc, bp := getBcBp(t)
+	subscriber := core.NewBlockSubscriber(bp, bc)
 
 	idxToParent := []blockID{genesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := make(map[blockID]*core.Block)
@@ -75,7 +76,7 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 	for idx, parentId := range idxToParent {
 		blockData := nextBlockData(t, blockMap[parentId])
 
-		err := core.PushBlock(blockData, bc, bp)
+		err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
 		assert.Nil(t, err)
 		assert.Equal(t, bc.MainTailBlock().Hash(), blockData.Hash())
 		assert.Equal(t, false, bp.Has(blockData))
@@ -85,13 +86,14 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 
 func TestBlockSubscriber_Reverse(t *testing.T) {
 	bc, bp := getBcBp(t)
+	subscriber := core.NewBlockSubscriber(bp, bc)
 
 	idxToParent := []blockID{genesisID, 0, 1, 2, 3, 4, 5}
 	blockDatas := getBlockDataList(t, idxToParent)
 
 	for i := len(idxToParent) - 1; i >= 0; i-- {
 		blockData := blockDatas[i]
-		err := core.PushBlock(blockData, bc, bp)
+		err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
 		require.Nil(t, err)
 		if i > 0 {
 			require.Equal(t, genesisBlock.Hash(), bc.MainTailBlock().Hash())
@@ -105,6 +107,7 @@ func TestBlockSubscriber_Reverse(t *testing.T) {
 
 func TestBlockSubscriber_Tree(t *testing.T) {
 	bc, bp := getBcBp(t)
+	subscriber := core.NewBlockSubscriber(bp, bc)
 
 	tests := []struct {
 		idxToParent []blockID
@@ -121,7 +124,7 @@ func TestBlockSubscriber_Tree(t *testing.T) {
 			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
 		}
 		for _, blockData := range blockDatas {
-			err := core.PushBlock(blockData, bc, bp)
+			err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
 			require.Nil(t, err)
 		}
 	}

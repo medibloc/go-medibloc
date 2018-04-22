@@ -19,9 +19,10 @@ type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
 
-	accsRoot  common.Hash
-	txsRoot   common.Hash
-	usageRoot common.Hash
+	accsRoot    common.Hash
+	txsRoot     common.Hash
+	usageRoot   common.Hash
+	recordsRoot common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -34,16 +35,17 @@ type BlockHeader struct {
 // ToProto converts BlockHeader to corepb.BlockHeader
 func (b *BlockHeader) ToProto() (proto.Message, error) {
 	return &corepb.BlockHeader{
-		Hash:       b.hash.Bytes(),
-		ParentHash: b.parentHash.Bytes(),
-		AccsRoot:   b.accsRoot.Bytes(),
-		TxsRoot:    b.txsRoot.Bytes(),
-		UsageRoot:  b.usageRoot.Bytes(),
-		Coinbase:   b.coinbase.Bytes(),
-		Timestamp:  b.timestamp,
-		ChainId:    b.chainID,
-		Alg:        uint32(b.alg),
-		Sign:       b.sign,
+		Hash:        b.hash.Bytes(),
+		ParentHash:  b.parentHash.Bytes(),
+		AccsRoot:    b.accsRoot.Bytes(),
+		TxsRoot:     b.txsRoot.Bytes(),
+		UsageRoot:   b.usageRoot.Bytes(),
+		RecordsRoot: b.recordsRoot.Bytes(),
+		Coinbase:    b.coinbase.Bytes(),
+		Timestamp:   b.timestamp,
+		ChainId:     b.chainID,
+		Alg:         uint32(b.alg),
+		Sign:        b.sign,
 	}, nil
 }
 
@@ -55,6 +57,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.accsRoot = common.BytesToHash(msg.AccsRoot)
 		b.txsRoot = common.BytesToHash(msg.TxsRoot)
 		b.usageRoot = common.BytesToHash(msg.UsageRoot)
+		b.recordsRoot = common.BytesToHash(msg.RecordsRoot)
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
@@ -196,8 +199,15 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	if err := block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
 		return nil, err
 	}
-	if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
-		return nil, err
+	if common.IsZeroHash(block.header.usageRoot) == false {
+		if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
+			return nil, err
+		}
+	}
+	if common.IsZeroHash(block.header.recordsRoot) == false {
+		if err := block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
+			return nil, err
+		}
 	}
 	block.storage = storage
 	return block, nil
@@ -213,7 +223,7 @@ func (bd *BlockData) Coinbase() common.Address {
 	return bd.header.coinbase
 }
 
-// Alg returns sign altorithm
+// Alg returns sign algorithm
 func (bd *BlockData) Alg() algorithm.Algorithm {
 	return bd.header.alg
 }
@@ -261,7 +271,12 @@ func (bd *BlockData) TransactionsRoot() common.Hash {
 
 // UsageRoot returns root hash of usage trie
 func (bd *BlockData) UsageRoot() common.Hash {
-	return bd.header.txsRoot
+	return bd.header.usageRoot
+}
+
+// RecordsRoot returns root hash of usage trie
+func (bd *BlockData) RecordsRoot() common.Hash {
+	return bd.header.recordsRoot
 }
 
 // Height returns height
@@ -299,6 +314,7 @@ func (block *Block) Seal() error {
 	block.header.accsRoot = block.state.AccountsRoot()
 	block.header.txsRoot = block.state.TransactionsRoot()
 	block.header.usageRoot = block.state.UsageRoot()
+	block.header.recordsRoot = block.state.RecordsRoot()
 
 	var err error
 	block.header.hash, err = HashBlockData(block.BlockData)
@@ -322,6 +338,7 @@ func HashBlockData(bd *BlockData) (common.Hash, error) {
 	hasher.Write(bd.AccountsRoot().Bytes())
 	hasher.Write(bd.TransactionsRoot().Bytes())
 	hasher.Write(bd.UsageRoot().Bytes())
+	hasher.Write(bd.RecordsRoot().Bytes())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
@@ -394,6 +411,12 @@ func (block *Block) VerifyState() error {
 	if !byteutils.Equal(block.state.TransactionsRoot().Bytes(), block.TransactionsRoot().Bytes()) {
 		return ErrInvalidBlockTxsRoot
 	}
+	if !byteutils.Equal(block.state.UsageRoot().Bytes(), block.UsageRoot().Bytes()) {
+		return ErrInvalidBlockTxsRoot
+	}
+	if !byteutils.Equal(block.state.RecordsRoot().Bytes(), block.RecordsRoot().Bytes()) {
+		return ErrInvalidBlockTxsRoot
+	}
 	return nil
 }
 
@@ -440,26 +463,45 @@ func (bd *BlockData) VerifyIntegrity() error {
 
 // BeginBatch makes block state update possible
 func (block *Block) BeginBatch() error {
-	if err := block.state.BeginBatch(); err != nil {
-		return err
-	}
-	return nil
+	return block.state.BeginBatch()
 }
 
 // RollBack rolls back block state batch updates
 func (block *Block) RollBack() error {
-	if err := block.state.RollBack(); err != nil {
-		return err
-	}
-	return nil
+	return block.state.RollBack()
 }
 
 // Commit saves batch updates to storage
 func (block *Block) Commit() error {
-	if err := block.state.Commit(); err != nil {
-		return err
+	return block.state.Commit()
+}
+
+// GetBlockData returns data part of block
+func (block *Block) GetBlockData() *BlockData {
+	bd := &BlockData{
+		header: &BlockHeader{
+			hash:        block.Hash(),
+			parentHash:  block.ParentHash(),
+			accsRoot:    block.AccountsRoot(),
+			txsRoot:     block.TransactionsRoot(),
+			usageRoot:   block.UsageRoot(),
+			recordsRoot: block.RecordsRoot(),
+			coinbase:    block.Coinbase(),
+			timestamp:   block.Timestamp(),
+			chainID:     block.ChainID(),
+			alg:         block.Alg(),
+			sign:        block.Signature(),
+		},
+		height: block.Height(),
 	}
-	return nil
+
+	txs := make(Transactions, len(block.transactions))
+	for i, t := range block.transactions {
+		txs[i] = t
+	}
+	bd.transactions = txs
+
+	return bd
 }
 
 func bytesToBlockData(bytes []byte) (*BlockData, error) {

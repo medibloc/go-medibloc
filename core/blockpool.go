@@ -126,8 +126,8 @@ func (bp *BlockPool) FindChildren(block HashableBlock) (childBlocks []HashableBl
 	}
 
 	// Not found parameter block.
-	childs := bp.findChildLinkedBlocks(block)
-	for _, v := range childs {
+	children := bp.findChildLinkedBlocks(block)
+	for _, v := range children {
 		childBlocks = append(childBlocks, v.block)
 	}
 	return childBlocks

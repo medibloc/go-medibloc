@@ -17,36 +17,50 @@ COVERAGE_OUT=$(REPORT_DIR)/coverage.out
 
 LDFLAGS = -ldflags "-X main.version=${VERSION} -X main.commit=${COMMIT} -X main.branch=${BRANCH}"
 
-.PHONY: clean vet fmt lint build test dep cover
+COLOR="\033[32;1m"
+ENDCOLOR="\033[0m"
 
-all: clean vet fmt lint build test
+.PHONY: clean vet fmt lint build test dep cover test-slow
+
+all: fmt build vet lint test-slow
 
 dep:
 	dep ensure -v
 
 build:
-	cd cmd/medi; go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)
+	@echo $(COLOR)[BUILD] $(BUILD_DIR)/$(BINARY)$(ENDCOLOR)
+	@cd cmd/medi; go build $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY)
 
 cover:
-	-mkdir -p $(REPORT_DIR)
-	go test ./... -coverprofile=$(COVERAGE_OUT) 2>&1 | tee ${TEST_REPORT}
-	go tool cover -html=$(COVERAGE_OUT) -o $(COVERAGE_REPORT)
-	open $(COVERAGE_REPORT)
+	@echo $(COLOR)[COVER] $(TEST_REPORT)$(ENDCOLOR)
+	@-mkdir -p $(REPORT_DIR)
+	@go test ./... -coverprofile=$(COVERAGE_OUT) 2>&1 | tee ${TEST_REPORT}
+	@go tool cover -html=$(COVERAGE_OUT) -o $(COVERAGE_REPORT)
+	@open $(COVERAGE_REPORT)
 
 test:
-	-mkdir -p $(REPORT_DIR)
-	go test ./... 2>&1 | tee ${TEST_REPORT}
+	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
+	@-mkdir -p $(REPORT_DIR)
+	@go test ./... 2>&1 | tee ${TEST_REPORT}
+
+test-slow:
+	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
+	@-mkdir -p $(REPORT_DIR)
+	@go test -race -cover ./... 2>&1 | tee ${TEST_REPORT}
 
 vet:
-	-mkdir -p $(REPORT_DIR)
-	go vet $$(go list ./...) 2>&1 | tee $(VET_REPORT)
+	@echo $(COLOR)[VET] $(VET_REPORT)$(ENDCOLOR)
+	@-mkdir -p $(REPORT_DIR)
+	@go vet $$(go list ./...) 2>&1 | tee $(VET_REPORT)
 
 fmt:
-	goimports -w $$(go list -f "{{.Dir}}" ./...)
+	@echo $(COLOR)[FMT] ./...$(ENDCOLOR)
+	@goimports -w $$(go list -f "{{.Dir}}" ./...)
 
 lint:
-	-mkdir -p $(REPORT_DIR)
-	golint $$(go list ./...) | sed "s:^$(CURRENT_DIR)/::" | tee $(LINT_REPORT)
+	@echo $(COLOR)[LINT] $(LINT_REPORT)$(ENDCOLOR)
+	@-mkdir -p $(REPORT_DIR)
+	@golint $$(go list ./...) | sed "s:^$(CURRENT_DIR)/::" | tee $(LINT_REPORT)
 
 clean:
 	-rm -rf $(BUILD_DIR)

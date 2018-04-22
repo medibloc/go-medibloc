@@ -2,6 +2,7 @@ package logging
 
 import (
 	"os"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -14,12 +15,16 @@ func (ew emptyWriter) Write(p []byte) (int, error) {
 }
 
 var (
+	mu   sync.Mutex
 	clog *logrus.Logger
 	vlog *logrus.Logger
 )
 
 // Console returns console logger.
 func Console() *logrus.Logger {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if clog == nil {
 		Init("/tmp", "info", 0)
 	}
@@ -27,6 +32,9 @@ func Console() *logrus.Logger {
 }
 
 func vLog() *logrus.Logger {
+	mu.Lock()
+	defer mu.Unlock()
+
 	if vlog == nil {
 		Init("/tmp", "info", 0)
 	}
@@ -37,7 +45,7 @@ func vLog() *logrus.Logger {
 func Init(path string, level string, age uint32) {
 	levelNo, err := logrus.ParseLevel(level)
 	if err != nil {
-		panic("Invald log level:" + level)
+		panic("Invalid log level:" + level)
 	}
 
 	fileHooker := NewFileRotateHooker(path, age)
@@ -57,7 +65,7 @@ func Init(path string, level string, age uint32) {
 	vlog.Formatter = &logrus.TextFormatter{FullTimestamp: true}
 	vlog.Level = levelNo
 
-	vLog().WithFields(logrus.Fields{
+	vlog.WithFields(logrus.Fields{
 		"path":  path,
 		"level": level,
 	}).Info("Logger Configuration.")
@@ -65,6 +73,9 @@ func Init(path string, level string, age uint32) {
 
 // TestHook returns hook for testing log entry.
 func TestHook() *test.Hook {
+	mu.Lock()
+	defer mu.Unlock()
+
 	logger, hook := test.NewNullLogger()
 	clog = logger
 	vlog = logger

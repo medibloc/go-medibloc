@@ -24,6 +24,7 @@ type BitCurve struct {
 	BitSize int      //the size of the underlying field
 }
 
+// Params returns elliptic curve params.
 func (BitCurve *BitCurve) Params() *elliptic.CurveParams {
 	return &elliptic.CurveParams{
 		P:       BitCurve.P,
@@ -35,7 +36,7 @@ func (BitCurve *BitCurve) Params() *elliptic.CurveParams {
 	}
 }
 
-// IsOnBitCurve returns true if the given (x,y) lies on the BitCurve.
+// IsOnCurve returns true if the given (x,y) lies on the BitCurve.
 func (BitCurve *BitCurve) IsOnCurve(x, y *big.Int) bool {
 	// y² = x³ + b
 	y2 := new(big.Int).Mul(y, y) //y²
@@ -176,6 +177,7 @@ func (BitCurve *BitCurve) doubleJacobian(x, y, z *big.Int) (*big.Int, *big.Int, 
 	return x3, y3, z3
 }
 
+// ScalarMult multiply scalar.
 func (BitCurve *BitCurve) ScalarMult(Bx, By *big.Int, scalar []byte) (*big.Int, *big.Int) {
 	// Ensure scalar is exactly 32 bytes. We pad always, even if
 	// scalar is 32 bytes long, to avoid a timing side channel.

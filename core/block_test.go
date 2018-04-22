@@ -222,11 +222,6 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	assert.NoError(t, secondBlock.AcceptTransaction(txs[1]))
 	secondBlock.Commit()
 
-	// state := secondBlock.State()
-	// acc, err := state.GetAccount(cases[1].from)
-	// assert.NoError(t, err)
-	// fmt.Println(acc.Balance())
-
 	assert.NoError(t, secondBlock.Seal())
 
 	assert.NoError(t, secondBlock.SignThis(blockSigner))
@@ -234,4 +229,64 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	assert.Error(t, secondBlock.ExecuteAll())
 	_, err = secondBlock.BlockData.ExecuteOnParentBlock(firstBlock)
 	assert.NoError(t, err)
+}
+
+func TestGetExecutedBlock(t *testing.T) {
+	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	newBlock, err := core.NewBlock(chainID, coinbase, genesisBlock)
+	assert.NoError(t, err)
+
+	privHex := "052d3fe0617187f4cc8653fad79a57c60e02dcfe09b2657bfba3329f15bb5632"
+
+	privKey, err := secp256k1.NewPrivateKeyFromHex(privHex)
+	assert.NoError(t, err)
+
+	cases := []struct {
+		from    common.Address
+		privKey signature.PrivateKey
+		to      common.Address
+		amount  *util.Uint128
+	}{
+		{
+			common.HexToAddress("03ff359a06dbe3129cc0e4effe0c65f5653361685ea65972edd1ece0b3005508b0"),
+			privKey,
+			common.HexToAddress("020adfe522f0737ce376f9428c206b7cb5e11c0ecb1a6429209595125a37c2b5d6"),
+			util.NewUint128FromUint(1),
+		},
+	}
+
+	txs := make(core.Transactions, len(cases))
+	signers := make([]signature.Signature, len(cases))
+
+	for i, c := range cases {
+		txs[i], err = core.NewTransaction(chainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		assert.NoError(t, err)
+
+		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
+		assert.NoError(t, err)
+		signers[i].InitSign(c.privKey)
+		assert.NoError(t, txs[i].SignThis(signers[i]))
+	}
+
+	newBlock.BeginBatch()
+	assert.NoError(t, newBlock.ExecuteTransaction(txs[0]))
+	assert.NoError(t, newBlock.AcceptTransaction(txs[0]))
+	newBlock.Commit()
+
+	assert.NoError(t, newBlock.Seal())
+
+	coinbaseKey, err := secp256k1.HexToECDSA("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+
+	blockSigner, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	blockSigner.InitSign(secp256k1.NewPrivateKey(coinbaseKey))
+
+	assert.NoError(t, newBlock.SignThis(blockSigner))
+	assert.NoError(t, newBlock.VerifyState())
+
+	bd := newBlock.GetBlockData()
+
+	executedBlock, err := bd.GetExecutedBlock(newBlock.Storage())
+	assert.NoError(t, err)
+	assert.NoError(t, executedBlock.VerifyState())
 }

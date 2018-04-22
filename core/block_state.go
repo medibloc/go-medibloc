@@ -8,12 +8,14 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/bytes"
 )
 
 type states struct {
-	accState   *AccountStateBatch
-	txsState   *TrieBatch
-	usageState *TrieBatch
+	accState     *AccountStateBatch
+	txsState     *TrieBatch
+	usageState   *TrieBatch
+	recordsState *TrieBatch
 
 	storage storage.Storage
 }
@@ -34,11 +36,17 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	recordsState, err := NewTrieBatch(nil, stor)
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:   accState,
-		txsState:   txsState,
-		usageState: usageState,
-		storage:    stor,
+		accState:     accState,
+		txsState:     txsState,
+		usageState:   usageState,
+		recordsState: recordsState,
+		storage:      stor,
 	}, nil
 }
 
@@ -58,11 +66,17 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	recordsState, err := NewTrieBatch(st.usageState.RootHash(), st.storage)
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:   accState,
-		txsState:   txsState,
-		usageState: usageState,
-		storage:    st.storage,
+		accState:     accState,
+		txsState:     txsState,
+		usageState:   usageState,
+		recordsState: recordsState,
+		storage:      st.storage,
 	}, nil
 }
 
@@ -76,7 +90,7 @@ func (st *states) BeginBatch() error {
 	if err := st.usageState.BeginBatch(); err != nil {
 		return err
 	}
-	return nil
+	return st.recordsState.BeginBatch()
 }
 
 func (st *states) RollBack() error {
@@ -89,7 +103,7 @@ func (st *states) RollBack() error {
 	if err := st.usageState.RollBack(); err != nil {
 		return err
 	}
-	return nil
+	return st.recordsState.RollBack()
 }
 
 func (st *states) Commit() error {
@@ -102,7 +116,7 @@ func (st *states) Commit() error {
 	if err := st.usageState.Commit(); err != nil {
 		return err
 	}
-	return nil
+	return st.recordsState.Commit()
 }
 
 func (st *states) AccountsRoot() common.Hash {
@@ -115,6 +129,10 @@ func (st *states) TransactionsRoot() common.Hash {
 
 func (st *states) UsageRoot() common.Hash {
 	return common.BytesToHash(st.usageState.RootHash())
+}
+
+func (st *states) RecordsRoot() common.Hash {
+	return common.BytesToHash(st.recordsState.RootHash())
 }
 
 func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
@@ -144,6 +162,15 @@ func (st *states) LoadUsageRoot(rootHash common.Hash) error {
 	return nil
 }
 
+func (st *states) LoadRecordsRoot(rootHash common.Hash) error {
+	recordsState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+	if err != nil {
+		return err
+	}
+	st.recordsState = recordsState
+	return nil
+}
+
 func (st *states) GetAccount(address common.Address) (Account, error) {
 	return st.accState.GetAccount(address.Bytes())
 }
@@ -152,8 +179,85 @@ func (st *states) AddBalance(address common.Address, amount *util.Uint128) error
 	return st.accState.AddBalance(address.Bytes(), amount)
 }
 
+func (st *states) AddWriter(address common.Address, writer common.Address) error {
+	return st.accState.AddWriter(address.Bytes(), writer.Bytes())
+}
+
+func (st *states) RemoveWriter(address common.Address, writer common.Address) error {
+	return st.accState.RemoveWriter(address.Bytes(), writer.Bytes())
+}
+
 func (st *states) SubBalance(address common.Address, amount *util.Uint128) error {
 	return st.accState.SubBalance(address.Bytes(), amount)
+}
+
+func (st *states) AddRecord(tx *Transaction, hash common.Hash, storage string,
+	encKey []byte, seed []byte,
+	owner common.Address, writer common.Address) error {
+	record := &corepb.Record{
+		Hash:      hash.Bytes(),
+		Storage:   storage,
+		Owner:     tx.from.Bytes(),
+		Timestamp: tx.Timestamp(),
+		Readers: []*corepb.Reader{
+			{
+				Address: tx.from.Bytes(),
+				EncKey:  encKey,
+				Seed:    seed,
+			},
+		},
+	}
+	recordBytes, err := proto.Marshal(record)
+	if err != nil {
+		return err
+	}
+
+	if err := st.recordsState.Put(hash.Bytes(), recordBytes); err != nil {
+		return err
+	}
+
+	return st.accState.AddRecord(tx.from.Bytes(), hash.Bytes())
+}
+
+func (st *states) AddRecordReader(tx *Transaction, dataHash common.Hash, reader common.Address, encKey []byte, seed []byte) error {
+	recordBytes, err := st.recordsState.Get(dataHash.Bytes())
+	if err != nil {
+		return err
+	}
+	pbRecord := new(corepb.Record)
+	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
+		return err
+	}
+	if bytes.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
+		return ErrTxIsNotFromRecordOwner
+	}
+	for _, r := range pbRecord.Readers {
+		if bytes.Equal(reader.Bytes(), r.Address) {
+			return ErrRecordReaderAlreadyAdded
+		}
+	}
+	pbRecord.Readers = append(pbRecord.Readers, &corepb.Reader{
+		Address: reader.Bytes(),
+		EncKey:  encKey,
+		Seed:    seed,
+	})
+	b, err := proto.Marshal(pbRecord)
+	if err != nil {
+		return err
+	}
+	return st.recordsState.Put(dataHash.Bytes(), b)
+}
+
+func (st *states) GetRecord(hash common.Hash) (*corepb.Record, error) {
+	recordBytes, err := st.recordsState.Get(hash.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	pbRecord := new(corepb.Record)
+	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
+		return nil, err
+	}
+	return pbRecord, nil
 }
 
 func (st *states) incrementNonce(address common.Address) error {
@@ -188,6 +292,9 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 			},
 		}
 		usageBytes, err = proto.Marshal(usage)
+		if err != nil {
+			return err
+		}
 		return st.usageState.Put(tx.from.Bytes(), usageBytes)
 	default:
 		return err
@@ -205,7 +312,9 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		}
 	}
 	pbUsage.Timestamps = append(pbUsage.Timestamps[idx:], &corepb.TxTimestamp{Hash: tx.Hash().Bytes(), Timestamp: tx.Timestamp()})
-	sort.Slice(pbUsage.Timestamps, func(i, j int) bool { return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp })
+	sort.Slice(pbUsage.Timestamps, func(i, j int) bool {
+		return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp
+	})
 
 	pbBytes, err := proto.Marshal(pbUsage)
 	if err != nil {
@@ -293,31 +402,7 @@ func (bs *BlockState) Commit() error {
 
 // ExecuteTx and update internal states
 func (bs *BlockState) ExecuteTx(tx *Transaction) error {
-	if err := bs.checkNonce(tx); err != nil {
-		return err
-	}
-
-	switch tx.Type() {
-	default:
-		if tx.Value().Cmp(util.Uint128Zero()) > 0 {
-			return bs.executeTransfer(tx)
-		}
-	}
-	return ErrVoidTransaction
-}
-
-func (bs *BlockState) executeTransfer(tx *Transaction) error {
-	var err error
-
-	if err = bs.SubBalance(tx.From(), tx.Value()); err != nil {
-		return err
-	}
-
-	if err = bs.AddBalance(tx.To(), tx.Value()); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.ExecuteOnState(bs)
 }
 
 // AcceptTransaction and update internal txsStates
@@ -340,10 +425,7 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 		return err
 	}
 
-	if err = bs.incrementNonce(tx.from); err != nil {
-		return err
-	}
-	return nil
+	return bs.incrementNonce(tx.from)
 }
 
 func (bs *BlockState) checkNonce(tx *Transaction) error {

@@ -22,8 +22,9 @@ type TransactionManager struct {
 }
 
 // NewTransactionManager create a new TransactionManager.
-func NewTransactionManager(poolsize int) *TransactionManager {
+func NewTransactionManager(med Medlet, poolsize int) *TransactionManager {
 	return &TransactionManager{
+		chainID:           med.Config().Chain.ChainId,
 		receivedMessageCh: make(chan net.Message, poolsize),
 		quitCh:            make(chan int, 1),
 		pool:              NewTransactionPool(poolsize),

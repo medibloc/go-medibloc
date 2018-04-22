@@ -32,8 +32,10 @@ type account struct {
 	balance *util.Uint128
 	// nonce account sequential number
 	nonce uint64
-	// observations
-	observations *TrieBatch
+	// writers
+	writers [][]byte
+	// records
+	records [][]byte
 }
 
 func (acc *account) Address() []byte {
@@ -48,16 +50,24 @@ func (acc *account) Nonce() uint64 {
 	return acc.nonce
 }
 
+func (acc *account) Writers() [][]byte {
+	return acc.writers
+}
+
+func (acc *account) Records() [][]byte {
+	return acc.records
+}
+
 func (acc *account) toBytes() ([]byte, error) {
 	bytes, err := acc.balance.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 	pbAcc := &corepb.Account{
-		Address:          acc.address,
-		Balance:          bytes,
-		Nonce:            acc.nonce,
-		ObservationsHash: acc.observations.RootHash(),
+		Address: acc.address,
+		Balance: bytes,
+		Nonce:   acc.nonce,
+		Writers: acc.writers,
 	}
 	bytes, err = proto.Marshal(pbAcc)
 	if err != nil {
@@ -77,12 +87,8 @@ func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 		address: pbAcc.Address,
 		balance: balance,
 		nonce:   pbAcc.Nonce,
+		writers: pbAcc.Writers,
 	}
-	t, err := trie.NewTrie(pbAcc.ObservationsHash, storage)
-	if err != nil {
-		return nil, err
-	}
-	acc.observations = &TrieBatch{trie: t}
 	return acc, nil
 }
 
@@ -110,6 +116,10 @@ type Account interface {
 	Balance() *util.Uint128
 
 	Nonce() uint64
+
+	Writers() [][]byte
+
+	Records() [][]byte
 }
 
 // AccountState account state interface

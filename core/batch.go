@@ -23,6 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	byteutils "github.com/medibloc/go-medibloc/util/bytes"
 )
 
 // Errors
@@ -243,15 +244,10 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 	accBytes, err := as.as.accounts.Get(address)
 	if err != nil {
 		// create account not exist in
-		observations, err := trie.NewTrie(nil, as.storage)
-		if err != nil {
-			return nil, err
-		}
 		return stageAndReturn(&account{
-			address:      address,
-			balance:      util.NewUint128(),
-			nonce:        0,
-			observations: &TrieBatch{trie: observations},
+			address: address,
+			balance: util.NewUint128(),
+			nonce:   0,
 		}), nil
 	}
 	acc, err := loadAccount(accBytes, as.storage)
@@ -283,8 +279,9 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 	return nil
 }
 
-// AddObservation add observation
-func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
+// AddWriter adds writer address of this account
+// writers can use the account's bandwidth and add record of her
+func (as *AccountStateBatch) AddWriter(address []byte, newWriter []byte) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
@@ -292,7 +289,53 @@ func (as *AccountStateBatch) AddObservation(address []byte, hash []byte) error {
 	if err != nil {
 		return err
 	}
-	acc.observations.Put(hash, hash) // TODO
+	for _, w := range acc.writers {
+		if byteutils.Equal(newWriter, w) {
+			return ErrWriterAlreadyRegistered
+		}
+	}
+	acc.writers = append(acc.writers, newWriter)
+	return nil
+}
+
+// RemoveWriter removes a writer from account's writers list
+func (as *AccountStateBatch) RemoveWriter(address []byte, writer []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	writers := [][]byte{}
+	for _, w := range acc.writers {
+		if byteutils.Equal(writer, w) {
+			continue
+		}
+		writers = append(writers, w)
+	}
+	if len(acc.writers) == len(writers) {
+		return ErrWriterNotFound
+	}
+	acc.writers = writers
+	return nil
+}
+
+// AddRecord adds a record hash in account's records list
+func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	for _, r := range acc.records {
+		if byteutils.Equal(hash, r) {
+			return ErrRecordAlreadyAdded
+		}
+	}
+	acc.records = append(acc.records, hash)
 	return nil
 }
 
@@ -351,6 +394,7 @@ func (as *AccountStateBatch) IncrementNonce(address []byte) error {
 	return nil
 }
 
+// RootHash returns root hash of accounts trie
 func (as *AccountStateBatch) RootHash() []byte {
 	return as.as.accounts.RootHash()
 }

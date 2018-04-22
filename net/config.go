@@ -11,35 +11,37 @@ import (
 
 // const
 const ( // TODO delete redundant vars
-	DefaultBucketCapacity         = 64
-	DefaultRoutingTableMaxLatency = 10
-	DefaultPrivateKeyPath         = "conf/network.key"
-	DefaultMaxSyncNodes           = 64
-	DefaultChainID                = 1
-	DefaultRoutingTableDir        = ""
+	DefaultBucketCapacity               = 64
+	DefaultRoutingTableMaxLatency       = 10
+	DefaultPrivateKeyPath               = "conf/network.key"
+	DefaultMaxSyncNodes                 = 64
+	DefaultChainID                      = 1
+	DefaultRoutingTableDir              = ""
+	DefaultRouteTableSyncLoopInterval   = 30 * time.Second
+	DefaultRouteTableSaveToDiskInterval = 3 * 60 * time.Second
 )
 
 // Default Configuration in P2P network
 var (
 	DefaultListen = []string{"0.0.0.0:8680"}
 
-	RouteTableSyncLoopInterval   = 30 * time.Second
-	RouteTableSaveToDiskInterval = 3 * 60 * time.Second
-	RouteTableCacheFileName      = "routetable.cache"
+	RouteTableCacheFileName = "routetable.cache"
 
 	MaxPeersCountForSyncResp = 32
 )
 
 // Config TODO: move to proto config.
 type Config struct {
-	Bucketsize      int
-	Latency         time.Duration
-	BootNodes       []multiaddr.Multiaddr
-	PrivateKeyPath  string
-	Listen          []string
-	MaxSyncNodes    int
-	ChainID         uint32
-	RoutingTableDir string
+	Bucketsize                   int
+	Latency                      time.Duration
+	BootNodes                    []multiaddr.Multiaddr
+	PrivateKeyPath               string
+	Listen                       []string
+	MaxSyncNodes                 int
+	ChainID                      uint32
+	RoutingTableDir              string
+	RouteTableSyncLoopInterval   time.Duration
+	RouteTableSaveToDiskInterval time.Duration
 }
 
 // Medlet interface breaks cycle import dependency.
@@ -121,5 +123,7 @@ func NewConfigFromDefaults() *Config {
 		DefaultMaxSyncNodes,
 		DefaultChainID,
 		DefaultRoutingTableDir,
+		DefaultRouteTableSyncLoopInterval,
+		DefaultRouteTableSaveToDiskInterval,
 	}
 }

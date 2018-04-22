@@ -78,12 +78,15 @@ func (dp *Dispatcher) loop() {
 		case <-timerChan:
 			metricsDispatcherCached.Update(int64(len(dp.receivedMessageCh)))
 		case <-dp.quitCh:
-			logging.Console().Info("Stoped MedService Dispatcher.")
+			logging.Console().Info("Stopped MedService Dispatcher.")
 			return
 		case msg := <-dp.receivedMessageCh:
 			msgType := msg.MessageType()
 
 			v, _ := dp.subscribersMap.Load(msgType)
+			if v == nil {
+				continue
+			}
 			m, _ := v.(*sync.Map)
 
 			m.Range(func(key, value interface{}) bool {

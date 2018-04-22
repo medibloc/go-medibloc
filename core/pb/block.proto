@@ -6,21 +6,24 @@ import "transaction.proto";
 message BlockHeader {
   bytes hash  = 1;
   bytes parent_hash = 2;
-
-  bytes accs_root = 3;
-  bytes txs_root = 4;
-  bytes usage_root = 5;
-
-  bytes coinbase = 6;
-  int64 timestamp = 7;
-  uint32 chain_id = 8;
-
-  uint32 alg = 9;
-  bytes sign = 10;
+  bytes coinbase = 3;
+  int64 timestamp = 4;
+  uint32 chain_id = 5;
+  uint32 alg = 6;
+  bytes sign = 7;
+  bytes accs_root = 8;
+  bytes txs_root = 9;
+  bytes usage_root = 10;
+  bytes records_root = 11;
+  bytes consensus_root = 12;
 }
 
 message Block {
   BlockHeader header = 1;
   repeated Transaction transactions = 2;
   uint64 height = 3;
+}
+
+message DownloadBlock {
+  bytes hash = 1;
 }

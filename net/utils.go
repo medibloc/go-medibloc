@@ -7,8 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
+
+	"github.com/gogo/protobuf/proto"
 	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/sirupsen/logrus"
 )
 
 // Errors
@@ -16,6 +21,19 @@ var (
 	ErrListenPortIsNotAvailable = errors.New("listen port is not available")
 	ErrConfigLackNetWork        = errors.New("config.conf should has network")
 )
+
+// SerializableToBytes converts serializable to bytes.
+func SerializableToBytes(obj Serializable) ([]byte, error) {
+	pb, err := obj.ToProto()
+	data, err := proto.Marshal(pb)
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
 // ParseFromIPFSAddr return pid and address parsed from ipfs address
 func ParseFromIPFSAddr(ipfsAddr ma.Multiaddr) (peer.ID, ma.Multiaddr, error) {
@@ -69,4 +87,70 @@ func checkPortAvailable(listen []string) error {
 		}
 	}
 	return nil
+}
+
+func convertListenAddrToMultiAddr(listen []string) ([]ma.Multiaddr, error) {
+
+	multiaddrs := make([]ma.Multiaddr, len(listen))
+	for idx, v := range listen {
+		tcpAddr, err := net.ResolveTCPAddr("tcp", v)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":            err,
+				"listen address": v,
+			}).Error("Invalid listen address.")
+			return nil, err
+		}
+
+		addr, err := ma.NewMultiaddr(
+			fmt.Sprintf(
+				"/ip4/%s/tcp/%d",
+				tcpAddr.IP,
+				tcpAddr.Port,
+			),
+		)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":            err,
+				"listen address": v,
+			}).Error("Invalid listen address.")
+			return nil, err
+		}
+
+		multiaddrs[idx] = addr
+	}
+
+	return multiaddrs, nil
+}
+
+func convertMultiAddrToAddrString(multiaddrs []ma.Multiaddr) ([]string, error) {
+
+	addrStr := make([]string, len(multiaddrs))
+	for idx, v := range multiaddrs {
+		addrStr[idx] = v.String()
+	}
+
+	return addrStr, nil
+}
+
+func convertMultiAddrToIPFSMultiAddr(multiaddrs []ma.Multiaddr, id string) ([]ma.Multiaddr, error) {
+
+	ipfsMultiAddrs := make([]ma.Multiaddr, len(multiaddrs))
+	addrStr, err := convertMultiAddrToAddrString(multiaddrs)
+	if err != nil {
+		return nil, err
+	}
+	for idx, v := range addrStr {
+		addr, err := ma.NewMultiaddr(fmt.Sprintf("%s/ipfs/%s", v, id))
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":            err,
+				"listen address": v,
+			}).Error("Invalid listen address.")
+			return nil, err
+		}
+		ipfsMultiAddrs[idx] = addr
+	}
+
+	return ipfsMultiAddrs, nil
 }

@@ -100,6 +100,7 @@ func Equal(a []byte, b []byte) bool {
 	return true
 }
 
+// CopyBytes returns a copied clone of the bytes
 func CopyBytes(b []byte) (copiedBytes []byte) {
 	if b == nil {
 		return nil
@@ -110,6 +111,7 @@ func CopyBytes(b []byte) (copiedBytes []byte) {
 	return
 }
 
+// ToHex returns hex string of bytes
 func ToHex(b []byte) string {
 	hex := Bytes2Hex(b)
 	if len(hex) == 0 {
@@ -119,6 +121,7 @@ func ToHex(b []byte) string {
 	return "0x" + hex
 }
 
+// FromHex returns decoded bytes array from hex string
 func FromHex(s string) []byte {
 	if len(s) > 1 {
 		if s[0:2] == "0x" || s[0:2] == "0X" {
@@ -131,16 +134,19 @@ func FromHex(s string) []byte {
 	return Hex2Bytes(s)
 }
 
+// Bytes2Hex encodes bytes and returns hex string without '0x' prefix
 func Bytes2Hex(d []byte) string {
 	return hex.EncodeToString(d)
 }
 
+// Hex2Bytes decodes hex string without '0x' prefix and returns bytes
 func Hex2Bytes(str string) []byte {
 	h, _ := hex.DecodeString(str)
 
 	return h
 }
 
+// RightPadBytes adds padding in right side
 func RightPadBytes(slice []byte, l int) []byte {
 	if l <= len(slice) {
 		return slice
@@ -152,6 +158,7 @@ func RightPadBytes(slice []byte, l int) []byte {
 	return padded
 }
 
+// LeftPadBytes adds padding in left side
 func LeftPadBytes(slice []byte, l int) []byte {
 	if l <= len(slice) {
 		return slice
@@ -163,6 +170,7 @@ func LeftPadBytes(slice []byte, l int) []byte {
 	return padded
 }
 
+// HasHexPrefix checks if hex string has '0x' or '0X' prefix
 func HasHexPrefix(str string) bool {
 	return len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')
 }
@@ -171,6 +179,7 @@ func isHexCharacter(c byte) bool {
 	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
 }
 
+// IsHex checks if a string is hex representation
 func IsHex(str string) bool {
 	if len(str)%2 != 0 {
 		return false

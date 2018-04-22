@@ -19,11 +19,12 @@ package storage
 
 import "errors"
 
+// ErrKeyNotFound entry not found error.
 var ErrKeyNotFound = errors.New("not found")
 
 // Storage interface of Storage.
 type Storage interface {
-	// Del delete the key entry in Storage.
+	// Delete delete the key entry in Storage.
 	Delete(key []byte) error
 
 	// Get return the value to the key in Storage.

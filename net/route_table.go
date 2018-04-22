@@ -15,6 +15,8 @@ import (
 	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 
+	"sync/atomic"
+
 	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -38,6 +40,8 @@ type RouteTable struct {
 	seedNodes                []ma.Multiaddr
 	node                     *Node
 	streamManager            *StreamManager
+	syncLoopInterval         time.Duration
+	saveToDiskInterval       time.Duration
 	latestUpdatedAt          int64
 }
 
@@ -52,6 +56,8 @@ func NewRouteTable(config *Config, node *Node) *RouteTable {
 		seedNodes:                config.BootNodes,
 		node:                     node,
 		streamManager:            node.streamManager,
+		syncLoopInterval:         config.RouteTableSyncLoopInterval,
+		saveToDiskInterval:       config.RouteTableSaveToDiskInterval,
 		latestUpdatedAt:          0,
 	}
 
@@ -102,9 +108,10 @@ func (table *RouteTable) syncLoop() {
 
 	logging.Console().Info("Started MedService RouteTable Sync.")
 
-	syncLoopTicker := time.NewTicker(RouteTableSyncLoopInterval)
-	saveRouteTableToDiskTicker := time.NewTicker(RouteTableSaveToDiskInterval)
-	latestUpdatedAt := table.latestUpdatedAt
+	syncLoopTicker := time.NewTicker(table.syncLoopInterval)
+	saveRouteTableToDiskTicker := time.NewTicker(table.saveToDiskInterval)
+	latestUpdatedAt := atomic.LoadInt64(&table.latestUpdatedAt)
+	latestSavedAt := latestUpdatedAt
 
 	for {
 		select {
@@ -114,9 +121,10 @@ func (table *RouteTable) syncLoop() {
 		case <-syncLoopTicker.C:
 			table.SyncRouteTable()
 		case <-saveRouteTableToDiskTicker.C:
-			if latestUpdatedAt < table.latestUpdatedAt {
+			latestUpdatedAt = atomic.LoadInt64(&table.latestUpdatedAt)
+			if latestSavedAt < latestUpdatedAt {
 				table.SaveRouteTableToFile()
-				latestUpdatedAt = table.latestUpdatedAt
+				latestSavedAt = latestUpdatedAt
 			}
 		}
 	}
@@ -196,7 +204,7 @@ func (table *RouteTable) RemovePeerStream(s *Stream) {
 }
 
 func (table *RouteTable) onRouteTableChange() {
-	table.latestUpdatedAt = time.Now().Unix()
+	atomic.StoreInt64(&table.latestUpdatedAt, time.Now().Unix())
 }
 
 // GetRandomPeers get random peers

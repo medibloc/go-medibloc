@@ -26,8 +26,8 @@ type TransactionPool struct {
 func NewTransactionPool(size int) *TransactionPool {
 	return &TransactionPool{
 		size:       size,
-		candidates: hashheap.NewHashedHeap(),
-		buckets:    hashheap.NewHashedHeap(),
+		candidates: hashheap.New(),
+		buckets:    hashheap.New(),
 		all:        make(map[common.Hash]*Transaction),
 	}
 }

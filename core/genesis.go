@@ -99,6 +99,7 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 	if err != nil {
 		return nil, err
 	}
+	initialTx.SetTimestamp(GenesisTimestamp)
 
 	hash, err := initialTx.calcHash()
 	if err != nil {

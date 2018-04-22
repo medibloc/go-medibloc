@@ -46,7 +46,7 @@ func NewLeveldbStorage(path string) (*LeveldbStorage, error) {
 	}, nil
 }
 
-// Del delete the key entry in Storage.
+// Delete delete the key entry in Storage.
 func (storage *LeveldbStorage) Delete(key []byte) error {
 	return storage.db.Delete(key, nil)
 }

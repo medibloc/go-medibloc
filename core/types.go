@@ -4,17 +4,21 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 )
 
+// Transaction's string representation.
 const (
-	TxOperationSend         = ""
-	TxOperationAddData      = "add_data"
-	TxOperationDeposit      = "deposit"
-	TxOperationWidthdraw    = "widthdraw"
-	TxOperationRegisterRKey = "register_rkey"
-	TxOperationRegisterWKey = "register_wkey"
+	TxOperationSend            = ""
+	TxOperationAddRecord       = "add_record"
+	TxOperationAddRecordReader = "add_record_reader"
+	TxOperationDeposit         = "deposit"
+	TxOperationWidthdraw       = "widthdraw"
+	TxOperationRegisterWKey    = "register_wkey"
+	TxOperationRemoveWKey      = "remove_wkey"
 )
 
+// Transaction payload type.
 const (
 	TxPayloadBinaryType = "binary"
 )
@@ -43,14 +47,27 @@ var (
 	ErrVoidTransaction           = errors.New("nothing to do with transaction")
 	ErrLargeTransactionNonce     = errors.New("transaction nonce is larger than expected")
 	ErrSmallTransactionNonce     = errors.New("transaction nonce is smaller than expected")
+	ErrBlockNotExist             = errors.New("block not exist")
 	ErrBlockNotSealed            = errors.New("block should be sealed first to be signed")
 	ErrInvalidBlockAccountsRoot  = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot       = errors.New("invalid transactions state root hash")
 	ErrTooOldTransaction         = errors.New("transaction timestamp is too old")
+	ErrWriterAlreadyRegistered   = errors.New("writer address already registered")
+	ErrWriterNotFound            = errors.New("writer to remove not found")
+	ErrInvalidTxPayload          = errors.New("cannot unmarshal tx payload")
+	ErrInvalidTxDelegation       = errors.New("tx signer is not owner or one of writers")
+	ErrRecordAlreadyAdded        = errors.New("record hash already added")
+	ErrRecordReaderAlreadyAdded  = errors.New("record reader hash already added")
+	ErrTxIsNotFromRecordOwner    = errors.New("adding record reader should be done by record owner")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
 type HashableBlock interface {
 	Hash() common.Hash
 	ParentHash() common.Hash
+}
+
+// Medlet interface for component discovery.
+type Medlet interface {
+	Config() *medletpb.Config
 }

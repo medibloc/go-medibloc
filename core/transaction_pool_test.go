@@ -8,18 +8,17 @@ import (
 )
 
 func TestTransactionPool(t *testing.T) {
-	addr := newTestAddrSet(t, 4)
-	txs := map[int]*core.Transaction{
-		0: newTestTransaction(t, addr[0], addr[2], 0),
-		1: newTestTransaction(t, addr[0], addr[2], 1),
-		2: newTestTransaction(t, addr[2], addr[3], 2),
-		3: newTestTransaction(t, addr[2], addr[1], 3),
-		4: newTestTransaction(t, addr[0], addr[3], 0),
+	keys := newKeySlice(t, 4)
+	txs := []*core.Transaction{
+		0: newSignedTransaction(t, keys[0], keys[2], 0),
+		1: newSignedTransaction(t, keys[0], keys[2], 1),
+		2: newSignedTransaction(t, keys[2], keys[3], 2),
+		3: newSignedTransaction(t, keys[2], keys[1], 3),
+		4: newSignedTransaction(t, keys[0], keys[3], 0),
 	}
 
 	pool := core.NewTransactionPool(128)
 	for _, tx := range txs {
-		signTx(t, tx)
 		err := pool.Push(tx)
 		assert.NoError(t, err)
 	}
@@ -35,9 +34,7 @@ func TestTransactionPool(t *testing.T) {
 }
 
 func TestDuplicatedTx(t *testing.T) {
-	addr := RandomAddress(t)
-	tx := newTestTransaction(t, addr, addr, 0)
-	signTx(t, tx)
+	tx := newRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
 
@@ -48,11 +45,8 @@ func TestDuplicatedTx(t *testing.T) {
 }
 
 func TestTransactionGetDel(t *testing.T) {
-	from, to := RandomAddress(t), RandomAddress(t)
-	tx1 := newTestTransaction(t, from, to, 5)
-	signTx(t, tx1)
-	tx2 := newTestTransaction(t, from, to, 10)
-	signTx(t, tx2)
+	tx1 := newRandomSignedTransaction(t)
+	tx2 := newRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
 	err := pool.Push(tx1)
@@ -81,18 +75,17 @@ func TestTransactionGetDel(t *testing.T) {
 }
 
 func TestTransactionPoolEvict(t *testing.T) {
-	addr := newTestAddrSet(t, 4)
-	txs := map[int]*core.Transaction{
-		0: newTestTransaction(t, addr[0], addr[1], 0),
-		1: newTestTransaction(t, addr[1], addr[2], 1),
-		2: newTestTransaction(t, addr[2], addr[3], 2),
-		3: newTestTransaction(t, addr[3], addr[0], 3),
-		4: newTestTransaction(t, addr[2], addr[1], 0),
+	keys := newKeySlice(t, 4)
+	txs := []*core.Transaction{
+		0: newSignedTransaction(t, keys[0], keys[1], 0),
+		1: newSignedTransaction(t, keys[1], keys[2], 1),
+		2: newSignedTransaction(t, keys[2], keys[3], 2),
+		3: newSignedTransaction(t, keys[3], keys[0], 3),
+		4: newSignedTransaction(t, keys[2], keys[1], 0),
 	}
 
 	pool := core.NewTransactionPool(3)
 	for _, tx := range txs {
-		signTx(t, tx)
 		err := pool.Push(tx)
 		assert.NoError(t, err)
 	}
@@ -101,8 +94,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 }
 
 func TestEmptyPool(t *testing.T) {
-	from, to := RandomAddress(t), RandomAddress(t)
-	tx := newTestTransaction(t, from, to, 10)
+	tx := newRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
 	assert.Nil(t, pool.Pop())

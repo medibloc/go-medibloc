@@ -5,6 +5,9 @@ message Genesis {
     // genesis meta
     GenesisMeta meta = 1;
 
+    // genesis consensus config
+    GenesisConsensus consensus = 2;
+
     // genesis token distribution address
     // map<string, string> token_distribution = 3;
     repeated GenesisTokenDistribution token_distribution = 3;
@@ -13,6 +16,15 @@ message Genesis {
 message GenesisMeta {
     // ChainID.
     uint32 chain_id = 1;
+}
+
+message GenesisConsensus {
+    GenesisConsensusDpos dpos = 1;
+}
+
+message GenesisConsensusDpos {
+    // dpos genesis dynasty address.
+    repeated string dynasty = 1;
 }
 
 message GenesisTokenDistribution {

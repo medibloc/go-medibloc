@@ -8,7 +8,7 @@ import (
 type ChainSyncPeersFilter struct {
 }
 
-// Filter implemets PeerFilterAlgorithm interface
+// Filter implements PeerFilterAlgorithm interface
 func (filter *ChainSyncPeersFilter) Filter(peers PeersSlice) PeersSlice {
 	return peers
 }
@@ -17,7 +17,7 @@ func (filter *ChainSyncPeersFilter) Filter(peers PeersSlice) PeersSlice {
 type RandomPeerFilter struct {
 }
 
-// Filter implemets PeerFilterAlgorithm interface
+// Filter implements PeerFilterAlgorithm interface
 func (filter *RandomPeerFilter) Filter(peers PeersSlice) PeersSlice {
 	if len(peers) == 0 {
 		return peers
