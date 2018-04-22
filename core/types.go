@@ -51,6 +51,7 @@ var (
 	ErrBlockNotSealed            = errors.New("block should be sealed first to be signed")
 	ErrInvalidBlockAccountsRoot  = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot       = errors.New("invalid transactions state root hash")
+	ErrInvalidBlockConsensusRoot = errors.New("invalid block consensus root hash")
 	ErrTooOldTransaction         = errors.New("transaction timestamp is too old")
 	ErrWriterAlreadyRegistered   = errors.New("writer address already registered")
 	ErrWriterNotFound            = errors.New("writer to remove not found")

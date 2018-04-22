@@ -68,6 +68,13 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 		return nil, err
 	}
 
+	var members []*common.Hash
+	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
+		member := common.HexToHash(v)
+		members = append(members, &member)
+	}
+	genesisBlock.State().SetDynasty(members)
+
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Value)

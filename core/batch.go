@@ -129,6 +129,11 @@ func (t *TrieBatch) Get(key []byte) ([]byte, error) {
 	return t.trie.Get(key)
 }
 
+// Iterator iterates trie.
+func (t *TrieBatch) Iterator(prefix []byte) (*trie.Iterator, error) {
+	return t.trie.Iterator(prefix)
+}
+
 // Put put to trie
 func (t *TrieBatch) Put(key []byte, value []byte) error {
 	if !t.batching {
