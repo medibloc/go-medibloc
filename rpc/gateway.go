@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -10,22 +9,21 @@ import (
 	"google.golang.org/grpc"
 )
 
-func httpServerRun() error {
+func httpServerRun(addr string, addrGrpc string) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	err1 := rpcpb.RegisterApiServiceHandlerFromEndpoint(ctx, mux, "localhost:10000", opts)
-	err2 := rpcpb.RegisterAdminServiceHandlerFromEndpoint(ctx, mux, "localhost:10000", opts)
-	if err1 != nil {
-		log.Printf("Somethins is wrong in httpServerRun : %v", err1)
+	err := rpcpb.RegisterApiServiceHandlerFromEndpoint(ctx, mux, addrGrpc, opts)
+	if err != nil {
+		return err
 	}
-	if err2 != nil {
-		log.Printf("Somethins is wrong in httpServerRun : %v", err2)
+	err = rpcpb.RegisterAdminServiceHandlerFromEndpoint(ctx, mux, addrGrpc, opts)
+	if err != nil {
+		return err
 	}
-	if err := http.ListenAndServe("localhost:10002", mux); err != nil {
-		log.Printf("Somethins is wrong in httpServerRun : %v", err)
+	if err := http.ListenAndServe(addr, mux); err != nil {
 		return err
 	}
 	return nil
