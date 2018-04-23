@@ -11,6 +11,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 	"net"
+	"strings"
 )
 
 // const for test
@@ -281,9 +282,11 @@ func makeNewTestP2PConfig(privateKeyPath string) *Config {
 
 func makeRandomListen() []string {
 	lis, _ := net.Listen("tcp", ":0")
-	addr := lis.Addr().String()
+	addrIPv6 := lis.Addr().String()
+	port := strings.TrimLeft(addrIPv6,"[::]")
+	addrIPv4 := fmt.Sprintf("localhost:%v",port)
 	lis.Close()
-	return []string{addr}
+	return []string{addrIPv4}
 }
 
 func waitRouteTableSyncLoop(node *Node, nodeIDs []peer.ID) {
