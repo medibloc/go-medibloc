@@ -23,8 +23,5 @@ func httpServerRun(addr string, addrGrpc string) error {
 	if err != nil {
 		return err
 	}
-	if err := http.ListenAndServe(addr, mux); err != nil {
-		return err
-	}
-	return nil
+	return http.ListenAndServe(addr, mux)
 }
