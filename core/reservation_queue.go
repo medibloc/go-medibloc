@@ -48,6 +48,21 @@ func (t *ReservedTask) FromProto(msg proto.Message) error {
 	return ErrCannotConvertResevedTask
 }
 
+// TaskType returns t.taskType
+func (t *ReservedTask) TaskType() string {
+	return t.taskType
+}
+
+// Payload returns t.payload
+func (t *ReservedTask) Payload() []byte {
+	return t.payload
+}
+
+// Timestamp returns t.timestamp
+func (t *ReservedTask) Timestamp() int64 {
+	return t.timestamp
+}
+
 func (t *ReservedTask) calcHash() []byte {
 	hasher := sha3.New256()
 
@@ -133,6 +148,21 @@ func LoadReservationQueue(storage storage.Storage, hash common.Hash) (*Reservati
 	}
 	rq.hash = hash
 	return rq, nil
+}
+
+// Tasks returns rq.tasks
+func (rq *ReservationQueue) Tasks() ReservedTasks {
+	return rq.tasks
+}
+
+// Storage returns rq.storage
+func (rq *ReservationQueue) Storage() storage.Storage {
+	return rq.storage
+}
+
+// Hash returns rq.hash
+func (rq *ReservationQueue) Hash() common.Hash {
+	return rq.hash
 }
 
 // BeginBatch sets batching true to add task items
