@@ -52,7 +52,7 @@ func (m *Medlet) Setup() {
 	var err error
 	logging.Console().Info("Setting up Medlet...")
 
-	m.netService, err = mednet.NewMedService(m)
+	m.netService, err = mednet.NewMedServiceFromMedlet(m)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

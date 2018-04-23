@@ -11,13 +11,21 @@ type MedService struct {
 	dispatcher *Dispatcher
 }
 
-// NewMedService create netService
-func NewMedService(m Medlet) (*MedService, error) {
+// NewMedServiceFromMedlet create netService by Medlet config
+func NewMedServiceFromMedlet(m Medlet) (*MedService, error) {
 	if networkConf := m.Config().GetNetwork(); networkConf == nil {
 		logging.Console().Fatal("config.conf should has network")
 		return nil, ErrConfigLackNetWork
 	}
-	node, err := NewNode(NewP2PConfig(m))
+	config := NewP2PConfig(m)
+
+	ms, err := NewMedService(config)
+	return ms, err
+}
+
+//NewMedService create netService net.Config
+func NewMedService(config *Config) (*MedService, error) {
+	node, err := NewNode(config)
 	if err != nil {
 		return nil, err
 	}
