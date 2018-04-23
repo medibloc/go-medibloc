@@ -9,7 +9,7 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 type states struct {
@@ -264,11 +264,11 @@ func (st *states) AddRecordReader(tx *Transaction, dataHash common.Hash, reader 
 	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
 		return err
 	}
-	if bytes.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
+	if byteutils.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
 		return ErrTxIsNotFromRecordOwner
 	}
 	for _, r := range pbRecord.Readers {
-		if bytes.Equal(reader.Bytes(), r.Address) {
+		if byteutils.Equal(reader.Bytes(), r.Address) {
 			return ErrRecordReaderAlreadyAdded
 		}
 	}

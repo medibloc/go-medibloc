@@ -5,7 +5,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
-	byteutils "github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/stretchr/testify/assert"
 )
 

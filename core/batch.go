@@ -23,7 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	byteutils "github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // Errors

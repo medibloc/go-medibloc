@@ -11,7 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -101,7 +101,7 @@ func TestRegisterWriteKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(acc.Writers()), 1)
-	assert.Equal(t, acc.Writers(), [][]byte{bytes.Hex2Bytes(writer)})
+	assert.Equal(t, acc.Writers(), [][]byte{byteutils.Hex2Bytes(writer)})
 
 	genesisState.BeginBatch()
 	assert.NoError(t, genesisState.AcceptTransaction(tx, genesisBlock.Timestamp()))
@@ -178,8 +178,8 @@ func TestVerifyDelegation(t *testing.T) {
 func TestAddRecord(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	encKey := bytes.Hex2Bytes("abcdef")
-	seed := bytes.Hex2Bytes("5eed")
+	encKey := byteutils.Hex2Bytes("abcdef")
+	seed := byteutils.Hex2Bytes("5eed")
 	payload := core.NewAddRecordPayload(recordHash, storage, encKey, seed)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
@@ -219,8 +219,8 @@ func TestAddRecord(t *testing.T) {
 func TestAddRecordReader(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	ownerEncKey := bytes.Hex2Bytes("abcdef")
-	ownerSeed := bytes.Hex2Bytes("5eed")
+	ownerEncKey := byteutils.Hex2Bytes("abcdef")
+	ownerSeed := byteutils.Hex2Bytes("5eed")
 	addRecordPayload := core.NewAddRecordPayload(recordHash, storage, ownerEncKey, ownerSeed)
 	addRecordPayloadBuf, err := addRecordPayload.ToBytes()
 	assert.NoError(t, err)
@@ -240,8 +240,8 @@ func TestAddRecordReader(t *testing.T) {
 	assert.NoError(t, txAddRecord.SignThis(sig))
 
 	reader := common.HexToAddress("03c5e1fa1ee82af7398ae8cc10ae12dc0ee9692cb06346810e3af74cbd3811276f")
-	readerEncKey := bytes.Hex2Bytes("123456")
-	readerSeed := bytes.Hex2Bytes("2eed")
+	readerEncKey := byteutils.Hex2Bytes("123456")
+	readerSeed := byteutils.Hex2Bytes("2eed")
 	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash, reader, readerEncKey, readerSeed)
 	addRecordReaderPayloadBuf, err := addRecordReaderPayload.ToBytes()
 	assert.NoError(t, err)
