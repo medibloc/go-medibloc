@@ -87,6 +87,12 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, stor storage.Storage) error
 
 	// Check if there is data in storage.
 	_, err := bc.loadTailFromStorage()
+	if err != nil && err != storage.ErrKeyNotFound {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to load tail block from storage.")
+		return err
+	}
 	if err != nil && err == storage.ErrKeyNotFound {
 		err = bc.initGenesisToStorage()
 		if err != nil {
@@ -95,12 +101,6 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, stor storage.Storage) error
 			}).Fatal("Failed to initialize genesis block to storage.")
 			return err
 		}
-	}
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("Failed to load tail block from storage.")
-		return err
 	}
 
 	// Load genesis block
