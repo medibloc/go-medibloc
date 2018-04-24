@@ -2,24 +2,22 @@ package core
 
 import (
 	"encoding/json"
-
-	"github.com/medibloc/go-medibloc/common"
 )
 
 // RegisterWriterPayload is payload type for TxOperationRegisterWKey tx
 type RegisterWriterPayload struct {
 	// Writer to register
-	Writer common.Address
+	Writer string
 }
 
 // NewRegisterWriterPayload generates a RegisterWriterPayload value
-func NewRegisterWriterPayload(writer common.Address) *RegisterWriterPayload {
+func NewRegisterWriterPayload(writer string) *RegisterWriterPayload {
 	return &RegisterWriterPayload{Writer: writer}
 }
 
 // BytesToRegisterWriterPayload converts bytes to RegisterWriterPayload struct
 func BytesToRegisterWriterPayload(b []byte) (*RegisterWriterPayload, error) {
-	payload := &RegisterWriterPayload{}
+	payload := new(RegisterWriterPayload)
 	if err := json.Unmarshal(b, payload); err != nil {
 		return nil, ErrInvalidTxPayload
 	}
@@ -34,17 +32,17 @@ func (payload *RegisterWriterPayload) ToBytes() ([]byte, error) {
 // RemoveWriterPayload is payload type for TxOperationRemoveWKey tx
 type RemoveWriterPayload struct {
 	// Writer to remove
-	Writer common.Address
+	Writer string
 }
 
 // NewRemoveWriterPayload generates a RemoveWriterPayload value
-func NewRemoveWriterPayload(writer common.Address) *RemoveWriterPayload {
+func NewRemoveWriterPayload(writer string) *RemoveWriterPayload {
 	return &RemoveWriterPayload{Writer: writer}
 }
 
 // BytesToRemoveWriterPayload converts bytes to RemoveWriterPayload struct
 func BytesToRemoveWriterPayload(b []byte) (*RemoveWriterPayload, error) {
-	payload := &RemoveWriterPayload{}
+	payload := new(RemoveWriterPayload)
 	if err := json.Unmarshal(b, payload); err != nil {
 		return nil, ErrInvalidTxPayload
 	}
@@ -58,15 +56,15 @@ func (payload *RemoveWriterPayload) ToBytes() ([]byte, error) {
 
 // AddRecordPayload is payload type for TxOperationAddRecord
 type AddRecordPayload struct {
-	Hash common.Hash
-	// TODO: Signature []byte
+	Hash string
+	// TODO: Signature string
 	Storage string
-	EncKey  []byte
-	Seed    []byte
+	EncKey  string
+	Seed    string
 }
 
 // NewAddRecordPayload generates a AddRecordPayload
-func NewAddRecordPayload(hash common.Hash, storage string, encKey, seed []byte) *AddRecordPayload {
+func NewAddRecordPayload(hash string, storage string, encKey, seed string) *AddRecordPayload {
 	return &AddRecordPayload{
 		Hash:    hash,
 		Storage: storage,
@@ -77,7 +75,7 @@ func NewAddRecordPayload(hash common.Hash, storage string, encKey, seed []byte) 
 
 // BytesToAddRecordPayload converts bytes to AddRecordPayload struct
 func BytesToAddRecordPayload(b []byte) (*AddRecordPayload, error) {
-	payload := &AddRecordPayload{}
+	payload := new(AddRecordPayload)
 	if err := json.Unmarshal(b, payload); err != nil {
 		return nil, ErrInvalidTxPayload
 	}
@@ -91,14 +89,14 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 
 // AddRecordReaderPayload is payload type for TxOperationAddRecordReader
 type AddRecordReaderPayload struct {
-	Hash    common.Hash
-	Address common.Address
-	EncKey  []byte
-	Seed    []byte
+	Hash    string
+	Address string
+	EncKey  string
+	Seed    string
 }
 
 // NewAddRecordReaderPayload generates a AddRecordReaderPayload
-func NewAddRecordReaderPayload(hash common.Hash, address common.Address, encKey, seed []byte) *AddRecordReaderPayload {
+func NewAddRecordReaderPayload(hash, address, encKey, seed string) *AddRecordReaderPayload {
 	return &AddRecordReaderPayload{
 		Hash:    hash,
 		Address: address,
@@ -109,7 +107,7 @@ func NewAddRecordReaderPayload(hash common.Hash, address common.Address, encKey,
 
 // BytesToAddRecordReaderPayload converts bytes to AddRecordReaderPayload struct
 func BytesToAddRecordReaderPayload(b []byte) (*AddRecordReaderPayload, error) {
-	payload := &AddRecordReaderPayload{}
+	payload := new(AddRecordReaderPayload)
 	if err := json.Unmarshal(b, payload); err != nil {
 		return nil, ErrInvalidTxPayload
 	}

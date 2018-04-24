@@ -317,7 +317,7 @@ func (tx *Transaction) registerWriteKey(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.AddWriter(tx.from, payload.Writer)
+	return bs.AddWriter(tx.from, common.HexToAddress(payload.Writer))
 }
 
 func (tx *Transaction) removeWriteKey(bs *BlockState) error {
@@ -325,7 +325,7 @@ func (tx *Transaction) removeWriteKey(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.RemoveWriter(tx.from, payload.Writer)
+	return bs.RemoveWriter(tx.from, common.HexToAddress(payload.Writer))
 }
 
 func (tx *Transaction) addRecord(bs *BlockState) error {
@@ -337,7 +337,8 @@ func (tx *Transaction) addRecord(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.AddRecord(tx, payload.Hash, payload.Storage, payload.EncKey, payload.Seed, tx.from, signer)
+	return bs.AddRecord(tx, common.HexToHash(payload.Hash), payload.Storage, byteutils.Hex2Bytes(payload.EncKey),
+		byteutils.Hex2Bytes(payload.Seed), tx.from, signer)
 }
 
 func (tx *Transaction) addRecordReader(bs *BlockState) error {
@@ -345,5 +346,6 @@ func (tx *Transaction) addRecordReader(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.AddRecordReader(tx, payload.Hash, payload.Address, payload.EncKey, payload.Seed)
+	return bs.AddRecordReader(tx, common.HexToHash(payload.Hash), common.HexToAddress(payload.Address),
+		byteutils.Hex2Bytes(payload.EncKey), byteutils.Hex2Bytes(payload.Seed))
 }

@@ -68,7 +68,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 
 func TestRegisterWriteKey(t *testing.T) {
 	writer := "03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"
-	payload := core.NewRegisterWriterPayload(common.HexToAddress(writer))
+	payload := core.NewRegisterWriterPayload(writer)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	tx, err := core.NewTransaction(test.ChainID,
@@ -102,7 +102,7 @@ func TestRegisterWriteKey(t *testing.T) {
 	assert.NoError(t, genesisState.AcceptTransaction(tx, test.GenesisBlock.Timestamp()))
 	genesisState.Commit()
 
-	removePayload := core.NewRemoveWriterPayload(common.HexToAddress(writer))
+	removePayload := core.NewRemoveWriterPayload(writer)
 	removePayloadBuf, err := removePayload.ToBytes()
 	assert.NoError(t, err)
 	txRemove, err := core.NewTransaction(test.ChainID,
@@ -126,7 +126,7 @@ func TestRegisterWriteKey(t *testing.T) {
 
 func TestVerifyDelegation(t *testing.T) {
 	writer := "03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"
-	payload := core.NewRegisterWriterPayload(common.HexToAddress(writer))
+	payload := core.NewRegisterWriterPayload(writer)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	owner := "03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"
@@ -173,9 +173,9 @@ func TestVerifyDelegation(t *testing.T) {
 func TestAddRecord(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	encKey := byteutils.Hex2Bytes("abcdef")
-	seed := byteutils.Hex2Bytes("5eed")
-	payload := core.NewAddRecordPayload(recordHash, storage, encKey, seed)
+	encKey := "abcdef"
+	seed := "5eed"
+	payload := core.NewAddRecordPayload(recordHash.Hex(), storage, encKey, seed)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
@@ -207,16 +207,16 @@ func TestAddRecord(t *testing.T) {
 	assert.Equal(t, record.Storage, storage)
 	assert.Equal(t, len(record.Readers), 1)
 	assert.Equal(t, record.Readers[0].Address, owner.Bytes())
-	assert.Equal(t, record.Readers[0].EncKey, encKey)
-	assert.Equal(t, record.Readers[0].Seed, seed)
+	assert.Equal(t, record.Readers[0].EncKey, byteutils.Hex2Bytes(encKey))
+	assert.Equal(t, record.Readers[0].Seed, byteutils.Hex2Bytes(seed))
 }
 
 func TestAddRecordReader(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	ownerEncKey := byteutils.Hex2Bytes("abcdef")
-	ownerSeed := byteutils.Hex2Bytes("5eed")
-	addRecordPayload := core.NewAddRecordPayload(recordHash, storage, ownerEncKey, ownerSeed)
+	ownerEncKey := "abcdef"
+	ownerSeed := "5eed"
+	addRecordPayload := core.NewAddRecordPayload(recordHash.Hex(), storage, ownerEncKey, ownerSeed)
 	addRecordPayloadBuf, err := addRecordPayload.ToBytes()
 	assert.NoError(t, err)
 	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
@@ -235,9 +235,9 @@ func TestAddRecordReader(t *testing.T) {
 	assert.NoError(t, txAddRecord.SignThis(sig))
 
 	reader := common.HexToAddress("03c5e1fa1ee82af7398ae8cc10ae12dc0ee9692cb06346810e3af74cbd3811276f")
-	readerEncKey := byteutils.Hex2Bytes("123456")
-	readerSeed := byteutils.Hex2Bytes("2eed")
-	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash, reader, readerEncKey, readerSeed)
+	readerEncKey := "123456"
+	readerSeed := "2eed"
+	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash.Hex(), reader.Hex(), readerEncKey, readerSeed)
 	addRecordReaderPayloadBuf, err := addRecordReaderPayload.ToBytes()
 	assert.NoError(t, err)
 
@@ -265,10 +265,9 @@ func TestAddRecordReader(t *testing.T) {
 	assert.Equal(t, record.Storage, storage)
 	assert.Equal(t, len(record.Readers), 2)
 	assert.Equal(t, record.Readers[0].Address, owner.Bytes())
-	assert.Equal(t, record.Readers[0].EncKey, ownerEncKey)
-	assert.Equal(t, record.Readers[0].Seed, ownerSeed)
+	assert.Equal(t, record.Readers[0].EncKey, byteutils.Hex2Bytes(ownerEncKey))
+	assert.Equal(t, record.Readers[0].Seed, byteutils.Hex2Bytes(ownerSeed))
 	assert.Equal(t, record.Readers[1].Address, reader.Bytes())
-	assert.Equal(t, record.Readers[1].EncKey, readerEncKey)
-	assert.Equal(t, record.Readers[1].Seed, readerSeed)
-
+	assert.Equal(t, record.Readers[1].EncKey, byteutils.Hex2Bytes(readerEncKey))
+	assert.Equal(t, record.Readers[1].Seed, byteutils.Hex2Bytes(readerSeed))
 }

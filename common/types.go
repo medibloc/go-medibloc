@@ -39,6 +39,9 @@ func (h Hash) Str() string { return string(h[:]) }
 // Bytes returns Hash in bytes format.
 func (h Hash) Bytes() []byte { return h[:] }
 
+// Hex returns Hash in hex string
+func (h Hash) Hex() string { return byteutils.Bytes2Hex(h[:]) }
+
 // SetBytes set bytes to Hash.
 func (h *Hash) SetBytes(b []byte) {
 	if len(b) > len(h) {
@@ -126,6 +129,9 @@ func (a Address) Big() *big.Int { return new(big.Int).SetBytes(a[:]) }
 
 // Hash returns Address in Hash.
 func (a Address) Hash() Hash { return BytesToHash(a[:]) }
+
+// Hex returns Address in hex string
+func (a Address) Hex() string { return byteutils.Bytes2Hex(a[:]) }
 
 // SetBytes the address to the value of b. If b is larger than len(a) it will panic
 func (a *Address) SetBytes(b []byte) {
