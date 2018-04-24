@@ -264,22 +264,6 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 	return nil
 }
 
-// TODO @cl9200 Consensus
-//func (bc *BlockChain) changeMainTailBlock(tailBlocks []*Block) {
-//	bc.mainTailBlock = tailBlocks[0]
-//	maxHeight := bc.mainTailBlock.Height()
-//	for _, block := range tailBlocks[1:] {
-//		height := block.Height()
-//		if height > maxHeight {
-//			bc.mainTailBlock = block
-//			maxHeight = height
-//		}
-//	}
-//	if err := bc.storeTailHashToStorage(bc.mainTailBlock); err != nil {
-//		logging.Console().Error(err)
-//	}
-//}
-
 func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 	for !to.Hash().Equals(from.Hash()) {
 		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash().Bytes())

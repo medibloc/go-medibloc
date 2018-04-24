@@ -26,7 +26,7 @@ import (
 )
 
 func getBlockChain(t *testing.T) *core.BlockChain {
-	m := NewMockMedlet(t)
+	m := testUtil.NewMockMedlet(t)
 
 	bc, err := core.NewBlockChain(m.Config())
 	require.NoError(t, err)

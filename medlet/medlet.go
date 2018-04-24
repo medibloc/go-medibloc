@@ -4,7 +4,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
-	mednet "github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -19,10 +19,10 @@ var (
 
 // Medlet manages blockchain services.
 type Medlet struct {
-	bs         *core.BlockSubscriber
+	bm         *core.BlockManager
 	config     *medletpb.Config
 	miner      *core.Miner
-	netService mednet.Service
+	netService net.Service
 	rpc        rpc.GRPCServer
 	txMgr      *core.TransactionManager
 	storage    storage.Storage
@@ -55,7 +55,7 @@ func (m *Medlet) Setup() {
 	var err error
 	logging.Console().Info("Setting up Medlet...")
 
-	m.netService, err = mednet.NewMedService(m)
+	m.netService, err = net.NewMedService(m)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -87,20 +87,17 @@ func (m *Medlet) Start() {
 	m.txMgr.RegisterInNetwork(m.netService)
 	m.txMgr.Start()
 
-	bp, bc, err := core.GetBlockPoolBlockChain(m.storage)
+	var err error
+	m.bm, err = core.NewBlockManager(m.Config())
 	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("Failed to create block pool or block chain")
-		return
-	}
-	m.bs = core.StartBlockSubscriber(m.netService, bp, bc)
-
-	if m.Config().Chain.StartMine {
-		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
+		panic("todo")
 	}
 
-	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr}, m.config.Rpc.RpcListen[0]) // TODO choose index
+	//if m.Config().Chain.StartMine {
+	//	m.miner = core.StartMiner(m.netService, bc, m.txMgr)
+	//}
+
+	//m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr}, m.config.Rpc.RpcListen[0]) // TODO choose index
 	m.rpc.Start()
 	m.rpc.RunGateway(m.config.Rpc.HttpListen[0]) // TODO choose index
 
@@ -116,7 +113,7 @@ func (m *Medlet) Stop() {
 
 	m.txMgr.Stop()
 
-	m.bs.StopBlockSubscriber()
+	//m.bs.StopBlockSubscriber()
 	if m.miner != nil {
 		m.miner.StopMiner()
 	}
@@ -139,4 +136,9 @@ func (m *Medlet) Storage() storage.Storage {
 // Genesis returns genesis config.
 func (m *Medlet) Genesis() *corepb.Genesis {
 	return m.genesis
+}
+
+// NetService returns NetService.
+func (m *Medlet) NetService() net.Service {
+	return m.netService
 }

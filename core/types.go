@@ -6,6 +6,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 )
 
@@ -25,9 +26,16 @@ const (
 	TxPayloadBinaryType = "binary"
 )
 
-// MessageType from network.
+// Transaction's message types.
 const (
 	MessageTypeNewTx = "newtx"
+)
+
+// Block's message types.
+const (
+	MessageTypeNewBlock      = "newblock"
+	MessageTypeRequestBlock  = "rqstblock"
+	MessageTypeResponseBlock = "respblock"
 )
 
 // Error types of core package.
@@ -76,4 +84,5 @@ type Medlet interface {
 	Config() *medletpb.Config
 	Storage() storage.Storage
 	Genesis() *corepb.Genesis
+	NetService() net.Service
 }

@@ -280,21 +280,24 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	}
 }
 
-type mockMedlet struct {
+// MockMedlet sets up components for tests.
+type MockMedlet struct {
 	config  *medletpb.Config
 	storage storage.Storage
 	genesis *corepb.Genesis
+	ns      net.Service
 }
 
-func NewMockMedlet(t *testing.T) *mockMedlet {
+// NewMockMedlet returns MockMedlet.
+func NewMockMedlet(t *testing.T) *MockMedlet {
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesis, err := core.LoadGenesisConf(defaultGenesisConfPath)
+	genesis, err := core.LoadGenesisConf(DefaultGenesisConfPath)
 	require.NoError(t, err)
-	return &mockMedlet{
+	return &MockMedlet{
 		config: &medletpb.Config{
 			Chain: &medletpb.ChainConfig{
-				ChainId: chainID,
+				ChainId: ChainID,
 			},
 		},
 		storage: stor,
@@ -302,14 +305,22 @@ func NewMockMedlet(t *testing.T) *mockMedlet {
 	}
 }
 
-func (m *mockMedlet) Config() *medletpb.Config {
+// Config returns config.
+func (m *MockMedlet) Config() *medletpb.Config {
 	return m.config
 }
 
-func (m *mockMedlet) Storage() storage.Storage {
+// Storage return storage.
+func (m *MockMedlet) Storage() storage.Storage {
 	return m.storage
 }
 
-func (m *mockMedlet) Genesis() *corepb.Genesis {
+// Genesis return genesis configuration.
+func (m *MockMedlet) Genesis() *corepb.Genesis {
 	return m.genesis
+}
+
+// NetService returns net.Service.
+func (m *MockMedlet) NetService() net.Service {
+	return m.ns
 }
