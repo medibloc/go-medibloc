@@ -32,7 +32,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
@@ -258,16 +257,14 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	tm.WaitStreamReady()
 	tm.WaitRouteTableSync()
 
-	med, err := medlet.New(&medletpb.Config{
+	cfg := &medletpb.Config{
 		Chain: &medletpb.ChainConfig{
 			ChainId: ChainID,
 		},
-	})
-	require.Nil(t, err)
-
+	}
 	for i := 0; i < n; i++ {
-		mgr := core.NewTransactionManager(med, 1024)
-		mgr.RegisterInNetwork(svc[i])
+		mgr := core.NewTransactionManager(cfg)
+		mgr.Setup(svc[i])
 		mgr.Start()
 		mgrs = append(mgrs, mgr)
 	}
