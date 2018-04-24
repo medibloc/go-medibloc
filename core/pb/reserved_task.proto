@@ -3,8 +3,9 @@ package corepb;
 
 message ReservedTask {
   string type = 1;
-  bytes payload = 2;
-  int64 timestamp = 3;
+  bytes from = 2;
+  bytes payload = 3;
+  int64 timestamp = 4;
 }
 
 message ReservedTasks {

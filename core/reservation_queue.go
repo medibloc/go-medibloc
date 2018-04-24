@@ -14,14 +14,16 @@ import (
 // ReservedTask is a data representing reserved task
 type ReservedTask struct {
 	taskType  string
+	from      common.Address
 	payload   []byte
 	timestamp int64
 }
 
 // NewReservedTask generates a new instance of ReservedTask
-func NewReservedTask(taskType string, payload []byte, timestamp int64) *ReservedTask {
+func NewReservedTask(taskType string, from common.Address, payload []byte, timestamp int64) *ReservedTask {
 	return &ReservedTask{
 		taskType:  taskType,
+		from:      from,
 		payload:   payload,
 		timestamp: timestamp,
 	}
@@ -31,6 +33,7 @@ func NewReservedTask(taskType string, payload []byte, timestamp int64) *Reserved
 func (t *ReservedTask) ToProto() proto.Message {
 	return &corepb.ReservedTask{
 		Type:      t.taskType,
+		From:      t.from.Bytes(),
 		Payload:   t.payload,
 		Timestamp: t.timestamp,
 	}
@@ -40,6 +43,7 @@ func (t *ReservedTask) ToProto() proto.Message {
 func (t *ReservedTask) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.ReservedTask); ok {
 		t.taskType = msg.Type
+		t.from = common.BytesToAddress(msg.From)
 		t.payload = msg.Payload
 		t.timestamp = msg.Timestamp
 		return nil
@@ -51,6 +55,11 @@ func (t *ReservedTask) FromProto(msg proto.Message) error {
 // TaskType returns t.taskType
 func (t *ReservedTask) TaskType() string {
 	return t.taskType
+}
+
+// From returns t.from
+func (t *ReservedTask) From() common.Address {
+	return t.from
 }
 
 // Payload returns t.payload
@@ -67,6 +76,7 @@ func (t *ReservedTask) calcHash() []byte {
 	hasher := sha3.New256()
 
 	hasher.Write([]byte(t.taskType))
+	hasher.Write(t.from.Bytes())
 	hasher.Write(t.payload)
 	hasher.Write(byteutils.FromInt64(t.timestamp))
 
