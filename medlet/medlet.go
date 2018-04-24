@@ -2,6 +2,7 @@ package medlet
 
 import (
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	mednet "github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/rpc"
@@ -24,6 +25,8 @@ type Medlet struct {
 	netService mednet.Service
 	rpc        rpc.GRPCServer
 	txMgr      *core.TransactionManager
+	storage    storage.Storage
+	genesis    *corepb.Genesis
 }
 
 type rpcBridge struct {
@@ -59,6 +62,13 @@ func (m *Medlet) Setup() {
 		}).Fatal("Failed to setup net service.")
 	}
 
+	m.storage, err = storage.NewLeveldbStorage(m.Config().Chain.Datadir)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to create leveldb storage.")
+	}
+
 	logging.Console().Info("Set up Medlet.")
 }
 
@@ -73,19 +83,11 @@ func (m *Medlet) Start() {
 
 	metricsMedstartGauge.Update(1)
 
-	s, err := storage.NewLeveldbStorage(m.config.Chain.Datadir)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("Failed to create leveldb storage")
-		return
-	}
-
 	m.txMgr = core.NewTransactionManager(m, transactionManagerSize)
 	m.txMgr.RegisterInNetwork(m.netService)
 	m.txMgr.Start()
 
-	bp, bc, err := core.GetBlockPoolBlockChain(s)
+	bp, bc, err := core.GetBlockPoolBlockChain(m.storage)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -127,4 +129,14 @@ func (m *Medlet) Stop() {
 // Config returns medlet configuration.
 func (m *Medlet) Config() *medletpb.Config {
 	return m.config
+}
+
+// Storage returns storage.
+func (m *Medlet) Storage() storage.Storage {
+	return m.storage
+}
+
+// Genesis returns genesis config.
+func (m *Medlet) Genesis() *corepb.Genesis {
+	return m.genesis
 }

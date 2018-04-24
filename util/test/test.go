@@ -26,6 +26,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
@@ -277,4 +278,38 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 		}
 		tm.StopMedServices()
 	}
+}
+
+type mockMedlet struct {
+	config  *medletpb.Config
+	storage storage.Storage
+	genesis *corepb.Genesis
+}
+
+func NewMockMedlet(t *testing.T) *mockMedlet {
+	stor, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	genesis, err := core.LoadGenesisConf(defaultGenesisConfPath)
+	require.NoError(t, err)
+	return &mockMedlet{
+		config: &medletpb.Config{
+			Chain: &medletpb.ChainConfig{
+				ChainId: chainID,
+			},
+		},
+		storage: stor,
+		genesis: genesis,
+	}
+}
+
+func (m *mockMedlet) Config() *medletpb.Config {
+	return m.config
+}
+
+func (m *mockMedlet) Storage() storage.Storage {
+	return m.storage
+}
+
+func (m *mockMedlet) Genesis() *corepb.Genesis {
+	return m.genesis
 }
