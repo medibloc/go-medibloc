@@ -133,6 +133,9 @@ func (rq *ReservationQueue) FromProto(msg proto.Message) error {
 
 // LoadReservationQueue loads reservation queue by hash from storage
 func LoadReservationQueue(storage storage.Storage, hash common.Hash) (*ReservationQueue, error) {
+	if common.IsZeroHash(hash) {
+		return NewEmptyReservationQueue(storage), nil
+	}
 	b, err := storage.Get(hash.Bytes())
 	if err != nil {
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +31,7 @@ func TestProtoReservationQueue(t *testing.T) {
 		{"type3", []byte("payload3"), int64(1400000000)},
 	}
 
-	rq := core.NewEmptyReservationQueue(genesisBlock.Storage())
+	rq := core.NewEmptyReservationQueue(test.GenesisBlock.Storage())
 	rq.BeginBatch()
 	for i := range data {
 		assert.NoError(t, rq.AddTask(core.NewReservedTask(
@@ -58,7 +59,7 @@ func TestPopTasksBefore(t *testing.T) {
 		{"type3", []byte("payload3"), int64(1400000000)},
 	}
 
-	rq := core.NewEmptyReservationQueue(genesisBlock.Storage())
+	rq := core.NewEmptyReservationQueue(test.GenesisBlock.Storage())
 	rq.BeginBatch()
 	for i := range data {
 		assert.NoError(t, rq.AddTask(core.NewReservedTask(

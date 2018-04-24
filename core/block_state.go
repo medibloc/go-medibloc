@@ -19,6 +19,8 @@ type states struct {
 	recordsState   *TrieBatch
 	consensusState *TrieBatch
 
+	reservationQueue *ReservationQueue
+
 	storage storage.Storage
 }
 
@@ -48,13 +50,16 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	reservationQueue := NewEmptyReservationQueue(stor)
+
 	return &states{
-		accState:       accState,
-		txsState:       txsState,
-		usageState:     usageState,
-		recordsState:   recordsState,
-		consensusState: consensusState,
-		storage:        stor,
+		accState:         accState,
+		txsState:         txsState,
+		usageState:       usageState,
+		recordsState:     recordsState,
+		consensusState:   consensusState,
+		reservationQueue: reservationQueue,
+		storage:          stor,
 	}, nil
 }
 
@@ -84,13 +89,19 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	reservationQueue, err := LoadReservationQueue(st.storage, st.reservationQueue.Hash())
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:       accState,
-		txsState:       txsState,
-		usageState:     usageState,
-		recordsState:   recordsState,
-		consensusState: consensusState,
-		storage:        st.storage,
+		accState:         accState,
+		txsState:         txsState,
+		usageState:       usageState,
+		recordsState:     recordsState,
+		consensusState:   consensusState,
+		reservationQueue: reservationQueue,
+		storage:          st.storage,
 	}, nil
 }
 
@@ -107,7 +118,10 @@ func (st *states) BeginBatch() error {
 	if err := st.consensusState.BeginBatch(); err != nil {
 		return err
 	}
-	return st.recordsState.BeginBatch()
+	if err := st.recordsState.BeginBatch(); err != nil {
+		return err
+	}
+	return st.reservationQueue.BeginBatch()
 }
 
 func (st *states) RollBack() error {
@@ -123,7 +137,10 @@ func (st *states) RollBack() error {
 	if err := st.consensusState.RollBack(); err != nil {
 		return err
 	}
-	return st.recordsState.RollBack()
+	if err := st.recordsState.RollBack(); err != nil {
+		return err
+	}
+	return st.reservationQueue.RollBack()
 }
 
 func (st *states) Commit() error {
@@ -139,7 +156,10 @@ func (st *states) Commit() error {
 	if err := st.consensusState.Commit(); err != nil {
 		return err
 	}
-	return st.recordsState.Commit()
+	if err := st.recordsState.Commit(); err != nil {
+		return err
+	}
+	return st.reservationQueue.Commit()
 }
 
 func (st *states) AccountsRoot() common.Hash {
@@ -160,6 +180,10 @@ func (st *states) RecordsRoot() common.Hash {
 
 func (st *states) ConsensusRoot() common.Hash {
 	return common.BytesToHash(st.consensusState.RootHash())
+}
+
+func (st *states) ReservationQueueHash() common.Hash {
+	return st.reservationQueue.Hash()
 }
 
 func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
@@ -204,6 +228,15 @@ func (st *states) LoadConsensusRoot(rootHash common.Hash) error {
 		return err
 	}
 	st.consensusState = consensusState
+	return nil
+}
+
+func (st *states) LoadReservationQueue(hash common.Hash) error {
+	rq, err := LoadReservationQueue(st.storage, hash)
+	if err != nil {
+		return err
+	}
+	st.reservationQueue = rq
 	return nil
 }
 
@@ -411,6 +444,21 @@ func (st *states) SetDynasty(miners []*common.Hash) error {
 		}
 	}
 	return nil
+}
+
+// GetReservedTasks returns reserved tasks in reservation queue
+func (st *states) GetReservedTasks() []*ReservedTask {
+	return st.reservationQueue.Tasks()
+}
+
+// AddReservedTask adds a reserved task in reservation queue
+func (st *states) AddReservedTask(task *ReservedTask) error {
+	return st.reservationQueue.AddTask(task)
+}
+
+// PopReservedTask pops reserved tasks which should be processed before 'before'
+func (st *states) PopReservedTasks(before int64) []*ReservedTask {
+	return st.reservationQueue.PopTasksBefore(before)
 }
 
 // BlockState possesses every states a block should have

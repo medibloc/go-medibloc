@@ -19,11 +19,12 @@ type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
 
-	accsRoot      common.Hash
-	txsRoot       common.Hash
-	usageRoot     common.Hash
-	recordsRoot   common.Hash
-	consensusRoot common.Hash
+	accsRoot             common.Hash
+	txsRoot              common.Hash
+	usageRoot            common.Hash
+	recordsRoot          common.Hash
+	consensusRoot        common.Hash
+	reservationQueueHash common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -214,6 +215,11 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	}
 	if err = block.state.LoadConsensusRoot(block.header.consensusRoot); err != nil {
 		return nil, err
+	}
+	if common.IsZeroHash(block.header.reservationQueueHash) == false {
+		if err := block.state.LoadReservationQueue(block.header.reservationQueueHash); err != nil {
+			return nil, err
+		}
 	}
 	block.storage = storage
 	return block, nil
