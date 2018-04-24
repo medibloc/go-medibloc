@@ -22,6 +22,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,7 +41,7 @@ func testBatch(t *testing.T, batch core.Batch) {
 }
 
 func TestTrieBatch(t *testing.T) {
-	s := getStorage(t)
+	s := test.GetStorage(t)
 
 	trieBatch, err := core.NewTrieBatch(nil, s)
 	assert.Nil(t, err)
@@ -93,7 +94,7 @@ func TestTrieBatch(t *testing.T) {
 }
 
 func TestTrieBatch_Clone(t *testing.T) {
-	s := getStorage(t)
+	s := test.GetStorage(t)
 
 	trBatch1, err := core.NewTrieBatch(nil, s)
 	assert.Nil(t, err)
@@ -146,7 +147,7 @@ func getAmount() *util.Uint128 {
 }
 
 func TestAccountState(t *testing.T) {
-	s := getStorage(t)
+	s := test.GetStorage(t)
 
 	asBatch, err := core.NewAccountStateBatch(nil, s)
 	assert.Nil(t, err)
@@ -213,7 +214,7 @@ func TestAccountState(t *testing.T) {
 }
 
 func TestAccountStateBatch_Clone(t *testing.T) {
-	s := getStorage(t)
+	s := test.GetStorage(t)
 	asBatch1, err := core.NewAccountStateBatch(nil, s)
 	assert.Nil(t, err)
 

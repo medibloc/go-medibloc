@@ -4,17 +4,18 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionPool(t *testing.T) {
-	keys := newKeySlice(t, 4)
+	keys := test.NewKeySlice(t, 4)
 	txs := []*core.Transaction{
-		0: newSignedTransaction(t, keys[0], keys[2], 0),
-		1: newSignedTransaction(t, keys[0], keys[2], 1),
-		2: newSignedTransaction(t, keys[2], keys[3], 2),
-		3: newSignedTransaction(t, keys[2], keys[1], 3),
-		4: newSignedTransaction(t, keys[0], keys[3], 0),
+		0: test.NewSignedTransaction(t, keys[0], keys[2], 0),
+		1: test.NewSignedTransaction(t, keys[0], keys[2], 1),
+		2: test.NewSignedTransaction(t, keys[2], keys[3], 2),
+		3: test.NewSignedTransaction(t, keys[2], keys[1], 3),
+		4: test.NewSignedTransaction(t, keys[0], keys[3], 0),
 	}
 
 	pool := core.NewTransactionPool(128)
@@ -34,7 +35,7 @@ func TestTransactionPool(t *testing.T) {
 }
 
 func TestDuplicatedTx(t *testing.T) {
-	tx := newRandomSignedTransaction(t)
+	tx := test.NewRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
 
@@ -45,8 +46,8 @@ func TestDuplicatedTx(t *testing.T) {
 }
 
 func TestTransactionGetDel(t *testing.T) {
-	tx1 := newRandomSignedTransaction(t)
-	tx2 := newRandomSignedTransaction(t)
+	tx1 := test.NewRandomSignedTransaction(t)
+	tx2 := test.NewRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
 	err := pool.Push(tx1)
@@ -75,13 +76,13 @@ func TestTransactionGetDel(t *testing.T) {
 }
 
 func TestTransactionPoolEvict(t *testing.T) {
-	keys := newKeySlice(t, 4)
+	keys := test.NewKeySlice(t, 4)
 	txs := []*core.Transaction{
-		0: newSignedTransaction(t, keys[0], keys[1], 0),
-		1: newSignedTransaction(t, keys[1], keys[2], 1),
-		2: newSignedTransaction(t, keys[2], keys[3], 2),
-		3: newSignedTransaction(t, keys[3], keys[0], 3),
-		4: newSignedTransaction(t, keys[2], keys[1], 0),
+		0: test.NewSignedTransaction(t, keys[0], keys[1], 0),
+		1: test.NewSignedTransaction(t, keys[1], keys[2], 1),
+		2: test.NewSignedTransaction(t, keys[2], keys[3], 2),
+		3: test.NewSignedTransaction(t, keys[3], keys[0], 3),
+		4: test.NewSignedTransaction(t, keys[2], keys[1], 0),
 	}
 
 	pool := core.NewTransactionPool(3)
@@ -94,7 +95,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 }
 
 func TestEmptyPool(t *testing.T) {
-	tx := newRandomSignedTransaction(t)
+	tx := test.NewRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
 	assert.Nil(t, pool.Pop())

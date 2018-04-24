@@ -10,26 +10,14 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
-	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	blockStateTestDataDir  = "./testdata/blockstate"
-	blockStateGenesisBlock *core.Block
-)
-
-func init() {
-	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
-	s, _ := storage.NewMemoryStorage()
-	blockStateGenesisBlock, _ = core.NewGenesisBlock(conf, s)
-	chainID = conf.Meta.ChainId
-}
-
 func TestUpdateUsage(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(chainID, coinbase, blockStateGenesisBlock)
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
 	assert.NoError(t, err)
 
 	privHexes := []string{
@@ -72,7 +60,7 @@ func TestUpdateUsage(t *testing.T) {
 	blockState.BeginBatch()
 
 	for i, c := range cases {
-		txs[i], err = core.NewTransaction(chainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		txs[i], err = core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
@@ -95,7 +83,7 @@ func TestUpdateUsage(t *testing.T) {
 
 func TestTooOldTxToAdd(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(chainID, coinbase, blockStateGenesisBlock)
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
 	assert.NoError(t, err)
 
 	privHexes := []string{
@@ -143,7 +131,7 @@ func TestTooOldTxToAdd(t *testing.T) {
 	blockState.BeginBatch()
 
 	for i, c := range cases {
-		tx, err := core.NewTransaction(chainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		tx, err := core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		tx.SetTimestamp(c.timestamp)
