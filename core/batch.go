@@ -23,7 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	byteutils "github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // Errors
@@ -127,6 +127,11 @@ func (t *TrieBatch) Delete(key []byte) error {
 // Get get from trie
 func (t *TrieBatch) Get(key []byte) ([]byte, error) {
 	return t.trie.Get(key)
+}
+
+// Iterator iterates trie.
+func (t *TrieBatch) Iterator(prefix []byte) (*trie.Iterator, error) {
+	return t.trie.Iterator(prefix)
 }
 
 // Put put to trie

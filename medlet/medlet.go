@@ -98,8 +98,9 @@ func (m *Medlet) Start() {
 		m.miner = core.StartMiner(m.netService, bc, m.txMgr)
 	}
 
-	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr})
-	m.rpc.Start(m.config.Rpc.RpcListen[0]) // TODO
+	m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr}, m.config.Rpc.RpcListen[0]) // TODO choose index
+	m.rpc.Start()
+	m.rpc.RunGateway(m.config.Rpc.HttpListen[0]) // TODO choose index
 
 	logging.Console().Info("Started Medlet.")
 }

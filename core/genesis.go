@@ -13,7 +13,7 @@ import (
 
 var (
 	// GenesisHash is hash of genesis block
-	GenesisHash = common.BytesToHash(make([]byte, common.HashLength))
+	GenesisHash = common.Hash{}
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
@@ -67,6 +67,13 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
+
+	var members []*common.Hash
+	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
+		member := common.HexToHash(v)
+		members = append(members, &member)
+	}
+	genesisBlock.State().SetDynasty(members)
 
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)

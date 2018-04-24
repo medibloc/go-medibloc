@@ -11,13 +11,9 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
-)
-
-const (
-	veryLightScryptN = 2
-	veryLightScryptP = 1
 )
 
 func TestTransaction_VerifyIntegrity(t *testing.T) {
@@ -34,21 +30,20 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 
 	for index := 0; index < testCount; index++ {
 
-		from := mockAddress(t, ks)
-		to := mockAddress(t, ks)
+		from := test.MockAddress(t, ks)
+		to := test.MockAddress(t, ks)
 
 		key1, err := ks.GetKey(from)
 		assert.NoError(t, err)
 
-		tx, err := core.NewTransaction(chainID, from, to, util.Uint128Zero(), 1, core.TxPayloadBinaryType, []byte("datadata"))
+		tx, err := core.NewTransaction(test.ChainID, from, to, util.Uint128Zero(), 1, core.TxPayloadBinaryType, []byte("datadata"))
 		assert.NoError(t, err)
 
 		sig, err := crypto.NewSignature(algorithm.SECP256K1)
 		assert.NoError(t, err)
 		sig.InitSign(key1)
 		assert.NoError(t, tx.SignThis(sig))
-		test := testTx{string(index), tx, key1, 1}
-		tests = append(tests, test)
+		tests = append(tests, testTx{string(index), tx, key1, 1})
 	}
 	for _, tt := range tests {
 		for index := 0; index < tt.count; index++ {
@@ -61,7 +56,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 					t.Errorf("Sign() error = %v", err)
 					return
 				}
-				err = tt.tx.VerifyIntegrity(chainID)
+				err = tt.tx.VerifyIntegrity(test.ChainID)
 				if err != nil {
 					t.Errorf("verify failed:%s", err)
 					return
@@ -76,7 +71,7 @@ func TestRegisterWriteKey(t *testing.T) {
 	payload := core.NewRegisterWriterPayload(common.HexToAddress(writer))
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
-	tx, err := core.NewTransaction(chainID,
+	tx, err := core.NewTransaction(test.ChainID,
 		common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
 		common.Address{},
 		util.Uint128Zero(), 1,
@@ -89,7 +84,7 @@ func TestRegisterWriteKey(t *testing.T) {
 	sig.InitSign(privKey)
 	assert.NoError(t, tx.SignThis(sig))
 
-	genesisState, err := genesisBlock.State().Clone()
+	genesisState, err := test.GenesisBlock.State().Clone()
 	assert.NoError(t, err)
 	genesisState.BeginBatch()
 	assert.NoError(t, tx.ExecuteOnState(genesisState))
@@ -101,16 +96,16 @@ func TestRegisterWriteKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(acc.Writers()), 1)
-	assert.Equal(t, acc.Writers(), [][]byte{bytes.Hex2Bytes(writer)})
+	assert.Equal(t, acc.Writers(), [][]byte{byteutils.Hex2Bytes(writer)})
 
 	genesisState.BeginBatch()
-	assert.NoError(t, genesisState.AcceptTransaction(tx, genesisBlock.Timestamp()))
+	assert.NoError(t, genesisState.AcceptTransaction(tx, test.GenesisBlock.Timestamp()))
 	genesisState.Commit()
 
 	removePayload := core.NewRemoveWriterPayload(common.HexToAddress(writer))
 	removePayloadBuf, err := removePayload.ToBytes()
 	assert.NoError(t, err)
-	txRemove, err := core.NewTransaction(chainID,
+	txRemove, err := core.NewTransaction(test.ChainID,
 		common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
 		common.Address{},
 		util.Uint128Zero(), 2,
@@ -135,13 +130,13 @@ func TestVerifyDelegation(t *testing.T) {
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	owner := "03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"
-	txRegister, err := core.NewTransaction(chainID,
+	txRegister, err := core.NewTransaction(test.ChainID,
 		common.HexToAddress(owner),
 		common.Address{},
 		util.Uint128Zero(), 1,
 		core.TxOperationRegisterWKey, payloadBuf)
 
-	txDelegated, err := core.NewTransaction(chainID,
+	txDelegated, err := core.NewTransaction(test.ChainID,
 		common.HexToAddress(owner),
 		common.HexToAddress("027064502450c5192fabba2ac9714606edd724a9b03cc79d26327159435eba99a7"),
 		util.NewUint128FromUint(10), 2,
@@ -162,14 +157,14 @@ func TestVerifyDelegation(t *testing.T) {
 	sig.InitSign(privKey)
 	assert.NoError(t, txRegister.SignThis(sig))
 
-	genesisState, err := genesisBlock.State().Clone()
+	genesisState, err := test.GenesisBlock.State().Clone()
 	assert.NoError(t, err)
 
 	assert.Equal(t, core.ErrInvalidTxDelegation, txDelegated.VerifyDelegation(genesisState))
 
 	genesisState.BeginBatch()
 	assert.NoError(t, txRegister.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txRegister, genesisBlock.Timestamp()))
+	assert.NoError(t, genesisState.AcceptTransaction(txRegister, test.GenesisBlock.Timestamp()))
 	genesisState.Commit()
 
 	assert.NoError(t, txDelegated.VerifyDelegation(genesisState))
@@ -178,13 +173,13 @@ func TestVerifyDelegation(t *testing.T) {
 func TestAddRecord(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	encKey := bytes.Hex2Bytes("abcdef")
-	seed := bytes.Hex2Bytes("5eed")
+	encKey := byteutils.Hex2Bytes("abcdef")
+	seed := byteutils.Hex2Bytes("5eed")
 	payload := core.NewAddRecordPayload(recordHash, storage, encKey, seed)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
-	txAddRecord, err := core.NewTransaction(chainID,
+	txAddRecord, err := core.NewTransaction(test.ChainID,
 		owner,
 		common.Address{},
 		util.Uint128Zero(), 1,
@@ -198,12 +193,12 @@ func TestAddRecord(t *testing.T) {
 	sig.InitSign(privKey)
 	assert.NoError(t, txAddRecord.SignThis(sig))
 
-	genesisState, err := genesisBlock.State().Clone()
+	genesisState, err := test.GenesisBlock.State().Clone()
 	assert.NoError(t, err)
 
 	genesisState.BeginBatch()
 	assert.NoError(t, txAddRecord.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, genesisBlock.Timestamp()))
+	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, test.GenesisBlock.Timestamp()))
 	genesisState.Commit()
 
 	record, err := genesisState.GetRecord(recordHash)
@@ -219,13 +214,13 @@ func TestAddRecord(t *testing.T) {
 func TestAddRecordReader(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	ownerEncKey := bytes.Hex2Bytes("abcdef")
-	ownerSeed := bytes.Hex2Bytes("5eed")
+	ownerEncKey := byteutils.Hex2Bytes("abcdef")
+	ownerSeed := byteutils.Hex2Bytes("5eed")
 	addRecordPayload := core.NewAddRecordPayload(recordHash, storage, ownerEncKey, ownerSeed)
 	addRecordPayloadBuf, err := addRecordPayload.ToBytes()
 	assert.NoError(t, err)
 	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
-	txAddRecord, err := core.NewTransaction(chainID,
+	txAddRecord, err := core.NewTransaction(test.ChainID,
 		owner,
 		common.Address{},
 		util.Uint128Zero(), 1,
@@ -240,13 +235,13 @@ func TestAddRecordReader(t *testing.T) {
 	assert.NoError(t, txAddRecord.SignThis(sig))
 
 	reader := common.HexToAddress("03c5e1fa1ee82af7398ae8cc10ae12dc0ee9692cb06346810e3af74cbd3811276f")
-	readerEncKey := bytes.Hex2Bytes("123456")
-	readerSeed := bytes.Hex2Bytes("2eed")
+	readerEncKey := byteutils.Hex2Bytes("123456")
+	readerSeed := byteutils.Hex2Bytes("2eed")
 	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash, reader, readerEncKey, readerSeed)
 	addRecordReaderPayloadBuf, err := addRecordReaderPayload.ToBytes()
 	assert.NoError(t, err)
 
-	txAddRecordReader, err := core.NewTransaction(chainID,
+	txAddRecordReader, err := core.NewTransaction(test.ChainID,
 		owner,
 		common.Address{},
 		util.Uint128Zero(), 2,
@@ -254,14 +249,14 @@ func TestAddRecordReader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, txAddRecordReader.SignThis(sig))
 
-	genesisState, err := genesisBlock.State().Clone()
+	genesisState, err := test.GenesisBlock.State().Clone()
 	assert.NoError(t, err)
 
 	genesisState.BeginBatch()
 	assert.NoError(t, txAddRecord.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, genesisBlock.Timestamp()))
+	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, test.GenesisBlock.Timestamp()))
 	assert.NoError(t, txAddRecordReader.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txAddRecordReader, genesisBlock.Timestamp()))
+	assert.NoError(t, genesisState.AcceptTransaction(txAddRecordReader, test.GenesisBlock.Timestamp()))
 	genesisState.Commit()
 
 	record, err := genesisState.GetRecord(recordHash)

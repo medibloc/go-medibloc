@@ -6,7 +6,7 @@ import (
 	"hash/crc32"
 	"time"
 
-	byteutils "github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )

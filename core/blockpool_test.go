@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	testUtil "github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -11,25 +12,25 @@ import (
 func TestBlockPoolPush(t *testing.T) {
 	tests := []struct {
 		name        string
-		idxToParent []blockID
+		idxToParent []testUtil.BlockID
 	}{
-		{"case 1", []blockID{genesisID, 0, 0, 1, 1, 2, 2}},
-		{"case 2", []blockID{genesisID, 0, 1, 2, 3, 4, 5}},
-		{"case 3", []blockID{genesisID, 0, 0, 0, 0, 0, 0}},
+		{"case 1", []testUtil.BlockID{testUtil.GenesisID, 0, 0, 1, 1, 2, 2}},
+		{"case 2", []testUtil.BlockID{testUtil.GenesisID, 0, 1, 2, 3, 4, 5}},
+		{"case 3", []testUtil.BlockID{testUtil.GenesisID, 0, 0, 0, 0, 0, 0}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			bp, err := core.NewBlockPool(128)
 			assert.Nil(t, err)
 
-			blocks := newBlockTestSet(t, test.idxToParent)
+			blocks := testUtil.NewBlockTestSet(t, test.idxToParent)
 			for _, block := range blocks {
 				err = bp.Push(block)
 				assert.Nil(t, err)
 			}
 
 			for i, parentID := range test.idxToParent {
-				id := blockID(i)
+				id := testUtil.BlockID(i)
 				block := blocks[id]
 
 				// Check finding parent block
@@ -46,7 +47,7 @@ func TestBlockPoolPush(t *testing.T) {
 				assert.True(t, equalBlocks(childBlocks, bp.FindChildren(block)))
 
 				// Check ancestor block
-				assert.Equal(t, genesisBlock, bp.FindUnlinkedAncestor(block))
+				assert.Equal(t, testUtil.GenesisBlock, bp.FindUnlinkedAncestor(block))
 			}
 		})
 	}
@@ -57,8 +58,8 @@ func TestBlockPoolEvict(t *testing.T) {
 	bp, err := core.NewBlockPool(cacheSize)
 	require.Nil(t, err)
 
-	idxToParent := []blockID{genesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := newBlockTestSet(t, idxToParent)
+	idxToParent := []testUtil.BlockID{testUtil.GenesisID, 0, 1, 2, 3, 4, 5}
+	blockMap := testUtil.NewBlockTestSet(t, idxToParent)
 
 	blocks := mapToSlice(blockMap)
 	for i, block := range blocks {
@@ -80,7 +81,7 @@ func TestDuplicatedBlock(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	block := newTestBlock(t, genesisBlock)
+	block := testUtil.NewTestBlock(t, testUtil.GenesisBlock)
 	err = bp.Push(block)
 	assert.Nil(t, err)
 
@@ -101,29 +102,29 @@ func TestRemove(t *testing.T) {
 	require.Nil(t, err)
 
 	// Push genesis
-	err = bp.Push(genesisBlock)
+	err = bp.Push(testUtil.GenesisBlock)
 	assert.Nil(t, err)
 
 	// Push genesis's child
-	block := newTestBlock(t, genesisBlock)
+	block := testUtil.NewTestBlock(t, testUtil.GenesisBlock)
 	err = bp.Push(block)
 	assert.Nil(t, err)
 
 	// Check genesis's child
-	blocks := bp.FindChildren(genesisBlock)
+	blocks := bp.FindChildren(testUtil.GenesisBlock)
 	assert.Len(t, blocks, 1)
 	assert.Equal(t, block, blocks[0])
 
 	// Check block's parent
 	parent := bp.FindParent(block)
-	assert.Equal(t, genesisBlock, parent)
+	assert.Equal(t, testUtil.GenesisBlock, parent)
 
 	// Remove block
 	bp.Remove(block)
 
 	// Check again
 	assert.False(t, bp.Has(block))
-	blocks = bp.FindChildren(genesisBlock)
+	blocks = bp.FindChildren(testUtil.GenesisBlock)
 	assert.Len(t, blocks, 0)
 }
 
@@ -131,11 +132,11 @@ func TestNotFound(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	blocks := bp.FindChildren(genesisBlock)
+	blocks := bp.FindChildren(testUtil.GenesisBlock)
 	assert.Len(t, blocks, 0)
 
-	block := bp.FindUnlinkedAncestor(genesisBlock)
-	assert.Equal(t, genesisBlock, block)
+	block := bp.FindUnlinkedAncestor(testUtil.GenesisBlock)
+	assert.Equal(t, testUtil.GenesisBlock, block)
 
 	block = bp.FindParent(block)
 	assert.Nil(t, err)
@@ -145,12 +146,12 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	grandParent := newTestBlock(t, genesisBlock)
-	parent := newTestBlock(t, grandParent)
-	child1 := newTestBlock(t, parent)
-	child2 := newTestBlock(t, parent)
+	grandParent := testUtil.NewTestBlock(t, testUtil.GenesisBlock)
+	parent := testUtil.NewTestBlock(t, grandParent)
+	child1 := testUtil.NewTestBlock(t, parent)
+	child2 := testUtil.NewTestBlock(t, parent)
 
-	err = bp.Push(genesisBlock)
+	err = bp.Push(testUtil.GenesisBlock)
 	assert.Nil(t, err)
 	err = bp.Push(grandParent)
 	assert.Nil(t, err)
@@ -165,17 +166,17 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	assert.Equal(t, grandParent, block)
 
 	block = bp.FindUnlinkedAncestor(parent)
-	assert.Equal(t, genesisBlock, block)
+	assert.Equal(t, testUtil.GenesisBlock, block)
 
 	blocks := bp.FindChildren(parent)
 	assert.Len(t, blocks, 2)
 	assert.True(t, equalBlocks([]core.HashableBlock{child1, child2}, blocks))
 }
 
-func findChildIDs(idxToParent []blockID, id blockID) (childIDs []blockID) {
+func findChildIDs(idxToParent []testUtil.BlockID, id testUtil.BlockID) (childIDs []testUtil.BlockID) {
 	for i, parentID := range idxToParent {
 		if parentID == id {
-			childIDs = append(childIDs, blockID(i))
+			childIDs = append(childIDs, testUtil.BlockID(i))
 		}
 	}
 	return childIDs
@@ -199,7 +200,7 @@ func equalBlocks(expected, actual []core.HashableBlock) bool {
 	return true
 }
 
-func mapToSlice(blocks map[blockID]*core.Block) (slice []*core.Block) {
+func mapToSlice(blocks map[testUtil.BlockID]*core.Block) (slice []*core.Block) {
 	for _, block := range blocks {
 		slice = append(slice, block)
 	}

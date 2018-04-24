@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTransactionManager(t *testing.T) {
-	mgrs, closeFn := newTestTransactionManagers(t, 2)
+	mgrs, closeFn := test.NewTestTransactionManagers(t, 2)
 	defer closeFn()
 
-	tx := newRandomSignedTransaction(t)
+	tx := test.NewRandomSignedTransaction(t)
 
 	mgrs[0].Broadcast(tx)
 	var actual *core.Transaction
@@ -23,7 +24,7 @@ func TestTransactionManager(t *testing.T) {
 	}
 	assert.EqualValues(t, tx.Hash(), actual.Hash())
 
-	tx = newRandomSignedTransaction(t)
+	tx = test.NewRandomSignedTransaction(t)
 	mgrs[1].Relay(tx)
 	actual = nil
 	for actual == nil {
@@ -34,34 +35,34 @@ func TestTransactionManager(t *testing.T) {
 }
 
 func TestTransactionManagerAbnormalTx(t *testing.T) {
-	mgrs, closeFn := newTestTransactionManagers(t, 2)
+	mgrs, closeFn := test.NewTestTransactionManagers(t, 2)
 	defer closeFn()
 
 	sender, receiver := mgrs[0], mgrs[1]
 
 	// No signature
-	noSign := newRandomTransaction(t)
+	noSign := test.NewRandomTransaction(t)
 	expectTxFiltered(t, sender, receiver, noSign)
 
 	// Invalid signature
-	from, to := newPrivateKey(t), newPrivateKey(t)
-	invalidSign := newTransaction(t, from, to, 10)
-	signTx(t, invalidSign, to)
+	from, to := test.NewPrivateKey(t), test.NewPrivateKey(t)
+	invalidSign := test.NewTransaction(t, from, to, 10)
+	test.SignTx(t, invalidSign, to)
 	expectTxFiltered(t, sender, receiver, invalidSign)
 }
 
 func TestTransactionManagerDupTxFromNet(t *testing.T) {
-	mgrs, closeFn := newTestTransactionManagers(t, 2)
+	mgrs, closeFn := test.NewTestTransactionManagers(t, 2)
 	defer closeFn()
 
 	sender, receiver := mgrs[0], mgrs[1]
 
-	dup := newRandomSignedTransaction(t)
+	dup := test.NewRandomSignedTransaction(t)
 	sender.Broadcast(dup)
 	sender.Broadcast(dup)
 	time.Sleep(100 * time.Millisecond)
 
-	normal := newRandomSignedTransaction(t)
+	normal := test.NewRandomSignedTransaction(t)
 	sender.Broadcast(normal)
 
 	var count int
@@ -79,10 +80,10 @@ func TestTransactionManagerDupTxFromNet(t *testing.T) {
 }
 
 func TestTransactionManagerDupTxPush(t *testing.T) {
-	mgrs, closeFn := newTestTransactionManagers(t, 2)
+	mgrs, closeFn := test.NewTestTransactionManagers(t, 2)
 	defer closeFn()
 
-	dup := newRandomSignedTransaction(t)
+	dup := test.NewRandomSignedTransaction(t)
 	err := mgrs[0].Push(dup)
 	assert.NoError(t, err)
 	err = mgrs[0].Push(dup)
@@ -99,7 +100,7 @@ func expectTxFiltered(t *testing.T, sender, receiver *core.TransactionManager, a
 
 	time.Sleep(100 * time.Millisecond)
 
-	normal := newRandomSignedTransaction(t)
+	normal := test.NewRandomSignedTransaction(t)
 	sender.Broadcast(normal)
 
 	var recv *core.Transaction

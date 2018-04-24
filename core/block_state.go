@@ -5,17 +5,19 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 type states struct {
-	accState     *AccountStateBatch
-	txsState     *TrieBatch
-	usageState   *TrieBatch
-	recordsState *TrieBatch
+	accState       *AccountStateBatch
+	txsState       *TrieBatch
+	usageState     *TrieBatch
+	recordsState   *TrieBatch
+	consensusState *TrieBatch
 
 	storage storage.Storage
 }
@@ -41,12 +43,18 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	consensusState, err := NewTrieBatch(nil, stor)
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:     accState,
-		txsState:     txsState,
-		usageState:   usageState,
-		recordsState: recordsState,
-		storage:      stor,
+		accState:       accState,
+		txsState:       txsState,
+		usageState:     usageState,
+		recordsState:   recordsState,
+		consensusState: consensusState,
+		storage:        stor,
 	}, nil
 }
 
@@ -71,12 +79,18 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	consensusState, err := NewTrieBatch(st.consensusState.RootHash(), st.storage)
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:     accState,
-		txsState:     txsState,
-		usageState:   usageState,
-		recordsState: recordsState,
-		storage:      st.storage,
+		accState:       accState,
+		txsState:       txsState,
+		usageState:     usageState,
+		recordsState:   recordsState,
+		consensusState: consensusState,
+		storage:        st.storage,
 	}, nil
 }
 
@@ -88,6 +102,9 @@ func (st *states) BeginBatch() error {
 		return err
 	}
 	if err := st.usageState.BeginBatch(); err != nil {
+		return err
+	}
+	if err := st.consensusState.BeginBatch(); err != nil {
 		return err
 	}
 	return st.recordsState.BeginBatch()
@@ -103,6 +120,9 @@ func (st *states) RollBack() error {
 	if err := st.usageState.RollBack(); err != nil {
 		return err
 	}
+	if err := st.consensusState.RollBack(); err != nil {
+		return err
+	}
 	return st.recordsState.RollBack()
 }
 
@@ -114,6 +134,9 @@ func (st *states) Commit() error {
 		return err
 	}
 	if err := st.usageState.Commit(); err != nil {
+		return err
+	}
+	if err := st.consensusState.Commit(); err != nil {
 		return err
 	}
 	return st.recordsState.Commit()
@@ -133,6 +156,10 @@ func (st *states) UsageRoot() common.Hash {
 
 func (st *states) RecordsRoot() common.Hash {
 	return common.BytesToHash(st.recordsState.RootHash())
+}
+
+func (st *states) ConsensusRoot() common.Hash {
+	return common.BytesToHash(st.consensusState.RootHash())
 }
 
 func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
@@ -168,6 +195,15 @@ func (st *states) LoadRecordsRoot(rootHash common.Hash) error {
 		return err
 	}
 	st.recordsState = recordsState
+	return nil
+}
+
+func (st *states) LoadConsensusRoot(rootHash common.Hash) error {
+	consensusState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+	if err != nil {
+		return err
+	}
+	st.consensusState = consensusState
 	return nil
 }
 
@@ -228,11 +264,11 @@ func (st *states) AddRecordReader(tx *Transaction, dataHash common.Hash, reader 
 	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
 		return err
 	}
-	if bytes.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
+	if byteutils.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
 		return ErrTxIsNotFromRecordOwner
 	}
 	for _, r := range pbRecord.Readers {
-		if bytes.Equal(reader.Bytes(), r.Address) {
+		if byteutils.Equal(reader.Bytes(), r.Address) {
 			return ErrRecordReaderAlreadyAdded
 		}
 	}
@@ -339,6 +375,42 @@ func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
 		return nil, err
 	}
 	return pbUsage.Timestamps, nil
+}
+
+// Dynasty returns members belonging to the current dynasty.
+func (st *states) Dynasty() (members []*common.Hash, err error) {
+	iter, err := st.consensusState.Iterator(nil)
+	if err != nil && err != trie.ErrNotFound {
+		return nil, err
+	}
+	if err != nil {
+		return members, nil
+	}
+
+	exist, err := iter.Next()
+	if err != nil {
+		return nil, err
+	}
+	for exist {
+		member := common.BytesToHash(iter.Value())
+		members = append(members, &member)
+		exist, err = iter.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return members, nil
+}
+
+// SetDynasty sets dynasty members.
+func (st *states) SetDynasty(miners []*common.Hash) error {
+	for _, miner := range miners {
+		err := st.consensusState.Put(miner.Bytes(), miner.Bytes())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BlockState possesses every states a block should have

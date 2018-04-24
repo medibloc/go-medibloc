@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +42,7 @@ func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
 }
 
 func nextBlockData(t *testing.T, parent *core.Block) *core.BlockData {
-	block := newTestBlockWithTxs(t, parent)
+	block := test.NewTestBlockWithTxs(t, parent)
 	require.Nil(t, block.ExecuteAll())
 	require.Nil(t, block.Seal())
 
@@ -49,15 +50,15 @@ func nextBlockData(t *testing.T, parent *core.Block) *core.BlockData {
 	return restoreBlockData(t, block)
 }
 
-func getBlockDataList(t *testing.T, idxToParent []blockID) []*core.BlockData {
-	blockMap := make(map[blockID]*core.Block)
-	blockMap[genesisID] = genesisBlock
+func getBlockDataList(t *testing.T, idxToParent []test.BlockID) []*core.BlockData {
+	blockMap := make(map[test.BlockID]*core.Block)
+	blockMap[test.GenesisID] = test.GenesisBlock
 	blockDatas := make([]*core.BlockData, len(idxToParent))
 	for i, parentId := range idxToParent {
-		block := newTestBlockWithTxs(t, blockMap[parentId])
+		block := test.NewTestBlockWithTxs(t, blockMap[parentId])
 		require.Nil(t, block.ExecuteAll())
 		require.Nil(t, block.Seal())
-		blockMap[blockID(i)] = block
+		blockMap[test.BlockID(i)] = block
 
 		// restore state for simiulate network received message
 		blockDatas[i] = restoreBlockData(t, block)
@@ -70,9 +71,9 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 	bc, bp := getBcBp(t)
 	subscriber := core.NewBlockSubscriber(bp, bc)
 
-	idxToParent := []blockID{genesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := make(map[blockID]*core.Block)
-	blockMap[genesisID] = genesisBlock
+	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
+	blockMap := make(map[test.BlockID]*core.Block)
+	blockMap[test.GenesisID] = test.GenesisBlock
 	for idx, parentId := range idxToParent {
 		blockData := nextBlockData(t, blockMap[parentId])
 
@@ -80,7 +81,7 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Equal(t, bc.MainTailBlock().Hash(), blockData.Hash())
 		assert.Equal(t, false, bp.Has(blockData))
-		blockMap[blockID(idx)] = bc.MainTailBlock()
+		blockMap[test.BlockID(idx)] = bc.MainTailBlock()
 	}
 }
 
@@ -88,7 +89,7 @@ func TestBlockSubscriber_Reverse(t *testing.T) {
 	bc, bp := getBcBp(t)
 	subscriber := core.NewBlockSubscriber(bp, bc)
 
-	idxToParent := []blockID{genesisID, 0, 1, 2, 3, 4, 5}
+	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockDatas := getBlockDataList(t, idxToParent)
 
 	for i := len(idxToParent) - 1; i >= 0; i-- {
@@ -96,7 +97,7 @@ func TestBlockSubscriber_Reverse(t *testing.T) {
 		err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
 		require.Nil(t, err)
 		if i > 0 {
-			require.Equal(t, genesisBlock.Hash(), bc.MainTailBlock().Hash())
+			require.Equal(t, test.GenesisBlock.Hash(), bc.MainTailBlock().Hash())
 			assert.Equal(t, true, bp.Has(blockData))
 		} else {
 			assert.Equal(t, blockDatas[len(idxToParent)-1].Hash(), bc.MainTailBlock().Hash())
@@ -110,11 +111,11 @@ func TestBlockSubscriber_Tree(t *testing.T) {
 	subscriber := core.NewBlockSubscriber(bp, bc)
 
 	tests := []struct {
-		idxToParent []blockID
+		idxToParent []test.BlockID
 	}{
-		{[]blockID{genesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
-		{[]blockID{genesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
-		{[]blockID{genesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
+		{[]test.BlockID{test.GenesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
+		{[]test.BlockID{test.GenesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
+		{[]test.BlockID{test.GenesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
 	}
 
 	for _, test := range tests {

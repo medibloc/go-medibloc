@@ -9,7 +9,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
-	byteutils "github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"golang.org/x/crypto/sha3"
 )
@@ -19,10 +19,11 @@ type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
 
-	accsRoot    common.Hash
-	txsRoot     common.Hash
-	usageRoot   common.Hash
-	recordsRoot common.Hash
+	accsRoot      common.Hash
+	txsRoot       common.Hash
+	usageRoot     common.Hash
+	recordsRoot   common.Hash
+	consensusRoot common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -35,17 +36,18 @@ type BlockHeader struct {
 // ToProto converts BlockHeader to corepb.BlockHeader
 func (b *BlockHeader) ToProto() (proto.Message, error) {
 	return &corepb.BlockHeader{
-		Hash:        b.hash.Bytes(),
-		ParentHash:  b.parentHash.Bytes(),
-		AccsRoot:    b.accsRoot.Bytes(),
-		TxsRoot:     b.txsRoot.Bytes(),
-		UsageRoot:   b.usageRoot.Bytes(),
-		RecordsRoot: b.recordsRoot.Bytes(),
-		Coinbase:    b.coinbase.Bytes(),
-		Timestamp:   b.timestamp,
-		ChainId:     b.chainID,
-		Alg:         uint32(b.alg),
-		Sign:        b.sign,
+		Hash:          b.hash.Bytes(),
+		ParentHash:    b.parentHash.Bytes(),
+		AccsRoot:      b.accsRoot.Bytes(),
+		TxsRoot:       b.txsRoot.Bytes(),
+		UsageRoot:     b.usageRoot.Bytes(),
+		RecordsRoot:   b.recordsRoot.Bytes(),
+		ConsensusRoot: b.consensusRoot.Bytes(),
+		Coinbase:      b.coinbase.Bytes(),
+		Timestamp:     b.timestamp,
+		ChainId:       b.chainID,
+		Alg:           uint32(b.alg),
+		Sign:          b.sign,
 	}, nil
 }
 
@@ -58,6 +60,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.txsRoot = common.BytesToHash(msg.TxsRoot)
 		b.usageRoot = common.BytesToHash(msg.UsageRoot)
 		b.recordsRoot = common.BytesToHash(msg.RecordsRoot)
+		b.consensusRoot = common.BytesToHash(msg.ConsensusRoot)
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
@@ -193,21 +196,24 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	if block.state, err = NewBlockState(storage); err != nil {
 		return nil, err
 	}
-	if err := block.state.LoadAccountsRoot(block.header.accsRoot); err != nil {
+	if err = block.state.LoadAccountsRoot(block.header.accsRoot); err != nil {
 		return nil, err
 	}
-	if err := block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
+	if err = block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
 		return nil, err
 	}
 	if common.IsZeroHash(block.header.usageRoot) == false {
-		if err := block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
+		if err = block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
 			return nil, err
 		}
 	}
 	if common.IsZeroHash(block.header.recordsRoot) == false {
-		if err := block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
+		if err = block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
 			return nil, err
 		}
+	}
+	if err = block.state.LoadConsensusRoot(block.header.consensusRoot); err != nil {
+		return nil, err
 	}
 	block.storage = storage
 	return block, nil
@@ -274,9 +280,14 @@ func (bd *BlockData) UsageRoot() common.Hash {
 	return bd.header.usageRoot
 }
 
-// RecordsRoot returns root hash of usage trie
+// RecordsRoot returns root hash of records trie
 func (bd *BlockData) RecordsRoot() common.Hash {
 	return bd.header.recordsRoot
+}
+
+// ConsensusRoot returns root hash of consensus trie
+func (bd *BlockData) ConsensusRoot() common.Hash {
+	return bd.header.consensusRoot
 }
 
 // Height returns height
@@ -315,6 +326,7 @@ func (block *Block) Seal() error {
 	block.header.txsRoot = block.state.TransactionsRoot()
 	block.header.usageRoot = block.state.UsageRoot()
 	block.header.recordsRoot = block.state.RecordsRoot()
+	block.header.consensusRoot = block.state.ConsensusRoot()
 
 	var err error
 	block.header.hash, err = HashBlockData(block.BlockData)
@@ -339,6 +351,7 @@ func HashBlockData(bd *BlockData) (common.Hash, error) {
 	hasher.Write(bd.TransactionsRoot().Bytes())
 	hasher.Write(bd.UsageRoot().Bytes())
 	hasher.Write(bd.RecordsRoot().Bytes())
+	hasher.Write(bd.ConsensusRoot().Bytes())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
@@ -417,6 +430,9 @@ func (block *Block) VerifyState() error {
 	if !byteutils.Equal(block.state.RecordsRoot().Bytes(), block.RecordsRoot().Bytes()) {
 		return ErrInvalidBlockTxsRoot
 	}
+	if !byteutils.Equal(block.state.ConsensusRoot().Bytes(), block.ConsensusRoot().Bytes()) {
+		return ErrInvalidBlockConsensusRoot
+	}
 	return nil
 }
 
@@ -480,17 +496,18 @@ func (block *Block) Commit() error {
 func (block *Block) GetBlockData() *BlockData {
 	bd := &BlockData{
 		header: &BlockHeader{
-			hash:        block.Hash(),
-			parentHash:  block.ParentHash(),
-			accsRoot:    block.AccountsRoot(),
-			txsRoot:     block.TransactionsRoot(),
-			usageRoot:   block.UsageRoot(),
-			recordsRoot: block.RecordsRoot(),
-			coinbase:    block.Coinbase(),
-			timestamp:   block.Timestamp(),
-			chainID:     block.ChainID(),
-			alg:         block.Alg(),
-			sign:        block.Signature(),
+			hash:          block.Hash(),
+			parentHash:    block.ParentHash(),
+			accsRoot:      block.AccountsRoot(),
+			txsRoot:       block.TransactionsRoot(),
+			usageRoot:     block.UsageRoot(),
+			recordsRoot:   block.RecordsRoot(),
+			consensusRoot: block.ConsensusRoot(),
+			coinbase:      block.Coinbase(),
+			timestamp:     block.Timestamp(),
+			chainID:       block.ChainID(),
+			alg:           block.Alg(),
+			sign:          block.Signature(),
 		},
 		height: block.Height(),
 	}

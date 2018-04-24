@@ -1,11 +1,11 @@
 package rpc
 
 import (
-	"log"
 	"net"
 
 	"github.com/medibloc/go-medibloc/core"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/util/logging"
 	"google.golang.org/grpc"
 )
 
@@ -20,20 +20,21 @@ type Bridge interface {
 
 // GRPCServer is GRPCServer's interface.
 type GRPCServer interface {
-	Start(string) error
-	RunGateway() error
+	Start() error
+	RunGateway(string) error
 	Stop()
 }
 
 // Server is rpc server.
 type Server struct {
+	addrGrpc  string
 	rpcServer *grpc.Server
 }
 
 // NewServer returns NewServer.
-func NewServer(bridge Bridge) GRPCServer {
+func NewServer(bridge Bridge, addrGrpc string) GRPCServer {
 	rpc := grpc.NewServer()
-	srv := &Server{rpcServer: rpc}
+	srv := &Server{rpcServer: rpc, addrGrpc: addrGrpc}
 	api := &APIService{bridge: bridge, server: srv}
 	admin := &AdminService{bridge: bridge, server: srv}
 	rpcpb.RegisterApiServiceServer(rpc, api)
@@ -42,27 +43,27 @@ func NewServer(bridge Bridge) GRPCServer {
 }
 
 // Start starts rpc server.
-func (s *Server) Start(addr string) error {
-	lis, err := net.Listen("tcp", addr)
+func (s *Server) Start() error {
+	lis, err := net.Listen("tcp", s.addrGrpc)
 	if err != nil {
 	}
 	go func() {
 		if err := s.rpcServer.Serve(lis); err != nil {
-			log.Printf("Somethins is wrong in Start : %v", err)
+			logging.Console().Error(err)
 		}
 	}()
-	log.Println("Server is running")
+	logging.Console().Info("GRPC Server is running...")
 	return nil
 }
 
 // RunGateway runs rest gateway server.
-func (s *Server) RunGateway() error {
+func (s *Server) RunGateway(addrHTTP string) error {
 	go func() {
-		if err := httpServerRun(); err != nil {
-			log.Printf("Somethins is wrong in RunGateway : %v", err)
+		if err := httpServerRun(addrHTTP, s.addrGrpc); err != nil {
+			logging.Console().Error(err)
 		}
 	}()
-	log.Println("HTTPServer is running")
+	logging.Console().Info("GRPC HTTP Gateway is running...")
 	return nil
 }
 

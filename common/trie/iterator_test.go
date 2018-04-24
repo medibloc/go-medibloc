@@ -7,7 +7,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie/pb"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/bytes"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +18,7 @@ func TestIterator1(t *testing.T) {
 	names := []string{"123450", "123350", "122450", "223350", "133350"}
 	var keys [][]byte
 	for _, v := range names {
-		key := bytes.FromHex(v)
+		key := byteutils.FromHex(v)
 		keys = append(keys, key)
 	}
 	tr.Put(keys[0], []byte(names[0]))
@@ -110,7 +110,7 @@ func TestIterator2(t *testing.T) {
 	names := []string{"123450", "123350", "122450", "223350", "133350"}
 	var keys [][]byte
 	for _, v := range names {
-		key := bytes.FromHex(v)
+		key := byteutils.FromHex(v)
 		keys = append(keys, key)
 	}
 	tr.Put(keys[0], []byte(names[0]))

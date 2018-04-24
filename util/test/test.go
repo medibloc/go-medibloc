@@ -1,6 +1,24 @@
-package core_test
+// Copyright 2018 The go-medibloc Authors
+// This file is part of the go-medibloc library.
+//
+// The go-medibloc library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-medibloc library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-medibloc library. If not, see <http://www.gnu.org/licenses/>.
+
+package test
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"crypto/rand"
@@ -22,26 +40,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type blockID int
+// BlockID block ID
+type BlockID int
 
 var (
-	chainID      uint32  = 1010
-	genesisID    blockID = -1
-	genesisBlock *core.Block
-	fromAddress  = "02279dcbc360174b4348685e75287a60abc5290497d2e3330b6a1791c4f35bcd20"
+	// ChainID chain ID
+	ChainID uint32 = 1010
+	// DefaultGenesisConfPath default genesis file path
+	DefaultGenesisConfPath = path.Join(os.Getenv("GOPATH"), "src/github.com/medibloc/go-medibloc", "conf/default/genesis.conf")
+	// GenesisID genesis ID
+	GenesisID BlockID = -1
+	// GenesisBlock genesis Block
+	GenesisBlock *core.Block
+
+	fromAddress = "02279dcbc360174b4348685e75287a60abc5290497d2e3330b6a1791c4f35bcd20"
 )
 
 func init() {
-	conf, _ := core.LoadGenesisConf(defaultGenesisConfPath)
+	conf, _ := core.LoadGenesisConf(DefaultGenesisConfPath)
 	s, _ := storage.NewMemoryStorage()
-	genesisBlock, _ = core.NewGenesisBlock(conf, s)
-	chainID = conf.Meta.ChainId
+	GenesisBlock, _ = core.NewGenesisBlock(conf, s)
+	ChainID = conf.Meta.ChainId
 }
 
-// newBlockTestSet generates test block set from blockID to parentBlockID index
+// NewBlockTestSet generates test block set from BlockID to parentBlockID index
 //
 // Example
-// idxToParent := []blockID{genesisID, 0, 0, 1, 1, 2, 2}
+// idxToParent := []BlockID{genesisID, 0, 0, 1, 1, 2, 2}
 //
 //                     [genesis]
 //                         |
@@ -50,17 +75,17 @@ func init() {
 //                    [1]     [2]
 //                    / \     / \
 //                  [3] [4] [5] [6]
-func newBlockTestSet(t *testing.T, idxToParent []blockID) (blocks map[blockID]*core.Block) {
-	blocks = make(map[blockID]*core.Block)
+func NewBlockTestSet(t *testing.T, idxToParent []BlockID) (blocks map[BlockID]*core.Block) {
+	blocks = make(map[BlockID]*core.Block)
 	for i, parentID := range idxToParent {
-		if parentID == genesisID {
-			blocks[genesisID] = genesisBlock
+		if parentID == GenesisID {
+			blocks[GenesisID] = GenesisBlock
 		}
 		parentBlock, ok := blocks[parentID]
 		require.True(t, ok)
 
-		newBlock := newTestBlock(t, parentBlock)
-		newBlockID := blockID(i)
+		newBlock := NewTestBlock(t, parentBlock)
+		newBlockID := BlockID(i)
 		blocks[newBlockID] = newBlock
 	}
 	return blocks
@@ -73,21 +98,23 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 	} else {
 		coinbase = common.HexToAddress(coinbaseHex)
 	}
-	block, err := core.NewBlock(chainID, coinbase, parent)
+	block, err := core.NewBlock(ChainID, coinbase, parent)
 	require.Nil(t, err)
 	require.NotNil(t, block)
 	require.EqualValues(t, block.ParentHash(), parent.Hash())
 	return block
 }
 
-func newTestBlock(t *testing.T, parent *core.Block) *core.Block {
+// NewTestBlock return new block for test
+func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	block := getBlock(t, parent, "")
 	err := block.Seal()
 	require.Nil(t, err)
 	return block
 }
 
-func newTestBlockWithTxs(t *testing.T, parent *core.Block) *core.Block {
+// NewTestBlockWithTxs return new block containing transactions
+func NewTestBlockWithTxs(t *testing.T, parent *core.Block) *core.Block {
 	block := getBlock(t, parent, fromAddress)
 	txs := newTestTransactions(t, block)
 	block.SetTransactions(txs)
@@ -104,7 +131,7 @@ func newTestTransactions(t *testing.T, block *core.Block) core.Transactions {
 	}{
 		{
 			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
-			mockAddress(t, ks),
+			MockAddress(t, ks),
 			util.NewUint128FromUint(10),
 			"bd516113ecb3ad02f3a5bf750b65a545d56835e3d7ef92159dc655ed3745d5c0",
 		},
@@ -129,30 +156,34 @@ func newTestTransactions(t *testing.T, block *core.Block) core.Transactions {
 
 	return txs
 }
-func newTransaction(t *testing.T, fromKey signature.PrivateKey, toKey signature.PrivateKey, nonce uint64) *core.Transaction {
+
+// NewTransaction return new transaction
+func NewTransaction(t *testing.T, fromKey signature.PrivateKey, toKey signature.PrivateKey, nonce uint64) *core.Transaction {
 	from, err := common.PublicKeyToAddress(fromKey.PublicKey())
 	require.Nil(t, err)
 	to, err := common.PublicKeyToAddress(toKey.PublicKey())
 	require.Nil(t, err)
-	tx, err := core.NewTransaction(chainID, from, to, util.Uint128Zero(), nonce, "", nil)
+	tx, err := core.NewTransaction(ChainID, from, to, util.Uint128Zero(), nonce, "", nil)
 	require.Nil(t, err)
 	return tx
 }
 
-func newSignedTransaction(t *testing.T, from signature.PrivateKey, to signature.PrivateKey, nonce uint64) *core.Transaction {
-	tx := newTransaction(t, from, to, nonce)
-	signTx(t, tx, from)
+// NewSignedTransaction return new signed transaction
+func NewSignedTransaction(t *testing.T, from signature.PrivateKey, to signature.PrivateKey, nonce uint64) *core.Transaction {
+	tx := NewTransaction(t, from, to, nonce)
+	SignTx(t, tx, from)
 	return tx
 }
 
-func newPrivateKey(t *testing.T) signature.PrivateKey {
+// NewPrivateKey return new private key
+func NewPrivateKey(t *testing.T) signature.PrivateKey {
 	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
 	require.NoError(t, err)
 	return privKey
 }
 
 func newAddress(t *testing.T) common.Address {
-	key := newPrivateKey(t)
+	key := NewPrivateKey(t)
 	addr, err := common.PublicKeyToAddress(key.PublicKey())
 	require.NoError(t, err)
 	return addr
@@ -164,43 +195,49 @@ func newNonce(t *testing.T) uint64 {
 	return n.Uint64()
 }
 
-func newRandomTransaction(t *testing.T) *core.Transaction {
-	from := newPrivateKey(t)
-	to := newPrivateKey(t)
-	tx := newTransaction(t, from, to, newNonce(t))
+// NewRandomTransaction return new random transaction
+func NewRandomTransaction(t *testing.T) *core.Transaction {
+	from := NewPrivateKey(t)
+	to := NewPrivateKey(t)
+	tx := NewTransaction(t, from, to, newNonce(t))
 	return tx
 }
 
-func newRandomSignedTransaction(t *testing.T) *core.Transaction {
-	from := newPrivateKey(t)
-	to := newPrivateKey(t)
-	tx := newTransaction(t, from, to, newNonce(t))
-	signTx(t, tx, from)
+// NewRandomSignedTransaction return new random signed transaction
+func NewRandomSignedTransaction(t *testing.T) *core.Transaction {
+	from := NewPrivateKey(t)
+	to := NewPrivateKey(t)
+	tx := NewTransaction(t, from, to, newNonce(t))
+	SignTx(t, tx, from)
 	return tx
 }
 
-func signTx(t *testing.T, tx *core.Transaction, key signature.PrivateKey) {
+// SignTx sign transaction
+func SignTx(t *testing.T, tx *core.Transaction, key signature.PrivateKey) {
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
 	sig.InitSign(key)
 	tx.SignThis(sig)
 }
 
-func newKeySlice(t *testing.T, n int) []signature.PrivateKey {
+// NewKeySlice return key slice
+func NewKeySlice(t *testing.T, n int) []signature.PrivateKey {
 	var keys []signature.PrivateKey
 	for i := 0; i < n; i++ {
-		keys = append(keys, newPrivateKey(t))
+		keys = append(keys, NewPrivateKey(t))
 	}
 	return keys
 }
 
-func getStorage(t *testing.T) storage.Storage {
+// GetStorage return storage
+func GetStorage(t *testing.T) storage.Storage {
 	s, err := storage.NewMemoryStorage()
 	assert.Nil(t, err)
 	return s
 }
 
-func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
+// MockAddress return random generated address
+func MockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
 	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
 	assert.NoError(t, err)
 	acc, err := ks.SetKey(privKey)
@@ -208,7 +245,8 @@ func mockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
 	return acc
 }
 
-func newTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionManager, closeFn func()) {
+// NewTestTransactionManagers return new test transaction managers
+func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionManager, closeFn func()) {
 	// New test network
 	tm := net.NewMedServiceTestManager(n, 1)
 	svc, err := tm.MakeNewTestMedService()
@@ -221,7 +259,7 @@ func newTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 
 	med, err := medlet.New(&medletpb.Config{
 		Chain: &medletpb.ChainConfig{
-			ChainId: chainID,
+			ChainId: ChainID,
 		},
 	})
 	require.Nil(t, err)
