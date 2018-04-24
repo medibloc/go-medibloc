@@ -16,7 +16,7 @@
 		Account
 		BlockHeader
 		Block
-		DownloadBlock
+		DownloadParentBlock
 		Genesis
 		GenesisMeta
 		GenesisConsensus

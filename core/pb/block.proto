@@ -24,6 +24,7 @@ message Block {
   uint64 height = 3;
 }
 
-message DownloadBlock {
+message DownloadParentBlock {
   bytes hash = 1;
+  bytes sign = 2;
 }
