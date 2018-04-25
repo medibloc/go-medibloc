@@ -461,6 +461,57 @@ func (st *states) PopReservedTasks(before int64) []*ReservedTask {
 	return st.reservationQueue.PopTasksBefore(before)
 }
 
+func (st *states) PeekHeadReservedTask() *ReservedTask {
+	return st.reservationQueue.Peek()
+}
+
+// WithdrawVesting makes multiple reserved tasks for withdraw a certain amount of vesting
+func (st *states) WithdrawVesting(address common.Address, amount *util.Uint128, blockTime int64) error {
+	acc, err := st.GetAccount(address)
+	if err != nil {
+		return err
+	}
+	if amount.Cmp(acc.Vesting()) > 0 {
+		return ErrVestingNotEnough
+	}
+	splitAmount, err := amount.Div(util.NewUint128FromUint(RtWithdrawNum))
+	if err != nil {
+		return err
+	}
+	amountLeft := amount.DeepCopy()
+	payload := new(RtWithdraw)
+	for i := 0; i < RtWithdrawNum; i++ {
+		if amountLeft.Cmp(splitAmount) <= 0 {
+			payload, err = NewRtWithdraw(amountLeft)
+			if err != nil {
+				return err
+			}
+		} else {
+			payload, err = NewRtWithdraw(splitAmount)
+			if err != nil {
+				return err
+			}
+		}
+		task := NewReservedTask(RtWithdrawType, address, payload, blockTime+int64(i+1)*RtWithdrawInterval)
+		if err := st.AddReservedTask(task); err != nil {
+			return err
+		}
+		amountLeft, _ = amountLeft.Sub(splitAmount)
+	}
+	return nil
+}
+
+func (st *states) Vest(address common.Address, amount *util.Uint128) error {
+	if err := st.accState.SubBalance(address.Bytes(), amount); err != nil {
+		return err
+	}
+	return st.accState.AddVesting(address.Bytes(), amount)
+}
+
+func (st *states) SubVesting(address common.Address, amount *util.Uint128) error {
+	return st.accState.SubVesting(address.Bytes(), amount)
+}
+
 // BlockState possesses every states a block should have
 type BlockState struct {
 	*states
