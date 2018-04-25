@@ -5,33 +5,42 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestProtoReservedTask(t *testing.T) {
-	taskType := "testType"
+	taskType := core.RtWithdrawType
 	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	payload := []byte("testPayload")
+	payload, err := core.NewRtWithdraw(util.NewUint128FromUint(0))
+	assert.NoError(t, err)
 	timestamp := int64(1524192961)
 	task := core.NewReservedTask(taskType, from, payload, timestamp)
 	assert.NotNil(t, task)
-	msg := task.ToProto()
-	task2 := new(core.ReservedTask)
+	msg, err := task.ToProto()
+	assert.NoError(t, err)
+	task2 := core.NewReservedTask("", common.Address{}, payload, int64(0))
 	assert.NoError(t, task2.FromProto(msg))
 	assert.Equal(t, task, task2)
 }
 
 func TestProtoReservationQueue(t *testing.T) {
+	payloads := []*core.RtWithdraw{}
+	for i := 0; i < 3; i++ {
+		w, err := core.NewRtWithdraw(util.NewUint128FromUint(uint64(i)))
+		assert.NoError(t, err)
+		payloads = append(payloads, w)
+	}
 	data := []struct {
 		taskType  string
 		from      common.Address
-		payload   []byte
+		payload   core.Serializable
 		timestamp int64
 	}{
-		{"type1", common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"), []byte("payload1"), int64(1200000000)},
-		{"type2", common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"), []byte("payload2"), int64(1300000000)},
-		{"type3", common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), []byte("payload3"), int64(1400000000)},
+		{core.RtWithdrawType, common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"), payloads[0], int64(1200000000)},
+		{core.RtWithdrawType, common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"), payloads[1], int64(1300000000)},
+		{core.RtWithdrawType, common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), payloads[2], int64(1400000000)},
 	}
 
 	rq := core.NewEmptyReservationQueue(test.GenesisBlock.Storage())
@@ -53,15 +62,21 @@ func TestProtoReservationQueue(t *testing.T) {
 }
 
 func TestPopTasksBefore(t *testing.T) {
+	payloads := []*core.RtWithdraw{}
+	for i := 0; i < 3; i++ {
+		w, err := core.NewRtWithdraw(util.NewUint128FromUint(uint64(i)))
+		assert.NoError(t, err)
+		payloads = append(payloads, w)
+	}
 	data := []struct {
 		taskType  string
 		from      common.Address
-		payload   []byte
+		payload   core.Serializable
 		timestamp int64
 	}{
-		{"type1", common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"), []byte("payload1"), int64(1200000000)},
-		{"type2", common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"), []byte("payload2"), int64(1300000000)},
-		{"type3", common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), []byte("payload3"), int64(1400000000)},
+		{core.RtWithdrawType, common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"), payloads[0], int64(1200000000)},
+		{core.RtWithdrawType, common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"), payloads[1], int64(1300000000)},
+		{core.RtWithdrawType, common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), payloads[2], int64(1400000000)},
 	}
 
 	rq := core.NewEmptyReservationQueue(test.GenesisBlock.Storage())

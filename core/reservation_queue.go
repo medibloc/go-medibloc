@@ -11,78 +11,6 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// ReservedTask is a data representing reserved task
-type ReservedTask struct {
-	taskType  string
-	from      common.Address
-	payload   []byte
-	timestamp int64
-}
-
-// NewReservedTask generates a new instance of ReservedTask
-func NewReservedTask(taskType string, from common.Address, payload []byte, timestamp int64) *ReservedTask {
-	return &ReservedTask{
-		taskType:  taskType,
-		from:      from,
-		payload:   payload,
-		timestamp: timestamp,
-	}
-}
-
-// ToProto converts ReservedTask to corepb.ReservedTask
-func (t *ReservedTask) ToProto() proto.Message {
-	return &corepb.ReservedTask{
-		Type:      t.taskType,
-		From:      t.from.Bytes(),
-		Payload:   t.payload,
-		Timestamp: t.timestamp,
-	}
-}
-
-// FromProto converts
-func (t *ReservedTask) FromProto(msg proto.Message) error {
-	if msg, ok := msg.(*corepb.ReservedTask); ok {
-		t.taskType = msg.Type
-		t.from = common.BytesToAddress(msg.From)
-		t.payload = msg.Payload
-		t.timestamp = msg.Timestamp
-		return nil
-	}
-
-	return ErrCannotConvertResevedTask
-}
-
-// TaskType returns t.taskType
-func (t *ReservedTask) TaskType() string {
-	return t.taskType
-}
-
-// From returns t.from
-func (t *ReservedTask) From() common.Address {
-	return t.from
-}
-
-// Payload returns t.payload
-func (t *ReservedTask) Payload() []byte {
-	return t.payload
-}
-
-// Timestamp returns t.timestamp
-func (t *ReservedTask) Timestamp() int64 {
-	return t.timestamp
-}
-
-func (t *ReservedTask) calcHash() []byte {
-	hasher := sha3.New256()
-
-	hasher.Write([]byte(t.taskType))
-	hasher.Write(t.from.Bytes())
-	hasher.Write(t.payload)
-	hasher.Write(byteutils.FromInt64(t.timestamp))
-
-	return hasher.Sum(nil)
-}
-
 // ReservedTasks represents list of ReservedTask objects
 type ReservedTasks []*ReservedTask
 
@@ -119,12 +47,16 @@ func NewEmptyReservationQueue(storage storage.Storage) *ReservationQueue {
 }
 
 // ToProto converts ReservationQueue.task to corepb.ReservedTasks
-func (rq *ReservationQueue) ToProto() proto.Message {
+func (rq *ReservationQueue) ToProto() (proto.Message, error) {
 	pbTasks := new(corepb.ReservedTasks)
 	for _, t := range rq.tasks {
-		pbTasks.Tasks = append(pbTasks.Tasks, t.ToProto().(*corepb.ReservedTask))
+		pbTask, err := t.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		pbTasks.Tasks = append(pbTasks.Tasks, pbTask.(*corepb.ReservedTask))
 	}
-	return pbTasks
+	return pbTasks, nil
 }
 
 // FromProto converts corepb.ReservedTasks to ReservationQueue.task
@@ -137,6 +69,7 @@ func (rq *ReservationQueue) FromProto(msg proto.Message) error {
 			}
 			rq.tasks = append(rq.tasks, t)
 		}
+		return nil
 	}
 	return ErrCannotConvertResevedTasks
 }
@@ -155,8 +88,14 @@ func LoadReservationQueue(storage storage.Storage, hash common.Hash) (*Reservati
 	if err := proto.Unmarshal(b, pbTasks); err != nil {
 		return nil, err
 	}
-	rq.FromProto(pbTasks)
-	if !byteutils.Equal(hash.Bytes(), rq.calcHash()) {
+	if err := rq.FromProto(pbTasks); err != nil {
+		return nil, err
+	}
+	hashCalc, err := rq.calcHash()
+	if err != nil {
+		return nil, err
+	}
+	if !byteutils.Equal(hash.Bytes(), hashCalc) {
 		return nil, ErrInvalidReservationQueueHash
 	}
 	rq.hash = hash
@@ -216,7 +155,11 @@ func (rq *ReservationQueue) AddTask(t *ReservedTask) error {
 	}
 	rq.tasks = append(rq.tasks, t)
 	sort.Sort(rq.tasks)
-	rq.hash = common.BytesToHash(rq.calcHash())
+	hash, err := rq.calcHash()
+	if err != nil {
+		return err
+	}
+	rq.hash = common.BytesToHash(hash)
 	return nil
 }
 
@@ -231,7 +174,11 @@ func (rq *ReservationQueue) PopTasksBefore(timestamp int64) []*ReservedTask {
 	return tasks
 }
 
-func (rq *ReservationQueue) peek() *ReservedTask {
+// Peek returns first index task without removing it from listing
+func (rq *ReservationQueue) Peek() *ReservedTask {
+	if len(rq.tasks) == 0 {
+		return nil
+	}
 	return rq.tasks[0]
 }
 
@@ -246,7 +193,7 @@ func (rq *ReservationQueue) popOnlyBefore(timestamp int64) *ReservedTask {
 		return nil
 	}
 
-	head := rq.peek()
+	head := rq.Peek()
 	if head.timestamp <= timestamp {
 		return rq.pop()
 	}
@@ -254,7 +201,10 @@ func (rq *ReservationQueue) popOnlyBefore(timestamp int64) *ReservedTask {
 }
 
 func (rq *ReservationQueue) save() error {
-	msg := rq.ToProto()
+	msg, err := rq.ToProto()
+	if err != nil {
+		return err
+	}
 	b, err := proto.Marshal(msg)
 	if err != nil {
 		return err
@@ -262,10 +212,14 @@ func (rq *ReservationQueue) save() error {
 	return rq.storage.Put(rq.hash.Bytes(), b)
 }
 
-func (rq *ReservationQueue) calcHash() []byte {
+func (rq *ReservationQueue) calcHash() ([]byte, error) {
 	hasher := sha3.New256()
 	for _, t := range rq.tasks {
-		hasher.Write(t.calcHash())
+		taskBytes, err := t.calcHash()
+		if err != nil {
+			return nil, err
+		}
+		hasher.Write(taskBytes)
 	}
-	return hasher.Sum(nil)
+	return hasher.Sum(nil), nil
 }
