@@ -38,7 +38,7 @@ type Miner struct {
 }
 
 // StartMiner starts miner.
-func StartMiner(netService net.Service, bc *BlockChain, txMgr *TransactionManager) *Miner {
+func StartMiner(netService net.Service, bm *BlockManager, txMgr *TransactionManager) *Miner {
 	miner := &Miner{quit: make(chan int)}
 	go func() {
 		ticker := time.NewTicker(MinerInterval)
@@ -47,7 +47,7 @@ func StartMiner(netService net.Service, bc *BlockChain, txMgr *TransactionManage
 			select {
 			case <-ticker.C:
 				logging.Console().Info("[Miner] Try to make block")
-				err := makeBlock(netService, bc, txMgr)
+				err := makeBlock(netService, bm, txMgr)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -69,15 +69,15 @@ func (miner *Miner) StopMiner() {
 	miner.quit <- 0
 }
 
-func makeBlock(netService net.Service, bc *BlockChain, txMgr *TransactionManager) error {
-	curTail := bc.MainTailBlock()
+func makeBlock(netService net.Service, bm *BlockManager, txMgr *TransactionManager) error {
+	curTail := bm.TailBlock()
 	// TODO get coinbase from config file
 	var addr common.Address
 	_, err := rand.Read(addr[:])
 	if err != nil {
 		return err
 	}
-	block, err := NewBlock(bc.ChainID(), addr, curTail)
+	block, err := NewBlock(bm.ChainID(), addr, curTail)
 	if err != nil {
 		return err
 	}
@@ -101,8 +101,7 @@ func makeBlock(netService net.Service, bc *BlockChain, txMgr *TransactionManager
 		return err
 	}
 	// TODO block sign
-	blocks := []*Block{block}
-	err = bc.PutVerifiedNewBlocks(curTail, blocks, blocks)
+	err = bm.PushBlockData(block.GetBlockData())
 	if err != nil {
 		return err
 	}

@@ -21,10 +21,11 @@ type Medlet struct {
 	config             *medletpb.Config
 	genesis            *corepb.Genesis
 	netService         net.Service
-	rpc                rpc.GRPCServer
+	rpc                *rpc.Server
 	storage            storage.Storage
 	blockManager       *core.BlockManager
 	transactionManager *core.TransactionManager
+	miner              *core.Miner
 }
 
 // New returns a new medlet.
@@ -46,7 +47,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		return nil, err
 	}
 
-	// TODO @cl9200 rpc new
+	rpc := rpc.New(cfg)
 
 	stor, err := storage.NewLeveldbStorage(cfg.Chain.Datadir)
 	if err != nil {
@@ -70,6 +71,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		config:             cfg,
 		genesis:            genesis,
 		netService:         ns,
+		rpc:                rpc,
 		storage:            stor,
 		blockManager:       bm,
 		transactionManager: tm,
@@ -79,6 +81,8 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 // Setup sets up medlet.
 func (m *Medlet) Setup() error {
 	logging.Console().Info("Setting up Medlet...")
+
+	m.rpc.Setup(m.blockManager, m.transactionManager)
 
 	err := m.blockManager.Setup(m.genesis, m.storage, m.netService)
 	if err != nil {
@@ -104,14 +108,22 @@ func (m *Medlet) Start() error {
 		return err
 	}
 
+	err = m.rpc.Start()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to start rpc service.")
+		return err
+	}
+
 	m.blockManager.Start()
 
 	m.transactionManager.Start()
 
-	// TODO @cl9200 rpc start
-	//m.rpc = rpc.NewServer(&rpcBridge{bm: m.bs.BlockManager(), txMgr: m.txMgr}, m.config.Rpc.RpcListen[0]) // TODO choose index
-	//m.rpc.Start()
-	//m.rpc.RunGateway(m.config.Rpc.HttpListen[0]) // TODO choose index
+	// TODO @cl9200 Change to miner in consensus package.
+	if m.Config().Chain.StartMine {
+		m.miner = core.StartMiner(m.netService, m.blockManager, m.transactionManager)
+	}
 
 	metricsMedstartGauge.Update(1)
 
@@ -127,8 +139,12 @@ func (m *Medlet) Stop() {
 
 	m.transactionManager.Stop()
 
-	// TODO @cl9200 rpc stop
 	m.rpc.Stop()
+
+	// TODO @cl9200 Change to miner in consensus package.
+	if m.miner != nil {
+		m.miner.StopMiner()
+	}
 
 	logging.Console().Info("Stopped Medlet.")
 }
@@ -149,7 +165,7 @@ func (m *Medlet) NetService() net.Service {
 }
 
 // RPC returns RPC.
-func (m *Medlet) RPC() rpc.GRPCServer {
+func (m *Medlet) RPC() *rpc.Server {
 	return m.rpc
 }
 
