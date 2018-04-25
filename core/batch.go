@@ -18,7 +18,6 @@ package core
 
 import (
 	"encoding/hex"
-	"errors"
 
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
@@ -28,12 +27,7 @@ import (
 
 // Errors
 var (
-	ErrBalanceNotEnough      = errors.New("remaining balance is not enough")
-	ErrBeginAgainInBatch     = errors.New("cannot begin with a batch task unfinished")
-	ErrCannotCloneOnBatching = errors.New("cannot clone on batching")
-	ErrInvalidAmount         = errors.New("invalid amount")
-	ErrNotBatching           = errors.New("not batching")
-	ErrNotFound              = storage.ErrKeyNotFound
+	ErrNotFound = storage.ErrKeyNotFound
 )
 
 // Action represents operation types in BatchTrie
@@ -252,6 +246,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 		return stageAndReturn(&account{
 			address: address,
 			balance: util.NewUint128(),
+			vesting: util.NewUint128(),
 			nonce:   0,
 		}), nil
 	}
@@ -396,6 +391,43 @@ func (as *AccountStateBatch) IncrementNonce(address []byte) error {
 		return err
 	}
 	acc.nonce++
+	return nil
+}
+
+// AddVesting increases vesting
+func (as *AccountStateBatch) AddVesting(address []byte, amount *util.Uint128) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	vesting, err := acc.vesting.Add(amount)
+	if err != nil {
+		return err
+	}
+	acc.vesting = vesting
+	return nil
+}
+
+// SubVesting decreases vesting
+func (as *AccountStateBatch) SubVesting(address []byte, amount *util.Uint128) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	if amount.Cmp(acc.vesting) > 0 {
+		return ErrVestingNotEnough
+	}
+	vesting, err := acc.vesting.Sub(amount)
+	if err != nil {
+		return err
+	}
+	acc.vesting = vesting
 	return nil
 }
 
