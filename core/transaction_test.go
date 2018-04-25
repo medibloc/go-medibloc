@@ -11,7 +11,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,7 +66,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 }
 
 func TestRegisterWriteKey(t *testing.T) {
-	writer := "03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"
+	writer := common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21")
 	payload := core.NewRegisterWriterPayload(writer)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
@@ -96,7 +95,7 @@ func TestRegisterWriteKey(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, len(acc.Writers()), 1)
-	assert.Equal(t, acc.Writers(), [][]byte{byteutils.Hex2Bytes(writer)})
+	assert.Equal(t, acc.Writers(), [][]byte{writer.Bytes()})
 
 	genesisState.BeginBatch()
 	assert.NoError(t, genesisState.AcceptTransaction(tx, test.GenesisBlock.Timestamp()))
@@ -125,7 +124,7 @@ func TestRegisterWriteKey(t *testing.T) {
 }
 
 func TestVerifyDelegation(t *testing.T) {
-	writer := "03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"
+	writer := common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21")
 	payload := core.NewRegisterWriterPayload(writer)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
@@ -173,9 +172,9 @@ func TestVerifyDelegation(t *testing.T) {
 func TestAddRecord(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	encKey := "abcdef"
-	seed := "5eed"
-	payload := core.NewAddRecordPayload(recordHash.Hex(), storage, encKey, seed)
+	encKey := []byte("abcdef")
+	seed := []byte("5eed")
+	payload := core.NewAddRecordPayload(recordHash, storage, encKey, seed)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
@@ -207,16 +206,16 @@ func TestAddRecord(t *testing.T) {
 	assert.Equal(t, record.Storage, storage)
 	assert.Equal(t, len(record.Readers), 1)
 	assert.Equal(t, record.Readers[0].Address, owner.Bytes())
-	assert.Equal(t, record.Readers[0].EncKey, byteutils.Hex2Bytes(encKey))
-	assert.Equal(t, record.Readers[0].Seed, byteutils.Hex2Bytes(seed))
+	assert.Equal(t, record.Readers[0].EncKey, encKey)
+	assert.Equal(t, record.Readers[0].Seed, seed)
 }
 
 func TestAddRecordReader(t *testing.T) {
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
-	ownerEncKey := "abcdef"
-	ownerSeed := "5eed"
-	addRecordPayload := core.NewAddRecordPayload(recordHash.Hex(), storage, ownerEncKey, ownerSeed)
+	ownerEncKey := []byte("abcdef")
+	ownerSeed := []byte("5eed")
+	addRecordPayload := core.NewAddRecordPayload(recordHash, storage, ownerEncKey, ownerSeed)
 	addRecordPayloadBuf, err := addRecordPayload.ToBytes()
 	assert.NoError(t, err)
 	owner := common.HexToAddress("02bdc97dfc02502c5b8301ff46cbbb0dce56cd96b0af75edc50560630de5b0a472")
@@ -235,9 +234,9 @@ func TestAddRecordReader(t *testing.T) {
 	assert.NoError(t, txAddRecord.SignThis(sig))
 
 	reader := common.HexToAddress("03c5e1fa1ee82af7398ae8cc10ae12dc0ee9692cb06346810e3af74cbd3811276f")
-	readerEncKey := "123456"
-	readerSeed := "2eed"
-	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash.Hex(), reader.Hex(), readerEncKey, readerSeed)
+	readerEncKey := []byte("123456")
+	readerSeed := []byte("2eed")
+	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash, reader, readerEncKey, readerSeed)
 	addRecordReaderPayloadBuf, err := addRecordReaderPayload.ToBytes()
 	assert.NoError(t, err)
 
@@ -265,9 +264,40 @@ func TestAddRecordReader(t *testing.T) {
 	assert.Equal(t, record.Storage, storage)
 	assert.Equal(t, len(record.Readers), 2)
 	assert.Equal(t, record.Readers[0].Address, owner.Bytes())
-	assert.Equal(t, record.Readers[0].EncKey, byteutils.Hex2Bytes(ownerEncKey))
-	assert.Equal(t, record.Readers[0].Seed, byteutils.Hex2Bytes(ownerSeed))
+	assert.Equal(t, record.Readers[0].EncKey, ownerEncKey)
+	assert.Equal(t, record.Readers[0].Seed, ownerSeed)
 	assert.Equal(t, record.Readers[1].Address, reader.Bytes())
-	assert.Equal(t, record.Readers[1].EncKey, byteutils.Hex2Bytes(readerEncKey))
-	assert.Equal(t, record.Readers[1].Seed, byteutils.Hex2Bytes(readerSeed))
+	assert.Equal(t, record.Readers[1].EncKey, readerEncKey)
+	assert.Equal(t, record.Readers[1].Seed, readerSeed)
+}
+
+func TestVest(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	tx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 1,
+		core.TxOperationVest, []byte{},
+	)
+	assert.NoError(t, err)
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, tx.SignThis(sig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, tx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(tx, test.GenesisBlock.Timestamp()))
+	genesisState.Commit()
+
+	acc, err := genesisState.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
 }

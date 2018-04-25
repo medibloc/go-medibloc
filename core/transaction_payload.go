@@ -2,16 +2,18 @@ package core
 
 import (
 	"encoding/json"
+
+	"github.com/medibloc/go-medibloc/common"
 )
 
 // RegisterWriterPayload is payload type for TxOperationRegisterWKey tx
 type RegisterWriterPayload struct {
 	// Writer to register
-	Writer string
+	Writer common.Address
 }
 
-// NewRegisterWriterPayload generates a RegisterWriterPayload value
-func NewRegisterWriterPayload(writer string) *RegisterWriterPayload {
+// NewRegisterWriterPayload generates a RegisterWriterPayload
+func NewRegisterWriterPayload(writer common.Address) *RegisterWriterPayload {
 	return &RegisterWriterPayload{Writer: writer}
 }
 
@@ -32,11 +34,11 @@ func (payload *RegisterWriterPayload) ToBytes() ([]byte, error) {
 // RemoveWriterPayload is payload type for TxOperationRemoveWKey tx
 type RemoveWriterPayload struct {
 	// Writer to remove
-	Writer string
+	Writer common.Address
 }
 
-// NewRemoveWriterPayload generates a RemoveWriterPayload value
-func NewRemoveWriterPayload(writer string) *RemoveWriterPayload {
+// NewRemoveWriterPayload generates a RemoveWriterPayload
+func NewRemoveWriterPayload(writer common.Address) *RemoveWriterPayload {
 	return &RemoveWriterPayload{Writer: writer}
 }
 
@@ -56,15 +58,15 @@ func (payload *RemoveWriterPayload) ToBytes() ([]byte, error) {
 
 // AddRecordPayload is payload type for TxOperationAddRecord
 type AddRecordPayload struct {
-	Hash string
+	Hash common.Hash
 	// TODO: Signature string
 	Storage string
-	EncKey  string
-	Seed    string
+	EncKey  []byte
+	Seed    []byte
 }
 
 // NewAddRecordPayload generates a AddRecordPayload
-func NewAddRecordPayload(hash string, storage string, encKey, seed string) *AddRecordPayload {
+func NewAddRecordPayload(hash common.Hash, storage string, encKey, seed []byte) *AddRecordPayload {
 	return &AddRecordPayload{
 		Hash:    hash,
 		Storage: storage,
@@ -89,14 +91,14 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 
 // AddRecordReaderPayload is payload type for TxOperationAddRecordReader
 type AddRecordReaderPayload struct {
-	Hash    string
-	Address string
-	EncKey  string
-	Seed    string
+	Hash    common.Hash
+	Address common.Address
+	EncKey  []byte
+	Seed    []byte
 }
 
 // NewAddRecordReaderPayload generates a AddRecordReaderPayload
-func NewAddRecordReaderPayload(hash, address, encKey, seed string) *AddRecordReaderPayload {
+func NewAddRecordReaderPayload(hash common.Hash, address common.Address, encKey, seed []byte) *AddRecordReaderPayload {
 	return &AddRecordReaderPayload{
 		Hash:    hash,
 		Address: address,

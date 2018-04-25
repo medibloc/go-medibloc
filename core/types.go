@@ -12,13 +12,13 @@ import (
 
 // Transaction's string representation.
 const (
-	TxOperationSend             = ""
-	TxOperationAddRecord        = "add_record"
-	TxOperationAddRecordReader  = "add_record_reader"
-	TxOperationVest             = "vest"
-	TxOperationWidthdrawVesting = "widthdraw_vesting"
-	TxOperationRegisterWKey     = "register_wkey"
-	TxOperationRemoveWKey       = "remove_wkey"
+	TxOperationSend            = ""
+	TxOperationAddRecord       = "add_record"
+	TxOperationAddRecordReader = "add_record_reader"
+	TxOperationVest            = "vest"
+	TxOperationWithdrawVesting = "withdraw_vesting"
+	TxOperationRegisterWKey    = "register_wkey"
+	TxOperationRemoveWKey      = "remove_wkey"
 )
 
 // Transaction payload type.
@@ -38,8 +38,25 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
+// type of ReservedTask
+const (
+	RtWithdrawType = "withdraw"
+)
+
+// consts for reserved task-related values
+const (
+	RtWithdrawNum      = 3
+	RtWithdrawInterval = int64(3000)
+)
+
 // Error types of core package.
 var (
+	ErrBalanceNotEnough                = errors.New("balance is not enough")
+	ErrBeginAgainInBatch               = errors.New("cannot begin with a batch task unfinished")
+	ErrCannotCloneOnBatching           = errors.New("cannot clone on batching")
+	ErrInvalidAmount                   = errors.New("invalid amount")
+	ErrNotBatching                     = errors.New("not batching")
+	ErrVestingNotEnough                = errors.New("vesting is not enough")
 	ErrCannotConvertTransaction        = errors.New("proto message cannot be converted into Transaction")
 	ErrDuplicatedBlock                 = errors.New("duplicated block")
 	ErrDuplicatedTransaction           = errors.New("duplicated transaction")
@@ -76,6 +93,8 @@ var (
 	ErrInvalidReservationQueueHash     = errors.New("hash of reservation queue invalid")
 	ErrReservationQueueNotBatching     = errors.New("reservation queue is not in batch mode")
 	ErrReservationQueueAlreadyBatching = errors.New("reservation queue is already in batch mode")
+	ErrReservedTaskNotProcessed        = errors.New("there are reservation task(s) to be processed in the block")
+	ErrInvalidReservedTaskType         = errors.New("type of reserved task is invalid")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -90,4 +109,10 @@ type Medlet interface {
 	Storage() storage.Storage
 	Genesis() *corepb.Genesis
 	NetService() net.Service
+}
+
+// Serializable interface for serializing/unserializing
+type Serializable interface {
+	Serialize() ([]byte, error)
+	Unserialize([]byte) error
 }

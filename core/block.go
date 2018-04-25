@@ -328,11 +328,18 @@ func (block *Block) Seal() error {
 		return ErrBlockAlreadySealed
 	}
 
+	// all reserved tasks should have timestamps greater than block's timestamp
+	head := block.state.PeekHeadReservedTask()
+	if head != nil && head.Timestamp() < block.Timestamp() {
+		return ErrReservedTaskNotProcessed
+	}
+
 	block.header.accsRoot = block.state.AccountsRoot()
 	block.header.txsRoot = block.state.TransactionsRoot()
 	block.header.usageRoot = block.state.UsageRoot()
 	block.header.recordsRoot = block.state.RecordsRoot()
 	block.header.consensusRoot = block.state.ConsensusRoot()
+	block.header.reservationQueueHash = block.state.ReservationQueueHash()
 
 	var err error
 	block.header.hash, err = HashBlockData(block.BlockData)

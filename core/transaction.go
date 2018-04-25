@@ -295,6 +295,10 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.addRecord(bs)
 	case TxOperationAddRecordReader:
 		return tx.addRecordReader(bs)
+	case TxOperationVest:
+		return tx.vest(bs)
+	case TxOperationWithdrawVesting:
+		return tx.withdrawVesting(bs)
 	default:
 		return tx.transfer(bs)
 	}
@@ -317,7 +321,7 @@ func (tx *Transaction) registerWriteKey(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.AddWriter(tx.from, common.HexToAddress(payload.Writer))
+	return bs.AddWriter(tx.from, payload.Writer)
 }
 
 func (tx *Transaction) removeWriteKey(bs *BlockState) error {
@@ -325,7 +329,7 @@ func (tx *Transaction) removeWriteKey(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.RemoveWriter(tx.from, common.HexToAddress(payload.Writer))
+	return bs.RemoveWriter(tx.from, payload.Writer)
 }
 
 func (tx *Transaction) addRecord(bs *BlockState) error {
@@ -337,8 +341,7 @@ func (tx *Transaction) addRecord(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.AddRecord(tx, common.HexToHash(payload.Hash), payload.Storage, byteutils.Hex2Bytes(payload.EncKey),
-		byteutils.Hex2Bytes(payload.Seed), tx.from, signer)
+	return bs.AddRecord(tx, payload.Hash, payload.Storage, payload.EncKey, payload.Seed, tx.from, signer)
 }
 
 func (tx *Transaction) addRecordReader(bs *BlockState) error {
@@ -346,6 +349,13 @@ func (tx *Transaction) addRecordReader(bs *BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.AddRecordReader(tx, common.HexToHash(payload.Hash), common.HexToAddress(payload.Address),
-		byteutils.Hex2Bytes(payload.EncKey), byteutils.Hex2Bytes(payload.Seed))
+	return bs.AddRecordReader(tx, payload.Hash, payload.Address, payload.EncKey, payload.Seed)
+}
+
+func (tx *Transaction) vest(bs *BlockState) error {
+	return bs.Vest(tx.from, tx.value)
+}
+
+func (tx *Transaction) withdrawVesting(bs *BlockState) error {
+	return bs.WithdrawVesting(tx.from, tx.value, tx.timestamp)
 }
