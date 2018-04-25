@@ -301,3 +301,51 @@ func TestVest(t *testing.T) {
 	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
 }
+
+func TestWithdrawVesting(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	vestTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 1,
+		core.TxOperationVest, []byte{},
+	)
+	withdrawTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 2,
+		core.TxOperationWithdrawVesting, []byte{})
+	withdrawTx.SetTimestamp(int64(0))
+	assert.NoError(t, err)
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, vestTx.SignThis(sig))
+	assert.NoError(t, withdrawTx.SignThis(sig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, vestTx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(vestTx, test.GenesisBlock.Timestamp()))
+	assert.NoError(t, withdrawTx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(withdrawTx, test.GenesisBlock.Timestamp()))
+	genesisState.Commit()
+
+	acc, err := genesisState.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
+	tasks := genesisState.GetReservedTasks()
+	assert.Equal(t, 3, len(tasks))
+	for i := 0; i < len(tasks); i++ {
+		assert.Equal(t, core.RtWithdrawType, tasks[i].TaskType())
+		assert.Equal(t, from, tasks[i].From())
+		assert.Equal(t, withdrawTx.Timestamp()+int64(i+1)*core.RtWithdrawInterval, tasks[i].Timestamp())
+	}
+}

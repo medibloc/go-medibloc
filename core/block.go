@@ -415,8 +415,24 @@ func (block *Block) ExecuteAll() error {
 		}
 	}
 
+	if err := block.ExecuteReservedTasks(); err != nil {
+		block.RollBack()
+		return err
+	}
+
 	block.Commit()
 
+	return nil
+}
+
+// ExecuteReservedTasks processes reserved tasks with timestamp before block's timestamp
+func (block *Block) ExecuteReservedTasks() error {
+	tasks := block.state.PopReservedTasks(block.Timestamp())
+	for _, t := range tasks {
+		if err := t.ExecuteOnState(block.state); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

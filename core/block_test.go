@@ -287,3 +287,72 @@ func TestGetExecutedBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, executedBlock.VerifyState())
 }
+
+func TestExecuteReservedTasks(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	vestTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 1,
+		core.TxOperationVest, []byte{},
+	)
+	withdrawTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 2,
+		core.TxOperationWithdrawVesting, []byte{})
+	assert.NoError(t, err)
+	withdrawTx.SetTimestamp(int64(1000))
+
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, vestTx.SignThis(sig))
+	assert.NoError(t, withdrawTx.SignThis(sig))
+
+	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	assert.NoError(t, err)
+	newBlock.SetTimestamp(int64(1000))
+
+	newBlock.BeginBatch()
+	assert.NoError(t, newBlock.ExecuteTransaction(vestTx))
+	assert.NoError(t, newBlock.AcceptTransaction(vestTx))
+	assert.NoError(t, newBlock.ExecuteTransaction(withdrawTx))
+	assert.NoError(t, newBlock.AcceptTransaction(withdrawTx))
+	assert.NoError(t, newBlock.ExecuteReservedTasks())
+	newBlock.Commit()
+
+	state := newBlock.State()
+
+	acc, err := state.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
+	tasks := state.GetReservedTasks()
+	assert.Equal(t, 3, len(tasks))
+	for i := 0; i < len(tasks); i++ {
+		assert.Equal(t, core.RtWithdrawType, tasks[i].TaskType())
+		assert.Equal(t, from, tasks[i].From())
+		assert.Equal(t, withdrawTx.Timestamp()+int64(i+1)*core.RtWithdrawInterval, tasks[i].Timestamp())
+	}
+
+	newBlock.SetTimestamp(newBlock.Timestamp() + int64(2)*core.RtWithdrawInterval)
+	newBlock.BeginBatch()
+	assert.NoError(t, newBlock.ExecuteReservedTasks())
+	newBlock.Commit()
+
+	acc, err = state.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(111)))
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-111)))
+	tasks = state.GetReservedTasks()
+	assert.Equal(t, 1, len(tasks))
+	assert.Equal(t, core.RtWithdrawType, tasks[0].TaskType())
+	assert.Equal(t, from, tasks[0].From())
+	assert.Equal(t, withdrawTx.Timestamp()+int64(3)*core.RtWithdrawInterval, tasks[0].Timestamp())
+}
