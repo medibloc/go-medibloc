@@ -18,6 +18,8 @@ var (
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
 	GenesisCoinbase = common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	// GenesisHeight is height of genesis block
+	GenesisHeight = uint64(1)
 )
 
 // LoadGenesisConf loads genesis conf file
@@ -57,7 +59,7 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 				alg:        algorithm.SECP256K1,
 			},
 			transactions: make(Transactions, 0),
-			height:       1,
+			height:       GenesisHeight,
 		},
 		storage: sto,
 		state:   blockState,

@@ -10,19 +10,25 @@ import (
 
 // AdminService is admin api rpc service.
 type AdminService struct {
-	bridge Bridge
-	server GRPCServer
+	bm *core.BlockManager
+	tm *core.TransactionManager
+}
+
+func newAdminService(bm *core.BlockManager, tm *core.TransactionManager) *AdminService {
+	return &AdminService{
+		bm: bm,
+		tm: tm,
+	}
 }
 
 // SendTransaction handles SendTransaction rpc.
 func (s *AdminService) SendTransaction(ctx context.Context, req *rpcpb.TransactionRequest) (*rpcpb.TransactionResponse, error) {
-	bm := s.bridge.BlockManager()
 	value, err := util.NewUint128FromString(req.Value)
 	if err != nil {
 		return nil, err
 	}
 	tx, err := core.NewTransactionWithSign(
-		bm.ChainID(),
+		s.bm.ChainID(),
 		common.HexToAddress(req.From),
 		common.HexToAddress(req.To),
 		value,
@@ -35,7 +41,7 @@ func (s *AdminService) SendTransaction(ctx context.Context, req *rpcpb.Transacti
 	if err != nil {
 		return nil, err
 	}
-	if err = s.bridge.TransactionManager().Push(tx); err != nil {
+	if err = s.tm.Push(tx); err != nil {
 		return nil, err
 	}
 	return &rpcpb.TransactionResponse{

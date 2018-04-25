@@ -4,7 +4,10 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.
@@ -23,9 +26,16 @@ const (
 	TxPayloadBinaryType = "binary"
 )
 
-// MessageType from network.
+// Transaction's message types.
 const (
 	MessageTypeNewTx = "newtx"
+)
+
+// Block's message types.
+const (
+	MessageTypeNewBlock      = "newblock"
+	MessageTypeRequestBlock  = "rqstblock"
+	MessageTypeResponseBlock = "respblock"
 )
 
 // Error types of core package.
@@ -46,6 +56,7 @@ var (
 	ErrNilArgument               = errors.New("argument(s) is nil")
 	ErrVoidTransaction           = errors.New("nothing to do with transaction")
 	ErrLargeTransactionNonce     = errors.New("transaction nonce is larger than expected")
+	ErrMissingParentBlock        = errors.New("cannot find the block's parent block in storage")
 	ErrSmallTransactionNonce     = errors.New("transaction nonce is smaller than expected")
 	ErrBlockNotExist             = errors.New("block not exist")
 	ErrBlockNotSealed            = errors.New("block should be sealed first to be signed")
@@ -71,4 +82,7 @@ type HashableBlock interface {
 // Medlet interface for component discovery.
 type Medlet interface {
 	Config() *medletpb.Config
+	Storage() storage.Storage
+	Genesis() *corepb.Genesis
+	NetService() net.Service
 }

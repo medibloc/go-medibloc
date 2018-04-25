@@ -1,6 +1,7 @@
 package net
 
 import (
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -11,21 +12,13 @@ type MedService struct {
 	dispatcher *Dispatcher
 }
 
-// NewMedServiceFromMedlet create netService by Medlet config
-func NewMedServiceFromMedlet(m Medlet) (*MedService, error) {
-	if networkConf := m.Config().GetNetwork(); networkConf == nil {
+// NewMedService create netService
+func NewMedService(cfg *medletpb.Config) (*MedService, error) {
+	if networkConf := cfg.GetNetwork(); networkConf == nil {
 		logging.Console().Fatal("config.conf should has network")
 		return nil, ErrConfigLackNetWork
 	}
-	config := NewP2PConfig(m)
-
-	ms, err := NewMedService(config)
-	return ms, err
-}
-
-//NewMedService create netService net.Config
-func NewMedService(config *Config) (*MedService, error) {
-	node, err := NewNode(config)
+	node, err := NewNode(NewP2PConfig(cfg))
 	if err != nil {
 		return nil, err
 	}

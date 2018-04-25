@@ -26,10 +26,12 @@ import (
 )
 
 func getBlockChain(t *testing.T) *core.BlockChain {
-	s := testUtil.GetStorage(t)
+	m := testUtil.NewMockMedlet(t)
 
-	bc, err := core.NewBlockChain(testUtil.ChainID, testUtil.GenesisBlock, s)
-	require.Nil(t, err)
+	bc, err := core.NewBlockChain(m.Config())
+	require.NoError(t, err)
+	err = bc.Setup(m.Genesis(), m.Storage())
+	require.NoError(t, err)
 	return bc
 }
 
@@ -52,6 +54,8 @@ func TestBlockChain_OnePath(t *testing.T) {
 	for _, idx := range idxToParent[2:] {
 		blocks := getBlockSlice(blockMap, idx)
 		err = bc.PutVerifiedNewBlocks(blockMap[testUtil.BlockID(idx-1)], blocks, blocks)
+		assert.Nil(t, err)
+		err = bc.SetTailBlock(blocks[0])
 		assert.Nil(t, err)
 		assert.Equal(t, blocks[0].Hash(), bc.MainTailBlock().Hash())
 	}

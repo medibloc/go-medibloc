@@ -5,10 +5,13 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
+
+var transactionPoolSize = 262144
 
 // TransactionManager manages transactions' pool and network service.
 type TransactionManager struct {
@@ -22,19 +25,19 @@ type TransactionManager struct {
 }
 
 // NewTransactionManager create a new TransactionManager.
-func NewTransactionManager(med Medlet, poolsize int) *TransactionManager {
+func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 	return &TransactionManager{
-		chainID:           med.Config().Chain.ChainId,
-		receivedMessageCh: make(chan net.Message, poolsize),
+		chainID:           cfg.Chain.ChainId,
+		receivedMessageCh: make(chan net.Message, transactionPoolSize),
 		quitCh:            make(chan int, 1),
-		pool:              NewTransactionPool(poolsize),
+		pool:              NewTransactionPool(transactionPoolSize),
 	}
 }
 
-// RegisterInNetwork register message subscriber in network.
-func (mgr *TransactionManager) RegisterInNetwork(ns net.Service) {
-	ns.Register(net.NewSubscriber(mgr, mgr.receivedMessageCh, true, MessageTypeNewTx, net.MessageWeightNewTx))
+// Setup sets up TransactionManager.
+func (mgr *TransactionManager) Setup(ns net.Service) {
 	mgr.ns = ns
+	mgr.registerInNetwork()
 }
 
 // Start starts TransactionManager.
@@ -49,6 +52,11 @@ func (mgr *TransactionManager) Start() {
 // Stop stops TransactionManager.
 func (mgr *TransactionManager) Stop() {
 	mgr.quitCh <- 1
+}
+
+// registerInNetwork register message subscriber in network.
+func (mgr *TransactionManager) registerInNetwork() {
+	mgr.ns.Register(net.NewSubscriber(mgr, mgr.receivedMessageCh, true, MessageTypeNewTx, net.MessageWeightNewTx))
 }
 
 // Push pushes transaction to TransactionManager.

@@ -26,13 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getBcBp(t *testing.T) (*core.BlockChain, *core.BlockPool) {
-	bc := getBlockChain(t)
-	bp, err := core.NewBlockPool(16)
-	require.Nil(t, err)
-	return bc, bp
-}
-
 func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
 	msg, err := block.ToProto()
 	require.Nil(t, err)
@@ -68,8 +61,10 @@ func getBlockDataList(t *testing.T, idxToParent []test.BlockID) []*core.BlockDat
 }
 
 func TestBlockSubscriber_Sequential(t *testing.T) {
-	bc, bp := getBcBp(t)
-	subscriber := core.NewBlockSubscriber(bp, bc)
+	m := test.NewMockMedlet(t)
+	bm, err := core.NewBlockManager(m.Config())
+	require.NoError(t, err)
+	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
 
 	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := make(map[test.BlockID]*core.Block)
@@ -77,38 +72,39 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 	for idx, parentId := range idxToParent {
 		blockData := nextBlockData(t, blockMap[parentId])
 
-		err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
+		err = bm.PushBlockData(blockData)
 		assert.Nil(t, err)
-		assert.Equal(t, bc.MainTailBlock().Hash(), blockData.Hash())
-		assert.Equal(t, false, bp.Has(blockData))
-		blockMap[test.BlockID(idx)] = bc.MainTailBlock()
+		assert.Equal(t, bm.TailBlock().Hash(), blockData.Hash())
+		blockMap[test.BlockID(idx)] = bm.TailBlock()
 	}
 }
 
 func TestBlockSubscriber_Reverse(t *testing.T) {
-	bc, bp := getBcBp(t)
-	subscriber := core.NewBlockSubscriber(bp, bc)
+	m := test.NewMockMedlet(t)
+	bm, err := core.NewBlockManager(m.Config())
+	require.NoError(t, err)
+	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
 
 	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockDatas := getBlockDataList(t, idxToParent)
 
 	for i := len(idxToParent) - 1; i >= 0; i-- {
 		blockData := blockDatas[i]
-		err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
+		err = bm.PushBlockData(blockData)
 		require.Nil(t, err)
 		if i > 0 {
-			require.Equal(t, test.GenesisBlock.Hash(), bc.MainTailBlock().Hash())
-			assert.Equal(t, true, bp.Has(blockData))
+			require.Equal(t, test.GenesisBlock.Hash(), bm.TailBlock().Hash())
 		} else {
-			assert.Equal(t, blockDatas[len(idxToParent)-1].Hash(), bc.MainTailBlock().Hash())
-			assert.Equal(t, false, bp.Has(blockData))
+			assert.Equal(t, blockDatas[len(idxToParent)-1].Hash(), bm.TailBlock().Hash())
 		}
 	}
 }
 
 func TestBlockSubscriber_Tree(t *testing.T) {
-	bc, bp := getBcBp(t)
-	subscriber := core.NewBlockSubscriber(bp, bc)
+	m := test.NewMockMedlet(t)
+	bm, err := core.NewBlockManager(m.Config())
+	require.NoError(t, err)
+	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
 
 	tests := []struct {
 		idxToParent []test.BlockID
@@ -125,7 +121,7 @@ func TestBlockSubscriber_Tree(t *testing.T) {
 			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
 		}
 		for _, blockData := range blockDatas {
-			err := subscriber.BlockManager().HandleReceivedBlock(blockData, nil)
+			err = bm.PushBlockData(blockData)
 			require.Nil(t, err)
 		}
 	}

@@ -26,12 +26,12 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
@@ -257,16 +257,14 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	tm.WaitStreamReady()
 	tm.WaitRouteTableSync()
 
-	med, err := medlet.New(&medletpb.Config{
+	cfg := &medletpb.Config{
 		Chain: &medletpb.ChainConfig{
 			ChainId: ChainID,
 		},
-	})
-	require.Nil(t, err)
-
+	}
 	for i := 0; i < n; i++ {
-		mgr := core.NewTransactionManager(med, 1024)
-		mgr.RegisterInNetwork(svc[i])
+		mgr := core.NewTransactionManager(cfg)
+		mgr.Setup(svc[i])
 		mgr.Start()
 		mgrs = append(mgrs, mgr)
 	}
@@ -277,4 +275,49 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 		}
 		tm.StopMedServices()
 	}
+}
+
+// MockMedlet sets up components for tests.
+type MockMedlet struct {
+	config  *medletpb.Config
+	storage storage.Storage
+	genesis *corepb.Genesis
+	ns      net.Service
+}
+
+// NewMockMedlet returns MockMedlet.
+func NewMockMedlet(t *testing.T) *MockMedlet {
+	stor, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	genesis, err := core.LoadGenesisConf(DefaultGenesisConfPath)
+	require.NoError(t, err)
+	return &MockMedlet{
+		config: &medletpb.Config{
+			Chain: &medletpb.ChainConfig{
+				ChainId: ChainID,
+			},
+		},
+		storage: stor,
+		genesis: genesis,
+	}
+}
+
+// Config returns config.
+func (m *MockMedlet) Config() *medletpb.Config {
+	return m.config
+}
+
+// Storage return storage.
+func (m *MockMedlet) Storage() storage.Storage {
+	return m.storage
+}
+
+// Genesis return genesis configuration.
+func (m *MockMedlet) Genesis() *corepb.Genesis {
+	return m.genesis
+}
+
+// NetService returns net.Service.
+func (m *MockMedlet) NetService() net.Service {
+	return m.ns
 }
