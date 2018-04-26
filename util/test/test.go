@@ -284,6 +284,8 @@ type MockMedlet struct {
 	storage   storage.Storage
 	genesis   *corepb.Genesis
 	ns        net.Service
+	bm        *core.BlockManager
+	tm        *core.TransactionManager
 	consensus core.Consensus
 }
 
@@ -296,15 +298,30 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 		},
 	}
+
+	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	genesis, err := core.LoadGenesisConf(DefaultGenesisConfPath)
 	require.NoError(t, err)
 	consensus := dpos.New(cfg)
+	bm, err := core.NewBlockManager(cfg)
+	require.NoError(t, err)
+	tm := core.NewTransactionManager(cfg)
+	require.NoError(t, err)
+
+	err = bm.Setup(genesis, stor, ns, consensus)
+	require.NoError(t, err)
+	tm.Setup(ns)
+	consensus.Setup(bm, tm)
+
 	return &MockMedlet{
 		config:    cfg,
 		storage:   stor,
 		genesis:   genesis,
+		ns:        ns,
+		bm:        bm,
+		tm:        tm,
 		consensus: consensus,
 	}
 }
@@ -332,4 +349,14 @@ func (m *MockMedlet) NetService() net.Service {
 // Consensus returns Consensus.
 func (m *MockMedlet) Consensus() core.Consensus {
 	return m.consensus
+}
+
+// TransactionManager returns TransactionManager.
+func (m *MockMedlet) TransactionManager() *core.TransactionManager {
+	return m.tm
+}
+
+// BlockManager returns BlockManager.
+func (m *MockMedlet) BlockManager() *core.BlockManager {
+	return m.bm
 }

@@ -62,9 +62,7 @@ func getBlockDataList(t *testing.T, idxToParent []test.BlockID) []*core.BlockDat
 
 func TestBlockSubscriber_Sequential(t *testing.T) {
 	m := test.NewMockMedlet(t)
-	bm, err := core.NewBlockManager(m.Config())
-	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService(), m.Consensus())
+	bm := m.BlockManager()
 
 	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := make(map[test.BlockID]*core.Block)
@@ -72,7 +70,7 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 	for idx, parentId := range idxToParent {
 		blockData := nextBlockData(t, blockMap[parentId])
 
-		err = bm.PushBlockData(blockData)
+		err := bm.PushBlockData(blockData)
 		assert.Nil(t, err)
 		assert.Equal(t, bm.TailBlock().Hash(), blockData.Hash())
 		blockMap[test.BlockID(idx)] = bm.TailBlock()
