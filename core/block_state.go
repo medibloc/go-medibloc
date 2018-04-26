@@ -411,7 +411,7 @@ func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
 }
 
 // Dynasty returns members belonging to the current dynasty.
-func (st *states) Dynasty() (members []*common.Hash, err error) {
+func (st *states) Dynasty() (members []*common.Address, err error) {
 	iter, err := st.consensusState.Iterator(nil)
 	if err != nil && err != trie.ErrNotFound {
 		return nil, err
@@ -425,7 +425,7 @@ func (st *states) Dynasty() (members []*common.Hash, err error) {
 		return nil, err
 	}
 	for exist {
-		member := common.BytesToHash(iter.Value())
+		member := common.BytesToAddress(iter.Value())
 		members = append(members, &member)
 		exist, err = iter.Next()
 		if err != nil {
@@ -436,7 +436,7 @@ func (st *states) Dynasty() (members []*common.Hash, err error) {
 }
 
 // SetDynasty sets dynasty members.
-func (st *states) SetDynasty(miners []*common.Hash) error {
+func (st *states) SetDynasty(miners []*common.Address) error {
 	for _, miner := range miners {
 		err := st.consensusState.Put(miner.Bytes(), miner.Bytes())
 		if err != nil {

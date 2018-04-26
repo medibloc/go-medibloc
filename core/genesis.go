@@ -66,9 +66,10 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
-	var members []*common.Hash
+
+	var members []*common.Address
 	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
-		member := common.HexToHash(v)
+		member := common.HexToAddress(v)
 		members = append(members, &member)
 	}
 	genesisBlock.State().SetDynasty(members)
