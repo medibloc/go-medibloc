@@ -267,6 +267,11 @@ func (tx *Transaction) Hash() common.Hash {
 	return tx.hash
 }
 
+// Signature returns tx signature
+func (tx *Transaction) Signature() []byte {
+	return tx.sign
+}
+
 // String returns string representation of tx
 func (tx *Transaction) String() string {
 	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v'}`,
