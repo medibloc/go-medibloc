@@ -85,15 +85,63 @@ func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
 
 // FindLIB finds new LIB.
 func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
-	panic("not implemented")
+	lib := bc.LIB()
+	tail := bc.MainTailBlock()
+	cur := tail
+	confirmed := make(map[string]bool)
+	members, err := tail.State().Dynasty()
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":  err,
+			"tail": tail,
+			"lib":  lib,
+		}).Error("Failed to get members of dynasty.")
+		return
+	}
+	dynastyGen := int64(-1)
+
+	for !cur.Hash().Equals(lib.Hash()) {
+		if dynastyGen != dynastyGenByTime(cur.Timestamp()) {
+			dynastyGen = dynastyGenByTime(cur.Timestamp())
+			confirmed = make(map[string]bool)
+			// TODO @cl9200 Replace member of dynasty.
+			// members, err = tail.State().Dynasty()
+		}
+
+		if cur.Height()-lib.Height() < uint64(ConsensusSize-len(confirmed)) {
+			return
+		}
+
+		proposer, err := findProposer(cur.Timestamp(), members)
+		if err != nil {
+			return
+		}
+
+		confirmed[proposer.Hex()] = true
+		if len(confirmed) >= ConsensusSize {
+			return cur
+		}
+
+		cur = bc.BlockByHash(cur.ParentHash())
+		if cur == nil {
+			logging.WithFields(logrus.Fields{
+				"tail": tail,
+				"lib":  lib,
+			}).Error("Failed to find LIB.")
+		}
+	}
+	return lib
+}
+
+func dynastyGenByTime(ts int64) int64 {
+	now := time.Duration(ts) * time.Second
+	return int64(now / DynasyInterval)
 }
 
 // VerifyProposer verifies block proposer.
 func (d *Dpos) VerifyProposer(block *core.BlockData) error {
 	tail := d.bm.TailBlock()
-	tailTime := time.Unix(tail.Timestamp(), 0)
-	blockTime := time.Unix(block.Timestamp(), 0)
-	elapsed := blockTime.Sub(tailTime)
+	elapsed := time.Duration(block.Timestamp()-tail.Timestamp()) * time.Second
 	if elapsed%BlockInterval != 0 {
 		return ErrInvalidBlockInterval
 	}
@@ -108,11 +156,11 @@ func (d *Dpos) VerifyProposer(block *core.BlockData) error {
 		return err
 	}
 
-	proposer, err := findProposer(blockTime, members)
+	proposer, err := findProposer(block.Timestamp(), members)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
-			"blockTime": blockTime,
+			"blockTime": block.Timestamp(),
 			"members":   members,
 		}).Debug("Failed to find block proposer.")
 		return err
@@ -164,8 +212,8 @@ func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, ciphe
 	return addr, nil
 }
 
-func findProposer(ts time.Time, miners []*common.Address) (proposer *common.Address, err error) {
-	now := time.Duration(ts.Unix()) * time.Second
+func findProposer(ts int64, miners []*common.Address) (proposer *common.Address, err error) {
+	now := time.Duration(ts) * time.Second
 	if now%BlockInterval != 0 {
 		return nil, ErrInvalidBlockForgeTime
 	}

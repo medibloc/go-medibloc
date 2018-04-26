@@ -231,6 +231,20 @@ func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks 
 	return nil
 }
 
+// SetLIB sets LIB.
+func (bc *BlockChain) SetLIB(newLIB *Block) error {
+	err := bc.storeLIBHashToStorage(newLIB)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":     err,
+			"newTail": newLIB,
+		}).Error("Failed to store LIB hash to storage.")
+		return err
+	}
+	bc.lib = newLIB
+	return nil
+}
+
 // SetTailBlock sets tail block.
 func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 	ancestor, err := bc.findCommonAncestorWithTail(newTail)

@@ -17,8 +17,6 @@
 package core
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -160,7 +158,6 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	// TODO @cl9200 Verify signature
 
 	err := bm.consensus.VerifyProposer(bd)
-	fmt.Println(bd, err)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
@@ -205,6 +202,14 @@ func (bm *BlockManager) push(bd *BlockData) error {
 			"err": err,
 		}).Error("Failed to set new tail block.")
 		return err
+	}
+
+	newLIB := bm.consensus.FindLIB(bm.bc)
+	err = bm.bc.SetLIB(newLIB)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to set LIB.")
 	}
 
 	return nil
