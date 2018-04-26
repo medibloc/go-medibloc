@@ -71,11 +71,20 @@ func (d *Dpos) Stop() {
 
 // ForkChoice chooses fork.
 func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
-	panic("not implemented")
+	// TODO @cl9200 Filter tails that are forked before LIB.
+	tail := bc.MainTailBlock()
+	tails := bc.TailBlocks()
+	for _, block := range tails {
+		if block.Height() > tail.Height() {
+			tail = block
+		}
+	}
+
+	return tail
 }
 
-// UpdateLIB updates LIB.
-func (d *Dpos) UpdateLIB() {
+// FindLIB finds new LIB.
+func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	panic("not implemented")
 }
 

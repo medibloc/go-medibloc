@@ -35,9 +35,10 @@ var (
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
 type BlockManager struct {
-	bc *BlockChain
-	bp *BlockPool
-	ns net.Service
+	bc        *BlockChain
+	bp        *BlockPool
+	ns        net.Service
+	consensus Consensus
 
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
@@ -70,7 +71,9 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 }
 
 // Setup sets up BlockManager.
-func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service) error {
+func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus) error {
+	bm.consensus = consensus
+
 	err := bm.bc.Setup(genesis, stor)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -183,8 +186,14 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		bm.bp.Remove(block)
 	}
 
-	// TODO @cl9200 Change to ForkChoice of consensus package.
-	bm.forkChoice()
+	newTail := bm.consensus.ForkChoice(bm.bc)
+	err = bm.bc.SetTailBlock(newTail)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to set new tail block.")
+		return err
+	}
 
 	return nil
 }
@@ -213,26 +222,6 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		}
 	}
 	return all, tails, nil
-}
-
-// forkChoice chooses blockchain fork.
-func (bm *BlockManager) forkChoice() error {
-	tail := bm.bc.MainTailBlock()
-	tails := bm.bc.TailBlocks()
-	for _, block := range tails {
-		if block.Height() > tail.Height() {
-			tail = block
-		}
-	}
-
-	err := bm.bc.SetTailBlock(tail)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set new tail block.")
-		return err
-	}
-	return nil
 }
 
 // requestMissingBlock requests a missing block to connect to blockchain.

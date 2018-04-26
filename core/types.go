@@ -4,10 +4,6 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.
@@ -103,16 +99,15 @@ type HashableBlock interface {
 	ParentHash() common.Hash
 }
 
-// Medlet interface for component discovery.
-type Medlet interface {
-	Config() *medletpb.Config
-	Storage() storage.Storage
-	Genesis() *corepb.Genesis
-	NetService() net.Service
-}
-
 // Serializable interface for serializing/unserializing
 type Serializable interface {
 	Serialize() ([]byte, error)
 	Unserialize([]byte) error
+}
+
+// Consensus is an interface of consensus model.
+type Consensus interface {
+	ForkChoice(bc *BlockChain) (newTail *Block)
+	VerifyBlock(block *Block) error
+	FindLIB(bc *BlockChain) (newLIB *Block)
 }

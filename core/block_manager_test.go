@@ -64,7 +64,7 @@ func TestBlockSubscriber_Sequential(t *testing.T) {
 	m := test.NewMockMedlet(t)
 	bm, err := core.NewBlockManager(m.Config())
 	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
+	bm.Setup(m.Genesis(), m.Storage(), m.NetService(), m.Consensus())
 
 	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := make(map[test.BlockID]*core.Block)
@@ -83,7 +83,7 @@ func TestBlockSubscriber_Reverse(t *testing.T) {
 	m := test.NewMockMedlet(t)
 	bm, err := core.NewBlockManager(m.Config())
 	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
+	bm.Setup(m.Genesis(), m.Storage(), m.NetService(), m.Consensus())
 
 	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockDatas := getBlockDataList(t, idxToParent)
@@ -104,7 +104,7 @@ func TestBlockSubscriber_Tree(t *testing.T) {
 	m := test.NewMockMedlet(t)
 	bm, err := core.NewBlockManager(m.Config())
 	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
+	bm.Setup(m.Genesis(), m.Storage(), m.NetService(), m.Consensus())
 
 	tests := []struct {
 		idxToParent []test.BlockID

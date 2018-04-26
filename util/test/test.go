@@ -25,6 +25,7 @@ import (
 	"math/big"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
@@ -279,26 +280,32 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 
 // MockMedlet sets up components for tests.
 type MockMedlet struct {
-	config  *medletpb.Config
-	storage storage.Storage
-	genesis *corepb.Genesis
-	ns      net.Service
+	config    *medletpb.Config
+	storage   storage.Storage
+	genesis   *corepb.Genesis
+	ns        net.Service
+	consensus core.Consensus
 }
 
 // NewMockMedlet returns MockMedlet.
 func NewMockMedlet(t *testing.T) *MockMedlet {
+	cfg := &medletpb.Config{
+		Chain: &medletpb.ChainConfig{
+			ChainId:  ChainID,
+			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+		},
+	}
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	genesis, err := core.LoadGenesisConf(DefaultGenesisConfPath)
 	require.NoError(t, err)
+	consensus := dpos.New(cfg)
 	return &MockMedlet{
-		config: &medletpb.Config{
-			Chain: &medletpb.ChainConfig{
-				ChainId: ChainID,
-			},
-		},
-		storage: stor,
-		genesis: genesis,
+		config:    cfg,
+		storage:   stor,
+		genesis:   genesis,
+		consensus: consensus,
 	}
 }
 
@@ -320,4 +327,9 @@ func (m *MockMedlet) Genesis() *corepb.Genesis {
 // NetService returns net.Service.
 func (m *MockMedlet) NetService() net.Service {
 	return m.ns
+}
+
+// Consensus returns Consensus.
+func (m *MockMedlet) Consensus() core.Consensus {
+	return m.consensus
 }
