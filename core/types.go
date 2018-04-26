@@ -108,6 +108,6 @@ type Serializable interface {
 // Consensus is an interface of consensus model.
 type Consensus interface {
 	ForkChoice(bc *BlockChain) (newTail *Block)
-	VerifyBlock(block *Block) error
+	VerifyProposer(block *BlockData) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
 }

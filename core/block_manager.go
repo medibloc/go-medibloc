@@ -17,6 +17,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -155,7 +157,17 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return ErrDuplicatedBlock
 	}
 
-	// TODO @cl9200 Verify integrity with consensus
+	// TODO @cl9200 Verify signature
+
+	err := bm.consensus.VerifyProposer(bd)
+	fmt.Println(bd, err)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Debug("Failed to verify blockData.")
+		return err
+	}
 
 	// Parent block exists in blockpool.
 	if bm.bp.FindParent(bd) != nil {
@@ -171,7 +183,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	// Parent block exists in blockchain.
-	err := bm.bp.Push(bd)
+	err = bm.bp.Push(bd)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,

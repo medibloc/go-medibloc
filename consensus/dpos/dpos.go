@@ -88,8 +88,8 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	panic("not implemented")
 }
 
-// VerifyBlock verifies block.
-func (d *Dpos) VerifyBlock(block *core.Block) error {
+// VerifyProposer verifies block proposer.
+func (d *Dpos) VerifyProposer(block *core.BlockData) error {
 	tail := d.bm.TailBlock()
 	tailTime := time.Unix(tail.Timestamp(), 0)
 	blockTime := time.Unix(block.Timestamp(), 0)
@@ -98,6 +98,7 @@ func (d *Dpos) VerifyBlock(block *core.Block) error {
 		return ErrInvalidBlockInterval
 	}
 
+	// TODO @cl9200 Handling when block height is higher than tail height.
 	members, err := tail.State().Dynasty()
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -125,7 +126,7 @@ func (d *Dpos) VerifyBlock(block *core.Block) error {
 	return nil
 }
 
-func verifyBlockSign(proposer *common.Address, block *core.Block) error {
+func verifyBlockSign(proposer *common.Address, block *core.BlockData) error {
 	signer, err := recoverSignerFromSignature(block.Alg(), block.Hash().Bytes(), block.Signature())
 	if err != nil {
 		logging.WithFields(logrus.Fields{
