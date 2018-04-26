@@ -4,8 +4,10 @@ import (
 	"errors"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie/pb"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -67,6 +69,8 @@ type Trie struct {
 func NewTrie(rootHash []byte, storage storage.Storage) (*Trie, error) {
 	switch {
 	case rootHash != nil:
+		fallthrough
+	case byteutils.Equal(common.ZeroHash().Bytes(), rootHash):
 		if _, err := storage.Get(rootHash); err != nil {
 			return nil, err
 		}
