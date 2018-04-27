@@ -155,6 +155,8 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return ErrDuplicatedBlock
 	}
 
+	// TODO @cl9200 Filter blocks of same height.
+
 	// TODO @cl9200 Verify signature
 
 	err := bm.consensus.VerifyProposer(bd)
@@ -301,7 +303,7 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	// TODO @cl9200 Timeout check if MessageTypeNewBlock
+	// TODO @cl9200 Compare block timestamp and node's local time if MessageTypeNewBlock
 
 	err = bm.push(bd)
 	if err != nil {

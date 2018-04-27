@@ -27,10 +27,12 @@ const (
 
 // Consensus error types.
 var (
-	ErrInvalidBlockInterval  = errors.New("invalid block interval")
-	ErrInvalidBlockProposer  = errors.New("invalid block proposer")
-	ErrInvalidBlockForgeTime = errors.New("invalid time to forge block")
-	ErrFoundNilProposer      = errors.New("found a nil proposer")
+	ErrInvalidBlockInterval   = errors.New("invalid block interval")
+	ErrInvalidBlockProposer   = errors.New("invalid block proposer")
+	ErrInvalidBlockForgeTime  = errors.New("invalid time to forge block")
+	ErrFoundNilProposer       = errors.New("found a nil proposer")
+	ErrBlockMintedInNextSlot  = errors.New("cannot mint block now, there is a block minted in current slot")
+	ErrWaitingBlockInLastSlot = errors.New("cannot mint block now, waiting for last block")
 )
 
 // Dpos returns dpos consensus model.
@@ -140,13 +142,13 @@ func dynastyGenByTime(ts int64) int64 {
 
 // VerifyProposer verifies block proposer.
 func (d *Dpos) VerifyProposer(block *core.BlockData) error {
+	// TODO @cl9200 Handling when tail height is higher than block height.
 	tail := d.bm.TailBlock()
 	elapsed := time.Duration(block.Timestamp()-tail.Timestamp()) * time.Second
 	if elapsed%BlockInterval != 0 {
 		return ErrInvalidBlockInterval
 	}
 
-	// TODO @cl9200 Handling when block height is higher than tail height.
 	members, err := tail.State().Dynasty()
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -230,8 +232,98 @@ func findProposer(ts int64, miners []*common.Address) (proposer *common.Address,
 	return miners[offsetInDynasty], nil
 }
 
-func (d *Dpos) mining(now time.Time) {
-	panic("not implemented")
+func (d *Dpos) mintBlock(now time.Time) error {
+	tail := d.bm.TailBlock()
+
+	deadline, err := checkDeadline(tail, now)
+	if err != nil {
+		return err
+	}
+
+	members, err := tail.State().Dynasty()
+	if err != nil {
+		return err
+	}
+
+	proposer, err := findProposer(deadline.Unix(), members)
+	if err != nil {
+		return err
+	}
+
+	if !d.miner.Equals(*proposer) {
+		return ErrInvalidBlockProposer
+	}
+
+	block, err := d.makeBlock(tail, deadline)
+	if err != nil {
+		return err
+	}
+
+	// TODO @cl9200 Return transactions if an error condition.
+
+	// TODO @cl9200 Skip verification of mint block.
+	err = d.bm.PushBlockData(block.GetBlockData())
+	if err != nil {
+		return err
+	}
+
+	d.bm.BroadCast(block.GetBlockData())
+	return nil
+}
+
+func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, error) {
+	block, err := core.NewBlock(d.bm.ChainID(), d.miner, tail)
+	if err != nil {
+		return nil, err
+	}
+
+	for deadline.Sub(time.Now()) > 0 {
+		tx := d.tm.Pop()
+		if tx == nil {
+			break
+		}
+		err = block.ExecuteTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+		err = block.AcceptTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return block, nil
+}
+
+func lastMintSlot(ts time.Time) time.Time {
+	now := time.Duration(ts.Unix()) * time.Second
+	last := int64(((now - time.Second) / BlockInterval) * BlockInterval)
+	return time.Unix(last, 0)
+}
+
+func nextMintSlot(ts time.Time) time.Time {
+	now := time.Duration(ts.Unix()) * time.Second
+	next := int64(((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval)
+	return time.Unix(next, 0)
+}
+
+func mintDeadline(ts time.Time) time.Time {
+	// TODO @cl9200 Do we need MaxMintDuration?
+	return nextMintSlot(ts)
+}
+
+func checkDeadline(tail *core.Block, ts time.Time) (deadline time.Time, err error) {
+	last := lastMintSlot(ts)
+	next := nextMintSlot(ts)
+	if tail.Timestamp() >= next.Unix() {
+		return time.Time{}, ErrBlockMintedInNextSlot
+	}
+	if tail.Timestamp() == last.Unix() {
+		return mintDeadline(ts), nil
+	}
+	if next.Sub(ts) < MinMintDuration {
+		return mintDeadline(ts), nil
+	}
+	return time.Time{}, ErrWaitingBlockInLastSlot
 }
 
 func (d *Dpos) loop() {
@@ -241,7 +333,7 @@ func (d *Dpos) loop() {
 	for {
 		select {
 		case now := <-ticker.C:
-			d.mining(now)
+			d.mintBlock(now)
 		case <-d.quitCh:
 			logging.Console().Info("Stopped Dpos Mining.")
 			return
