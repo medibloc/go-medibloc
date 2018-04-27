@@ -10,12 +10,33 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTransaction_VerifyIntegrity(t *testing.T) {
 	testCount := 3
+	type keyPair struct {
+		pubKey []byte
+		priKey string
+	}
+
+	keyPairs := []keyPair{
+		{
+			byteutils.Hex2Bytes("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"),
+			"ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea",
+		},
+		{
+			byteutils.Hex2Bytes("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
+			"bd516113ecb3ad02f3a5bf750b65a545d56835e3d7ef92159dc655ed3745d5c0",
+		},
+		{
+			byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
+			"b108356a113edaaf537b6cd4f506f72787d69de3c3465adc30741653949e2173",
+		},
+	}
+
 	type testTx struct {
 		name    string
 		tx      *core.Transaction
@@ -25,40 +46,32 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 
 	var tests []testTx
 	ks := keystore.NewKeyStore()
-
 	for index := 0; index < testCount; index++ {
 
-		from := test.MockAddress(t, ks)
+		from := common.BytesToAddress(keyPairs[index].pubKey)
 		to := test.MockAddress(t, ks)
-
-		key1, err := ks.GetKey(from)
-		assert.NoError(t, err)
 
 		tx, err := core.NewTransaction(test.ChainID, from, to, util.Uint128Zero(), 1, core.TxPayloadBinaryType, []byte("datadata"))
 		assert.NoError(t, err)
 
 		sig, err := crypto.NewSignature(algorithm.SECP256K1)
 		assert.NoError(t, err)
-		sig.InitSign(key1)
+		key, err := secp256k1.NewPrivateKeyFromHex(keyPairs[index].priKey)
+		assert.NoError(t, err)
+		sig.InitSign(key)
 		assert.NoError(t, tx.SignThis(sig))
-		tests = append(tests, testTx{string(index), tx, key1, 1})
+		tests = append(tests, testTx{string(index), tx, key, 1})
 	}
 	for _, tt := range tests {
 		for index := 0; index < tt.count; index++ {
 			t.Run(tt.name, func(t *testing.T) {
 				sig, err := crypto.NewSignature(algorithm.SECP256K1)
 				assert.NoError(t, err)
-				sig.InitSign(tt.privKey)
-				err = tt.tx.SignThis(sig)
-				if err != nil {
-					t.Errorf("Sign() error = %v", err)
-					return
-				}
+				signature.InitSign(tt.privKey)
+				err = tt.tx.SignThis(signature)
+				assert.NoErrorf(t, err, "Sign() error = %v", err)
 				err = tt.tx.VerifyIntegrity(test.ChainID)
-				if err != nil {
-					t.Errorf("verify failed:%s", err)
-					return
-				}
+				assert.NoErrorf(t, err, "verify failed:%s", err)
 			})
 		}
 	}
