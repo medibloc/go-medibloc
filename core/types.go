@@ -15,6 +15,7 @@ const (
 	TxOperationWithdrawVesting = "withdraw_vesting"
 	TxOperationRegisterWKey    = "register_wkey"
 	TxOperationRemoveWKey      = "remove_wkey"
+	TxOperationBecomeCandidate = "become_candidate"
 )
 
 // Transaction payload type.
@@ -92,6 +93,7 @@ var (
 	ErrReservationQueueAlreadyBatching  = errors.New("reservation queue is already in batch mode")
 	ErrReservedTaskNotProcessed         = errors.New("there are reservation task(s) to be processed in the block")
 	ErrInvalidReservedTaskType          = errors.New("type of reserved task is invalid")
+	ErrAlreadyInCandidacy               = errors.New("account is already a candidate")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

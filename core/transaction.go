@@ -305,6 +305,8 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.vest(bs)
 	case TxOperationWithdrawVesting:
 		return tx.withdrawVesting(bs)
+	case TxOperationBecomeCandidate:
+		return tx.becomeCandidate(bs)
 	default:
 		return tx.transfer(bs)
 	}
@@ -364,4 +366,8 @@ func (tx *Transaction) vest(bs *BlockState) error {
 
 func (tx *Transaction) withdrawVesting(bs *BlockState) error {
 	return bs.WithdrawVesting(tx.from, tx.value, tx.timestamp)
+}
+
+func (tx *Transaction) becomeCandidate(bs *BlockState) error {
+	return bs.AddCandidate(tx.from, tx.value)
 }

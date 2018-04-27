@@ -20,6 +20,7 @@ type states struct {
 	usageState     *TrieBatch
 	recordsState   *TrieBatch
 	consensusState *TrieBatch
+	candidacyState *TrieBatch
 
 	reservationQueue *ReservationQueue
 
@@ -52,6 +53,11 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	candidacyState, err := NewTrieBatch(nil, stor)
+	if err != nil {
+		return nil, err
+	}
+
 	reservationQueue := NewEmptyReservationQueue(stor)
 
 	return &states{
@@ -60,6 +66,7 @@ func newStates(stor storage.Storage) (*states, error) {
 		usageState:       usageState,
 		recordsState:     recordsState,
 		consensusState:   consensusState,
+		candidacyState:   candidacyState,
 		reservationQueue: reservationQueue,
 		storage:          stor,
 	}, nil
@@ -91,6 +98,11 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	candidacyState, err := NewTrieBatch(st.candidacyState.RootHash(), st.storage)
+	if err != nil {
+		return nil, err
+	}
+
 	reservationQueue, err := LoadReservationQueue(st.storage, st.reservationQueue.Hash())
 	if err != nil {
 		return nil, err
@@ -102,6 +114,7 @@ func (st *states) Clone() (*states, error) {
 		usageState:       usageState,
 		recordsState:     recordsState,
 		consensusState:   consensusState,
+		candidacyState:   candidacyState,
 		reservationQueue: reservationQueue,
 		storage:          st.storage,
 	}, nil
@@ -117,10 +130,13 @@ func (st *states) BeginBatch() error {
 	if err := st.usageState.BeginBatch(); err != nil {
 		return err
 	}
+	if err := st.recordsState.BeginBatch(); err != nil {
+		return err
+	}
 	if err := st.consensusState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.recordsState.BeginBatch(); err != nil {
+	if err := st.candidacyState.BeginBatch(); err != nil {
 		return err
 	}
 	return st.reservationQueue.BeginBatch()
@@ -142,6 +158,9 @@ func (st *states) RollBack() error {
 	if err := st.recordsState.RollBack(); err != nil {
 		return err
 	}
+	if err := st.candidacyState.RollBack(); err != nil {
+		return err
+	}
 	return st.reservationQueue.RollBack()
 }
 
@@ -159,6 +178,9 @@ func (st *states) Commit() error {
 		return err
 	}
 	if err := st.recordsState.Commit(); err != nil {
+		return err
+	}
+	if err := st.candidacyState.Commit(); err != nil {
 		return err
 	}
 	return st.reservationQueue.Commit()
@@ -182,6 +204,10 @@ func (st *states) RecordsRoot() common.Hash {
 
 func (st *states) ConsensusRoot() common.Hash {
 	return common.BytesToHash(st.consensusState.RootHash())
+}
+
+func (st *states) CandidacyRoot() common.Hash {
+	return common.BytesToHash(st.candidacyState.RootHash())
 }
 
 func (st *states) ReservationQueueHash() common.Hash {
@@ -230,6 +256,15 @@ func (st *states) LoadConsensusRoot(rootHash common.Hash) error {
 		return err
 	}
 	st.consensusState = consensusState
+	return nil
+}
+
+func (st *states) LoadCandidacyRoot(rootHash common.Hash) error {
+	candidacyState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+	if err != nil {
+		return err
+	}
+	st.candidacyState = candidacyState
 	return nil
 }
 
@@ -447,6 +482,43 @@ func (st *states) SetDynasty(miners []*common.Address) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (st *states) GetCandidate(address common.Address) (*corepb.Candidate, error) {
+	candidateBytes, err := st.candidacyState.Get(address.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	pbCandidate := new(corepb.Candidate)
+	if err := proto.Unmarshal(candidateBytes, pbCandidate); err != nil {
+		return nil, err
+	}
+	return pbCandidate, nil
+}
+
+func (st *states) AddCandidate(address common.Address, collateral *util.Uint128) error {
+	_, err := st.GetCandidate(address)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	if err == nil {
+		return ErrAlreadyInCandidacy
+	}
+	if err := st.SubBalance(address, collateral); err != nil {
+		return err
+	}
+	pbCandidate := &corepb.Candidate{
+		Address:    address.Bytes(),
+		Collateral: collateral.Bytes(),
+	}
+	candidateBytes, err := proto.Marshal(pbCandidate)
+	if err != nil {
+		return err
+	}
+	if err := st.candidacyState.Put(address.Bytes(), candidateBytes); err != nil {
+		return err
 	}
 	return nil
 }

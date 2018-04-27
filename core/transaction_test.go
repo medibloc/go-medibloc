@@ -371,3 +371,94 @@ func TestWithdrawVesting(t *testing.T) {
 		assert.Equal(t, withdrawTx.Timestamp()+int64(i+1)*core.RtWithdrawInterval, tasks[i].Timestamp())
 	}
 }
+
+func TestBecomeCandidate(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	tx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(10), 1,
+		core.TxOperationBecomeCandidate, []byte{},
+	)
+	assert.NoError(t, err)
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, tx.SignThis(sig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, tx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(tx, test.GenesisBlock.Timestamp()))
+	genesisState.Commit()
+
+	acc, err := genesisState.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-10)))
+	candidate, err := genesisState.GetCandidate(from)
+	assert.NoError(t, err)
+	assert.Equal(t, candidate.Collateral, util.NewUint128FromUint(10).Bytes())
+}
+
+func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	tx1, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(10), 1,
+		core.TxOperationBecomeCandidate, []byte{},
+	)
+	tx2, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(10), 2,
+		core.TxOperationBecomeCandidate, []byte{},
+	)
+	assert.NoError(t, err)
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, tx1.SignThis(sig))
+	assert.NoError(t, tx2.SignThis(sig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, tx1.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(tx1, test.GenesisBlock.Timestamp()))
+	assert.Equal(t, core.ErrAlreadyInCandidacy, tx2.ExecuteOnState(genesisState))
+}
+
+func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	tx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(1000000001), 1,
+		core.TxOperationBecomeCandidate, []byte{},
+	)
+	assert.NoError(t, err)
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, tx.SignThis(sig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.Equal(t, core.ErrBalanceNotEnough, tx.ExecuteOnState(genesisState))
+}
