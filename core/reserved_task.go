@@ -59,7 +59,7 @@ func (t *ReservedTask) FromProto(msg proto.Message) error {
 			return err
 		}
 
-		if err := payload.Unserialize(msg.Payload); err != nil {
+		if err := payload.Deserialize(msg.Payload); err != nil {
 			return err
 		}
 		t.payload = payload

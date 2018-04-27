@@ -19,7 +19,7 @@ func (w *RtWithdraw) Serialize() ([]byte, error) {
 	return w.Amount.ToFixedSizeByteSlice()
 }
 
-// Unserialize a byte array and get a RtWithdraw
-func (w *RtWithdraw) Unserialize(b []byte) error {
+// Deserialize a byte array and get a RtWithdraw
+func (w *RtWithdraw) Deserialize(b []byte) error {
 	return w.Amount.FromFixedSizeByteSlice(b)
 }

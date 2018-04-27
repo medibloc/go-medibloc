@@ -99,10 +99,10 @@ type HashableBlock interface {
 	ParentHash() common.Hash
 }
 
-// Serializable interface for serializing/unserializing
+// Serializable interface for serializing/deserializing
 type Serializable interface {
 	Serialize() ([]byte, error)
-	Unserialize([]byte) error
+	Deserialize([]byte) error
 }
 
 // Consensus is an interface of consensus model.
