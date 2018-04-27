@@ -39,18 +39,19 @@ type BlockHeader struct {
 // ToProto converts BlockHeader to corepb.BlockHeader
 func (b *BlockHeader) ToProto() (proto.Message, error) {
 	return &corepb.BlockHeader{
-		Hash:          b.hash.Bytes(),
-		ParentHash:    b.parentHash.Bytes(),
-		AccsRoot:      b.accsRoot.Bytes(),
-		TxsRoot:       b.txsRoot.Bytes(),
-		UsageRoot:     b.usageRoot.Bytes(),
-		RecordsRoot:   b.recordsRoot.Bytes(),
-		ConsensusRoot: b.consensusRoot.Bytes(),
-		Coinbase:      b.coinbase.Bytes(),
-		Timestamp:     b.timestamp,
-		ChainId:       b.chainID,
-		Alg:           uint32(b.alg),
-		Sign:          b.sign,
+		Hash:                 b.hash.Bytes(),
+		ParentHash:           b.parentHash.Bytes(),
+		AccsRoot:             b.accsRoot.Bytes(),
+		TxsRoot:              b.txsRoot.Bytes(),
+		UsageRoot:            b.usageRoot.Bytes(),
+		RecordsRoot:          b.recordsRoot.Bytes(),
+		ConsensusRoot:        b.consensusRoot.Bytes(),
+		ReservationQueueHash: b.reservationQueueHash.Bytes(),
+		Coinbase:             b.coinbase.Bytes(),
+		Timestamp:            b.timestamp,
+		ChainId:              b.chainID,
+		Alg:                  uint32(b.alg),
+		Sign:                 b.sign,
 	}, nil
 }
 
@@ -64,6 +65,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.usageRoot = common.BytesToHash(msg.UsageRoot)
 		b.recordsRoot = common.BytesToHash(msg.RecordsRoot)
 		b.consensusRoot = common.BytesToHash(msg.ConsensusRoot)
+		b.reservationQueueHash = common.BytesToHash(msg.ReservationQueueHash)
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
@@ -292,6 +294,11 @@ func (bd *BlockData) ConsensusRoot() common.Hash {
 	return bd.header.consensusRoot
 }
 
+// ReservationQueueHash returns hash of reservation queue
+func (bd *BlockData) ReservationQueueHash() common.Hash {
+	return bd.header.reservationQueueHash
+}
+
 // Height returns height
 func (bd *BlockData) Height() uint64 {
 	return bd.height
@@ -365,6 +372,7 @@ func HashBlockData(bd *BlockData) (common.Hash, error) {
 	hasher.Write(bd.UsageRoot().Bytes())
 	hasher.Write(bd.RecordsRoot().Bytes())
 	hasher.Write(bd.ConsensusRoot().Bytes())
+	hasher.Write(bd.ReservationQueueHash().Bytes())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
@@ -470,6 +478,9 @@ func (block *Block) VerifyState() error {
 	if !byteutils.Equal(block.state.ConsensusRoot().Bytes(), block.ConsensusRoot().Bytes()) {
 		return ErrInvalidBlockConsensusRoot
 	}
+	if !byteutils.Equal(block.state.ReservationQueueHash().Bytes(), block.ReservationQueueHash().Bytes()) {
+		return ErrInvalidBlockReservationQueueHash
+	}
 	return nil
 }
 
@@ -539,18 +550,19 @@ func (block *Block) Commit() error {
 func (block *Block) GetBlockData() *BlockData {
 	bd := &BlockData{
 		header: &BlockHeader{
-			hash:          block.Hash(),
-			parentHash:    block.ParentHash(),
-			accsRoot:      block.AccountsRoot(),
-			txsRoot:       block.TransactionsRoot(),
-			usageRoot:     block.UsageRoot(),
-			recordsRoot:   block.RecordsRoot(),
-			consensusRoot: block.ConsensusRoot(),
-			coinbase:      block.Coinbase(),
-			timestamp:     block.Timestamp(),
-			chainID:       block.ChainID(),
-			alg:           block.Alg(),
-			sign:          block.Signature(),
+			hash:                 block.Hash(),
+			parentHash:           block.ParentHash(),
+			accsRoot:             block.AccountsRoot(),
+			txsRoot:              block.TransactionsRoot(),
+			usageRoot:            block.UsageRoot(),
+			recordsRoot:          block.RecordsRoot(),
+			consensusRoot:        block.ConsensusRoot(),
+			reservationQueueHash: block.ReservationQueueHash(),
+			coinbase:             block.Coinbase(),
+			timestamp:            block.Timestamp(),
+			chainID:              block.ChainID(),
+			alg:                  block.Alg(),
+			sign:                 block.Signature(),
 		},
 		height: block.Height(),
 	}
