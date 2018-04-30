@@ -16,6 +16,7 @@ const (
 	TxOperationRegisterWKey    = "register_wkey"
 	TxOperationRemoveWKey      = "remove_wkey"
 	TxOperationBecomeCandidate = "become_candidate"
+	TxOperationQuitCandidacy   = "quit_candidacy"
 )
 
 // Transaction payload type.

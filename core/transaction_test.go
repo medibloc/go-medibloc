@@ -402,7 +402,9 @@ func TestBecomeCandidate(t *testing.T) {
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-10)))
 	candidate, err := genesisState.GetCandidate(from)
 	assert.NoError(t, err)
-	assert.Equal(t, candidate.Collateral, util.NewUint128FromUint(10).Bytes())
+	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
+	assert.NoError(t, err)
+	assert.Equal(t, candidate.Collateral, tenBytes)
 }
 
 func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
@@ -461,4 +463,46 @@ func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
 
 	genesisState.BeginBatch()
 	assert.Equal(t, core.ErrBalanceNotEnough, tx.ExecuteOnState(genesisState))
+}
+
+func TestQuitCandidacy(t *testing.T) {
+	from := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	becomeTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(10), 1,
+		core.TxOperationBecomeCandidate, []byte{},
+	)
+	quitTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(0), 2,
+		core.TxOperationQuitCandidacy, []byte{},
+	)
+	assert.NoError(t, err)
+	privKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, becomeTx.SignThis(sig))
+	assert.NoError(t, quitTx.SignThis(sig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, becomeTx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(becomeTx, test.GenesisBlock.Timestamp()))
+	assert.NoError(t, quitTx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(quitTx, test.GenesisBlock.Timestamp()))
+	genesisState.Commit()
+
+	acc, err := genesisState.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000)))
+	_, err = genesisState.GetCandidate(from)
+	assert.Equal(t, core.ErrNotFound, err)
 }

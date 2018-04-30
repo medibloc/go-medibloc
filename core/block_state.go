@@ -509,9 +509,13 @@ func (st *states) AddCandidate(address common.Address, collateral *util.Uint128)
 	if err := st.SubBalance(address, collateral); err != nil {
 		return err
 	}
+	collateralBytes, err := collateral.ToFixedSizeByteSlice()
+	if err != nil {
+		return err
+	}
 	pbCandidate := &corepb.Candidate{
 		Address:    address.Bytes(),
-		Collateral: collateral.Bytes(),
+		Collateral: collateralBytes,
 	}
 	candidateBytes, err := proto.Marshal(pbCandidate)
 	if err != nil {
@@ -521,6 +525,21 @@ func (st *states) AddCandidate(address common.Address, collateral *util.Uint128)
 		return err
 	}
 	return nil
+}
+
+func (st *states) QuitCandidacy(address common.Address) error {
+	candidate, err := st.GetCandidate(address)
+	if err != nil {
+		return err
+	}
+	collateral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collateral)
+	if err != nil {
+		return err
+	}
+	if err := st.AddBalance(address, collateral); err != nil {
+		return err
+	}
+	return st.candidacyState.Delete(address.Bytes())
 }
 
 // GetReservedTasks returns reserved tasks in reservation queue
