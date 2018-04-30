@@ -96,6 +96,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 			address: address,
 			balance: util.NewUint128(),
 			vesting: util.NewUint128(),
+			voted:   []byte{},
 			nonce:   0,
 		}), nil
 	}
@@ -277,6 +278,22 @@ func (as *AccountStateBatch) SubVesting(address []byte, amount *util.Uint128) er
 		return err
 	}
 	acc.vesting = vesting
+	return nil
+}
+
+// SetVoted vote sets voted of account
+func (as *AccountStateBatch) SetVoted(address []byte, voted []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	if byteutils.Equal(acc.voted, voted) {
+		return ErrAlreadyVoted
+	}
+	acc.voted = voted
 	return nil
 }
 

@@ -506,3 +506,52 @@ func TestQuitCandidacy(t *testing.T) {
 	_, err = genesisState.GetCandidate(from)
 	assert.Equal(t, core.ErrNotFound, err)
 }
+
+func TestVote(t *testing.T) {
+	voter := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	voted := common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939")
+	becomeTx, err := core.NewTransaction(
+		test.ChainID,
+		voted,
+		common.Address{},
+		util.NewUint128FromUint(10), 1,
+		core.TxOperationBecomeCandidate, []byte{},
+	)
+	assert.NoError(t, err)
+	voteTx, err := core.NewTransaction(
+		test.ChainID,
+		voter,
+		voted,
+		util.NewUint128FromUint(0), 1,
+		core.TxOperationVote, []byte{},
+	)
+	assert.NoError(t, err)
+
+	votedPrivKey, err := secp256k1.NewPrivateKeyFromHex("bd516113ecb3ad02f3a5bf750b65a545d56835e3d7ef92159dc655ed3745d5c0")
+	assert.NoError(t, err)
+	votedSig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	votedSig.InitSign(votedPrivKey)
+	assert.NoError(t, becomeTx.SignThis(votedSig))
+
+	voterPrivKey, err := secp256k1.NewPrivateKeyFromHex("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	assert.NoError(t, err)
+	voterSig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	voterSig.InitSign(voterPrivKey)
+	assert.NoError(t, voteTx.SignThis(voterSig))
+
+	genesisState, err := test.GenesisBlock.State().Clone()
+	assert.NoError(t, err)
+
+	genesisState.BeginBatch()
+	assert.NoError(t, becomeTx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(becomeTx, test.GenesisBlock.Timestamp()))
+	assert.NoError(t, voteTx.ExecuteOnState(genesisState))
+	assert.NoError(t, genesisState.AcceptTransaction(voteTx, test.GenesisBlock.Timestamp()))
+	genesisState.Commit()
+
+	voterAcc, err := genesisState.GetAccount(voter)
+	assert.NoError(t, err)
+	assert.Equal(t, voted.Bytes(), voterAcc.Voted())
+}

@@ -309,6 +309,8 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.becomeCandidate(bs)
 	case TxOperationQuitCandidacy:
 		return tx.quitCandidacy(bs)
+	case TxOperationVote:
+		return tx.vote(bs)
 	default:
 		return tx.transfer(bs)
 	}
@@ -376,4 +378,8 @@ func (tx *Transaction) becomeCandidate(bs *BlockState) error {
 
 func (tx *Transaction) quitCandidacy(bs *BlockState) error {
 	return bs.QuitCandidacy(tx.from)
+}
+
+func (tx *Transaction) vote(bs *BlockState) error {
+	return bs.Vote(tx.from, tx.to)
 }

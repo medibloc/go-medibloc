@@ -34,6 +34,8 @@ type account struct {
 	vesting *util.Uint128
 	// nonce account sequential number
 	nonce uint64
+	// voted account
+	voted []byte
 	// writers
 	writers [][]byte
 	// records
@@ -54,6 +56,10 @@ func (acc *account) Vesting() *util.Uint128 {
 
 func (acc *account) Nonce() uint64 {
 	return acc.nonce
+}
+
+func (acc *account) Voted() []byte {
+	return acc.voted
 }
 
 func (acc *account) Writers() [][]byte {
@@ -77,8 +83,10 @@ func (acc *account) toBytes() ([]byte, error) {
 		Address: acc.address,
 		Balance: balanceBytes,
 		Vesting: vestingBytes,
+		Voted:   acc.voted,
 		Nonce:   acc.nonce,
 		Writers: acc.writers,
+		Records: acc.records,
 	}
 	bytes, err := proto.Marshal(pbAcc)
 	if err != nil {
@@ -100,8 +108,10 @@ func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 		address: pbAcc.Address,
 		balance: balance,
 		vesting: vesting,
+		voted:   pbAcc.Voted,
 		nonce:   pbAcc.Nonce,
 		writers: pbAcc.Writers,
+		records: pbAcc.Records,
 	}
 	return acc, nil
 }
@@ -132,6 +142,8 @@ type Account interface {
 	Vesting() *util.Uint128
 
 	Nonce() uint64
+
+	Voted() []byte
 
 	Writers() [][]byte
 

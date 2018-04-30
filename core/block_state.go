@@ -608,6 +608,16 @@ func (st *states) SubVesting(address common.Address, amount *util.Uint128) error
 	return st.accState.SubVesting(address.Bytes(), amount)
 }
 
+func (st *states) Vote(address common.Address, voted common.Address) error {
+	if _, err := st.GetCandidate(voted); err != nil {
+		return err
+	}
+	if err := st.accState.SetVoted(address.Bytes(), voted.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
 // BlockState possesses every states a block should have
 type BlockState struct {
 	*states
