@@ -114,7 +114,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			return lib
 		}
 
-		proposer, err := findProposer(cur.Timestamp(), members)
+		proposer, err := FindProposer(cur.Timestamp(), members)
 		if err != nil {
 			return lib
 		}
@@ -158,7 +158,7 @@ func (d *Dpos) VerifyProposer(block *core.BlockData) error {
 		return err
 	}
 
-	proposer, err := findProposer(block.Timestamp(), members)
+	proposer, err := FindProposer(block.Timestamp(), members)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
@@ -214,7 +214,8 @@ func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, ciphe
 	return addr, nil
 }
 
-func findProposer(ts int64, miners []*common.Address) (proposer *common.Address, err error) {
+// FindProposer finds proposer of given timestamp.
+func FindProposer(ts int64, miners []*common.Address) (proposer *common.Address, err error) {
 	now := time.Duration(ts) * time.Second
 	if now%BlockInterval != 0 {
 		return nil, ErrInvalidBlockForgeTime
@@ -245,7 +246,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	proposer, err := findProposer(deadline.Unix(), members)
+	proposer, err := FindProposer(deadline.Unix(), members)
 	if err != nil {
 		return err
 	}

@@ -17,12 +17,12 @@
 package test
 
 import (
-	"os"
-	"path"
 	"testing"
 
 	"crypto/rand"
 	"math/big"
+
+	"time"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
@@ -31,7 +31,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -47,21 +46,76 @@ type BlockID int
 var (
 	// ChainID chain ID
 	ChainID uint32 = 1010
-	// DefaultGenesisConfPath default genesis file path
-	DefaultGenesisConfPath = path.Join(os.Getenv("GOPATH"), "src/github.com/medibloc/go-medibloc", "conf/default/genesis.conf")
 	// GenesisID genesis ID
 	GenesisID BlockID = -1
-	// GenesisBlock genesis Block
-	GenesisBlock *core.Block
 
 	fromAddress = "02279dcbc360174b4348685e75287a60abc5290497d2e3330b6a1791c4f35bcd20"
 )
 
-func init() {
-	conf, _ := core.LoadGenesisConf(DefaultGenesisConfPath)
-	s, _ := storage.NewMemoryStorage()
-	GenesisBlock, _ = core.NewGenesisBlock(conf, s)
-	ChainID = conf.Meta.ChainId
+// AddrKeyPair contains address and private key.
+type AddrKeyPair struct {
+	Addr    common.Address
+	PrivKey signature.PrivateKey
+}
+
+// Dynasties is a slice of dynasties.
+type Dynasties []*AddrKeyPair
+
+func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
+	for _, dynasty := range d {
+		if dynasty.Addr.Equals(addr) {
+			return dynasty.PrivKey
+		}
+	}
+	return nil
+}
+
+// NewTestGenesisConf returns a genesis configuration for tests.
+func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties) {
+	conf = &corepb.Genesis{
+		Meta: &corepb.GenesisMeta{
+			ChainId: ChainID,
+		},
+		Consensus: &corepb.GenesisConsensus{
+			Dpos: &corepb.GenesisConsensusDpos{
+				Dynasty: nil,
+			},
+		},
+		TokenDistribution: nil,
+	}
+
+	var dynasty []string
+	var tokenDist []*corepb.GenesisTokenDistribution
+	for i := 0; i < dpos.DynastySize; i++ {
+		privKey := NewPrivateKey(t)
+		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
+		require.NoError(t, err)
+		dynasty = append(dynasty, addr.Hex())
+		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
+			Address: addr.Hex(),
+			Value:   "1000000000",
+		})
+
+		dynasties = append(dynasties, &AddrKeyPair{
+			Addr:    addr,
+			PrivKey: privKey,
+		})
+	}
+
+	conf.Consensus.Dpos.Dynasty = dynasty
+	conf.TokenDistribution = tokenDist
+	return conf, dynasties
+}
+
+// NewTestGenesisBlock returns a genesis block for tests.
+func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties) {
+	conf, dynasties := NewTestGenesisConf(t)
+	s, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	genesis, err = core.NewGenesisBlock(conf, s)
+	require.NoError(t, err)
+
+	return genesis, dynasties
 }
 
 // NewBlockTestSet generates test block set from BlockID to parentBlockID index
@@ -76,11 +130,11 @@ func init() {
 //                    [1]     [2]
 //                    / \     / \
 //                  [3] [4] [5] [6]
-func NewBlockTestSet(t *testing.T, idxToParent []BlockID) (blocks map[BlockID]*core.Block) {
+func NewBlockTestSet(t *testing.T, genesis *core.Block, idxToParent []BlockID) (blocks map[BlockID]*core.Block) {
 	blocks = make(map[BlockID]*core.Block)
 	for i, parentID := range idxToParent {
 		if parentID == GenesisID {
-			blocks[GenesisID] = GenesisBlock
+			blocks[GenesisID] = genesis
 		}
 		parentBlock, ok := blocks[parentID]
 		require.True(t, ok)
@@ -103,7 +157,28 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 	require.Nil(t, err)
 	require.NotNil(t, block)
 	require.EqualValues(t, block.ParentHash(), parent.Hash())
+
+	parentBlockTime := time.Unix(parent.Timestamp(), 0)
+	err = block.SetTimestamp(parentBlockTime.Add(dpos.BlockInterval).Unix())
+	require.NoError(t, err)
+
 	return block
+}
+
+// SignBlock signs block.
+func SignBlock(t *testing.T, block *core.Block, dynasties Dynasties) {
+	members, err := block.State().Dynasty()
+	require.NoError(t, err)
+	proposer, err := dpos.FindProposer(block.Timestamp(), members)
+	require.NoError(t, err)
+
+	privKey := dynasties.findPrivKey(*proposer)
+	require.NotNil(t, privKey)
+
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	require.NoError(t, err)
+	sig.InitSign(privKey)
+	block.SignThis(sig)
 }
 
 // NewTestBlock return new block for test
@@ -115,26 +190,26 @@ func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 }
 
 // NewTestBlockWithTxs return new block containing transactions
-func NewTestBlockWithTxs(t *testing.T, parent *core.Block) *core.Block {
+func NewTestBlockWithTxs(t *testing.T, parent *core.Block, from *AddrKeyPair) *core.Block {
 	block := getBlock(t, parent, fromAddress)
-	txs := newTestTransactions(t, block)
+	txs := newTestTransactions(t, block, from)
 	block.SetTransactions(txs)
 	return block
 }
 
-func newTestTransactions(t *testing.T, block *core.Block) core.Transactions {
+func newTestTransactions(t *testing.T, block *core.Block, from *AddrKeyPair) core.Transactions {
 	ks := keystore.NewKeyStore()
 	txDatas := []struct {
 		from    common.Address
 		to      common.Address
 		amount  *util.Uint128
-		privHex string
+		privKey signature.PrivateKey
 	}{
 		{
-			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
+			from.Addr,
 			MockAddress(t, ks),
 			util.NewUint128FromUint(10),
-			"bd516113ecb3ad02f3a5bf750b65a545d56835e3d7ef92159dc655ed3745d5c0",
+			from.PrivKey,
 		},
 	}
 
@@ -148,9 +223,8 @@ func newTestTransactions(t *testing.T, block *core.Block) core.Transactions {
 		require.NoError(t, err)
 		sig, err := crypto.NewSignature(algorithm.SECP256K1)
 		require.NoError(t, err)
-		privKey, err := secp256k1.NewPrivateKeyFromHex(txData.privHex)
 		assert.NoError(t, err)
-		sig.InitSign(privKey)
+		sig.InitSign(txData.privKey)
 		assert.NoError(t, txs[i].SignThis(sig))
 	}
 	require.NoError(t, err)
@@ -287,6 +361,7 @@ type MockMedlet struct {
 	bm        *core.BlockManager
 	tm        *core.TransactionManager
 	consensus core.Consensus
+	dynasties Dynasties
 }
 
 // NewMockMedlet returns MockMedlet.
@@ -302,7 +377,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesis, err := core.LoadGenesisConf(DefaultGenesisConfPath)
+	genesisConf, dynasties := NewTestGenesisConf(t)
 	require.NoError(t, err)
 	consensus := dpos.New(cfg)
 	bm, err := core.NewBlockManager(cfg)
@@ -310,7 +385,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	tm := core.NewTransactionManager(cfg)
 	require.NoError(t, err)
 
-	err = bm.Setup(genesis, stor, ns, consensus)
+	err = bm.Setup(genesisConf, stor, ns, consensus)
 	require.NoError(t, err)
 	tm.Setup(ns)
 	consensus.Setup(bm, tm)
@@ -318,11 +393,12 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	return &MockMedlet{
 		config:    cfg,
 		storage:   stor,
-		genesis:   genesis,
+		genesis:   genesisConf,
 		ns:        ns,
 		bm:        bm,
 		tm:        tm,
 		consensus: consensus,
+		dynasties: dynasties,
 	}
 }
 
@@ -359,4 +435,9 @@ func (m *MockMedlet) TransactionManager() *core.TransactionManager {
 // BlockManager returns BlockManager.
 func (m *MockMedlet) BlockManager() *core.BlockManager {
 	return m.bm
+}
+
+// Dynasties returns Dynasties.
+func (m *MockMedlet) Dynasties() Dynasties {
+	return m.dynasties
 }

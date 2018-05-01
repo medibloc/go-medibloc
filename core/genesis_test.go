@@ -1,22 +1,17 @@
 package core_test
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewGenesisBlock(t *testing.T) {
-	conf, err := core.LoadGenesisConf(test.DefaultGenesisConfPath)
-	assert.NoError(t, err)
-	s, _ := storage.NewMemoryStorage()
-	genesisBlock, err := core.NewGenesisBlock(conf, s)
-	assert.NoError(t, err)
+	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
 	initialMessage := "Genesis block of MediBloc"
@@ -28,9 +23,9 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.NoError(t, err)
 	accState := accStateBatch.AccountState()
 
-	addr, err := hex.DecodeString("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	addr := dynasties[0].Addr
 	assert.NoError(t, err)
-	acc, err := accState.GetAccount(addr)
+	acc, err := accState.GetAccount(addr.Bytes())
 	assert.NoError(t, err)
 
 	expectedBalance, _ := util.NewUint128FromString("1000000000")
