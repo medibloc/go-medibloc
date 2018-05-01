@@ -276,6 +276,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 	if err != nil {
 		return nil, err
 	}
+	block.SetTimestamp(deadline.Unix())
 
 	for deadline.Sub(time.Now()) > 0 {
 		tx := d.tm.Pop()
