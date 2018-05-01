@@ -98,7 +98,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			"tail": tail,
 			"lib":  lib,
 		}).Error("Failed to get members of dynasty.")
-		return
+		return lib
 	}
 	dynastyGen := int64(-1)
 
@@ -111,12 +111,12 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		}
 
 		if cur.Height()-lib.Height() < uint64(ConsensusSize-len(confirmed)) {
-			return
+			return lib
 		}
 
 		proposer, err := findProposer(cur.Timestamp(), members)
 		if err != nil {
-			return
+			return lib
 		}
 
 		confirmed[proposer.Hex()] = true
