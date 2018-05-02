@@ -66,6 +66,22 @@
         ]
       }
     },
+    "/v1/block/tail": {
+      "get": {
+        "operationId": "GetTailBlock",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetBlockResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/user/accountstate": {
       "get": {
         "operationId": "GetAccountState",

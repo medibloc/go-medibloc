@@ -23,6 +23,12 @@ service ApiService {
 			get: "/v1/user/medstate"
 		};
 	}
+
+    rpc GetTailBlock (NonParamsRequest) returns (GetBlockResponse) {
+        option (google.api.http) = {
+            get: "/v1/block/tail"
+        };
+    }
 }
 
 service AdminService {

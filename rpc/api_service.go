@@ -73,3 +73,22 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		Block: nil,
 	}, nil
 }
+
+// GetTailBlock returns tail block
+func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.GetBlockResponse, error) {
+	tailBlock := s.bm.TailBlock()
+	if tailBlock != nil {
+		pb, err := tailBlock.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		if pbBlock, ok := pb.(*corepb.Block); ok {
+			return &rpcpb.GetBlockResponse{
+				Block: pbBlock,
+			}, nil
+		}
+	}
+	return &rpcpb.GetBlockResponse{
+		Block: nil,
+	}, nil
+}
