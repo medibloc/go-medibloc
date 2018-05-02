@@ -14,7 +14,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 
@@ -212,7 +212,7 @@ func (sm *StreamManager) CloseStream(peerID string, reason error) {
 func (sm *StreamManager) cleanup() {
 
 	if atomic.LoadInt32(&sm.activePeersCount) < MaxStreamNum {
-		logging.Console().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"maxNum":      MaxStreamNum,
 			"reservedNum": ReservedStreamNum,
 			"currentNum":  atomic.LoadInt32(&sm.activePeersCount),
