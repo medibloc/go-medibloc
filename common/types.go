@@ -53,6 +53,10 @@ func (h Hash) Equals(b Hash) bool {
 	return bytes.Compare(h[:], b[:]) == 0
 }
 
+func (h Hash) String() string {
+	return byteutils.Bytes2Hex(h.Bytes())
+}
+
 // IsZeroHash checks if hash h is zero hash (0x00000...)
 func IsZeroHash(h Hash) bool {
 	return h == Hash{}
