@@ -10,6 +10,8 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 type states struct {
@@ -414,6 +416,9 @@ func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
 func (st *states) Dynasty() (members []*common.Address, err error) {
 	iter, err := st.consensusState.Iterator(nil)
 	if err != nil && err != trie.ErrNotFound {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get trie iterator.")
 		return nil, err
 	}
 	if err != nil {

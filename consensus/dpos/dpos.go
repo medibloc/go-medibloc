@@ -238,20 +238,39 @@ func (d *Dpos) mintBlock(now time.Time) error {
 
 	deadline, err := checkDeadline(tail, now)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"lastSlot": lastMintSlot(now),
+			"nextSlot": nextMintSlot(now),
+			"now":      now,
+			"err":      err,
+		}).Debug("It's not time to mint.")
 		return err
 	}
 
 	members, err := tail.State().Dynasty()
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"members": members,
+			"err":     err,
+		}).Error("Failed to get dynasty members.")
 		return err
 	}
 
 	proposer, err := FindProposer(deadline.Unix(), members)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"members":  members,
+			"deadline": deadline,
+			"err":      err,
+		}).Debug("Failed to find block proposer.")
 		return err
 	}
 
 	if !d.miner.Equals(*proposer) {
+		logging.WithFields(logrus.Fields{
+			"miner":    d.miner,
+			"proposer": proposer,
+		}).Debug("It's not my turn to mint the block.")
 		return ErrInvalidBlockProposer
 	}
 
@@ -265,10 +284,19 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	// TODO @cl9200 Skip verification of mint block.
 	err = d.bm.PushBlockData(block.GetBlockData())
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"block": block,
+			"err":   err,
+		}).Error("Failed to push block to blockchain.")
 		return err
 	}
 
 	d.bm.BroadCast(block.GetBlockData())
+
+	logging.Console().WithFields(logrus.Fields{
+		"proposer": proposer,
+		"block":    block,
+	}).Info("New block is minted.")
 	return nil
 }
 
