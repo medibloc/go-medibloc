@@ -5,6 +5,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/rs/cors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,7 +27,9 @@ func httpServerRun(addr string, addrGrpc string) error {
 	if err != nil {
 		return err
 	}
-	return http.ListenAndServe(addr, mux)
+
+	handler := cors.Default().Handler(mux)
+	return http.ListenAndServe(addr, handler)
 }
 
 type errorBody struct {
