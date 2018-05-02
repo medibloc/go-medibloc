@@ -159,14 +159,16 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Verify signature
 
-	err := bm.consensus.VerifyProposer(bd)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":       err,
-			"blockData": bd,
-		}).Debug("Failed to verify blockData.")
-		return err
-	}
+	// TODO @cl9200 Uncomment when integrating dpos miner
+	var err error
+	//err := bm.consensus.VerifyProposer(bd)
+	//if err != nil {
+	//	logging.WithFields(logrus.Fields{
+	//		"err":       err,
+	//		"blockData": bd,
+	//	}).Debug("Failed to verify blockData.")
+	//	return err
+	//}
 
 	// Parent block exists in blockpool.
 	if bm.bp.FindParent(bd) != nil {
