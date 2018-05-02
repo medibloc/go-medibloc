@@ -17,7 +17,8 @@ import (
 
 func TestUpdateUsage(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	genesis, _ := test.NewTestGenesisBlock(t)
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	privHexes := []string{
@@ -83,7 +84,8 @@ func TestUpdateUsage(t *testing.T) {
 
 func TestTooOldTxToAdd(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	genesis, _ := test.NewTestGenesisBlock(t)
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	privHexes := []string{
@@ -144,4 +146,35 @@ func TestTooOldTxToAdd(t *testing.T) {
 		blockState.ExecuteTx(tx)
 		assert.Equal(t, c.expectedResult, blockState.AcceptTransaction(tx, newBlock.Timestamp()))
 	}
+}
+
+func TestDynastyState(t *testing.T) {
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+
+	var expected []*common.Address
+	for _, dynasty := range dynasties {
+		expected = append(expected, &dynasty.Addr)
+	}
+
+	actual, err := genesis.State().Dynasty()
+	assert.NoError(t, err)
+	assert.True(t, equalSlice(expected, actual))
+}
+
+func equalSlice(expected, actual []*common.Address) bool {
+	if len(expected) != len(actual) {
+		return false
+	}
+	for _, e := range expected {
+		found := false
+		for _, a := range actual {
+			if e.Equals(*a) {
+				found = true
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }

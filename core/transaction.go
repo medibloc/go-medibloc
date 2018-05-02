@@ -295,6 +295,10 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.addRecord(bs)
 	case TxOperationAddRecordReader:
 		return tx.addRecordReader(bs)
+	case TxOperationVest:
+		return tx.vest(bs)
+	case TxOperationWithdrawVesting:
+		return tx.withdrawVesting(bs)
 	default:
 		return tx.transfer(bs)
 	}
@@ -346,4 +350,12 @@ func (tx *Transaction) addRecordReader(bs *BlockState) error {
 		return err
 	}
 	return bs.AddRecordReader(tx, payload.Hash, payload.Address, payload.EncKey, payload.Seed)
+}
+
+func (tx *Transaction) vest(bs *BlockState) error {
+	return bs.Vest(tx.from, tx.value)
+}
+
+func (tx *Transaction) withdrawVesting(bs *BlockState) error {
+	return bs.WithdrawVesting(tx.from, tx.value, tx.timestamp)
 }

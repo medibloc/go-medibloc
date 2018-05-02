@@ -30,6 +30,8 @@ type account struct {
 	address []byte
 	// balance account's coin amount
 	balance *util.Uint128
+	// vesting account's vesting(staking) amount
+	vesting *util.Uint128
 	// nonce account sequential number
 	nonce uint64
 	// writers
@@ -46,6 +48,10 @@ func (acc *account) Balance() *util.Uint128 {
 	return acc.balance
 }
 
+func (acc *account) Vesting() *util.Uint128 {
+	return acc.vesting
+}
+
 func (acc *account) Nonce() uint64 {
 	return acc.nonce
 }
@@ -59,17 +65,22 @@ func (acc *account) Records() [][]byte {
 }
 
 func (acc *account) toBytes() ([]byte, error) {
-	bytes, err := acc.balance.ToFixedSizeByteSlice()
+	balanceBytes, err := acc.balance.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	vestingBytes, err := acc.vesting.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 	pbAcc := &corepb.Account{
 		Address: acc.address,
-		Balance: bytes,
+		Balance: balanceBytes,
+		Vesting: vestingBytes,
 		Nonce:   acc.nonce,
 		Writers: acc.writers,
 	}
-	bytes, err = proto.Marshal(pbAcc)
+	bytes, err := proto.Marshal(pbAcc)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +94,12 @@ func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
 	}
 	balance := util.NewUint128()
 	balance.FromFixedSizeByteSlice(pbAcc.Balance)
+	vesting := util.NewUint128()
+	vesting.FromFixedSizeByteSlice(pbAcc.Vesting)
 	acc := &account{
 		address: pbAcc.Address,
 		balance: balance,
+		vesting: vesting,
 		nonce:   pbAcc.Nonce,
 		writers: pbAcc.Writers,
 	}
@@ -114,6 +128,8 @@ type Account interface {
 
 	// Balance getter for balance
 	Balance() *util.Uint128
+
+	Vesting() *util.Uint128
 
 	Nonce() uint64
 

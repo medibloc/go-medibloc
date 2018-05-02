@@ -1,6 +1,7 @@
 package medlet
 
 import (
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
@@ -25,6 +26,7 @@ type Medlet struct {
 	storage            storage.Storage
 	blockManager       *core.BlockManager
 	transactionManager *core.TransactionManager
+	consensus          *dpos.Dpos
 	miner              *core.Miner
 }
 
@@ -67,6 +69,8 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 
 	tm := core.NewTransactionManager(cfg)
 
+	consensus := dpos.New(cfg)
+
 	return &Medlet{
 		config:             cfg,
 		genesis:            genesis,
@@ -75,6 +79,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		storage:            stor,
 		blockManager:       bm,
 		transactionManager: tm,
+		consensus:          consensus,
 	}, nil
 }
 
@@ -84,7 +89,7 @@ func (m *Medlet) Setup() error {
 
 	m.rpc.Setup(m.blockManager, m.transactionManager)
 
-	err := m.blockManager.Setup(m.genesis, m.storage, m.netService)
+	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -93,6 +98,8 @@ func (m *Medlet) Setup() error {
 	}
 
 	m.transactionManager.Setup(m.netService)
+
+	m.consensus.Setup(m.blockManager, m.transactionManager)
 
 	logging.Console().Info("Set up Medlet.")
 	return nil
@@ -125,6 +132,8 @@ func (m *Medlet) Start() error {
 		m.miner = core.StartMiner(m.netService, m.blockManager, m.transactionManager)
 	}
 
+	m.consensus.Start()
+
 	metricsMedstartGauge.Update(1)
 
 	logging.Console().Info("Started Medlet.")
@@ -145,6 +154,8 @@ func (m *Medlet) Stop() {
 	if m.miner != nil {
 		m.miner.StopMiner()
 	}
+
+	m.consensus.Stop()
 
 	logging.Console().Info("Stopped Medlet.")
 }

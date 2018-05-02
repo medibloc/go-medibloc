@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/util/test"
+	testutil "github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,94 +34,97 @@ func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
 	return blockData
 }
 
-func nextBlockData(t *testing.T, parent *core.Block) *core.BlockData {
-	block := test.NewTestBlockWithTxs(t, parent)
+func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.Dynasties) *core.BlockData {
+	block := testutil.NewTestBlockWithTxs(t, parent, dynasties[0])
 	require.Nil(t, block.ExecuteAll())
 	require.Nil(t, block.Seal())
+	testutil.SignBlock(t, block, dynasties)
 
-	// restore state for simiulate network received message
+	// restore state for simulate network received message
 	return restoreBlockData(t, block)
 }
 
-func getBlockDataList(t *testing.T, idxToParent []test.BlockID) []*core.BlockData {
-	blockMap := make(map[test.BlockID]*core.Block)
-	blockMap[test.GenesisID] = test.GenesisBlock
+func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *core.Block, dynasties testutil.Dynasties) []*core.BlockData {
+	from := dynasties[0]
+	blockMap := make(map[testutil.BlockID]*core.Block)
+	blockMap[testutil.GenesisID] = genesis
 	blockDatas := make([]*core.BlockData, len(idxToParent))
 	for i, parentId := range idxToParent {
-		block := test.NewTestBlockWithTxs(t, blockMap[parentId])
+		block := testutil.NewTestBlockWithTxs(t, blockMap[parentId], from)
 		require.Nil(t, block.ExecuteAll())
 		require.Nil(t, block.Seal())
-		blockMap[test.BlockID(i)] = block
+		testutil.SignBlock(t, block, dynasties)
+		blockMap[testutil.BlockID(i)] = block
 
-		// restore state for simiulate network received message
+		// restore state for simulate network received message
 		blockDatas[i] = restoreBlockData(t, block)
 	}
 
 	return blockDatas
 }
 
-func TestBlockSubscriber_Sequential(t *testing.T) {
-	m := test.NewMockMedlet(t)
-	bm, err := core.NewBlockManager(m.Config())
-	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
+func TestBlockManager_Sequential(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
 
-	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := make(map[test.BlockID]*core.Block)
-	blockMap[test.GenesisID] = test.GenesisBlock
+	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
+	blockMap := make(map[testutil.BlockID]*core.Block)
+	blockMap[testutil.GenesisID] = genesis
 	for idx, parentId := range idxToParent {
-		blockData := nextBlockData(t, blockMap[parentId])
+		blockData := nextBlockData(t, blockMap[parentId], dynasties)
 
-		err = bm.PushBlockData(blockData)
+		err := bm.PushBlockData(blockData)
 		assert.Nil(t, err)
 		assert.Equal(t, bm.TailBlock().Hash(), blockData.Hash())
-		blockMap[test.BlockID(idx)] = bm.TailBlock()
+		blockMap[testutil.BlockID(idx)] = bm.TailBlock()
 	}
 }
 
-func TestBlockSubscriber_Reverse(t *testing.T) {
-	m := test.NewMockMedlet(t)
-	bm, err := core.NewBlockManager(m.Config())
-	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
+func TestBlockManager_Reverse(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
 
-	idxToParent := []test.BlockID{test.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockDatas := getBlockDataList(t, idxToParent)
+	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
+	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
 
 	for i := len(idxToParent) - 1; i >= 0; i-- {
 		blockData := blockDatas[i]
-		err = bm.PushBlockData(blockData)
+		err := bm.PushBlockData(blockData)
 		require.Nil(t, err)
 		if i > 0 {
-			require.Equal(t, test.GenesisBlock.Hash(), bm.TailBlock().Hash())
+			require.Equal(t, genesis.Hash(), bm.TailBlock().Hash())
 		} else {
 			assert.Equal(t, blockDatas[len(idxToParent)-1].Hash(), bm.TailBlock().Hash())
 		}
 	}
 }
 
-func TestBlockSubscriber_Tree(t *testing.T) {
-	m := test.NewMockMedlet(t)
-	bm, err := core.NewBlockManager(m.Config())
-	require.NoError(t, err)
-	bm.Setup(m.Genesis(), m.Storage(), m.NetService())
+func TestBlockManager_Tree(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
 
 	tests := []struct {
-		idxToParent []test.BlockID
+		idxToParent []testutil.BlockID
 	}{
-		{[]test.BlockID{test.GenesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
-		{[]test.BlockID{test.GenesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
-		{[]test.BlockID{test.GenesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
+		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
+		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
+		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
 	}
 
 	for _, test := range tests {
-		blockDatas := getBlockDataList(t, test.idxToParent)
+		blockDatas := getBlockDataList(t, test.idxToParent, genesis, dynasties)
 		for i := range blockDatas {
 			j := rand.Intn(i + 1)
 			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
 		}
 		for _, blockData := range blockDatas {
-			err = bm.PushBlockData(blockData)
+			err := bm.PushBlockData(blockData)
 			require.Nil(t, err)
 		}
 	}

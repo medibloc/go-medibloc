@@ -19,6 +19,8 @@ type states struct {
 	recordsState   *TrieBatch
 	consensusState *TrieBatch
 
+	reservationQueue *ReservationQueue
+
 	storage storage.Storage
 }
 
@@ -48,13 +50,16 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	reservationQueue := NewEmptyReservationQueue(stor)
+
 	return &states{
-		accState:       accState,
-		txsState:       txsState,
-		usageState:     usageState,
-		recordsState:   recordsState,
-		consensusState: consensusState,
-		storage:        stor,
+		accState:         accState,
+		txsState:         txsState,
+		usageState:       usageState,
+		recordsState:     recordsState,
+		consensusState:   consensusState,
+		reservationQueue: reservationQueue,
+		storage:          stor,
 	}, nil
 }
 
@@ -84,13 +89,19 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	reservationQueue, err := LoadReservationQueue(st.storage, st.reservationQueue.Hash())
+	if err != nil {
+		return nil, err
+	}
+
 	return &states{
-		accState:       accState,
-		txsState:       txsState,
-		usageState:     usageState,
-		recordsState:   recordsState,
-		consensusState: consensusState,
-		storage:        st.storage,
+		accState:         accState,
+		txsState:         txsState,
+		usageState:       usageState,
+		recordsState:     recordsState,
+		consensusState:   consensusState,
+		reservationQueue: reservationQueue,
+		storage:          st.storage,
 	}, nil
 }
 
@@ -107,7 +118,10 @@ func (st *states) BeginBatch() error {
 	if err := st.consensusState.BeginBatch(); err != nil {
 		return err
 	}
-	return st.recordsState.BeginBatch()
+	if err := st.recordsState.BeginBatch(); err != nil {
+		return err
+	}
+	return st.reservationQueue.BeginBatch()
 }
 
 func (st *states) RollBack() error {
@@ -123,7 +137,10 @@ func (st *states) RollBack() error {
 	if err := st.consensusState.RollBack(); err != nil {
 		return err
 	}
-	return st.recordsState.RollBack()
+	if err := st.recordsState.RollBack(); err != nil {
+		return err
+	}
+	return st.reservationQueue.RollBack()
 }
 
 func (st *states) Commit() error {
@@ -139,7 +156,10 @@ func (st *states) Commit() error {
 	if err := st.consensusState.Commit(); err != nil {
 		return err
 	}
-	return st.recordsState.Commit()
+	if err := st.recordsState.Commit(); err != nil {
+		return err
+	}
+	return st.reservationQueue.Commit()
 }
 
 func (st *states) AccountsRoot() common.Hash {
@@ -160,6 +180,10 @@ func (st *states) RecordsRoot() common.Hash {
 
 func (st *states) ConsensusRoot() common.Hash {
 	return common.BytesToHash(st.consensusState.RootHash())
+}
+
+func (st *states) ReservationQueueHash() common.Hash {
+	return st.reservationQueue.Hash()
 }
 
 func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
@@ -204,6 +228,15 @@ func (st *states) LoadConsensusRoot(rootHash common.Hash) error {
 		return err
 	}
 	st.consensusState = consensusState
+	return nil
+}
+
+func (st *states) LoadReservationQueue(hash common.Hash) error {
+	rq, err := LoadReservationQueue(st.storage, hash)
+	if err != nil {
+		return err
+	}
+	st.reservationQueue = rq
 	return nil
 }
 
@@ -378,7 +411,7 @@ func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
 }
 
 // Dynasty returns members belonging to the current dynasty.
-func (st *states) Dynasty() (members []*common.Hash, err error) {
+func (st *states) Dynasty() (members []*common.Address, err error) {
 	iter, err := st.consensusState.Iterator(nil)
 	if err != nil && err != trie.ErrNotFound {
 		return nil, err
@@ -392,7 +425,7 @@ func (st *states) Dynasty() (members []*common.Hash, err error) {
 		return nil, err
 	}
 	for exist {
-		member := common.BytesToHash(iter.Value())
+		member := common.BytesToAddress(iter.Value())
 		members = append(members, &member)
 		exist, err = iter.Next()
 		if err != nil {
@@ -403,7 +436,7 @@ func (st *states) Dynasty() (members []*common.Hash, err error) {
 }
 
 // SetDynasty sets dynasty members.
-func (st *states) SetDynasty(miners []*common.Hash) error {
+func (st *states) SetDynasty(miners []*common.Address) error {
 	for _, miner := range miners {
 		err := st.consensusState.Put(miner.Bytes(), miner.Bytes())
 		if err != nil {
@@ -411,6 +444,72 @@ func (st *states) SetDynasty(miners []*common.Hash) error {
 		}
 	}
 	return nil
+}
+
+// GetReservedTasks returns reserved tasks in reservation queue
+func (st *states) GetReservedTasks() []*ReservedTask {
+	return st.reservationQueue.Tasks()
+}
+
+// AddReservedTask adds a reserved task in reservation queue
+func (st *states) AddReservedTask(task *ReservedTask) error {
+	return st.reservationQueue.AddTask(task)
+}
+
+// PopReservedTask pops reserved tasks which should be processed before 'before'
+func (st *states) PopReservedTasks(before int64) []*ReservedTask {
+	return st.reservationQueue.PopTasksBefore(before)
+}
+
+func (st *states) PeekHeadReservedTask() *ReservedTask {
+	return st.reservationQueue.Peek()
+}
+
+// WithdrawVesting makes multiple reserved tasks for withdraw a certain amount of vesting
+func (st *states) WithdrawVesting(address common.Address, amount *util.Uint128, blockTime int64) error {
+	acc, err := st.GetAccount(address)
+	if err != nil {
+		return err
+	}
+	if amount.Cmp(acc.Vesting()) > 0 {
+		return ErrVestingNotEnough
+	}
+	splitAmount, err := amount.Div(util.NewUint128FromUint(RtWithdrawNum))
+	if err != nil {
+		return err
+	}
+	amountLeft := amount.DeepCopy()
+	payload := new(RtWithdraw)
+	for i := 0; i < RtWithdrawNum; i++ {
+		if amountLeft.Cmp(splitAmount) <= 0 {
+			payload, err = NewRtWithdraw(amountLeft)
+			if err != nil {
+				return err
+			}
+		} else {
+			payload, err = NewRtWithdraw(splitAmount)
+			if err != nil {
+				return err
+			}
+		}
+		task := NewReservedTask(RtWithdrawType, address, payload, blockTime+int64(i+1)*RtWithdrawInterval)
+		if err := st.AddReservedTask(task); err != nil {
+			return err
+		}
+		amountLeft, _ = amountLeft.Sub(splitAmount)
+	}
+	return nil
+}
+
+func (st *states) Vest(address common.Address, amount *util.Uint128) error {
+	if err := st.accState.SubBalance(address.Bytes(), amount); err != nil {
+		return err
+	}
+	return st.accState.AddVesting(address.Bytes(), amount)
+}
+
+func (st *states) SubVesting(address common.Address, amount *util.Uint128) error {
+	return st.accState.SubVesting(address.Bytes(), amount)
 }
 
 // BlockState possesses every states a block should have

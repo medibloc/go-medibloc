@@ -40,15 +40,16 @@ func getBlockSlice(blockMap map[testUtil.BlockID]*core.Block, id testUtil.BlockI
 }
 
 func TestBlockChain_OnePath(t *testing.T) {
+	genesis, _ := testUtil.NewTestGenesisBlock(t)
 	bc := getBlockChain(t)
 
 	idxToParent := []testUtil.BlockID{testUtil.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := testUtil.NewBlockTestSet(t, idxToParent)
+	blockMap := testUtil.NewBlockTestSet(t, genesis, idxToParent)
 
 	err := bc.PutVerifiedNewBlocks(blockMap[0], getBlockSlice(blockMap, 0), getBlockSlice(blockMap, 0))
 	assert.NotNil(t, err)
 
-	err = bc.PutVerifiedNewBlocks(testUtil.GenesisBlock, getBlockSlice(blockMap, 0), getBlockSlice(blockMap, 0))
+	err = bc.PutVerifiedNewBlocks(genesis, getBlockSlice(blockMap, 0), getBlockSlice(blockMap, 0))
 	assert.Nil(t, err)
 
 	for _, idx := range idxToParent[2:] {
@@ -69,10 +70,11 @@ func TestBlockChain_Tree(t *testing.T) {
 		{[]testUtil.BlockID{testUtil.GenesisID, 0, 0, 0, 0, 1, 2, 2, 3}},
 		{[]testUtil.BlockID{testUtil.GenesisID, 0, 1, 1, 2, 2, 3, 3}},
 	}
+	genesis, _ := testUtil.NewTestGenesisBlock(t)
 	// Put one-by-one
 	for _, test := range tests {
 		bc := getBlockChain(t)
-		blockMap := testUtil.NewBlockTestSet(t, test.tree)
+		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
 		for idx, parentID := range test.tree {
 			blocks := getBlockSlice(blockMap, testUtil.BlockID(idx))
 			err := bc.PutVerifiedNewBlocks(blockMap[parentID], blocks, blocks)
@@ -82,7 +84,7 @@ func TestBlockChain_Tree(t *testing.T) {
 	// Put all
 	for _, test := range tests {
 		bc := getBlockChain(t)
-		blockMap := testUtil.NewBlockTestSet(t, test.tree)
+		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
 		notTail := make(map[testUtil.BlockID]bool)
 		for _, idx := range test.tree {
 			notTail[idx] = true
@@ -99,7 +101,7 @@ func TestBlockChain_Tree(t *testing.T) {
 		err := bc.PutVerifiedNewBlocks(genesisBlock, allBlocks, allBlocks)
 		assert.NotNil(t, err)
 		*/
-		err := bc.PutVerifiedNewBlocks(testUtil.GenesisBlock, allBlocks, tailBlocks)
+		err := bc.PutVerifiedNewBlocks(genesis, allBlocks, tailBlocks)
 		assert.Nil(t, err)
 	}
 }

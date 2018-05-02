@@ -19,11 +19,12 @@ type BlockHeader struct {
 	hash       common.Hash
 	parentHash common.Hash
 
-	accsRoot      common.Hash
-	txsRoot       common.Hash
-	usageRoot     common.Hash
-	recordsRoot   common.Hash
-	consensusRoot common.Hash
+	accsRoot             common.Hash
+	txsRoot              common.Hash
+	usageRoot            common.Hash
+	recordsRoot          common.Hash
+	consensusRoot        common.Hash
+	reservationQueueHash common.Hash
 
 	coinbase  common.Address
 	timestamp int64
@@ -215,6 +216,11 @@ func (bd *BlockData) GetExecutedBlock(storage storage.Storage) (*Block, error) {
 	if err = block.state.LoadConsensusRoot(block.header.consensusRoot); err != nil {
 		return nil, err
 	}
+	if common.IsZeroHash(block.header.reservationQueueHash) == false {
+		if err := block.state.LoadReservationQueue(block.header.reservationQueueHash); err != nil {
+			return nil, err
+		}
+	}
 	block.storage = storage
 	return block, nil
 }
@@ -322,11 +328,18 @@ func (block *Block) Seal() error {
 		return ErrBlockAlreadySealed
 	}
 
+	// all reserved tasks should have timestamps greater than block's timestamp
+	head := block.state.PeekHeadReservedTask()
+	if head != nil && head.Timestamp() < block.Timestamp() {
+		return ErrReservedTaskNotProcessed
+	}
+
 	block.header.accsRoot = block.state.AccountsRoot()
 	block.header.txsRoot = block.state.TransactionsRoot()
 	block.header.usageRoot = block.state.UsageRoot()
 	block.header.recordsRoot = block.state.RecordsRoot()
 	block.header.consensusRoot = block.state.ConsensusRoot()
+	block.header.reservationQueueHash = block.state.ReservationQueueHash()
 
 	var err error
 	block.header.hash, err = HashBlockData(block.BlockData)
@@ -402,8 +415,24 @@ func (block *Block) ExecuteAll() error {
 		}
 	}
 
+	if err := block.ExecuteReservedTasks(); err != nil {
+		block.RollBack()
+		return err
+	}
+
 	block.Commit()
 
+	return nil
+}
+
+// ExecuteReservedTasks processes reserved tasks with timestamp before block's timestamp
+func (block *Block) ExecuteReservedTasks() error {
+	tasks := block.state.PopReservedTasks(block.Timestamp())
+	for _, t := range tasks {
+		if err := t.ExecuteOnState(block.state); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

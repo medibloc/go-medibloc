@@ -8,37 +8,25 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewBlock(t *testing.T) {
-	assert.NotNil(t, test.GenesisBlock)
+	genesis, dynasties := test.NewTestGenesisBlock(t)
 
-	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	_, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	coinbase := dynasties[0].Addr
+	_, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 }
 
 func TestSendExecution(t *testing.T) {
-	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+
+	coinbase := dynasties[0].Addr
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
-
-	privHexes := []string{
-		"bd516113ecb3ad02f3a5bf750b65a545d56835e3d7ef92159dc655ed3745d5c0",
-		"b108356a113edaaf537b6cd4f506f72787d69de3c3465adc30741653949e2173",
-		"a396832a6aac41cb5844ecf86b2ec0406daa5aad4a6612964aa5e8c65abdf451",
-	}
-
-	privKeys := make([]signature.PrivateKey, len(privHexes))
-
-	for i, privHex := range privHexes {
-		privKeys[i], err = secp256k1.NewPrivateKeyFromHex(privHex)
-		assert.NoError(t, err)
-	}
 
 	cases := []struct {
 		from                 common.Address
@@ -48,23 +36,23 @@ func TestSendExecution(t *testing.T) {
 		expectedResultAmount *util.Uint128
 	}{
 		{
-			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
-			privKeys[0],
-			common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
+			dynasties[1].Addr,
+			dynasties[1].PrivKey,
+			dynasties[2].Addr,
 			util.NewUint128FromUint(10),
 			util.NewUint128FromUint(1000000090),
 		},
 		{
-			common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
-			privKeys[1],
-			common.HexToAddress("027064502450c5192fabba2ac9714606edd724a9b03cc79d26327159435eba99a7"),
+			dynasties[2].Addr,
+			dynasties[2].PrivKey,
+			dynasties[3].Addr,
 			util.NewUint128FromUint(20),
 			util.NewUint128FromUint(999999990),
 		},
 		{
-			common.HexToAddress("027064502450c5192fabba2ac9714606edd724a9b03cc79d26327159435eba99a7"),
-			privKeys[2],
-			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
+			dynasties[3].Addr,
+			dynasties[3].PrivKey,
+			dynasties[1].Addr,
 			util.NewUint128FromUint(100),
 			util.NewUint128FromUint(999999920),
 		},
@@ -90,11 +78,11 @@ func TestSendExecution(t *testing.T) {
 	newBlock.Commit()
 	assert.NoError(t, newBlock.Seal())
 
-	coinbaseKey, err := secp256k1.HexToECDSA("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	coinbaseKey := dynasties[0].PrivKey
 
 	blockSigner, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	blockSigner.InitSign(secp256k1.NewPrivateKey(coinbaseKey))
+	blockSigner.InitSign(coinbaseKey)
 
 	assert.NoError(t, newBlock.SignThis(blockSigner))
 
@@ -115,17 +103,13 @@ func TestSendExecution(t *testing.T) {
 }
 
 func TestSendMoreThanBalance(t *testing.T) {
-	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+	coinbase := dynasties[0].Addr
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
-	privHex := "ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea"
-
-	privKey, err := secp256k1.NewPrivateKeyFromHex(privHex)
-	assert.NoError(t, err)
-
-	from := common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939")
-	to := common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21")
+	fromKey := dynasties[1].PrivKey
+	from, to := dynasties[1].Addr, dynasties[2].Addr
 
 	balance := util.NewUint128FromUint(1000000090)
 	sendingAmount, err := balance.Add(util.NewUint128FromUint(1))
@@ -135,7 +119,7 @@ func TestSendMoreThanBalance(t *testing.T) {
 
 	signer, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	signer.InitSign(privKey)
+	signer.InitSign(fromKey)
 	assert.NoError(t, tx.SignThis(signer))
 
 	blockState := newBlock.State()
@@ -146,21 +130,10 @@ func TestSendMoreThanBalance(t *testing.T) {
 }
 
 func TestExecuteOnParentBlock(t *testing.T) {
-	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	firstBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+	coinbase := dynasties[0].Addr
+	firstBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
-
-	privHexes := []string{
-		"052d3fe0617187f4cc8653fad79a57c60e02dcfe09b2657bfba3329f15bb5632",
-		"61c20c132a21a7494af9ca5665b5525a3d59f31265f283a21640264e9a78665f",
-	}
-
-	privKeys := make([]signature.PrivateKey, len(privHexes))
-	for i, privHex := range privHexes {
-		var err error
-		privKeys[i], err = secp256k1.NewPrivateKeyFromHex(privHex)
-		assert.NoError(t, err)
-	}
 
 	cases := []struct {
 		from    common.Address
@@ -169,15 +142,15 @@ func TestExecuteOnParentBlock(t *testing.T) {
 		amount  *util.Uint128
 	}{
 		{
-			common.HexToAddress("03ff359a06dbe3129cc0e4effe0c65f5653361685ea65972edd1ece0b3005508b0"),
-			privKeys[0],
-			common.HexToAddress("020adfe522f0737ce376f9428c206b7cb5e11c0ecb1a6429209595125a37c2b5d6"),
+			dynasties[1].Addr,
+			dynasties[1].PrivKey,
+			dynasties[2].Addr,
 			util.NewUint128FromUint(1),
 		},
 		{
-			common.HexToAddress("020adfe522f0737ce376f9428c206b7cb5e11c0ecb1a6429209595125a37c2b5d6"),
-			privKeys[1],
-			common.HexToAddress("03ff359a06dbe3129cc0e4effe0c65f5653361685ea65972edd1ece0b3005508b0"),
+			dynasties[2].Addr,
+			dynasties[2].PrivKey,
+			dynasties[1].Addr,
 			util.NewUint128FromUint(1000000001),
 		},
 	}
@@ -202,11 +175,11 @@ func TestExecuteOnParentBlock(t *testing.T) {
 
 	assert.NoError(t, firstBlock.Seal())
 
-	coinbaseKey, err := secp256k1.HexToECDSA("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	coinbaseKey := dynasties[0].PrivKey
 
 	blockSigner, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	blockSigner.InitSign(secp256k1.NewPrivateKey(coinbaseKey))
+	blockSigner.InitSign(coinbaseKey)
 
 	assert.NoError(t, firstBlock.SignThis(blockSigner))
 	assert.NoError(t, firstBlock.VerifyState())
@@ -229,13 +202,9 @@ func TestExecuteOnParentBlock(t *testing.T) {
 }
 
 func TestGetExecutedBlock(t *testing.T) {
-	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, test.GenesisBlock)
-	assert.NoError(t, err)
-
-	privHex := "052d3fe0617187f4cc8653fad79a57c60e02dcfe09b2657bfba3329f15bb5632"
-
-	privKey, err := secp256k1.NewPrivateKeyFromHex(privHex)
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+	coinbase := dynasties[0].Addr
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	cases := []struct {
@@ -245,9 +214,9 @@ func TestGetExecutedBlock(t *testing.T) {
 		amount  *util.Uint128
 	}{
 		{
-			common.HexToAddress("03ff359a06dbe3129cc0e4effe0c65f5653361685ea65972edd1ece0b3005508b0"),
-			privKey,
-			common.HexToAddress("020adfe522f0737ce376f9428c206b7cb5e11c0ecb1a6429209595125a37c2b5d6"),
+			dynasties[1].Addr,
+			dynasties[1].PrivKey,
+			dynasties[0].Addr,
 			util.NewUint128FromUint(1),
 		},
 	}
@@ -272,11 +241,11 @@ func TestGetExecutedBlock(t *testing.T) {
 
 	assert.NoError(t, newBlock.Seal())
 
-	coinbaseKey, err := secp256k1.HexToECDSA("ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea")
+	coinbaseKey := dynasties[0].PrivKey
 
 	blockSigner, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	blockSigner.InitSign(secp256k1.NewPrivateKey(coinbaseKey))
+	blockSigner.InitSign(coinbaseKey)
 
 	assert.NoError(t, newBlock.SignThis(blockSigner))
 	assert.NoError(t, newBlock.VerifyState())
@@ -286,4 +255,74 @@ func TestGetExecutedBlock(t *testing.T) {
 	executedBlock, err := bd.GetExecutedBlock(newBlock.Storage())
 	assert.NoError(t, err)
 	assert.NoError(t, executedBlock.VerifyState())
+}
+
+func TestExecuteReservedTasks(t *testing.T) {
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+	from := dynasties[0].Addr
+	vestTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 1,
+		core.TxOperationVest, []byte{},
+	)
+	withdrawTx, err := core.NewTransaction(
+		test.ChainID,
+		from,
+		common.Address{},
+		util.NewUint128FromUint(333), 2,
+		core.TxOperationWithdrawVesting, []byte{})
+	assert.NoError(t, err)
+	withdrawTx.SetTimestamp(int64(1000))
+
+	privKey := dynasties[0].PrivKey
+	assert.NoError(t, err)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(privKey)
+	assert.NoError(t, vestTx.SignThis(sig))
+	assert.NoError(t, withdrawTx.SignThis(sig))
+
+	coinbase := from
+	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	assert.NoError(t, err)
+	newBlock.SetTimestamp(int64(1000))
+
+	newBlock.BeginBatch()
+	assert.NoError(t, newBlock.ExecuteTransaction(vestTx))
+	assert.NoError(t, newBlock.AcceptTransaction(vestTx))
+	assert.NoError(t, newBlock.ExecuteTransaction(withdrawTx))
+	assert.NoError(t, newBlock.AcceptTransaction(withdrawTx))
+	assert.NoError(t, newBlock.ExecuteReservedTasks())
+	newBlock.Commit()
+
+	state := newBlock.State()
+
+	acc, err := state.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
+	tasks := state.GetReservedTasks()
+	assert.Equal(t, 3, len(tasks))
+	for i := 0; i < len(tasks); i++ {
+		assert.Equal(t, core.RtWithdrawType, tasks[i].TaskType())
+		assert.Equal(t, from, tasks[i].From())
+		assert.Equal(t, withdrawTx.Timestamp()+int64(i+1)*core.RtWithdrawInterval, tasks[i].Timestamp())
+	}
+
+	newBlock.SetTimestamp(newBlock.Timestamp() + int64(2)*core.RtWithdrawInterval)
+	newBlock.BeginBatch()
+	assert.NoError(t, newBlock.ExecuteReservedTasks())
+	newBlock.Commit()
+
+	acc, err = state.GetAccount(from)
+	assert.NoError(t, err)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(111)))
+	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-111)))
+	tasks = state.GetReservedTasks()
+	assert.Equal(t, 1, len(tasks))
+	assert.Equal(t, core.RtWithdrawType, tasks[0].TaskType())
+	assert.Equal(t, from, tasks[0].From())
+	assert.Equal(t, withdrawTx.Timestamp()+int64(3)*core.RtWithdrawInterval, tasks[0].Timestamp())
 }

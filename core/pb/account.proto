@@ -6,6 +6,7 @@ message Account {
     bytes balance = 2;
     uint64 nonce = 3;
     bytes observations_hash = 4;
-    repeated bytes writers = 5;
-    repeated bytes records = 6;
+    bytes vesting = 5;
+    repeated bytes writers = 6;
+    repeated bytes records = 7;
 }

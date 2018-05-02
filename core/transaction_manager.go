@@ -36,8 +36,10 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 
 // Setup sets up TransactionManager.
 func (mgr *TransactionManager) Setup(ns net.Service) {
-	mgr.ns = ns
-	mgr.registerInNetwork()
+	if ns != nil {
+		mgr.ns = ns
+		mgr.registerInNetwork()
+	}
 }
 
 // Start starts TransactionManager.

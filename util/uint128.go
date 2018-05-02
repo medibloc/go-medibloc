@@ -137,9 +137,9 @@ func (u *Uint128) FromFixedSizeBytes(bytes [16]byte) *Uint128 {
 }
 
 // FromFixedSizeByteSlice converts Big-Endian fixed size bytes to Uint128.
-func (u *Uint128) FromFixedSizeByteSlice(bytes []byte) (*Uint128, error) {
+func (u *Uint128) FromFixedSizeByteSlice(bytes []byte) error {
 	if len(bytes) != Uint128Bytes {
-		return nil, ErrUint128InvalidBytesSize
+		return ErrUint128InvalidBytesSize
 	}
 	i := 0
 	for ; i < Uint128Bytes; i++ {
@@ -152,13 +152,17 @@ func (u *Uint128) FromFixedSizeByteSlice(bytes []byte) (*Uint128, error) {
 	} else {
 		u.value.SetUint64(0)
 	}
-	return u, nil
+	return nil
 }
 
 // NewUint128FromFixedSizeByteSlice returns a new Uint128 struct with given fixed size byte slice.
 func NewUint128FromFixedSizeByteSlice(bytes []byte) (*Uint128, error) {
 	u := NewUint128()
-	return u.FromFixedSizeByteSlice(bytes)
+	err := u.FromFixedSizeByteSlice(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return u, nil
 }
 
 //Add returns u + x

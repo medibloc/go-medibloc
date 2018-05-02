@@ -2,40 +2,19 @@
 // source: account.proto
 
 /*
-	Package corepb is a generated protocol buffer package.
+Package corepb is a generated protocol buffer package.
 
-	It is generated from these files:
-		account.proto
-		block.proto
-		genesis.proto
-		record.proto
-		transaction.proto
-		usage.proto
+It is generated from these files:
+	account.proto
 
-	It has these top-level messages:
-		Account
-		BlockHeader
-		Block
-		DownloadParentBlock
-		Genesis
-		GenesisMeta
-		GenesisConsensus
-		GenesisConsensusDpos
-		GenesisTokenDistribution
-		Reader
-		Record
-		Data
-		Transaction
-		Usage
-		TxTimestamp
+It has these top-level messages:
+	Account
 */
 package corepb
 
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-
-import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -53,8 +32,9 @@ type Account struct {
 	Balance          []byte   `protobuf:"bytes,2,opt,name=balance,proto3" json:"balance,omitempty"`
 	Nonce            uint64   `protobuf:"varint,3,opt,name=nonce,proto3" json:"nonce,omitempty"`
 	ObservationsHash []byte   `protobuf:"bytes,4,opt,name=observations_hash,json=observationsHash,proto3" json:"observations_hash,omitempty"`
-	Writers          [][]byte `protobuf:"bytes,5,rep,name=writers" json:"writers,omitempty"`
-	Records          [][]byte `protobuf:"bytes,6,rep,name=records" json:"records,omitempty"`
+	Vesting          []byte   `protobuf:"bytes,5,opt,name=vesting,proto3" json:"vesting,omitempty"`
+	Writers          [][]byte `protobuf:"bytes,6,rep,name=writers" json:"writers,omitempty"`
+	Records          [][]byte `protobuf:"bytes,7,rep,name=records" json:"records,omitempty"`
 }
 
 func (m *Account) Reset()                    { *m = Account{} }
@@ -90,6 +70,13 @@ func (m *Account) GetObservationsHash() []byte {
 	return nil
 }
 
+func (m *Account) GetVesting() []byte {
+	if m != nil {
+		return m.Vesting
+	}
+	return nil
+}
+
 func (m *Account) GetWriters() [][]byte {
 	if m != nil {
 		return m.Writers
@@ -107,457 +94,21 @@ func (m *Account) GetRecords() [][]byte {
 func init() {
 	proto.RegisterType((*Account)(nil), "corepb.Account")
 }
-func (m *Account) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalTo(dAtA)
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *Account) MarshalTo(dAtA []byte) (int, error) {
-	var i int
-	_ = i
-	var l int
-	_ = l
-	if len(m.Address) > 0 {
-		dAtA[i] = 0xa
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.Address)))
-		i += copy(dAtA[i:], m.Address)
-	}
-	if len(m.Balance) > 0 {
-		dAtA[i] = 0x12
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.Balance)))
-		i += copy(dAtA[i:], m.Balance)
-	}
-	if m.Nonce != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(m.Nonce))
-	}
-	if len(m.ObservationsHash) > 0 {
-		dAtA[i] = 0x22
-		i++
-		i = encodeVarintAccount(dAtA, i, uint64(len(m.ObservationsHash)))
-		i += copy(dAtA[i:], m.ObservationsHash)
-	}
-	if len(m.Writers) > 0 {
-		for _, b := range m.Writers {
-			dAtA[i] = 0x2a
-			i++
-			i = encodeVarintAccount(dAtA, i, uint64(len(b)))
-			i += copy(dAtA[i:], b)
-		}
-	}
-	if len(m.Records) > 0 {
-		for _, b := range m.Records {
-			dAtA[i] = 0x32
-			i++
-			i = encodeVarintAccount(dAtA, i, uint64(len(b)))
-			i += copy(dAtA[i:], b)
-		}
-	}
-	return i, nil
-}
-
-func encodeVarintAccount(dAtA []byte, offset int, v uint64) int {
-	for v >= 1<<7 {
-		dAtA[offset] = uint8(v&0x7f | 0x80)
-		v >>= 7
-		offset++
-	}
-	dAtA[offset] = uint8(v)
-	return offset + 1
-}
-func (m *Account) Size() (n int) {
-	var l int
-	_ = l
-	l = len(m.Address)
-	if l > 0 {
-		n += 1 + l + sovAccount(uint64(l))
-	}
-	l = len(m.Balance)
-	if l > 0 {
-		n += 1 + l + sovAccount(uint64(l))
-	}
-	if m.Nonce != 0 {
-		n += 1 + sovAccount(uint64(m.Nonce))
-	}
-	l = len(m.ObservationsHash)
-	if l > 0 {
-		n += 1 + l + sovAccount(uint64(l))
-	}
-	if len(m.Writers) > 0 {
-		for _, b := range m.Writers {
-			l = len(b)
-			n += 1 + l + sovAccount(uint64(l))
-		}
-	}
-	if len(m.Records) > 0 {
-		for _, b := range m.Records {
-			l = len(b)
-			n += 1 + l + sovAccount(uint64(l))
-		}
-	}
-	return n
-}
-
-func sovAccount(x uint64) (n int) {
-	for {
-		n++
-		x >>= 7
-		if x == 0 {
-			break
-		}
-	}
-	return n
-}
-func sozAccount(x uint64) (n int) {
-	return sovAccount(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
-func (m *Account) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowAccount
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: Account: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Account: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Address", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthAccount
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Address = append(m.Address[:0], dAtA[iNdEx:postIndex]...)
-			if m.Address == nil {
-				m.Address = []byte{}
-			}
-			iNdEx = postIndex
-		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Balance", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthAccount
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Balance = append(m.Balance[:0], dAtA[iNdEx:postIndex]...)
-			if m.Balance == nil {
-				m.Balance = []byte{}
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Nonce", wireType)
-			}
-			m.Nonce = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Nonce |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ObservationsHash", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthAccount
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.ObservationsHash = append(m.ObservationsHash[:0], dAtA[iNdEx:postIndex]...)
-			if m.ObservationsHash == nil {
-				m.ObservationsHash = []byte{}
-			}
-			iNdEx = postIndex
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Writers", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthAccount
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Writers = append(m.Writers, make([]byte, postIndex-iNdEx))
-			copy(m.Writers[len(m.Writers)-1], dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Records", wireType)
-			}
-			var byteLen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				byteLen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if byteLen < 0 {
-				return ErrInvalidLengthAccount
-			}
-			postIndex := iNdEx + byteLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Records = append(m.Records, make([]byte, postIndex-iNdEx))
-			copy(m.Records[len(m.Records)-1], dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipAccount(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if skippy < 0 {
-				return ErrInvalidLengthAccount
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func skipAccount(dAtA []byte) (n int, err error) {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return 0, ErrIntOverflowAccount
-			}
-			if iNdEx >= l {
-				return 0, io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		wireType := int(wire & 0x7)
-		switch wireType {
-		case 0:
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return 0, ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				iNdEx++
-				if dAtA[iNdEx-1] < 0x80 {
-					break
-				}
-			}
-			return iNdEx, nil
-		case 1:
-			iNdEx += 8
-			return iNdEx, nil
-		case 2:
-			var length int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return 0, ErrIntOverflowAccount
-				}
-				if iNdEx >= l {
-					return 0, io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				length |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			iNdEx += length
-			if length < 0 {
-				return 0, ErrInvalidLengthAccount
-			}
-			return iNdEx, nil
-		case 3:
-			for {
-				var innerWire uint64
-				var start int = iNdEx
-				for shift := uint(0); ; shift += 7 {
-					if shift >= 64 {
-						return 0, ErrIntOverflowAccount
-					}
-					if iNdEx >= l {
-						return 0, io.ErrUnexpectedEOF
-					}
-					b := dAtA[iNdEx]
-					iNdEx++
-					innerWire |= (uint64(b) & 0x7F) << shift
-					if b < 0x80 {
-						break
-					}
-				}
-				innerWireType := int(innerWire & 0x7)
-				if innerWireType == 4 {
-					break
-				}
-				next, err := skipAccount(dAtA[start:])
-				if err != nil {
-					return 0, err
-				}
-				iNdEx = start + next
-			}
-			return iNdEx, nil
-		case 4:
-			return iNdEx, nil
-		case 5:
-			iNdEx += 4
-			return iNdEx, nil
-		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
-		}
-	}
-	panic("unreachable")
-}
-
-var (
-	ErrInvalidLengthAccount = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowAccount   = fmt.Errorf("proto: integer overflow")
-)
 
 func init() { proto.RegisterFile("account.proto", fileDescriptorAccount) }
 
 var fileDescriptorAccount = []byte{
-	// 188 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x4d, 0x4c, 0x4e, 0xce,
-	0x2f, 0xcd, 0x2b, 0xd1, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x4b, 0xce, 0x2f, 0x4a, 0x2d,
-	0x48, 0x52, 0xda, 0xc2, 0xc8, 0xc5, 0xee, 0x08, 0x91, 0x11, 0x92, 0xe0, 0x62, 0x4f, 0x4c, 0x49,
-	0x29, 0x4a, 0x2d, 0x2e, 0x96, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x09, 0x82, 0x71, 0x41, 0x32, 0x49,
-	0x89, 0x39, 0x89, 0x79, 0xc9, 0xa9, 0x12, 0x4c, 0x10, 0x19, 0x28, 0x57, 0x48, 0x84, 0x8b, 0x35,
-	0x2f, 0x1f, 0x24, 0xce, 0xac, 0xc0, 0xa8, 0xc1, 0x12, 0x04, 0xe1, 0x08, 0x69, 0x73, 0x09, 0xe6,
-	0x27, 0x15, 0xa7, 0x16, 0x95, 0x25, 0x96, 0x64, 0xe6, 0xe7, 0x15, 0xc7, 0x67, 0x24, 0x16, 0x67,
-	0x48, 0xb0, 0x80, 0x75, 0x0a, 0x20, 0x4b, 0x78, 0x24, 0x16, 0x67, 0x80, 0x0c, 0x2f, 0x2f, 0xca,
-	0x2c, 0x49, 0x2d, 0x2a, 0x96, 0x60, 0x55, 0x60, 0x06, 0x19, 0x0e, 0xe5, 0x82, 0x64, 0x8a, 0x52,
-	0x93, 0xf3, 0x8b, 0x52, 0x8a, 0x25, 0xd8, 0x20, 0x32, 0x50, 0xae, 0x13, 0xcf, 0x89, 0x47, 0x72,
-	0x8c, 0x17, 0x1e, 0xc9, 0x31, 0x3e, 0x78, 0x24, 0xc7, 0x98, 0xc4, 0x06, 0xf6, 0x93, 0x31, 0x20,
-	0x00, 0x00, 0xff, 0xff, 0x61, 0x4b, 0xea, 0xf1, 0xe4, 0x00, 0x00, 0x00,
+	// 181 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0xcf, 0x4f, 0xaa, 0xc2, 0x30,
+	0x10, 0xc7, 0x71, 0xf2, 0xfa, 0x0f, 0xc2, 0x13, 0x34, 0xb8, 0xc8, 0xb2, 0xb8, 0x2a, 0x08, 0x6e,
+	0x3c, 0x81, 0x3b, 0xd7, 0xbd, 0x80, 0x24, 0xe9, 0x60, 0x0b, 0x92, 0x29, 0x33, 0xb1, 0xde, 0xd2,
+	0x33, 0x49, 0x9a, 0x08, 0x2e, 0xbf, 0xf9, 0x90, 0x1f, 0x8c, 0xdc, 0x18, 0xe7, 0xf0, 0xe9, 0xc3,
+	0x69, 0x26, 0x0c, 0xa8, 0x6a, 0x87, 0x04, 0xb3, 0x3d, 0xbc, 0x85, 0x6c, 0x2e, 0x49, 0x94, 0x96,
+	0x8d, 0x19, 0x06, 0x02, 0x66, 0x2d, 0x5a, 0xd1, 0xfd, 0xf7, 0xdf, 0x8c, 0x62, 0xcd, 0xc3, 0x78,
+	0x07, 0xfa, 0x2f, 0x49, 0x4e, 0xb5, 0x97, 0x95, 0xc7, 0xf8, 0x5e, 0xb4, 0xa2, 0x2b, 0xfb, 0x14,
+	0xea, 0x28, 0x77, 0x68, 0x19, 0x68, 0x31, 0x61, 0x42, 0xcf, 0xb7, 0xd1, 0xf0, 0xa8, 0xcb, 0xf5,
+	0xe7, 0xf6, 0x17, 0xae, 0x86, 0xc7, 0x38, 0xbe, 0x00, 0x87, 0xc9, 0xdf, 0x75, 0x95, 0xc6, 0x73,
+	0x46, 0x79, 0xd1, 0x14, 0x80, 0x58, 0xd7, 0x6d, 0x11, 0x25, 0x67, 0x14, 0x02, 0x87, 0x34, 0xb0,
+	0x6e, 0x92, 0xe4, 0xb4, 0xf5, 0x7a, 0xdf, 0xf9, 0x13, 0x00, 0x00, 0xff, 0xff, 0x1d, 0xd7, 0xf1,
+	0x9e, 0xf0, 0x00, 0x00, 0x00,
 }
