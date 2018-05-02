@@ -145,3 +145,8 @@ func (a *Address) SetBytes(b []byte) {
 func (a Address) Equals(b Address) bool {
 	return bytes.Compare(a[:], b[:]) == 0
 }
+
+// String is a stringer interface of Address.
+func (a Address) String() string {
+	return byteutils.Bytes2Hex(a.Bytes())
+}
