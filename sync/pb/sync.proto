@@ -6,11 +6,11 @@ package syncpb;
 
 // Request HashMeta
 message MetaQuery {
-  // LIB hash or tail block hash
+  // LIB hash
   bytes Hash = 1;
-  // LIB height or tail block height
+  // LIB height
   uint64 From = 2;
-  uint64 To = 3;
+//  uint64 To = 3;
   uint64 ChunkSize = 4;
 }
 

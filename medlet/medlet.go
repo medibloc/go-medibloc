@@ -49,7 +49,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 
 	rpc := rpc.New(cfg)
 
-	stor, err := storage.NewLeveldbStorage(cfg.Chain.Datadir)
+	stor, err := storage.NewLeveldbStorage(cfg.Global.Datadir)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

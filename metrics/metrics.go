@@ -59,7 +59,7 @@ func Start(med Medlet) {
 			}
 			tags[values[0]] = values[1]
 		}
-		tags[chainID] = fmt.Sprintf("%d", med.Config().Chain.ChainId)
+		tags[chainID] = fmt.Sprintf("%d", med.Config().Global.ChainId)
 		go collectSystemMetrics()
 		InfluxDBWithTags(metrics.DefaultRegistry, interval, med.Config().Stats.Influxdb.Host, med.Config().Stats.Influxdb.Db, med.Config().Stats.Influxdb.User, med.Config().Stats.Influxdb.Password, tags)
 

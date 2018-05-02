@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"os"
 
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/multiformats/go-multiaddr"
@@ -17,7 +18,7 @@ const ( // TODO delete redundant vars
 	DefaultMaxSyncNodes                 = 64
 	DefaultChainID                      = 1
 	DefaultRoutingTableDir              = ""
-	DefaultRouteTableSyncLoopInterval   = 30 * time.Second
+	DefaultRouteTableSyncLoopInterval   = 30 * time.Millisecond
 	DefaultRouteTableSaveToDiskInterval = 3 * 60 * time.Second
 )
 
@@ -51,7 +52,8 @@ type Medlet interface {
 
 // NewP2PConfig return new config object.
 func NewP2PConfig(cfg *medletpb.Config) *Config {
-	chainConf := cfg.Chain
+
+	globalConf := cfg.Global
 	networkConf := cfg.Network
 	config := NewConfigFromDefaults()
 
@@ -71,14 +73,16 @@ func NewP2PConfig(cfg *medletpb.Config) *Config {
 	config.PrivateKeyPath = networkConf.PrivateKey
 
 	// Chain ID.
-	config.ChainID = chainConf.ChainId
+	config.ChainID = globalConf.ChainId
 
 	// routing table dir.
-	// TODO: using diff dir for temp files.
-	if checkPathConfig(chainConf.Datadir) == false {
-		panic(fmt.Sprintf("The chain data directory %s is not exist.", chainConf.Datadir))
+	// TODO: health check for peers in routing cache file
+	if checkPathConfig(globalConf.Datadir) == false {
+		if err := os.MkdirAll(globalConf.Datadir, 0700); err != nil {
+			panic("Failed to create logger folder:" + globalConf.Datadir + ". err:" + err.Error())
+		}
 	}
-	config.RoutingTableDir = chainConf.Datadir
+	config.RoutingTableDir = globalConf.Datadir
 
 	// seed server address.
 	seeds := networkConf.Seed
@@ -92,6 +96,13 @@ func NewP2PConfig(cfg *medletpb.Config) *Config {
 			config.BootNodes[i] = addr
 		}
 	}
+
+	// set route table syncing interval from config
+	routeTableSyncLoopInterval := time.Duration(networkConf.RouteTableSyncLoopInterval) * time.Millisecond
+	if routeTableSyncLoopInterval == 0 {
+		routeTableSyncLoopInterval = DefaultRouteTableSyncLoopInterval
+	}
+	config.RouteTableSyncLoopInterval = routeTableSyncLoopInterval
 
 	return config
 }

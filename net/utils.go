@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"

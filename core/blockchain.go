@@ -55,7 +55,7 @@ type BlockChain struct {
 // NewBlockChain return new BlockChain instance
 func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 	bc := &BlockChain{
-		chainID: cfg.Chain.ChainId,
+		chainID: cfg.Global.ChainId,
 	}
 
 	var err error

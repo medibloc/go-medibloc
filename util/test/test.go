@@ -24,6 +24,9 @@ import (
 	"crypto/rand"
 	"math/big"
 
+	goNet "net"
+	"strings"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -258,7 +261,7 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	tm.WaitRouteTableSync()
 
 	cfg := &medletpb.Config{
-		Chain: &medletpb.ChainConfig{
+		Global: &medletpb.GlobalConfig{
 			ChainId: ChainID,
 		},
 	}
@@ -293,7 +296,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	require.NoError(t, err)
 	return &MockMedlet{
 		config: &medletpb.Config{
-			Chain: &medletpb.ChainConfig{
+			Global: &medletpb.GlobalConfig{
 				ChainId: ChainID,
 			},
 		},
@@ -320,4 +323,19 @@ func (m *MockMedlet) Genesis() *corepb.Genesis {
 // NetService returns net.Service.
 func (m *MockMedlet) NetService() net.Service {
 	return m.ns
+}
+
+//FindRandomListenPorts returns empty ports
+func FindRandomListenPorts(n int) (ports []string) {
+	listens := make([]goNet.Listener, 0)
+	for i := 0; i < n; i++ {
+		lis, _ := goNet.Listen("tcp", ":0")
+		addr := lis.Addr().String()
+		ports = append(ports, strings.TrimLeft(addr, "[::]"))
+		listens = append(listens, lis)
+	}
+	for i := 0; i < n; i++ {
+		listens[i].Close()
+	}
+	return ports
 }

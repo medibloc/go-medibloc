@@ -85,10 +85,10 @@ const (
 
 // SyncService messages
 const (
-	SyncMetaRequest       = "sync_meta_request"
-	SyncMeta              = "sync_meta"
-	SyncBlockChunkRequest = "sync_block_chunk_request"
-	SyncBlockChunk        = "sync_block_chunk"
+	SyncMetaRequest       = "meta_req"
+	SyncMeta              = "meta"
+	SyncBlockChunkRequest = "chunk_req"
+	SyncBlockChunk        = "chunk"
 )
 
 // Subscriber subscriber.

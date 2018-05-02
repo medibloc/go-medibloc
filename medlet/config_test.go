@@ -25,7 +25,7 @@ func TestConfigNotExist(t *testing.T) {
 
 	pb := LoadConfig(f.Name())
 	defer os.Remove(f.Name())
-	assert.True(t, proto.Equal(pb, defaultConfig()))
+	assert.True(t, proto.Equal(pb, DefaultConfig()))
 }
 
 func TestDefaultConfig(t *testing.T) {

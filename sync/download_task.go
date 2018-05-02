@@ -1,16 +1,18 @@
 package sync
 
 import (
+	"errors"
+	"fmt"
+	"math/rand"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/sync/pb"
-	"github.com/gogo/protobuf/proto"
-	"errors"
-	"math/rand"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 type downloadTask struct {
@@ -27,6 +29,7 @@ type downloadTask struct {
 	blockChunkMessageCh chan net.Message
 	quitCh              chan bool
 	doneCh              chan *downloadTask
+	pid                 string
 }
 
 func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash common.Hash, doneCh chan *downloadTask) *downloadTask {
@@ -44,6 +47,7 @@ func newDownloadTask(netService net.Service, peers map[string]struct{}, from uin
 		blockChunkMessageCh: make(chan net.Message, 1),
 		quitCh:              make(chan bool, 2),
 		doneCh:              doneCh,
+		pid:                 "",
 	}
 }
 
@@ -59,19 +63,14 @@ func (dt *downloadTask) stop() {
 }
 
 func (dt *downloadTask) startLoop() {
-	timerChan := time.NewTicker(time.Second * 60).C //TODO: 대기시간 설정
+	timerChan := time.NewTicker(time.Second * 3).C //TODO: set retry time
 	for {
 		select {
 		case <-timerChan:
-			//dt.removePeer(dt.SelectedPeer(), "timeout for ChunkRequest")
 			dt.sendBlockChunkRequest()
-			return
 		case blockChunkMessage := <-dt.blockChunkMessageCh:
 			dt.verifyBlockChunkMessage(blockChunkMessage)
 		case <-dt.quitCh:
-			logging.Console().WithFields(logrus.Fields{
-				"from": dt.from,
-			}).Info("Partial download from %v is succeed", dt.from)
 			dt.doneCh <- dt
 			return
 		}
@@ -122,8 +121,9 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 
 		if err := block.VerifyIntegrity(); err != nil {
 			logging.WithFields(logrus.Fields{
-				"err":     err,
-				"msgFrom": message.MessageFrom(),
+				"Block Height": block.Height(),
+				"err":          err,
+				"msgFrom":      message.MessageFrom(),
 			}).Warn("Fail to verify block integrity.")
 			return
 		}
@@ -141,6 +141,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 
 	dt.blocks = blocks
 	dt.endTime = time.Now()
+	dt.pid = message.MessageFrom()
 	dt.stop()
 }
 
@@ -153,7 +154,6 @@ func (dt *downloadTask) generateBlockChunkQuery() {
 	q := &syncpb.BlockChunkQuery{
 		From:      dt.from,
 		ChunkSize: dt.chunkSize,
-		//Root: generateHashTrie(dt.hashes).RootHash(),
 	}
 	query, err := proto.Marshal(q)
 	if err != nil {
@@ -174,6 +174,17 @@ func (dt *downloadTask) sendBlockChunkRequest() {
 			randomPeer = peer
 			break
 		}
+		index++
 	}
 	dt.netService.SendMessageToPeer(net.SyncBlockChunkRequest, dt.query, net.MessagePriorityLow, randomPeer)
+	logging.Console().WithFields(logrus.Fields{
+		"block from (height)": dt.from,
+		"to (peerID)":         randomPeer,
+		"nPeers":              len(dt.peers),
+		"peers":               dt.peers,
+	}).Info("BlockChunkRequest is sent")
+}
+
+func (dt *downloadTask) String() string {
+	return fmt.Sprintf("<DownloadTask>From:%v,", dt.from)
 }

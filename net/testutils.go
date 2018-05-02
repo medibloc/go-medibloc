@@ -283,8 +283,8 @@ func makeNewTestP2PConfig(privateKeyPath string) *Config {
 func makeRandomListen() []string {
 	lis, _ := net.Listen("tcp", ":0")
 	addrIPv6 := lis.Addr().String()
-	port := strings.TrimLeft(addrIPv6,"[::]")
-	addrIPv4 := fmt.Sprintf("localhost:%v",port)
+	port := strings.TrimLeft(addrIPv6, "[::]")
+	addrIPv4 := fmt.Sprintf("localhost:%v", port)
 	lis.Close()
 	return []string{addrIPv4}
 }

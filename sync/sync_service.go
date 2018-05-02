@@ -1,34 +1,49 @@
 package sync
 
 import (
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 //Service Sync
 type Service struct {
+	config *medletpb.SyncConfig
+
 	Seeding  *seeding
 	Download *download
 
 	quitCh chan bool
 }
 
-//NewService Generate syncService
-func NewService(m medlet.Medlet) *Service {
+//NewService returns new syncService
+func NewService(config *medletpb.SyncConfig) *Service {
 	return &Service{
-		Seeding:  newSeeding(m.NetService(), m.blockManager),
-		Download: newDownload(m.NetService(), m.blockManager),
-		quitCh:   nil,
+		config:   config,
+		Seeding:  nil,
+		Download: nil,
+		quitCh:   make(chan bool, 1),
 	}
+}
+
+//Setup makes seeding and block manager on syncService
+func (ss *Service) Setup(netService net.Service, bm BlockManager) {
+	ss.Seeding = newSeeding(ss.config)
+	ss.Seeding.setup(netService, bm)
+	ss.Download = newDownload(ss.config)
+	ss.Download.setup(netService, bm)
 }
 
 // Start Sync Service
 func (ss *Service) Start() {
+	logging.Console().Info("SyncService is started")
 	ss.Seeding.start()
+	logging.Console().Debug("Seeding start OK")
+	go ss.startLoop()
 }
 
 //Stop Sync Service
@@ -53,12 +68,13 @@ func (ss *Service) startLoop() {
 	}
 }
 
-func (ss *Service) activeDownload(chunkSize uint64) {
+//ActiveDownload start download manager
+func (ss *Service) ActiveDownload() {
 	if ss.Download.activated == true {
 		logging.Console().Error("Sync: download Manager is already activated.")
 		return
 	}
-	ss.Download.setup(chunkSize)
+	logging.Info("Sync: Download manager started.")
 	ss.Download.start()
 }
 

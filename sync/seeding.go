@@ -1,31 +1,47 @@
 package sync
 
 import (
+	"errors"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/sync/pb"
-	"github.com/gogo/protobuf/proto"
-	"errors"
-	"github.com/medibloc/go-medibloc/core/pb"
 )
 
 type seeding struct {
-	netService net.Service
-	bm         BlockManager
-
-	quitCh    chan bool
-	messageCh chan net.Message
+	netService         net.Service
+	bm                 BlockManager
+	quitCh             chan bool
+	messageCh          chan net.Message
+	minChunkSize       uint64
+	maxChunkSize       uint64
+	nConcurrentPeers   uint32
+	sendDoneCh         chan bool
+	maxConcurrentPeers uint32
 }
 
-func newSeeding(netService net.Service, bm BlockManager) *seeding {
+func newSeeding(config *medletpb.SyncConfig) *seeding {
 	return &seeding{
-		netService: netService,
-		bm:         bm,
-		quitCh:     make(chan bool, 2),
-		messageCh:  make(chan net.Message, 128),
+		netService:         nil,
+		bm:                 nil,
+		quitCh:             make(chan bool, 2),
+		messageCh:          make(chan net.Message, 128),
+		minChunkSize:       config.SeedingMinChunkSize,
+		maxChunkSize:       config.SeedingMaxChunkSize,
+		nConcurrentPeers:   0,
+		sendDoneCh:         make(chan bool, 2),
+		maxConcurrentPeers: config.SeedingMaxConcurrentPeers,
 	}
+}
+
+func (s *seeding) setup(netService net.Service, bm BlockManager) {
+	s.netService = netService
+	s.bm = bm
 }
 
 func (s *seeding) start() {
@@ -51,13 +67,21 @@ func (s *seeding) startLoop() {
 			case net.SyncMetaRequest:
 				s.sendRootHashMeta(message)
 			case net.SyncBlockChunkRequest:
-				s.sendBlockChunk(message)
+				if s.nConcurrentPeers < s.maxConcurrentPeers {
+					s.nConcurrentPeers++
+					go s.sendBlockChunk(message)
+				}
 			}
+		case <-s.sendDoneCh:
+			s.nConcurrentPeers--
 		}
 	}
 }
 
 func (s *seeding) sendRootHashMeta(message net.Message) {
+
+	logging.Info("HashMeta request received.", s.netService.Node().ID())
+
 	q := new(syncpb.MetaQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {
@@ -71,13 +95,22 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 
 	if common.BytesToHash(q.Hash) != s.bm.BlockByHeight(q.From).Hash() {
 		logging.WithFields(logrus.Fields{
-			"err": "Meta Query Request Denied.",
-		}).Info("Meta Query Request Denied.")
+			"height":           q.From,
+			"hashInQuery":      s.bm.BlockByHeight(q.From).Hash(),
+			"hashInBlockChain": common.BytesToHash(q.Hash),
+		}).Info("Block hash is different")
+		return
+	}
+
+	if err := s.chunkSizeCheck(q.ChunkSize); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to check chunk size.")
 		return
 	}
 
 	tailHeight := s.bm.TailBlock().Height()
-	if q.From+q.ChunkSize < tailHeight {
+	if q.From+q.ChunkSize > tailHeight {
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
 			"from":       q.From,
@@ -88,12 +121,12 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		return
 	}
 
-	allHashes := make([]common.Hash, tailHeight-q.From)
-	for i := q.From; i < tailHeight; i++ {
-		allHashes[i] = s.bm.BlockByHeight(i).Hash()
+	allHashes := make([]common.Hash, tailHeight-q.From+1)
+	for i := uint64(0); i < tailHeight-q.From+1; i++ {
+		allHashes[i] = s.bm.BlockByHeight(i + q.From).Hash()
 	}
 
-	n := tailHeight / q.ChunkSize
+	n := (tailHeight - q.From + 1) / q.ChunkSize
 	rootHashes := make([][]byte, n)
 
 	for i := uint64(0); i < n; i++ {
@@ -121,10 +154,14 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		message.MessageFrom(),
 	)
 
-	logging.Info("RootHashMeta response succeeded")
+	logging.WithFields(logrus.Fields{
+		"numberOfRootHashes": len(meta.RootHashes),
+		"meta":               meta,
+	}).Info("RootHashMeta response succeeded")
 }
 
 func (s *seeding) sendBlockChunk(message net.Message) {
+	defer func() { s.sendDoneCh <- true }()
 	q := new(syncpb.BlockChunkQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {
@@ -136,8 +173,15 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 		return
 	}
 
+	if err := s.chunkSizeCheck(q.ChunkSize); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to check chunk size.")
+		return
+	}
+
 	tailHeight := s.bm.TailBlock().Height()
-	if q.From+q.ChunkSize < tailHeight {
+	if q.From+q.ChunkSize-1 > tailHeight {
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
 			"from":       q.From,
@@ -150,8 +194,8 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 
 	pbBlockChunk := make([]*corepb.Block, q.ChunkSize)
 
-	for i := q.From; i < q.From+q.ChunkSize; i++ {
-		pbBlock, err := s.bm.BlockByHeight(i).ToProto()
+	for i := uint64(0); i < q.ChunkSize; i++ {
+		pbBlock, err := s.bm.BlockByHeight(i + q.From).ToProto()
 		if err != nil {
 			logging.Error("Fail to convert block to pbBlock")
 		}
@@ -171,11 +215,24 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 	}
 
 	s.netService.SendMessageToPeer(
-		net.SyncMeta,
+		net.SyncBlockChunk,
 		sendData,
 		net.MessagePriorityLow,
 		message.MessageFrom(),
 	)
 
-	logging.Info("BlockChunk response succeeded")
+	logging.WithFields(logrus.Fields{
+		"from":             data.From,
+		"Number of Blocks": len(data.Blocks),
+	}).Info("BlockChunk response succeeded")
+}
+
+func (s *seeding) chunkSizeCheck(n uint64) error {
+	if n < s.minChunkSize {
+		return errors.New("ChunkSize is too small")
+	}
+	if n > s.maxChunkSize {
+		return errors.New("ChunkSize is too large")
+	}
+	return nil
 }

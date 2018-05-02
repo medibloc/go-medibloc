@@ -37,15 +37,6 @@ func NewBlockPool(size int) (bp *BlockPool, err error) {
 	return bp, nil
 }
 
-func (bp *BlockPool) Get(hash *common.Hash) HashableBlock {
-	v, ok := bp.cache.Get(hash)
-	if !ok {
-		return nil
-	}
-	block := v.(HashableBlock)
-	return block
-}
-
 // Push links the block with parent and children blocks and push to the BlockPool.
 func (bp *BlockPool) Push(block HashableBlock) error {
 	bp.mu.Lock()
