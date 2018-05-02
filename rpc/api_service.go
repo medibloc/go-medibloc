@@ -3,6 +3,7 @@ package rpc
 import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
 	"golang.org/x/net/context"
 )
@@ -38,6 +39,9 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 }
 
 // GetAccountState handles GetAccountState rpc.
+// balance
+// nonce
+// staking (TODO)
 func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
 	// height := req.Height TODO get state for height
 	tailBlock := s.bm.TailBlock()
@@ -48,5 +52,24 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 	return &rpcpb.GetAccountStateResponse{
 		Balance: acc.Balance().String(),
 		Nonce:   acc.Nonce(),
+	}, nil
+}
+
+// GetBlock returns block
+func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.GetBlockResponse, error) {
+	block := s.bm.BlockByHash(common.BytesToHash([]byte(req.Hash)))
+	if block != nil {
+		pb, err := block.ToProto()
+		if err != nil {
+			return nil, err
+		}
+		if pbBlock, ok := pb.(*corepb.Block); ok {
+			return &rpcpb.GetBlockResponse{
+				Block: pbBlock,
+			}, nil
+		}
+	}
+	return &rpcpb.GetBlockResponse{
+		Block: nil,
 	}, nil
 }

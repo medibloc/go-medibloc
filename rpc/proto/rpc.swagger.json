@@ -1,0 +1,344 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "rpc.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/admin/transaction": {
+      "post": {
+        "operationId": "SendTransaction",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AdminService"
+        ]
+      }
+    },
+    "/v1/block": {
+      "get": {
+        "operationId": "GetBlock",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetBlockResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "description": "Block hash.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
+    "/v1/user/accountstate": {
+      "get": {
+        "operationId": "GetAccountState",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetAccountStateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "description": "Hex string of the account addresss.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "height",
+            "description": "block account state with height. If not specified, use 0 as tail height.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
+    "/v1/user/medstate": {
+      "get": {
+        "operationId": "GetMedState",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetMedStateResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "corepbBlock": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/corepbBlockHeader"
+        },
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/corepbTransaction"
+          }
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "corepbBlockHeader": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "parent_hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "coinbase": {
+          "type": "string",
+          "format": "byte"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "chain_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "alg": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sign": {
+          "type": "string",
+          "format": "byte"
+        },
+        "accs_root": {
+          "type": "string",
+          "format": "byte"
+        },
+        "txs_root": {
+          "type": "string",
+          "format": "byte"
+        },
+        "usage_root": {
+          "type": "string",
+          "format": "byte"
+        },
+        "records_root": {
+          "type": "string",
+          "format": "byte"
+        },
+        "consensus_root": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "corepbData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "corepbTransaction": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        },
+        "from": {
+          "type": "string",
+          "format": "byte"
+        },
+        "to": {
+          "type": "string",
+          "format": "byte"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "data": {
+          "$ref": "#/definitions/corepbData"
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "chain_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "alg": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sign": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcpbGetAccountStateResponse": {
+      "type": "object",
+      "properties": {
+        "balance": {
+          "type": "string",
+          "description": "Current balance in unit of 1/(10^18) nas."
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Current transaction count."
+        },
+        "type": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Account type"
+        }
+      }
+    },
+    "rpcpbGetBlockResponse": {
+      "type": "object",
+      "properties": {
+        "block": {
+          "$ref": "#/definitions/corepbBlock",
+          "title": "Block"
+        }
+      }
+    },
+    "rpcpbGetMedStateResponse": {
+      "type": "object",
+      "properties": {
+        "chain_id": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Block chain id"
+        },
+        "tail": {
+          "type": "string",
+          "title": "Current tail block hash"
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Current tail block height"
+        },
+        "protocol_version": {
+          "type": "string",
+          "description": "The current med protocol version."
+        },
+        "version": {
+          "type": "string",
+          "title": "Med version"
+        }
+      }
+    },
+    "rpcpbTransactionRequest": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "Hex string of the sender account addresss."
+        },
+        "to": {
+          "type": "string",
+          "description": "Hex string of the receiver account addresss."
+        },
+        "value": {
+          "type": "string",
+          "description": "Amount of value sending with this transaction."
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Transaction nonce."
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte",
+          "title": "Transaction hash"
+        },
+        "sign": {
+          "type": "string",
+          "format": "byte",
+          "title": "Transaction sign"
+        }
+      }
+    },
+    "rpcpbTransactionResponse": {
+      "type": "object",
+      "properties": {
+        "txhash": {
+          "type": "string",
+          "description": "Hex string of transaction hash."
+        }
+      }
+    }
+  }
+}

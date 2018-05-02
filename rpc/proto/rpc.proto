@@ -3,6 +3,7 @@ syntax = "proto3";
 package rpcpb;
 
 import "google/api/annotations.proto";
+import "github.com/medibloc/go-medibloc/core/pb/block.proto";
 
 service ApiService {
 	rpc GetAccountState (GetAccountStateRequest) returns (GetAccountStateResponse) {
@@ -10,6 +11,12 @@ service ApiService {
 			get: "/v1/user/accountstate"
 		};
 	}
+
+    rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {
+        option (google.api.http) = {
+            get: "/v1/block"
+        };
+    }
 
 	rpc GetMedState (NonParamsRequest) returns (GetMedStateResponse) {
 		option (google.api.http) = {
@@ -42,6 +49,16 @@ message GetAccountStateResponse {
 	uint64 nonce = 2;
 	// Account type
 	uint32 type = 3;
+}
+
+message GetBlockRequest {
+    // Block hash
+    string hash = 1;
+}
+
+message GetBlockResponse {
+	// Block
+    corepb.Block block = 1;
 }
 
 message NonParamsRequest {
