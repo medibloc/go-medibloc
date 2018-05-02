@@ -1,8 +1,6 @@
 syntax = "proto3";
 package corepb;
 
-import "transaction.proto";
-
 message BlockHeader {
   bytes hash  = 1;
   bytes parent_hash = 2;
@@ -27,4 +25,23 @@ message Block {
 message DownloadParentBlock {
   bytes hash = 1;
   bytes sign = 2;
+}
+
+message Data {
+  string type = 1;
+  bytes payload = 2;
+}
+
+message Transaction {
+  bytes hash = 1;
+  bytes from = 2;
+  bytes to = 3;
+  bytes value = 4;
+  int64 timestamp = 5;
+  Data data = 6;
+  uint64 nonce = 7;
+  uint32 chain_id = 8;
+
+  uint32 alg = 9;
+  bytes sign = 10;
 }
