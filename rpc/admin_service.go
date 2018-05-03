@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"encoding/hex"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
@@ -27,6 +29,10 @@ func (s *AdminService) SendTransaction(ctx context.Context, req *rpcpb.Transacti
 	if err != nil {
 		return nil, err
 	}
+	sign, err := hex.DecodeString(req.Sign)
+	if err != nil {
+		return nil, err
+	}
 	tx, err := core.NewTransactionWithSign(
 		s.bm.ChainID(),
 		common.HexToAddress(req.From),
@@ -35,8 +41,8 @@ func (s *AdminService) SendTransaction(ctx context.Context, req *rpcpb.Transacti
 		req.Nonce,
 		core.TxPayloadBinaryType,
 		nil,
-		common.BytesToHash(req.Hash),
-		req.Sign)
+		common.HexToHash(req.Hash),
+		sign)
 
 	if err != nil {
 		return nil, err
@@ -45,6 +51,6 @@ func (s *AdminService) SendTransaction(ctx context.Context, req *rpcpb.Transacti
 		return nil, err
 	}
 	return &rpcpb.TransactionResponse{
-		Txhash: tx.Hash().Str(),
+		Txhash: tx.Hash().Hex(),
 	}, nil
 }

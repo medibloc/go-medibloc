@@ -83,6 +83,31 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 	return ErrCannotConvertTransaction
 }
 
+// BuildTransaction generates a Transaction instance with entire fields
+func BuildTransaction(
+	chainID uint32,
+	from, to common.Address,
+	value *util.Uint128,
+	nonce uint64,
+	timestamp int64,
+	data *corepb.Data,
+	hash common.Hash,
+	alg uint32,
+	sign []byte) (*Transaction, error) {
+	return &Transaction{
+		from:      from,
+		to:        to,
+		value:     value,
+		timestamp: timestamp,
+		data:      data,
+		nonce:     nonce,
+		chainID:   chainID,
+		hash:      hash,
+		alg:       algorithm.Algorithm(alg),
+		sign:      sign,
+	}, nil
+}
+
 // NewTransaction generates a Transaction instance
 func NewTransaction(
 	chainID uint32,

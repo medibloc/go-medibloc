@@ -75,8 +75,8 @@ func TestAdminService_SendTransaction(t *testing.T) {
 			To:    "",
 			Value: "1",
 			Nonce: 1,
-			Hash:  []byte{},
-			Sign:  []byte{},
+			Hash:  "",
+			Sign:  "",
 		}
 		_, err := client.SendTransaction(context.Background(), req)
 		assert.NotNil(t, err)

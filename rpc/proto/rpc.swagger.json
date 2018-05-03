@@ -82,6 +82,32 @@
         ]
       }
     },
+    "/v1/transaction": {
+      "post": {
+        "operationId": "PostTransaction",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/user/accountstate": {
       "get": {
         "operationId": "GetAccountState",
@@ -315,9 +341,24 @@
         }
       }
     },
+    "rpcpbTransactionData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "string"
+        }
+      }
+    },
     "rpcpbTransactionRequest": {
       "type": "object",
       "properties": {
+        "hash": {
+          "type": "string",
+          "title": "Transaction hash"
+        },
         "from": {
           "type": "string",
           "description": "Hex string of the sender account addresss."
@@ -330,20 +371,33 @@
           "type": "string",
           "description": "Amount of value sending with this transaction."
         },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Transaction timestamp."
+        },
+        "data": {
+          "$ref": "#/definitions/rpcpbTransactionData",
+          "description": "Transaction Data type."
+        },
         "nonce": {
           "type": "string",
           "format": "uint64",
           "description": "Transaction nonce."
         },
-        "hash": {
-          "type": "string",
-          "format": "byte",
-          "title": "Transaction hash"
+        "chain_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction chain ID."
+        },
+        "alg": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction algorithm."
         },
         "sign": {
           "type": "string",
-          "format": "byte",
-          "title": "Transaction sign"
+          "description": "Transaction sign."
         }
       }
     },

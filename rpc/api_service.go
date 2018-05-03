@@ -1,10 +1,13 @@
 package rpc
 
 import (
+	"encoding/hex"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/util"
 	"golang.org/x/net/context"
 )
 
@@ -57,7 +60,7 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 
 // GetBlock returns block
 func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.GetBlockResponse, error) {
-	block := s.bm.BlockByHash(common.BytesToHash([]byte(req.Hash)))
+	block := s.bm.BlockByHash(common.HexToHash(req.Hash))
 	if block != nil {
 		pb, err := block.ToProto()
 		if err != nil {
@@ -90,5 +93,42 @@ func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsReque
 	}
 	return &rpcpb.GetBlockResponse{
 		Block: nil,
+	}, nil
+}
+
+// PostTransaction sends transaction
+func (s *APIService) PostTransaction(ctx context.Context, req *rpcpb.TransactionRequest) (*rpcpb.TransactionResponse, error) {
+	value, err := util.NewUint128FromString(req.Value)
+	if err != nil {
+		return nil, err
+	}
+	sign, err := hex.DecodeString(req.Sign)
+	if err != nil {
+		return nil, err
+	}
+	data := &corepb.Data{
+		Type: req.Data.Type,
+		// TODO: convert payload
+		Payload: nil,
+	}
+	tx, err := core.BuildTransaction(
+		req.ChainId,
+		common.HexToAddress(req.From),
+		common.HexToAddress(req.To),
+		value,
+		req.Nonce,
+		req.Timestamp,
+		data,
+		common.HexToHash(req.Hash),
+		req.Alg,
+		sign)
+	if err != nil {
+		return nil, err
+	}
+	if err = s.tm.Push(tx); err != nil {
+		return nil, err
+	}
+	return &rpcpb.TransactionResponse{
+		Txhash: tx.Hash().Hex(),
 	}, nil
 }
