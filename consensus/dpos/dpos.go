@@ -3,8 +3,6 @@ package dpos
 import (
 	"time"
 
-	"errors"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -142,7 +140,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			return lib
 		}
 
-		proposer, err := FindProposer(cur.Timestamp(), members, d.dynastySize)
+		proposer, err := FindProposer(cur.Timestamp(), members)
 		if err != nil {
 			return lib
 		}
@@ -186,7 +184,7 @@ func (d *Dpos) VerifyProposer(bc *core.BlockChain, block *core.BlockData) error 
 		return err
 	}
 
-	proposer, err := FindProposer(block.Timestamp(), members, d.dynastySize)
+	proposer, err := FindProposer(block.Timestamp(), members)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
@@ -196,7 +194,7 @@ func (d *Dpos) VerifyProposer(bc *core.BlockChain, block *core.BlockData) error 
 		return err
 	}
 
-	err = verifyBlockSign(proposer, block)
+	err = verifyBlockSign(&proposer, block)
 	if err != nil {
 		return err
 	}
@@ -242,25 +240,6 @@ func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, ciphe
 	return addr, nil
 }
 
-// FindProposer finds proposer of given timestamp.
-func FindProposer(ts int64, miners []*common.Address, dynastySize int) (proposer *common.Address, err error) {
-	now := time.Duration(ts) * time.Second
-	if now%BlockInterval != 0 {
-		return nil, ErrInvalidBlockForgeTime
-	}
-	offsetInDynastyInterval := (now / BlockInterval) % DynastyInterval
-	offsetInDynasty := int(offsetInDynastyInterval) % dynastySize
-
-	if offsetInDynasty >= len(miners) {
-		logging.WithFields(logrus.Fields{
-			"offset": offsetInDynasty,
-			"miners": len(miners),
-		}).Error("No proposer selected for this turn.")
-		return nil, ErrFoundNilProposer
-	}
-	return miners[offsetInDynasty], nil
-}
-
 func (d *Dpos) mintBlock(now time.Time) error {
 	tail := d.bm.TailBlock()
 
@@ -284,7 +263,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	proposer, err := FindProposer(deadline.Unix(), members, d.dynastySize)
+	proposer, err := FindProposer(deadline.Unix(), members)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"members":  members,
@@ -294,7 +273,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	if !d.miner.Equals(*proposer) {
+	if !d.miner.Equals(proposer) {
 		logging.WithFields(logrus.Fields{
 			"miner":    d.miner,
 			"proposer": proposer,

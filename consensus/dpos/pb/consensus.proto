@@ -1,0 +1,9 @@
+syntax = "proto3";
+package consensuspb;
+
+message ConsensusState {
+  bytes dynasty_root = 1;
+  bytes proposer = 2;
+  int64 timestamp = 3;
+  int64 start_time = 4;
+}
