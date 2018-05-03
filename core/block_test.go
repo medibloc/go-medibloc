@@ -326,3 +326,36 @@ func TestExecuteReservedTasks(t *testing.T) {
 	assert.Equal(t, from, tasks[0].From())
 	assert.Equal(t, withdrawTx.Timestamp()+int64(3)*core.RtWithdrawInterval, tasks[0].Timestamp())
 }
+
+func TestBlock_VerifyState(t *testing.T) {
+	genesis, dynasties := test.NewTestGenesisBlock(t)
+	wrongGenesis, _ := test.NewTestGenesisBlock(t)
+	from, to := dynasties[0], dynasties[1]
+
+	tx, err := core.NewTransaction(test.ChainID, from.Addr, to.Addr, util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte{})
+	assert.NoError(t, err)
+	txSigner, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	txSigner.InitSign(from.PrivKey)
+	err = tx.SignThis(txSigner)
+	assert.NoError(t, err)
+
+	block, err := core.NewBlock(test.ChainID, from.Addr, genesis)
+	assert.NoError(t, err)
+	err = block.SetTransactions(core.Transactions{tx})
+	assert.NoError(t, err)
+	err = block.ExecuteAll()
+	assert.NoError(t, err)
+	err = block.Seal()
+	assert.NoError(t, err)
+
+	bd := block.GetBlockData()
+	block, err = bd.ExecuteOnParentBlock(genesis)
+	assert.NoError(t, err)
+	err = block.VerifyState()
+	assert.NoError(t, err)
+
+	bd = block.GetBlockData()
+	block, err = bd.ExecuteOnParentBlock(wrongGenesis)
+	assert.Error(t, err)
+}

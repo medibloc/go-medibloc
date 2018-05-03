@@ -11,6 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -169,7 +170,7 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block) (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := block.ExecuteAll(); err != nil {
+	if err := block.VerifyExecution(); err != nil {
 		return nil, err
 	}
 	return block, err
@@ -385,11 +386,19 @@ func (block *Block) VerifyExecution() error {
 	block.BeginBatch()
 
 	if err := block.ExecuteAll(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to execute block transactions.")
 		block.RollBack()
 		return err
 	}
 
 	if err := block.VerifyState(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to verify block state.")
 		block.RollBack()
 		return err
 	}
