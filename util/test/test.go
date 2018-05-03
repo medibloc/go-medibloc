@@ -176,7 +176,7 @@ func SignBlock(t *testing.T, block *core.Block, dynasties Dynasties) {
 	proposer, err := dpos.FindProposer(block.Timestamp(), members, len(members))
 	require.NoError(t, err)
 
-	privKey := dynasties.findPrivKey(*proposer)
+	privKey := dynasties.findPrivKey(proposer)
 	require.NotNil(t, privKey)
 
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
