@@ -13,7 +13,7 @@ import (
 // LoadConfig loads configuration from the file.
 func LoadConfig(file string) *medletpb.Config {
 	if file == "" {
-		return defaultConfig()
+		return DefaultConfig()
 	}
 
 	if !pathExist(file) {
@@ -48,18 +48,22 @@ func createDefaultConfigFile(filename string) {
 	}
 }
 
-func defaultConfig() *medletpb.Config {
+//DefaultConfig returns default config.
+func DefaultConfig() *medletpb.Config {
 	return &medletpb.Config{
+		Global: &medletpb.GlobalConfig{
+			ChainId: 1010,
+			Datadir: "data.db",
+		},
 		Network: &medletpb.NetworkConfig{
-			Seed:       nil,
-			Listen:     []string{"127.0.0.1:9900", "127.0.0.1:9910"},
-			PrivateKey: "",
-			NetworkId:  0,
+			Seed:                       nil,
+			Listen:                     []string{"127.0.0.1:9900", "127.0.0.1:9910"},
+			PrivateKey:                 "",
+			NetworkId:                  0,
+			RouteTableSyncLoopInterval: 50,
 		},
 		Chain: &medletpb.ChainConfig{
-			ChainId:          1010,
 			Genesis:          "",
-			Datadir:          "data.db",
 			Keydir:           "",
 			StartMine:        false,
 			Coinbase:         "",
@@ -100,11 +104,19 @@ func defaultConfig() *medletpb.Config {
 			},
 			Version: "",
 		},
+		Sync: &medletpb.SyncConfig{
+			SeedingMinChunkSize:        10,
+			SeedingMaxChunkSize:        100,
+			SeedingMaxConcurrentPeers:  5,
+			DownloadChunkSize:          50,
+			DownloadMaxConcurrentTasks: 5,
+			DownloadChunkCacheSize:     100,
+		},
 	}
 }
 
 func defaultConfigString() string {
-	return proto.MarshalTextString(defaultConfig())
+	return proto.MarshalTextString(DefaultConfig())
 }
 
 func pathExist(path string) bool {

@@ -28,10 +28,10 @@ var (
 		SYNCROUTE:  MessageWeightZero,
 		ROUTETABLE: MessageWeightRouteTable,
 
-		ChainSync:      MessageWeightZero,
-		ChainChunks:    MessageWeightChainChunks,
-		ChainGetChunk:  MessageWeightZero,
-		ChainChunkData: MessageWeightChainChunkData,
+		SyncMetaRequest:       MessageWeightZero,
+		SyncMeta:              MessageWeightChainChunks,
+		SyncBlockChunkRequest: MessageWeightZero,
+		SyncBlockChunk:        MessageWeightChainChunkData,
 
 		"newblock": MessageWeightNewBlock,
 		"dlblock":  MessageWeightZero,
@@ -44,7 +44,7 @@ var (
 
 func TestAllMsg(t *testing.T) {
 	msgtypes := []string{HELLO, OK, BYE, SYNCROUTE, ROUTETABLE,
-		ChainSync, ChainChunks, ChainGetChunk, ChainChunkData,
+		SyncMetaRequest, SyncMeta, SyncBlockChunkRequest, SyncBlockChunk,
 		"newblock", "dlblock", "dlreply", "newtx",
 	}
 
@@ -54,7 +54,7 @@ func TestAllMsg(t *testing.T) {
 
 func TestUnvaluedMsg(t *testing.T) {
 	msgtypes := []string{HELLO, OK, BYE, SYNCROUTE,
-		ChainSync, ChainGetChunk,
+		SyncMetaRequest, SyncBlockChunkRequest,
 		"dlblock", "dlreply", "newtx",
 	}
 

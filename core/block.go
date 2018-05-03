@@ -2,6 +2,7 @@ package core
 
 import (
 	"time"
+	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -313,6 +314,10 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 	return nil
 }
 
+func (bd *BlockData) String() string {
+	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v>", bd.Height(), bd.Hash(), bd.ParentHash())
+}
+
 // Storage returns storage used by block
 func (block *Block) Storage() storage.Storage {
 	return block.storage
@@ -496,6 +501,12 @@ func (block *Block) SignThis(signer signature.Signature) error {
 
 // VerifyIntegrity verifies if block signature is valid
 func (bd *BlockData) VerifyIntegrity() error {
+	if bd.height == GenesisHeight {
+		if !GenesisHash.Equals(bd.header.hash) {
+			return ErrInvalidBlockHash
+		}
+		return nil
+	}
 	for _, tx := range bd.transactions {
 		if err := tx.VerifyIntegrity(bd.header.chainID); err != nil {
 			return err
@@ -562,12 +573,10 @@ func (block *Block) GetBlockData() *BlockData {
 func bytesToBlockData(bytes []byte) (*BlockData, error) {
 	pb := new(corepb.Block)
 	if err := proto.Unmarshal(bytes, pb); err != nil {
-		logging.Debug("") // TODO
 		return nil, err
 	}
 	bd := new(BlockData)
 	if err := bd.FromProto(pb); err != nil {
-		logging.Debug("") // TODO
 		return nil, err
 	}
 	return bd, nil

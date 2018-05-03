@@ -27,7 +27,7 @@ type TransactionManager struct {
 // NewTransactionManager create a new TransactionManager.
 func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 	return &TransactionManager{
-		chainID:           cfg.Chain.ChainId,
+		chainID:           cfg.Global.ChainId,
 		receivedMessageCh: make(chan net.Message, transactionPoolSize),
 		quitCh:            make(chan int, 1),
 		pool:              NewTransactionPool(transactionPoolSize),

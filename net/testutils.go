@@ -3,10 +3,11 @@ package net
 import (
 	"errors"
 	"fmt"
-	"math/rand"
-	"strconv"
 	"sync"
 	"time"
+
+	"net"
+	"strings"
 
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -254,7 +255,7 @@ func makeAndSetNewTestNodes(nodeNum int, seedNum int) ([]*Node, []peer.ID, error
 
 func makeNewTestP2PConfig(privateKeyPath string) *Config {
 
-	randomListen := makeRandomListen(10000, 20000)
+	randomListen := makeRandomListen()
 	if err := verifyListenAddress(randomListen); err != nil {
 		panic(fmt.Sprintf("Invalid random listen config: err is %s, config value is %s.", err, randomListen))
 	}
@@ -280,19 +281,13 @@ func makeNewTestP2PConfig(privateKeyPath string) *Config {
 	return config
 }
 
-// TODO: find random free port
-func makeRandomListen(low int64, high int64) []string {
-	if low > high {
-		return []string{}
-	}
-
-	rand.Seed(time.Now().UnixNano())
-	randomPort := rand.Int63()%(high-low) + low
-	randomPortString := strconv.FormatInt(randomPort, 10)
-	//randomListen := []string{"0.0.0.0:" + randomPortString}
-	randomListen := []string{"localhost:" + randomPortString}
-
-	return randomListen
+func makeRandomListen() []string {
+	lis, _ := net.Listen("tcp", ":0")
+	addrIPv6 := lis.Addr().String()
+	port := strings.TrimLeft(addrIPv6, "[::]")
+	addrIPv4 := fmt.Sprintf("localhost:%v", port)
+	lis.Close()
+	return []string{addrIPv4}
 }
 
 func waitRouteTableSyncLoop(node *Node, nodeIDs []peer.ID) {

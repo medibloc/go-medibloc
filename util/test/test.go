@@ -24,6 +24,9 @@ import (
 
 	"time"
 
+	goNet "net"
+	"strings"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -333,7 +336,7 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	tm.WaitRouteTableSync()
 
 	cfg := &medletpb.Config{
-		Chain: &medletpb.ChainConfig{
+		Global: &medletpb.GlobalConfig{
 			ChainId: ChainID,
 		},
 	}
@@ -367,8 +370,10 @@ type MockMedlet struct {
 // NewMockMedlet returns MockMedlet.
 func NewMockMedlet(t *testing.T) *MockMedlet {
 	cfg := &medletpb.Config{
+		Global: &medletpb.GlobalConfig{
+			ChainId: ChainID,
+		},
 		Chain: &medletpb.ChainConfig{
-			ChainId:  ChainID,
 			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 		},
@@ -440,4 +445,19 @@ func (m *MockMedlet) BlockManager() *core.BlockManager {
 // Dynasties returns Dynasties.
 func (m *MockMedlet) Dynasties() Dynasties {
 	return m.dynasties
+}
+
+//FindRandomListenPorts returns empty ports
+func FindRandomListenPorts(n int) (ports []string) {
+	listens := make([]goNet.Listener, 0)
+	for i := 0; i < n; i++ {
+		lis, _ := goNet.Listen("tcp", ":0")
+		addr := lis.Addr().String()
+		ports = append(ports, strings.TrimLeft(addr, "[::]"))
+		listens = append(listens, lis)
+	}
+	for i := 0; i < n; i++ {
+		listens[i].Close()
+	}
+	return ports
 }

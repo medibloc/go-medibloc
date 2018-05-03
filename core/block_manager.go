@@ -17,6 +17,8 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -35,6 +37,7 @@ var (
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
 type BlockManager struct {
+	mu        sync.RWMutex
 	bc        *BlockChain
 	bp        *BlockPool
 	ns        net.Service
@@ -114,21 +117,29 @@ func (bm *BlockManager) ChainID() uint32 {
 
 // BlockByHeight returns the block contained in the chain by height.
 func (bm *BlockManager) BlockByHeight(height uint64) *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.BlockOnCanonicalByHeight(height)
 }
 
 // BlockByHash returns the block contained in the chain by hash.
 func (bm *BlockManager) BlockByHash(hash common.Hash) *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.BlockByHash(hash)
 }
 
 // TailBlock getter for mainTailBlock
 func (bm *BlockManager) TailBlock() *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.MainTailBlock()
 }
 
 // LIB returns latest irreversible block of the chain.
 func (bm *BlockManager) LIB() *Block {
+	bm.mu.RLock()
+	bm.mu.RUnlock()
 	return bm.bc.LIB()
 }
 
@@ -148,6 +159,8 @@ func (bm *BlockManager) PushBlockData(bd *BlockData) error {
 }
 
 func (bm *BlockManager) push(bd *BlockData) error {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
 	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
@@ -247,6 +260,9 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 
 // requestMissingBlock requests a missing block to connect to blockchain.
 func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
+
 	// Block already in the chain.
 	if bm.bc.BlockByHash(bd.Hash()) != nil {
 		return nil
@@ -322,6 +338,9 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 }
 
 func (bm *BlockManager) handleRequestBlock(msg net.Message) {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
+
 	if msg.MessageType() != MessageTypeRequestBlock {
 		logging.WithFields(logrus.Fields{
 			"msgType": msg.MessageType(),
