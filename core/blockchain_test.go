@@ -40,8 +40,8 @@ func getBlockSlice(blockMap map[testUtil.BlockID]*core.Block, id testUtil.BlockI
 }
 
 func TestBlockChain_OnePath(t *testing.T) {
-	genesis, _ := testUtil.NewTestGenesisBlock(t)
 	bc := getBlockChain(t)
+	genesis := bc.MainTailBlock()
 
 	idxToParent := []testUtil.BlockID{testUtil.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := testUtil.NewBlockTestSet(t, genesis, idxToParent)
@@ -70,10 +70,10 @@ func TestBlockChain_Tree(t *testing.T) {
 		{[]testUtil.BlockID{testUtil.GenesisID, 0, 0, 0, 0, 1, 2, 2, 3}},
 		{[]testUtil.BlockID{testUtil.GenesisID, 0, 1, 1, 2, 2, 3, 3}},
 	}
-	genesis, _ := testUtil.NewTestGenesisBlock(t)
 	// Put one-by-one
 	for _, test := range tests {
 		bc := getBlockChain(t)
+		genesis := bc.MainTailBlock()
 		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
 		for idx, parentID := range test.tree {
 			blocks := getBlockSlice(blockMap, testUtil.BlockID(idx))
@@ -84,6 +84,7 @@ func TestBlockChain_Tree(t *testing.T) {
 	// Put all
 	for _, test := range tests {
 		bc := getBlockChain(t)
+		genesis := bc.MainTailBlock()
 		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
 		notTail := make(map[testUtil.BlockID]bool)
 		for _, idx := range test.tree {

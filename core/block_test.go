@@ -11,6 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/medibloc/go-medibloc/util/logging"
 )
 
 func TestNewBlock(t *testing.T) {
@@ -328,6 +329,7 @@ func TestExecuteReservedTasks(t *testing.T) {
 }
 
 func TestBlock_VerifyState(t *testing.T) {
+	logging.TestHook()
 	genesis, dynasties := test.NewTestGenesisBlock(t)
 	wrongGenesis, _ := test.NewTestGenesisBlock(t)
 	from, to := dynasties[0], dynasties[1]
