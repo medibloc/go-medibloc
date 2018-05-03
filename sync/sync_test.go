@@ -59,6 +59,11 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 	require.Nil(t, err)
 	bm.Setup(genesisConf, stor, ms, consensus)
 
+	tm := core.NewTransactionManager(config)
+	require.NoError(t, err)
+
+	consensus.Setup(genesisConf, bm, tm)
+
 	ss := NewService(config.Sync)
 	ss.Setup(ms, bm)
 

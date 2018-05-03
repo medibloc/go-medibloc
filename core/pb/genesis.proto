@@ -16,6 +16,8 @@ message Genesis {
 message GenesisMeta {
     // ChainID.
     uint32 chain_id = 1;
+    // Dynasty size.
+    uint32 dynasty_size = 2;
 }
 
 message GenesisConsensus {

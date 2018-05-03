@@ -27,7 +27,6 @@ type Medlet struct {
 	blockManager       *core.BlockManager
 	transactionManager *core.TransactionManager
 	consensus          *dpos.Dpos
-	miner              *core.Miner
 }
 
 // New returns a new medlet.
@@ -99,7 +98,12 @@ func (m *Medlet) Setup() error {
 
 	m.transactionManager.Setup(m.netService)
 
-	m.consensus.Setup(m.blockManager, m.transactionManager)
+	err = m.consensus.Setup(m.genesis, m.blockManager, m.transactionManager)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to setup consensus.")
+	}
 
 	logging.Console().Info("Set up Medlet.")
 	return nil
@@ -127,11 +131,6 @@ func (m *Medlet) Start() error {
 
 	m.transactionManager.Start()
 
-	// TODO @cl9200 Change to miner in consensus package.
-	if m.Config().Chain.StartMine {
-		m.miner = core.StartMiner(m.netService, m.blockManager, m.transactionManager)
-	}
-
 	m.consensus.Start()
 
 	metricsMedstartGauge.Update(1)
@@ -149,11 +148,6 @@ func (m *Medlet) Stop() {
 	m.transactionManager.Stop()
 
 	m.rpc.Stop()
-
-	// TODO @cl9200 Change to miner in consensus package.
-	if m.miner != nil {
-		m.miner.StopMiner()
-	}
 
 	m.consensus.Stop()
 

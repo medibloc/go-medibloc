@@ -77,7 +77,8 @@ func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
 func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
-			ChainId: ChainID,
+			ChainId:     ChainID,
+			DynastySize: 21,
 		},
 		Consensus: &corepb.GenesisConsensus{
 			Dpos: &corepb.GenesisConsensusDpos{
@@ -89,7 +90,7 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
-	for i := 0; i < dpos.DynastySize; i++ {
+	for i := 0; i < int(conf.Meta.DynastySize); i++ {
 		privKey := NewPrivateKey(t)
 		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
 		require.NoError(t, err)
@@ -172,7 +173,7 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 func SignBlock(t *testing.T, block *core.Block, dynasties Dynasties) {
 	members, err := block.State().Dynasty()
 	require.NoError(t, err)
-	proposer, err := dpos.FindProposer(block.Timestamp(), members)
+	proposer, err := dpos.FindProposer(block.Timestamp(), members, len(members))
 	require.NoError(t, err)
 
 	privKey := dynasties.findPrivKey(*proposer)
@@ -393,7 +394,8 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	err = bm.Setup(genesisConf, stor, ns, consensus)
 	require.NoError(t, err)
 	tm.Setup(ns)
-	consensus.Setup(bm, tm)
+	err = consensus.Setup(genesisConf, bm, tm)
+	require.NoError(t, err)
 
 	return &MockMedlet{
 		config:    cfg,

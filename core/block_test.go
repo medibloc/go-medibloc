@@ -46,13 +46,13 @@ func TestSendExecution(t *testing.T) {
 		{
 			dynasties[2].Addr,
 			dynasties[2].PrivKey,
-			dynasties[3].Addr,
+			dynasties[0].Addr,
 			util.NewUint128FromUint(20),
 			util.NewUint128FromUint(999999990),
 		},
 		{
-			dynasties[3].Addr,
-			dynasties[3].PrivKey,
+			dynasties[0].Addr,
+			dynasties[0].PrivKey,
 			dynasties[1].Addr,
 			util.NewUint128FromUint(100),
 			util.NewUint128FromUint(999999920),
