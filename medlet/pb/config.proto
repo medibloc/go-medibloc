@@ -50,6 +50,10 @@ message ChainConfig {
     string passphrase = 23;
     // Supported signature cipher list. ["ECC_SECP256K1"]
     repeated string signature_ciphers = 24;
+
+    // TODO account manager
+    // Miner private key.
+    string privkey = 25;
 }
 
 message RPCConfig {

@@ -66,6 +66,7 @@ func defaultConfig() *medletpb.Config {
 			Miner:            "",
 			Passphrase:       "",
 			SignatureCiphers: nil,
+			Privkey:          "",
 		},
 		Rpc: &medletpb.RPCConfig{
 			RpcListen:        []string{"127.0.0.1:9920"},
