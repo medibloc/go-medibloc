@@ -14,28 +14,24 @@ import (
 )
 
 type seeding struct {
-	netService         net.Service
-	bm                 BlockManager
-	quitCh             chan bool
-	messageCh          chan net.Message
-	minChunkSize       uint64
-	maxChunkSize       uint64
-	nConcurrentPeers   uint32
-	sendDoneCh         chan bool
-	maxConcurrentPeers uint32
+	netService   net.Service
+	bm           BlockManager
+	quitCh       chan bool
+	messageCh    chan net.Message
+	minChunkSize uint64
+	maxChunkSize uint64
+	semaphore    chan bool
 }
 
 func newSeeding(config *medletpb.SyncConfig) *seeding {
 	return &seeding{
-		netService:         nil,
-		bm:                 nil,
-		quitCh:             make(chan bool, 2),
-		messageCh:          make(chan net.Message, 128),
-		minChunkSize:       config.SeedingMinChunkSize,
-		maxChunkSize:       config.SeedingMaxChunkSize,
-		nConcurrentPeers:   0,
-		sendDoneCh:         make(chan bool, 2),
-		maxConcurrentPeers: config.SeedingMaxConcurrentPeers,
+		netService:   nil,
+		bm:           nil,
+		quitCh:       make(chan bool, 2),
+		messageCh:    make(chan net.Message, 128),
+		minChunkSize: config.SeedingMinChunkSize,
+		maxChunkSize: config.SeedingMaxChunkSize,
+		semaphore:    make(chan bool, config.SeedingMaxConcurrentPeers),
 	}
 }
 
@@ -45,6 +41,7 @@ func (s *seeding) setup(netService net.Service, bm BlockManager) {
 }
 
 func (s *seeding) start() {
+	logging.Console().Info("Sync: Seeding manager is started.")
 	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncMetaRequest, net.MessageWeightZero))
 	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncBlockChunkRequest, net.MessageWeightZero))
 	go s.startLoop()
@@ -60,28 +57,30 @@ func (s *seeding) startLoop() {
 	for {
 		select {
 		case <-s.quitCh:
-			logging.Console().Info("Sync: seeding Service Stopped")
+			logging.Console().Info("Sync: Seeding manager is stopped.")
 			return
 		case message := <-s.messageCh:
 			switch message.MessageType() {
 			case net.SyncMetaRequest:
 				s.sendRootHashMeta(message)
 			case net.SyncBlockChunkRequest:
-				if s.nConcurrentPeers < s.maxConcurrentPeers {
-					s.nConcurrentPeers++
-					go s.sendBlockChunk(message)
+				select {
+				case s.semaphore <- true:
+					go func() {
+						s.sendBlockChunk(message)
+						<-s.semaphore
+					}()
+				default:
 				}
+				//				if s.nConcurrentPeers < s.maxConcurrentPeers {
+				//				go s.sendBlockChunk(message)
+				//		}
 			}
-		case <-s.sendDoneCh:
-			s.nConcurrentPeers--
 		}
 	}
 }
 
 func (s *seeding) sendRootHashMeta(message net.Message) {
-
-	logging.Info("HashMeta request received.", s.netService.Node().ID())
-
 	q := new(syncpb.MetaQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {
@@ -92,6 +91,12 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		s.netService.ClosePeer(message.MessageFrom(), errors.New("invalid SyncMetaQuery message"))
 		return
 	}
+
+	logging.WithFields(logrus.Fields{
+		"peerID":    message.MessageFrom(),
+		"from":      q.From,
+		"chunkSize": q.ChunkSize,
+	}).Info("Sync: Seeding manager received hashMeta request.")
 
 	if common.BytesToHash(q.Hash) != s.bm.BlockByHeight(q.From).Hash() {
 		logging.WithFields(logrus.Fields{
@@ -161,7 +166,6 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 }
 
 func (s *seeding) sendBlockChunk(message net.Message) {
-	defer func() { s.sendDoneCh <- true }()
 	q := new(syncpb.BlockChunkQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {
@@ -225,6 +229,7 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 		"from":             data.From,
 		"Number of Blocks": len(data.Blocks),
 	}).Info("BlockChunk response succeeded")
+
 }
 
 func (s *seeding) chunkSizeCheck(n uint64) error {

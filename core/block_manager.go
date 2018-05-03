@@ -17,6 +17,8 @@
 package core
 
 import (
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -26,7 +28,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"sync"
 )
 
 var (
@@ -64,8 +65,8 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		return nil, err
 	}
 	return &BlockManager{
-		bc:                    bc,
-		bp:                    bp,
+		bc: bc,
+		bp: bp,
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		quitCh:                make(chan int, 1),

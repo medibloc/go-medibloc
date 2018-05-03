@@ -3,6 +3,8 @@ package core
 import (
 	"time"
 
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -10,7 +12,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/util/logging"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -312,6 +313,10 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 	return nil
 }
 
+func (bd *BlockData) String() string {
+	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v>", bd.Height(), bd.Hash(), bd.ParentHash())
+}
+
 // Storage returns storage used by block
 func (block *Block) Storage() storage.Storage {
 	return block.storage
@@ -559,12 +564,11 @@ func (block *Block) GetBlockData() *BlockData {
 func bytesToBlockData(bytes []byte) (*BlockData, error) {
 	pb := new(corepb.Block)
 	if err := proto.Unmarshal(bytes, pb); err != nil {
-		logging.Debug("") // TODO
 		return nil, err
 	}
+	//logging.Console().Debug("PB:", pb)
 	bd := new(BlockData)
 	if err := bd.FromProto(pb); err != nil {
-		logging.Debug("") // TODO
 		return nil, err
 	}
 	return bd, nil

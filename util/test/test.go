@@ -370,8 +370,8 @@ type MockMedlet struct {
 // NewMockMedlet returns MockMedlet.
 func NewMockMedlet(t *testing.T) *MockMedlet {
 	cfg := &medletpb.Config{
-		Global:&medletpb.GlobalConfig{
-			ChainId:  ChainID,
+		Global: &medletpb.GlobalConfig{
+			ChainId: ChainID,
 		},
 		Chain: &medletpb.ChainConfig{
 			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
@@ -426,7 +426,6 @@ func (m *MockMedlet) Genesis() *corepb.Genesis {
 func (m *MockMedlet) NetService() net.Service {
 	return m.ns
 }
-
 
 // Consensus returns Consensus.
 func (m *MockMedlet) Consensus() core.Consensus {

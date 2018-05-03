@@ -65,6 +65,7 @@ func (d *download) setup(netService net.Service, bm BlockManager) {
 }
 
 func (d *download) start() {
+	logging.Console().Info("Sync: Download manager is started.")
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 
@@ -76,7 +77,6 @@ func (d *download) start() {
 	}
 	d.sendMetaQuery()
 	go d.subscribeLoop()
-
 }
 
 func (d *download) stop() {
@@ -87,9 +87,10 @@ func (d *download) stop() {
 }
 
 func (d *download) subscribeLoop() {
-	timerChan := time.NewTicker(time.Second * 5).C //TODO: set timeout
+	timerChan := time.NewTicker(time.Second * 3).C //TODO: set timeout
 	retryMetaRequestCnt := 0
 	for {
+
 		select {
 		case <-timerChan:
 			if !d.majorityCheck(len(d.pidRootHashesMap)) {
@@ -103,8 +104,16 @@ func (d *download) subscribeLoop() {
 				"currentTailHeight": d.bm.TailBlock().Height(),
 			}).Info("Sync: download service status")
 
+			if len(d.runningTasks) > 0 {
+				for _, t := range d.runningTasks {
+					t.sendBlockChunkRequest()
+				}
+			}
 		case <-d.quitCh:
-			logging.Console().Info("Sync: download Service Stopped", d.bm.TailBlock().Height())
+			logging.Console().WithFields(logrus.Fields{
+				"from": d.from,
+				"to":   d.bm.TailBlock().Height(),
+			}).Info("Sync: Download manager is stopped.")
 			return
 		case message := <-d.messageCh:
 			switch message.MessageType() {
@@ -112,18 +121,6 @@ func (d *download) subscribeLoop() {
 				d.updateMeta(message)
 			case net.SyncBlockChunk:
 				d.findTaskForBlockChunk(message)
-
-			}
-		case t := <-d.taskDoneCh:
-			delete(d.runningTasks, t.from)
-			d.finishedTasks.Add(t)
-			if err := d.pushBlockDataChunk(); err != nil {
-				logging.Console().Infof("PushBlockDataChunk Failed", err)
-			}
-			if len(d.taskQueue) > 0 {
-				d.runNextTask()
-			} else if len(d.runningTasks) == 0 {
-				d.downloadFinishCheck()
 			}
 		}
 	}
@@ -132,9 +129,9 @@ func (d *download) subscribeLoop() {
 func (d *download) runNextTask() {
 	if d.finishedTasks.CacheSize() > d.chunkCacheSize {
 		logging.Console().WithFields(logrus.Fields{
-			"len(d.finishedTasks)":  d.finishedTasks.CacheSize(),
-			"int(d.chunkCacheSize)": int(d.chunkCacheSize),
-		}).Info("CacheSize limited")
+			"cached finished task": d.finishedTasks.CacheSize(),
+			"cache size":           d.chunkCacheSize,
+		}).Info("Sync: Download CacheSize limited. Waiting for finish previous task.")
 		return
 	}
 	count := d.chunkCacheSize - d.finishedTasks.CacheSize()
@@ -153,13 +150,11 @@ func (d *download) runNextTask() {
 		t := d.taskQueue[0]
 		d.runningTasks[t.from] = t
 		d.taskQueue = d.taskQueue[1:]
-		t.start()
+		t.sendBlockChunkRequest()
 	}
 }
 
 func (d *download) updateMeta(message net.Message) {
-	logging.Info("RootHash Meta Received")
-
 	rootHashMeta := new(syncpb.RootHashMeta)
 	err := proto.Unmarshal(message.Data(), rootHashMeta)
 	if err != nil {
@@ -185,7 +180,7 @@ func (d *download) updateMeta(message net.Message) {
 	d.setPIDRootHashesMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.setRootHashPIDsMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.checkMajorMeta()
-	logging.Info("Received rootHash Meta is updated")
+	logging.Infof("RootHash Meta is updated. (%v/%v)", len(d.pidRootHashesMap), d.netService.Node().PeersCount())
 }
 
 func (d *download) setPIDRootHashesMap(pid string, rootHashesByte [][]byte) {
@@ -252,7 +247,21 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 	}
 
 	if t, ok := d.runningTasks[blockChunk.From]; ok {
-		t.blockChunkMessageCh <- message
+		err := t.verifyBlockChunkMessage(message)
+		if err != nil {
+			t.sendBlockChunkRequest()
+			return
+		}
+		delete(d.runningTasks, t.from)
+		d.finishedTasks.Add(t)
+		if err := d.pushBlockDataChunk(); err != nil {
+			logging.Console().Infof("PushBlockDataChunk Failed", err)
+		}
+		if len(d.taskQueue) > 0 {
+			d.runNextTask()
+		} else if len(d.runningTasks) == 0 {
+			d.downloadFinishCheck()
+		}
 	}
 }
 
@@ -297,7 +306,7 @@ func (d *download) pushBlockDataChunk() error {
 	for {
 		task := d.finishedTasks.Next()
 		if task == nil {
-			return nil
+			break
 		}
 		blocks := task.blocks
 		for _, b := range blocks {

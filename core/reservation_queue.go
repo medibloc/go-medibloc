@@ -201,6 +201,9 @@ func (rq *ReservationQueue) popOnlyBefore(timestamp int64) *ReservedTask {
 }
 
 func (rq *ReservationQueue) save() error {
+	if common.IsZeroHash(rq.hash) {
+		return nil
+	}
 	msg, err := rq.ToProto()
 	if err != nil {
 		return err

@@ -7,10 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/require"
 )
@@ -19,15 +22,16 @@ var (
 	DOMAIN = "127.0.0.1"
 )
 
-type syncTester struct {
+type SyncTester struct {
 	config       *medletpb.Config
 	medService   net.Service
 	storage      storage.Storage
+	dynasties    test.Dynasties
 	blockManager BlockManager
 	syncService  *Service
 }
 
-func removeRouteableCache(t *testing.T) {
+func removeRouteTableCache(t *testing.T) {
 	_, err := os.Stat("./data.db/routetable.cache")
 	if err == nil {
 		t.Log("remove routetable.cache")
@@ -35,9 +39,8 @@ func removeRouteableCache(t *testing.T) {
 	}
 }
 
-func NewSyncTester(t *testing.T, config *medletpb.Config) *syncTester {
-	removeRouteableCache(t)
-
+func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Genesis, dynasties test.Dynasties) *SyncTester {
+	removeRouteTableCache(t)
 	if len(config.Network.Listen) < 1 {
 		port := test.FindRandomListenPorts(1)
 		addr := fmt.Sprintf("%s:%s", DOMAIN, port[0])
@@ -50,46 +53,48 @@ func NewSyncTester(t *testing.T, config *medletpb.Config) *syncTester {
 	stor, err := storage.NewMemoryStorage()
 	require.Nil(t, err)
 
-	genesis, err := core.LoadGenesisConf(test.DefaultGenesisConfPath)
-	require.Nil(t, err)
+	consensus := dpos.New(config)
 
 	bm, err := core.NewBlockManager(config)
 	require.Nil(t, err)
-	bm.Setup(genesis, stor, ms)
+	bm.Setup(genesisConf, stor, ms, consensus)
 
 	ss := NewService(config.Sync)
 	ss.Setup(ms, bm)
 
-	return &syncTester{
+	return &SyncTester{
 		config:       config,
 		medService:   ms,
 		storage:      stor,
+		dynasties:    dynasties,
 		blockManager: bm,
 		syncService:  ss,
 	}
 }
 
-func (st *syncTester) Start() {
+func (st *SyncTester) Start() {
 	st.medService.Start()
 	st.syncService.Start()
 }
 
-func (st *syncTester) NodeID() string {
+func (st *SyncTester) NodeID() string {
 	return st.medService.Node().ID()
 }
 
 func TestService_Start(t *testing.T) {
 	var (
-		nBlocks   = 20100
-		chunkSize = 100
+		nBlocks   = 500
+		chunkSize = 20
 	)
 
 	//create First Tester(Seed Node)
-	seedTester := NewSyncTester(t, DefaultSyncTesterConfig())
+	genesisConf, dynasties := test.NewTestGenesisConf(t)
+	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 
 	for i := 1; i < nBlocks; i++ {
 		b := test.NewTestBlock(t, seedTester.blockManager.TailBlock())
+		test.SignBlock(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 	}
 	require.Equal(t, uint64(nBlocks), seedTester.blockManager.TailBlock().Height())
@@ -101,7 +106,7 @@ func TestService_Start(t *testing.T) {
 	t.Log(seedMultiAddr)
 	conf.Network.Seed = seedMultiAddr
 	conf.Sync.DownloadChunkSize = uint64(chunkSize)
-	receiveTester := NewSyncTester(t, conf)
+	receiveTester := NewSyncTester(t, conf, genesisConf, dynasties)
 	receiveTester.Start()
 
 	for {
@@ -113,7 +118,7 @@ func TestService_Start(t *testing.T) {
 
 	receiveTester.syncService.ActiveDownload()
 	for {
-		if receiveTester.blockManager.TailBlock().Height() > uint64(nBlocks-chunkSize+1) {
+		if receiveTester.blockManager.TailBlock().Height() >= uint64(nBlocks-chunkSize+1) {
 			break
 		}
 
@@ -124,21 +129,24 @@ func TestService_Start(t *testing.T) {
 	t.Logf("Height(%v) block of New Node	    : %v", newTail.Height(), newTail.Hash())
 	t.Logf("Height(%v) block of Origin Node	: %v", newTail.Height(), seedTester.blockManager.BlockByHeight(newTail.Height()).Hash())
 	for i := uint64(1); i <= newTail.Height(); i++ {
+		require.NotNil(t, seedTester.blockManager.BlockByHeight(i), "Seeder Height:%v, Hash:%v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash().Bytes()))
+		require.NotNil(t, receiveTester.blockManager.BlockByHeight(i), "Receiver Height Missing:%v, Hash: %v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash().Bytes()))
 		require.Equal(t, seedTester.blockManager.BlockByHeight(i).Hash(), receiveTester.blockManager.BlockByHeight(i).Hash())
 	}
 }
 
 func TestForkResistance(t *testing.T) {
-	removeRouteableCache(t)
+	removeRouteTableCache(t)
 
 	var (
 		nMajors   = 6
-		nBlocks   = 200
-		chunkSize = 10
+		nBlocks   = 500
+		chunkSize = 20
 	)
 
 	//create First Tester(Seed Node)
-	seedTester := NewSyncTester(t, DefaultSyncTesterConfig())
+	genesisConf, dynasties := test.NewTestGenesisConf(t)
+	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	t.Log("seedTesterID", seedTester.NodeID())
 
@@ -146,13 +154,13 @@ func TestForkResistance(t *testing.T) {
 	seedMultiAddr := convertIpv4ListensToMultiAddrSeeds(seedTester.config.Network.Listen, seedTester.NodeID())
 
 	//create testers has correct blockchain(Synced with first Tester)
-	majorTesters := make([]*syncTester, nMajors-1)
+	majorTesters := make([]*SyncTester, nMajors-1)
 	for i := 0; i < nMajors-1; i++ {
 		conf := DefaultSyncTesterConfig()
 		conf.Network.Seed = seedMultiAddr
 		conf.Sync.DownloadChunkSize = uint64(chunkSize)
 
-		majorTesters[i] = NewSyncTester(t, conf)
+		majorTesters[i] = NewSyncTester(t, conf, genesisConf, dynasties)
 		t.Logf("major #%v listen:%v", i, majorTesters[i].config.Network.Listen)
 		majorTesters[i].Start()
 	}
@@ -160,6 +168,7 @@ func TestForkResistance(t *testing.T) {
 	//Generate blocks and push to seed tester and major tester
 	for i := 1; i < nBlocks; i++ {
 		b := test.NewTestBlock(t, seedTester.blockManager.TailBlock())
+		test.SignBlock(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 		for _, st := range majorTesters {
 			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
@@ -175,12 +184,12 @@ func TestForkResistance(t *testing.T) {
 
 	// create testers has forked blockchain
 	nMinors := nMajors - 1
-	minorTesters := make([]*syncTester, nMinors)
+	minorTesters := make([]*SyncTester, nMinors)
 	for i := 0; i < nMinors; i++ {
 		conf := DefaultSyncTesterConfig()
 		conf.Network.Seed = seedMultiAddr
 		conf.Sync.DownloadChunkSize = uint64(chunkSize)
-		minorTesters[i] = NewSyncTester(t, conf)
+		minorTesters[i] = NewSyncTester(t, conf, genesisConf, dynasties)
 		t.Logf("minor #%v listen:%v", i, minorTesters[i].config.Network.Listen)
 		minorTesters[i].Start()
 	}
@@ -188,6 +197,8 @@ func TestForkResistance(t *testing.T) {
 	//Generate diff blocks and push to minor tester
 	for i := 1; i < nBlocks; i++ {
 		b := test.NewTestBlock(t, minorTesters[0].blockManager.TailBlock())
+		test.SignBlock(t, b, seedTester.dynasties)
+
 		for _, st := range minorTesters {
 			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
 		}
@@ -202,7 +213,7 @@ func TestForkResistance(t *testing.T) {
 	conf := DefaultSyncTesterConfig()
 	conf.Network.Seed = seedMultiAddr
 	conf.Sync.DownloadChunkSize = uint64(chunkSize)
-	newbieTester := NewSyncTester(t, conf)
+	newbieTester := NewSyncTester(t, conf, genesisConf, dynasties)
 	newbieTester.Start()
 
 	for {
@@ -246,16 +257,11 @@ func DefaultSyncTesterConfig() *medletpb.Config {
 			RouteTableSyncLoopInterval: 2000,
 		},
 		Chain: &medletpb.ChainConfig{
-			Genesis:          "",
-			Keydir:           "",
-			StartMine:        false,
-			Coinbase:         "",
-			Miner:            "",
-			Passphrase:       "",
-			SignatureCiphers: nil,
+			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 		},
 		Sync: &medletpb.SyncConfig{
-			SeedingMinChunkSize:        10,
+			SeedingMinChunkSize:        1,
 			SeedingMaxChunkSize:        100,
 			SeedingMaxConcurrentPeers:  5,
 			DownloadChunkSize:          50,
@@ -280,10 +286,10 @@ func convertIpv4ListensToMultiAddrSeeds(ipv4s []string, nodeID string) (multiAdd
 	return multiAddrs
 }
 
-func copyBlockData(t *testing.T, origin *core.BlockData) (*core.BlockData) {
+func copyBlockData(t *testing.T, origin *core.BlockData) *core.BlockData {
 	pbBlock, err := origin.ToProto()
 	require.Nil(t, err)
-	copy := new(core.BlockData)
-	copy.FromProto(pbBlock)
-	return copy
+	copiedBlockData := new(core.BlockData)
+	copiedBlockData.FromProto(pbBlock)
+	return copiedBlockData
 }

@@ -2,11 +2,11 @@ package net
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/gogo/protobuf/proto"
 	peer "github.com/libp2p/go-libp2p-peer"

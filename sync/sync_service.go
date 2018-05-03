@@ -40,32 +40,15 @@ func (ss *Service) Setup(netService net.Service, bm BlockManager) {
 
 // Start Sync Service
 func (ss *Service) Start() {
-	logging.Console().Info("SyncService is started")
+	logging.Console().Info("SyncService is started.")
 	ss.Seeding.start()
-	logging.Console().Debug("Seeding start OK")
-	go ss.startLoop()
 }
 
 //Stop Sync Service
 func (ss *Service) Stop() {
-	ss.quitCh <- true
-}
-
-func (ss *Service) startLoop() {
-
-	logging.Console().Info("Sync service is started.")
-	//timerChan := time.NewTicker(time.Second).C
-	for {
-		select {
-		//case <-timerChan:
-		//	metricsCachedSync.Update(int64(len(ss.messageCh)))
-		case <-ss.quitCh:
-			ss.Seeding.stop()
-			ss.Download.stop()
-			logging.Console().Info("Stopped Sync Service.")
-			return
-		}
-	}
+	ss.Seeding.stop()
+	ss.Download.stop()
+	logging.Console().Info("SyncService is stopped.")
 }
 
 //ActiveDownload start download manager

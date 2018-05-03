@@ -15,6 +15,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//ErrFailVerification is occurred when received block chunk failed to verify.
+var ErrFailVerification = errors.New("fail to verification block chunk")
+
 type downloadTask struct {
 	netService          net.Service
 	query               []byte
@@ -33,7 +36,7 @@ type downloadTask struct {
 }
 
 func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash common.Hash, doneCh chan *downloadTask) *downloadTask {
-	return &downloadTask{
+	dt := &downloadTask{
 		netService:          netService,
 		query:               nil,
 		from:                from,
@@ -49,35 +52,16 @@ func newDownloadTask(netService net.Service, peers map[string]struct{}, from uin
 		doneCh:              doneCh,
 		pid:                 "",
 	}
-}
-
-func (dt *downloadTask) start() {
 	dt.generateBlockChunkQuery()
-	dt.sendBlockChunkRequest()
-	dt.startTime = time.Now()
-	go dt.startLoop()
+	dt.startTime = time.Now().Add(-5 * time.Second)
+	return dt
 }
 
-func (dt *downloadTask) stop() {
-	dt.quitCh <- true
-}
-
-func (dt *downloadTask) startLoop() {
-	timerChan := time.NewTicker(time.Second * 3).C //TODO: set retry time
-	for {
-		select {
-		case <-timerChan:
-			dt.sendBlockChunkRequest()
-		case blockChunkMessage := <-dt.blockChunkMessageCh:
-			dt.verifyBlockChunkMessage(blockChunkMessage)
-		case <-dt.quitCh:
-			dt.doneCh <- dt
-			return
-		}
+func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
+	if dt.blocks != nil {
+		logging.Console().Infof("Block Chunk is already received from:%v", dt.from)
+		return ErrFailVerification
 	}
-}
-
-func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 
 	blockChunk := new(syncpb.BlockChunk)
 	err := proto.Unmarshal(message.Data(), blockChunk)
@@ -87,7 +71,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 			"msgFrom": message.MessageFrom(),
 		}).Warn("Fail to unmarshal HashMeta message.")
 		dt.netService.ClosePeer(message.MessageFrom(), errors.New("invalid blockChunk message"))
-		return
+		return ErrFailVerification
 	}
 
 	if uint64(len(blockChunk.Blocks)) != dt.chunkSize {
@@ -98,7 +82,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 			"msgFrom":            message.MessageFrom(),
 		}).Warn("block chunksize is unmatched")
 		dt.netService.ClosePeer(message.MessageFrom(), errors.New("block chunksize is unmatched"))
-		return
+		return ErrFailVerification
 	}
 
 	if blockChunk.From != dt.from {
@@ -109,7 +93,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 			"msgFrom":       message.MessageFrom(),
 		}).Warn("block range is unmatched")
 		dt.netService.ClosePeer(message.MessageFrom(), errors.New("block range is unmatched"))
-		return
+		return ErrFailVerification
 	}
 
 	var downloadedHashes []common.Hash
@@ -125,7 +109,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 				"err":          err,
 				"msgFrom":      message.MessageFrom(),
 			}).Warn("Fail to verify block integrity.")
-			return
+			return ErrFailVerification
 		}
 		downloadedHashes = append(downloadedHashes, block.Hash())
 	}
@@ -136,13 +120,14 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) {
 			"err":     err,
 			"msgFrom": message.MessageFrom(),
 		}).Warn("BlockChunks root hash is not matched.")
-		return
+		return ErrFailVerification
 	}
 
 	dt.blocks = blocks
 	dt.endTime = time.Now()
 	dt.pid = message.MessageFrom()
-	dt.stop()
+	//dt.doneCh <- dt
+	return nil
 }
 
 func (dt *downloadTask) removePeer(peer string, errMsg string) {
@@ -166,6 +151,9 @@ func (dt *downloadTask) generateBlockChunkQuery() {
 }
 
 func (dt *downloadTask) sendBlockChunkRequest() {
+	if time.Now().Sub(dt.startTime) < 3*time.Second {
+		return
+	}
 	randomIndex := rand.Intn(len(dt.peers))
 	var randomPeer string
 	index := 0
@@ -176,6 +164,7 @@ func (dt *downloadTask) sendBlockChunkRequest() {
 		}
 		index++
 	}
+	dt.startTime = time.Now()
 	dt.netService.SendMessageToPeer(net.SyncBlockChunkRequest, dt.query, net.MessagePriorityLow, randomPeer)
 	logging.Console().WithFields(logrus.Fields{
 		"block from (height)": dt.from,
@@ -185,6 +174,7 @@ func (dt *downloadTask) sendBlockChunkRequest() {
 	}).Info("BlockChunkRequest is sent")
 }
 
+//String return stringified downloadTask
 func (dt *downloadTask) String() string {
-	return fmt.Sprintf("<DownloadTask>From:%v,", dt.from)
+	return fmt.Sprintf("<DownloadTask from:%v>", dt.from)
 }

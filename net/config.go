@@ -3,8 +3,8 @@ package net
 import (
 	"fmt"
 	"net"
-	"time"
 	"os"
+	"time"
 
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/multiformats/go-multiaddr"

@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
+	"net"
+	"strings"
+
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
-	"net"
-	"strings"
 )
 
 // const for test
