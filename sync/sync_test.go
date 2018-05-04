@@ -53,7 +53,8 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 	stor, err := storage.NewMemoryStorage()
 	require.Nil(t, err)
 
-	consensus := dpos.New(config)
+	consensus, err := dpos.New(config)
+	require.NoError(t, err)
 
 	bm, err := core.NewBlockManager(config)
 	require.Nil(t, err)

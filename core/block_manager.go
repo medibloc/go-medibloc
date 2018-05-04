@@ -37,7 +37,7 @@ var (
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
 type BlockManager struct {
-	mu        sync.Mutex
+	mu        sync.RWMutex
 	bc        *BlockChain
 	bp        *BlockPool
 	ns        net.Service
@@ -112,26 +112,36 @@ func (bm *BlockManager) registerInNetwork() {
 
 // ChainID return BlockChain.ChainID
 func (bm *BlockManager) ChainID() uint32 {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.ChainID()
 }
 
 // BlockByHeight returns the block contained in the chain by height.
 func (bm *BlockManager) BlockByHeight(height uint64) *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.BlockOnCanonicalByHeight(height)
 }
 
 // BlockByHash returns the block contained in the chain by hash.
 func (bm *BlockManager) BlockByHash(hash common.Hash) *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.BlockByHash(hash)
 }
 
 // TailBlock getter for mainTailBlock
 func (bm *BlockManager) TailBlock() *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.MainTailBlock()
 }
 
 // LIB returns latest irreversible block of the chain.
 func (bm *BlockManager) LIB() *Block {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	return bm.bc.LIB()
 }
 
@@ -164,7 +174,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Verify signature
 
-	err := bm.consensus.VerifyProposer(bd)
+	err := bm.consensus.VerifyProposer(bm.bc, bd)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
@@ -219,6 +229,12 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		}).Error("Failed to set LIB.")
 	}
 
+	logging.Console().WithFields(logrus.Fields{
+		"block": bd,
+		"tail":  newTail,
+		"lib":   newLIB,
+	}).Info("Block pushed.")
+
 	return nil
 }
 
@@ -250,6 +266,8 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 
 // requestMissingBlock requests a missing block to connect to blockchain.
 func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	// Block already in the chain.
 	if bm.bc.BlockByHash(bd.Hash()) != nil {
 		return nil
@@ -295,7 +313,7 @@ func (bm *BlockManager) loop() {
 }
 
 func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
-	if msg.MessageType() != MessageTypeNewBlock || msg.MessageType() != MessageTypeResponseBlock {
+	if msg.MessageType() != MessageTypeNewBlock && msg.MessageType() != MessageTypeResponseBlock {
 		logging.WithFields(logrus.Fields{
 			"msgType": msg.MessageType(),
 			"msg":     msg,
@@ -325,6 +343,8 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 }
 
 func (bm *BlockManager) handleRequestBlock(msg net.Message) {
+	bm.mu.RLock()
+	defer bm.mu.RUnlock()
 	if msg.MessageType() != MessageTypeRequestBlock {
 		logging.WithFields(logrus.Fields{
 			"msgType": msg.MessageType(),

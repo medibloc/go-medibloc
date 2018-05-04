@@ -68,7 +68,13 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 
 	tm := core.NewTransactionManager(cfg)
 
-	consensus := dpos.New(cfg)
+	consensus, err := dpos.New(cfg)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Fatal("Failed to create dpos consensus.")
+		return nil, err
+	}
 
 	return &Medlet{
 		config:             cfg,

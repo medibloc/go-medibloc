@@ -7,8 +7,11 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -17,9 +20,7 @@ import (
 // Consensus properties.
 const (
 	BlockInterval   = 15 * time.Second
-	DynasyInterval  = 210 * BlockInterval
-	DynastySize     = 21
-	ConsensusSize   = DynastySize*2/3 + 1
+	DynastyInterval = 210 * BlockInterval
 	MinMintDuration = 2 * time.Second
 
 	miningTickInterval = time.Second
@@ -33,32 +34,59 @@ var (
 	ErrFoundNilProposer       = errors.New("found a nil proposer")
 	ErrBlockMintedInNextSlot  = errors.New("cannot mint block now, there is a block minted in current slot")
 	ErrWaitingBlockInLastSlot = errors.New("cannot mint block now, waiting for last block")
+	ErrInvalidDynastySize     = errors.New("invalid dynasty size")
 )
 
 // Dpos returns dpos consensus model.
 type Dpos struct {
 	coinbase common.Address
 	miner    common.Address
+	minerKey signature.PrivateKey
 
 	bm *core.BlockManager
 	tm *core.TransactionManager
+
+	genesis       *corepb.Genesis
+	dynastySize   int
+	consensusSize int
 
 	quitCh chan int
 }
 
 // New returns dpos consensus.
-func New(cfg *medletpb.Config) *Dpos {
-	return &Dpos{
-		coinbase: common.HexToAddress(cfg.Chain.Coinbase),
-		miner:    common.HexToAddress(cfg.Chain.Miner),
-		quitCh:   make(chan int, 1),
+func New(cfg *medletpb.Config) (*Dpos, error) {
+	dpos := &Dpos{
+		quitCh: make(chan int, 1),
 	}
+
+	if cfg.Chain.StartMine {
+		dpos.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
+		dpos.miner = common.HexToAddress(cfg.Chain.Miner)
+		minerKey, err := secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Invalid miner private key.")
+			return nil, err
+		}
+		dpos.minerKey = minerKey
+	}
+	return dpos, nil
 }
 
 // Setup sets up dpos.
-func (d *Dpos) Setup(bm *core.BlockManager, tm *core.TransactionManager) {
+func (d *Dpos) Setup(genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
+	d.genesis = genesis
+
+	d.dynastySize = int(d.genesis.Meta.DynastySize)
+	if d.dynastySize < 3 || d.dynastySize > 21 || d.dynastySize%3 != 0 {
+		return ErrInvalidDynastySize
+	}
+
+	d.consensusSize = d.dynastySize*2/3 + 1
 	d.bm = bm
 	d.tm = tm
+	return nil
 }
 
 // Start starts miner.
@@ -103,24 +131,24 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	dynastyGen := int64(-1)
 
 	for !cur.Hash().Equals(lib.Hash()) {
-		if dynastyGen != dynastyGenByTime(cur.Timestamp()) {
-			dynastyGen = dynastyGenByTime(cur.Timestamp())
+		if gen := dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
+			dynastyGen = gen
 			confirmed = make(map[string]bool)
 			// TODO @cl9200 Replace member of dynasty.
 			// members, err = tail.State().Dynasty()
 		}
 
-		if cur.Height()-lib.Height() < uint64(ConsensusSize-len(confirmed)) {
+		if cur.Height()-lib.Height() < uint64(d.consensusSize-len(confirmed)) {
 			return lib
 		}
 
-		proposer, err := FindProposer(cur.Timestamp(), members)
+		proposer, err := FindProposer(cur.Timestamp(), members, d.dynastySize)
 		if err != nil {
 			return lib
 		}
 
 		confirmed[proposer.Hex()] = true
-		if len(confirmed) >= ConsensusSize {
+		if len(confirmed) >= d.consensusSize {
 			return cur
 		}
 
@@ -137,13 +165,13 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 
 func dynastyGenByTime(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
-	return int64(now / DynasyInterval)
+	return int64(now / DynastyInterval)
 }
 
 // VerifyProposer verifies block proposer.
-func (d *Dpos) VerifyProposer(block *core.BlockData) error {
+func (d *Dpos) VerifyProposer(bc *core.BlockChain, block *core.BlockData) error {
 	// TODO @cl9200 Handling when tail height is higher than block height.
-	tail := d.bm.TailBlock()
+	tail := bc.MainTailBlock()
 	elapsed := time.Duration(block.Timestamp()-tail.Timestamp()) * time.Second
 	if elapsed%BlockInterval != 0 {
 		return ErrInvalidBlockInterval
@@ -158,7 +186,7 @@ func (d *Dpos) VerifyProposer(block *core.BlockData) error {
 		return err
 	}
 
-	proposer, err := FindProposer(block.Timestamp(), members)
+	proposer, err := FindProposer(block.Timestamp(), members, d.dynastySize)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
@@ -215,15 +243,15 @@ func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, ciphe
 }
 
 // FindProposer finds proposer of given timestamp.
-func FindProposer(ts int64, miners []*common.Address) (proposer *common.Address, err error) {
+func FindProposer(ts int64, miners []*common.Address, dynastySize int) (proposer *common.Address, err error) {
 	now := time.Duration(ts) * time.Second
 	if now%BlockInterval != 0 {
 		return nil, ErrInvalidBlockForgeTime
 	}
-	offsetInDynastyInterval := now % DynasyInterval
-	offsetInDynasty := offsetInDynastyInterval % DynastySize
+	offsetInDynastyInterval := (now / BlockInterval) % DynastyInterval
+	offsetInDynasty := int(offsetInDynastyInterval) % dynastySize
 
-	if int(offsetInDynasty) >= len(miners) {
+	if offsetInDynasty >= len(miners) {
 		logging.WithFields(logrus.Fields{
 			"offset": offsetInDynasty,
 			"miners": len(miners),
@@ -256,7 +284,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	proposer, err := FindProposer(deadline.Unix(), members)
+	proposer, err := FindProposer(deadline.Unix(), members, d.dynastySize)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"members":  members,
@@ -276,10 +304,48 @@ func (d *Dpos) mintBlock(now time.Time) error {
 
 	block, err := d.makeBlock(tail, deadline)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"tail":     tail,
+			"deadline": deadline,
+			"err":      err,
+		}).Error("Failed to make a new block.")
+		return err
+	}
+
+	err = block.Seal()
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"block": block,
+			"err":   err,
+		}).Error("Failed to seal a new block.")
+		return err
+	}
+
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create new crypto signature.")
+		return err
+	}
+	sig.InitSign(d.minerKey)
+
+	err = block.SignThis(sig)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to sign block.")
 		return err
 	}
 
 	// TODO @cl9200 Return transactions if an error condition.
+
+	time.Sleep(deadline.Sub(time.Now()))
+
+	logging.Console().WithFields(logrus.Fields{
+		"proposer": proposer,
+		"block":    block,
+	}).Info("New block is minted.")
 
 	// TODO @cl9200 Skip verification of mint block.
 	err = d.bm.PushBlockData(block.GetBlockData())
@@ -293,10 +359,6 @@ func (d *Dpos) mintBlock(now time.Time) error {
 
 	d.bm.BroadCast(block.GetBlockData())
 
-	logging.Console().WithFields(logrus.Fields{
-		"proposer": proposer,
-		"block":    block,
-	}).Info("New block is minted.")
 	return nil
 }
 
@@ -326,14 +388,14 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 
 func lastMintSlot(ts time.Time) time.Time {
 	now := time.Duration(ts.Unix()) * time.Second
-	last := int64(((now - time.Second) / BlockInterval) * BlockInterval)
-	return time.Unix(last, 0)
+	last := ((now - time.Second) / BlockInterval) * BlockInterval
+	return time.Unix(int64(last/time.Second), 0)
 }
 
 func nextMintSlot(ts time.Time) time.Time {
 	now := time.Duration(ts.Unix()) * time.Second
-	next := int64(((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval)
-	return time.Unix(next, 0)
+	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval
+	return time.Unix(int64(next/time.Second), 0)
 }
 
 func mintDeadline(ts time.Time) time.Time {
