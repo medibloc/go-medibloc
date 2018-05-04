@@ -5,7 +5,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet/pb"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"google.golang.org/grpc"
 )
@@ -30,9 +30,7 @@ func New(cfg *medletpb.Config) *Server {
 //Setup sets up server.
 func (s *Server) Setup(bm *core.BlockManager, tm *core.TransactionManager) {
 	api := newAPIService(bm, tm)
-	admin := newAdminService(bm, tm)
 	rpcpb.RegisterApiServiceServer(s.rpcServer, api)
-	rpcpb.RegisterAdminServiceServer(s.rpcServer, admin)
 }
 
 // Start starts rpc server.

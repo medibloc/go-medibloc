@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/rs/cors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -20,10 +20,6 @@ func httpServerRun(addr string, addrGrpc string) error {
 		runtime.WithProtoErrorHandler(errorHandler))
 	opts := []grpc.DialOption{grpc.WithInsecure()}
 	err := rpcpb.RegisterApiServiceHandlerFromEndpoint(ctx, mux, addrGrpc, opts)
-	if err != nil {
-		return err
-	}
-	err = rpcpb.RegisterAdminServiceHandlerFromEndpoint(ctx, mux, addrGrpc, opts)
 	if err != nil {
 		return err
 	}

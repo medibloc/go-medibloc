@@ -15,32 +15,6 @@
     "application/json"
   ],
   "paths": {
-    "/v1/admin/transaction": {
-      "post": {
-        "operationId": "SendTransaction",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbTransactionResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/rpcpbTransactionRequest"
-            }
-          }
-        ],
-        "tags": [
-          "AdminService"
-        ]
-      }
-    },
     "/v1/block": {
       "get": {
         "operationId": "GetBlock",
@@ -84,12 +58,12 @@
     },
     "/v1/transaction": {
       "post": {
-        "operationId": "PostTransaction",
+        "operationId": "SendTransaction",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbTransactionResponse"
+              "$ref": "#/definitions/rpcpbSendTransactionResponse"
             }
           }
         },
@@ -99,7 +73,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/rpcpbTransactionRequest"
+              "$ref": "#/definitions/rpcpbSendTransactionRequest"
             }
           }
         ],
@@ -341,18 +315,7 @@
         }
       }
     },
-    "rpcpbTransactionData": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string"
-        },
-        "payload": {
-          "type": "string"
-        }
-      }
-    },
-    "rpcpbTransactionRequest": {
+    "rpcpbSendTransactionRequest": {
       "type": "object",
       "properties": {
         "hash": {
@@ -401,12 +364,25 @@
         }
       }
     },
-    "rpcpbTransactionResponse": {
+    "rpcpbSendTransactionResponse": {
       "type": "object",
       "properties": {
-        "txhash": {
+        "hash": {
           "type": "string",
           "description": "Hex string of transaction hash."
+        }
+      }
+    },
+    "rpcpbTransactionData": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Transaction data type."
+        },
+        "payload": {
+          "type": "string",
+          "description": "Transaction data payload."
         }
       }
     }

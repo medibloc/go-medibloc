@@ -6,7 +6,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"golang.org/x/net/context"
 )
@@ -96,8 +96,8 @@ func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsReque
 	}, nil
 }
 
-// PostTransaction sends transaction
-func (s *APIService) PostTransaction(ctx context.Context, req *rpcpb.TransactionRequest) (*rpcpb.TransactionResponse, error) {
+// SendTransaction sends transaction
+func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.SendTransactionResponse, error) {
 	value, err := util.NewUint128FromString(req.Value)
 	if err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (s *APIService) PostTransaction(ctx context.Context, req *rpcpb.Transaction
 	if err = s.tm.Push(tx); err != nil {
 		return nil, err
 	}
-	return &rpcpb.TransactionResponse{
-		Txhash: tx.Hash().Hex(),
+	return &rpcpb.SendTransactionResponse{
+		Hash: tx.Hash().Hex(),
 	}, nil
 }

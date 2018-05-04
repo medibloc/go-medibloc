@@ -8,7 +8,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	proto "github.com/medibloc/go-medibloc/rpc/proto"
+	pb "github.com/medibloc/go-medibloc/rpc/pb"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
@@ -37,13 +37,13 @@ func (m *MockApiServiceClient) EXPECT() *MockApiServiceClientMockRecorder {
 }
 
 // GetAccountState mocks base method
-func (m *MockApiServiceClient) GetAccountState(ctx context.Context, in *proto.GetAccountStateRequest, opts ...grpc.CallOption) (*proto.GetAccountStateResponse, error) {
+func (m *MockApiServiceClient) GetAccountState(ctx context.Context, in *pb.GetAccountStateRequest, opts ...grpc.CallOption) (*pb.GetAccountStateResponse, error) {
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetAccountState", varargs...)
-	ret0, _ := ret[0].(*proto.GetAccountStateResponse)
+	ret0, _ := ret[0].(*pb.GetAccountStateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -54,14 +54,32 @@ func (mr *MockApiServiceClientMockRecorder) GetAccountState(ctx, in interface{},
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountState", reflect.TypeOf((*MockApiServiceClient)(nil).GetAccountState), varargs...)
 }
 
+// GetBlock mocks base method
+func (m *MockApiServiceClient) GetBlock(ctx context.Context, in *pb.GetBlockRequest, opts ...grpc.CallOption) (*pb.GetBlockResponse, error) {
+	varargs := []interface{}{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetBlock", varargs...)
+	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBlock indicates an expected call of GetBlock
+func (mr *MockApiServiceClientMockRecorder) GetBlock(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockApiServiceClient)(nil).GetBlock), varargs...)
+}
+
 // GetMedState mocks base method
-func (m *MockApiServiceClient) GetMedState(ctx context.Context, in *proto.NonParamsRequest, opts ...grpc.CallOption) (*proto.GetMedStateResponse, error) {
+func (m *MockApiServiceClient) GetMedState(ctx context.Context, in *pb.NonParamsRequest, opts ...grpc.CallOption) (*pb.GetMedStateResponse, error) {
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetMedState", varargs...)
-	ret0, _ := ret[0].(*proto.GetMedStateResponse)
+	ret0, _ := ret[0].(*pb.GetMedStateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -70,6 +88,42 @@ func (m *MockApiServiceClient) GetMedState(ctx context.Context, in *proto.NonPar
 func (mr *MockApiServiceClientMockRecorder) GetMedState(ctx, in interface{}, opts ...interface{}) *gomock.Call {
 	varargs := append([]interface{}{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedState", reflect.TypeOf((*MockApiServiceClient)(nil).GetMedState), varargs...)
+}
+
+// GetTailBlock mocks base method
+func (m *MockApiServiceClient) GetTailBlock(ctx context.Context, in *pb.NonParamsRequest, opts ...grpc.CallOption) (*pb.GetBlockResponse, error) {
+	varargs := []interface{}{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetTailBlock", varargs...)
+	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTailBlock indicates an expected call of GetTailBlock
+func (mr *MockApiServiceClientMockRecorder) GetTailBlock(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTailBlock", reflect.TypeOf((*MockApiServiceClient)(nil).GetTailBlock), varargs...)
+}
+
+// SendTransaction mocks base method
+func (m *MockApiServiceClient) SendTransaction(ctx context.Context, in *pb.SendTransactionRequest, opts ...grpc.CallOption) (*pb.SendTransactionResponse, error) {
+	varargs := []interface{}{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SendTransaction", varargs...)
+	ret0, _ := ret[0].(*pb.SendTransactionResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SendTransaction indicates an expected call of SendTransaction
+func (mr *MockApiServiceClientMockRecorder) SendTransaction(ctx, in interface{}, opts ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTransaction", reflect.TypeOf((*MockApiServiceClient)(nil).SendTransaction), varargs...)
 }
 
 // MockApiServiceServer is a mock of ApiServiceServer interface
@@ -96,9 +150,9 @@ func (m *MockApiServiceServer) EXPECT() *MockApiServiceServerMockRecorder {
 }
 
 // GetAccountState mocks base method
-func (m *MockApiServiceServer) GetAccountState(arg0 context.Context, arg1 *proto.GetAccountStateRequest) (*proto.GetAccountStateResponse, error) {
+func (m *MockApiServiceServer) GetAccountState(arg0 context.Context, arg1 *pb.GetAccountStateRequest) (*pb.GetAccountStateResponse, error) {
 	ret := m.ctrl.Call(m, "GetAccountState", arg0, arg1)
-	ret0, _ := ret[0].(*proto.GetAccountStateResponse)
+	ret0, _ := ret[0].(*pb.GetAccountStateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -108,10 +162,23 @@ func (mr *MockApiServiceServerMockRecorder) GetAccountState(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountState", reflect.TypeOf((*MockApiServiceServer)(nil).GetAccountState), arg0, arg1)
 }
 
+// GetBlock mocks base method
+func (m *MockApiServiceServer) GetBlock(arg0 context.Context, arg1 *pb.GetBlockRequest) (*pb.GetBlockResponse, error) {
+	ret := m.ctrl.Call(m, "GetBlock", arg0, arg1)
+	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBlock indicates an expected call of GetBlock
+func (mr *MockApiServiceServerMockRecorder) GetBlock(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockApiServiceServer)(nil).GetBlock), arg0, arg1)
+}
+
 // GetMedState mocks base method
-func (m *MockApiServiceServer) GetMedState(arg0 context.Context, arg1 *proto.NonParamsRequest) (*proto.GetMedStateResponse, error) {
+func (m *MockApiServiceServer) GetMedState(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetMedStateResponse, error) {
 	ret := m.ctrl.Call(m, "GetMedState", arg0, arg1)
-	ret0, _ := ret[0].(*proto.GetMedStateResponse)
+	ret0, _ := ret[0].(*pb.GetMedStateResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -121,79 +188,28 @@ func (mr *MockApiServiceServerMockRecorder) GetMedState(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedState", reflect.TypeOf((*MockApiServiceServer)(nil).GetMedState), arg0, arg1)
 }
 
-// MockAdminServiceClient is a mock of AdminServiceClient interface
-type MockAdminServiceClient struct {
-	ctrl     *gomock.Controller
-	recorder *MockAdminServiceClientMockRecorder
-}
-
-// MockAdminServiceClientMockRecorder is the mock recorder for MockAdminServiceClient
-type MockAdminServiceClientMockRecorder struct {
-	mock *MockAdminServiceClient
-}
-
-// NewMockAdminServiceClient creates a new mock instance
-func NewMockAdminServiceClient(ctrl *gomock.Controller) *MockAdminServiceClient {
-	mock := &MockAdminServiceClient{ctrl: ctrl}
-	mock.recorder = &MockAdminServiceClientMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockAdminServiceClient) EXPECT() *MockAdminServiceClientMockRecorder {
-	return m.recorder
-}
-
-// SendTransaction mocks base method
-func (m *MockAdminServiceClient) SendTransaction(ctx context.Context, in *proto.TransactionRequest, opts ...grpc.CallOption) (*proto.TransactionResponse, error) {
-	varargs := []interface{}{ctx, in}
-	for _, a := range opts {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "SendTransaction", varargs...)
-	ret0, _ := ret[0].(*proto.TransactionResponse)
+// GetTailBlock mocks base method
+func (m *MockApiServiceServer) GetTailBlock(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetBlockResponse, error) {
+	ret := m.ctrl.Call(m, "GetTailBlock", arg0, arg1)
+	ret0, _ := ret[0].(*pb.GetBlockResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SendTransaction indicates an expected call of SendTransaction
-func (mr *MockAdminServiceClientMockRecorder) SendTransaction(ctx, in interface{}, opts ...interface{}) *gomock.Call {
-	varargs := append([]interface{}{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTransaction", reflect.TypeOf((*MockAdminServiceClient)(nil).SendTransaction), varargs...)
-}
-
-// MockAdminServiceServer is a mock of AdminServiceServer interface
-type MockAdminServiceServer struct {
-	ctrl     *gomock.Controller
-	recorder *MockAdminServiceServerMockRecorder
-}
-
-// MockAdminServiceServerMockRecorder is the mock recorder for MockAdminServiceServer
-type MockAdminServiceServerMockRecorder struct {
-	mock *MockAdminServiceServer
-}
-
-// NewMockAdminServiceServer creates a new mock instance
-func NewMockAdminServiceServer(ctrl *gomock.Controller) *MockAdminServiceServer {
-	mock := &MockAdminServiceServer{ctrl: ctrl}
-	mock.recorder = &MockAdminServiceServerMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockAdminServiceServer) EXPECT() *MockAdminServiceServerMockRecorder {
-	return m.recorder
+// GetTailBlock indicates an expected call of GetTailBlock
+func (mr *MockApiServiceServerMockRecorder) GetTailBlock(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTailBlock", reflect.TypeOf((*MockApiServiceServer)(nil).GetTailBlock), arg0, arg1)
 }
 
 // SendTransaction mocks base method
-func (m *MockAdminServiceServer) SendTransaction(arg0 context.Context, arg1 *proto.TransactionRequest) (*proto.TransactionResponse, error) {
+func (m *MockApiServiceServer) SendTransaction(arg0 context.Context, arg1 *pb.SendTransactionRequest) (*pb.SendTransactionResponse, error) {
 	ret := m.ctrl.Call(m, "SendTransaction", arg0, arg1)
-	ret0, _ := ret[0].(*proto.TransactionResponse)
+	ret0, _ := ret[0].(*pb.SendTransactionResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SendTransaction indicates an expected call of SendTransaction
-func (mr *MockAdminServiceServerMockRecorder) SendTransaction(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTransaction", reflect.TypeOf((*MockAdminServiceServer)(nil).SendTransaction), arg0, arg1)
+func (mr *MockApiServiceServerMockRecorder) SendTransaction(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTransaction", reflect.TypeOf((*MockApiServiceServer)(nil).SendTransaction), arg0, arg1)
 }

@@ -1,7 +1,7 @@
 PB = $(wildcard *.proto)
 GO = $(PB:.proto=.pb.go)
 
-all: $(GO)
+all: $(GO) mockgen
 
 %.pb.go: %.proto
 	protoc \
@@ -12,6 +12,9 @@ all: $(GO)
 	$<
 
 %.proto:
+
+mockgen:
+	mockgen -source ./rpc.pb.go -destination ../mock_pb/mock_pb.go
 
 clean:
 	rm *.pb.go

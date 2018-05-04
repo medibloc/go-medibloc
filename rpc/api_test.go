@@ -22,9 +22,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/medibloc/go-medibloc/rpc/mock_pb"
-	"github.com/medibloc/go-medibloc/rpc/proto"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,24 +60,4 @@ func TestAPIService_GetAccountState(t *testing.T) {
 	}
 
 	// TODO test with datas
-}
-
-func TestAdminService_SendTransaction(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	client := mock_rpcpb.NewMockAdminServiceClient(ctrl)
-
-	{
-		client.EXPECT().SendTransaction(gomock.Any(), gomock.Any()).Return(nil, errors.New("invalid tx"))
-		req := &rpcpb.TransactionRequest{
-			From:  "",
-			To:    "",
-			Value: "1",
-			Nonce: 1,
-			Hash:  "",
-			Sign:  "",
-		}
-		_, err := client.SendTransaction(context.Background(), req)
-		assert.NotNil(t, err)
-	}
 }
