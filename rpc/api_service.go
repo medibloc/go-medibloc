@@ -3,12 +3,21 @@ package rpc
 import (
 	"encoding/hex"
 
+	"errors"
+
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/net/context"
+)
+
+// APIService errors
+var (
+	ErrTransctionNotFound = errors.New("transaction not found")
 )
 
 // APIService is blockchain api rpc service.
@@ -96,6 +105,54 @@ func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsReque
 	}, nil
 }
 
+// GetTransaction returns transaction
+func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.TransactionResponse, error) {
+	tailBlock := s.bm.TailBlock()
+	if tailBlock != nil {
+		// TODO: check req.Hash is nil
+		pb, err := tailBlock.State().GetTx(common.HexToHash(req.Hash))
+		if err != nil {
+			return nil, ErrTransctionNotFound
+		}
+		pbTx := new(corepb.Transaction)
+		proto.Unmarshal(pb, pbTx)
+
+		var data *rpcpb.TransactionData
+		// TODO: add more transaction
+		if pbTx.Data.Type == core.TxPayloadBinaryType {
+			data = &rpcpb.TransactionData{
+				Type:    pbTx.Data.Type,
+				Payload: nil,
+			}
+		} else if pbTx.Data.Type == core.TxOperationRegisterWKey {
+			txPayload, err := core.BytesToRegisterWriterPayload(pbTx.Data.Payload)
+			if err != nil {
+				return nil, err
+			}
+			data = &rpcpb.TransactionData{
+				Type: pbTx.Data.Type,
+				Payload: &rpcpb.Payload{
+					Writer: txPayload.Writer.String(),
+				},
+			}
+		}
+
+		return &rpcpb.TransactionResponse{
+			Hash:      byteutils.Bytes2Hex(pbTx.Hash),
+			From:      byteutils.Bytes2Hex(pbTx.From),
+			To:        byteutils.Bytes2Hex(pbTx.To),
+			Value:     byteutils.Bytes2Hex(pbTx.From),
+			Timestamp: pbTx.Timestamp,
+			Data:      data,
+			Nonce:     pbTx.Nonce,
+			ChainId:   pbTx.ChainId,
+			Alg:       pbTx.Alg,
+			Sign:      byteutils.Bytes2Hex(pbTx.Sign),
+		}, nil
+	}
+	return &rpcpb.TransactionResponse{}, nil
+}
+
 // SendTransaction sends transaction
 func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.SendTransactionResponse, error) {
 	value, err := util.NewUint128FromString(req.Value)
@@ -106,11 +163,23 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	if err != nil {
 		return nil, err
 	}
-	data := &corepb.Data{
-		Type: req.Data.Type,
-		// TODO: convert payload
+	var data = &corepb.Data{
+		Type:    "",
 		Payload: nil,
 	}
+	// TODO: add more transaction
+	if req.Data.Type == core.TxPayloadBinaryType {
+		data = &corepb.Data{
+			Type:    req.Data.Type,
+			Payload: nil,
+		}
+	} else {
+		data = &corepb.Data{
+			Type:    req.Data.Type,
+			Payload: nil,
+		}
+	}
+
 	tx, err := core.BuildTransaction(
 		req.ChainId,
 		common.HexToAddress(req.From),

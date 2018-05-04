@@ -30,6 +30,12 @@ service ApiService {
         };
     }
 
+	rpc GetTransaction (GetTransactionRequest) returns (TransactionResponse) {
+		option (google.api.http) = {
+			get: "/v1/transaction"
+		};
+	}
+
 	rpc SendTransaction (SendTransactionRequest) returns (SendTransactionResponse) {
 		option (google.api.http) = {
           post: "/v1/transaction"
@@ -84,6 +90,11 @@ message GetMedStateResponse {
 	string version = 8;
 }
 
+message GetTransactionRequest {
+	// Transaction hash
+	string hash = 1;
+}
+
 message SendTransactionRequest {
 	// Transaction hash
 	string hash = 1;
@@ -116,5 +127,33 @@ message TransactionData {
 	// Transaction data type.
 	string type = 1;
 	// Transaction data payload.
-	string payload = 2;
+	Payload payload = 2;
+}
+
+message Payload {
+	// WriterPayload writer
+	string writer = 1;
+}
+
+message TransactionResponse {
+	// Transaction hash
+	string hash = 1;
+	// Hex string of the sender account addresss.
+	string from = 2;
+	// Hex string of the receiver account addresss.
+	string to = 3;
+	// Amount of value sending with this transaction.
+	string value = 4; // uint128, len=16
+	// Transaction timestamp.
+	int64 timestamp = 5;
+	// Transaction Data type.
+	TransactionData data = 6;
+	// Transaction nonce.
+	uint64 nonce = 7;
+	// Transaction chain ID.
+	uint32 chain_id = 8;
+	// Transaction algorithm.
+	uint32 alg = 9;
+	// Transaction sign.
+	string sign = 10;
 }

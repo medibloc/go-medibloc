@@ -57,6 +57,29 @@
       }
     },
     "/v1/transaction": {
+      "get": {
+        "operationId": "GetTransaction",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "description": "Transaction hash.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      },
       "post": {
         "operationId": "SendTransaction",
         "responses": {
@@ -315,6 +338,15 @@
         }
       }
     },
+    "rpcpbPayload": {
+      "type": "object",
+      "properties": {
+        "writer": {
+          "type": "string",
+          "title": "WriterPayload writer"
+        }
+      }
+    },
     "rpcpbSendTransactionRequest": {
       "type": "object",
       "properties": {
@@ -381,8 +413,57 @@
           "description": "Transaction data type."
         },
         "payload": {
-          "type": "string",
+          "$ref": "#/definitions/rpcpbPayload",
           "description": "Transaction data payload."
+        }
+      }
+    },
+    "rpcpbTransactionResponse": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "title": "Transaction hash"
+        },
+        "from": {
+          "type": "string",
+          "description": "Hex string of the sender account addresss."
+        },
+        "to": {
+          "type": "string",
+          "description": "Hex string of the receiver account addresss."
+        },
+        "value": {
+          "type": "string",
+          "description": "Amount of value sending with this transaction."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Transaction timestamp."
+        },
+        "data": {
+          "$ref": "#/definitions/rpcpbTransactionData",
+          "description": "Transaction Data type."
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Transaction nonce."
+        },
+        "chain_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction chain ID."
+        },
+        "alg": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction algorithm."
+        },
+        "sign": {
+          "type": "string",
+          "description": "Transaction sign."
         }
       }
     }
