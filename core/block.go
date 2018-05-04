@@ -1,8 +1,8 @@
 package core
 
 import (
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
