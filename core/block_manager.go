@@ -163,6 +163,10 @@ func (bm *BlockManager) PushBlockData(bd *BlockData) error {
 func (bm *BlockManager) push(bd *BlockData) error {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()
+	if bm.bc.chainID != bd.ChainID() {
+		return ErrInvalidChainID
+	}
+
 	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
