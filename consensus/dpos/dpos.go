@@ -365,24 +365,42 @@ func (d *Dpos) mintBlock(now time.Time) error {
 func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, error) {
 	block, err := core.NewBlock(d.bm.ChainID(), d.miner, tail)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create new block.")
 		return nil, err
 	}
 	block.SetTimestamp(deadline.Unix())
 
+	block.BeginBatch()
 	for deadline.Sub(time.Now()) > 0 {
 		tx := d.tm.Pop()
 		if tx == nil {
 			break
 		}
 		err = block.ExecuteTransaction(tx)
+		if err != nil && err == core.ErrSmallTransactionNonce {
+			continue
+		}
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+				"tx":  tx,
+			}).Error("Failed to execute transaction.")
+			block.RollBack()
 			return nil, err
 		}
 		err = block.AcceptTransaction(tx)
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+				"tx":  tx,
+			}).Error("Failed to accept transaction.")
+			block.RollBack()
 			return nil, err
 		}
 	}
+	block.Commit()
 	return block, nil
 }
 

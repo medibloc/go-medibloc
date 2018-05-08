@@ -269,7 +269,7 @@ func (tx *Transaction) Hash() common.Hash {
 
 // String returns string representation of tx
 func (tx *Transaction) String() string {
-	return fmt.Sprintf(`{"chainID":%d, "hash": "%x", "from": "%x", "to": "%x", "value":"%s", "type":"%s", "alg":"%d"}`,
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v'}`,
 		tx.chainID,
 		tx.hash,
 		tx.from,
@@ -277,6 +277,7 @@ func (tx *Transaction) String() string {
 		tx.value.String(),
 		tx.Type(),
 		tx.alg,
+		tx.nonce,
 	)
 }
 
