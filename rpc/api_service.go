@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -12,16 +11,24 @@ import (
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/util/logging"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // APIService errors
 var (
-	ErrBlockNotFound       = errors.New("block not found")
-	ErrInvalidDataType     = errors.New("invalid transaction data type")
-	ErrInvalidTransaction  = errors.New("cannot unmarshal transaction")
-	ErrTransactionNotFound = errors.New("transaction not found")
+	ErrMsgAccountNotFound            = "account not found"
+	ErrMsgBlockNotFound              = "block not found"
+	ErrMsgBuildTransactionFail       = "cannot build transaction"
+	ErrMsgConvertBlockFailed         = "cannot convert block"
+	ErrMsgGetTransactionFailed       = "cannot get transaction from state"
+	ErrMsgInvalidDataType            = "invalid transaction data type"
+	ErrMsgInvalidTransaction         = "invalid transaction"
+	ErrMsgInvalidTxValue             = "invalid transaction value"
+	ErrMsgInvalidTxDataPayload       = "invalid transaction data payload"
+	ErrMsgTransactionNotFound        = "transaction not found"
+	ErrMsgUnmarshalTransactionFailed = "cannot unmarshal transaction"
 )
 
 func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, error) {
@@ -86,7 +93,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 		}
 		return payloadBuf, nil
 	}
-	return nil, ErrInvalidDataType
+	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 }
 
 // APIService is blockchain api rpc service.
@@ -128,7 +135,7 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 	tailBlock := s.bm.TailBlock()
 	acc, err := tailBlock.State().GetAccount(common.HexToAddress(req.Address))
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.NotFound, ErrMsgAccountNotFound)
 	}
 	return &rpcpb.GetAccountStateResponse{
 		Balance: acc.Balance().String(),
@@ -142,14 +149,13 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	if block != nil {
 		pb, err := block.ToProto()
 		if err != nil {
-			return nil, err
+			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 		}
 		if pbBlock, ok := pb.(*corepb.Block); ok {
 			return corePbBlock2rpcPbBlock(pbBlock)
 		}
 	}
-	logging.Console().Error("Block Not Found")
-	return nil, ErrBlockNotFound
+	return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 }
 
 // GetTailBlock returns tail block
@@ -158,13 +164,13 @@ func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsReque
 	if tailBlock != nil {
 		pb, err := tailBlock.ToProto()
 		if err != nil {
-			return nil, err
+			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 		}
 		if pbBlock, ok := pb.(*corepb.Block); ok {
 			return corePbBlock2rpcPbBlock(pbBlock)
 		}
 	}
-	return nil, ErrBlockNotFound
+	return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 }
 
 // GetTransaction returns transaction
@@ -175,29 +181,29 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		pb, err := tailBlock.State().GetTx(common.HexToHash(req.Hash))
 		if err != nil {
 			if err == trie.ErrNotFound {
-				return nil, ErrTransactionNotFound
+				return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 			}
-			return nil, err
+			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
 		}
 		pbTx := new(corepb.Transaction)
 		err = proto.Unmarshal(pb, pbTx)
 		if err != nil {
-			return nil, ErrInvalidTransaction
+			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
 		}
 		return corePbTx2rpcPbTx(pbTx)
 	}
-	return nil, ErrTransactionNotFound
+	return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 }
 
 // SendTransaction sends transaction
 func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.SendTransactionResponse, error) {
 	value, err := util.NewUint128FromString(req.Value)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxValue)
 	}
 	payloadBuf, err := generatePayloadBuf(req.Data)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxDataPayload)
 	}
 	tx, err := core.BuildTransaction(
 		req.ChainId,
@@ -214,8 +220,10 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		req.Alg,
 		byteutils.Hex2Bytes(req.Sign))
 	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
 	}
 	if err = s.tm.Push(tx); err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 	return &rpcpb.SendTransactionResponse{
 		Hash: tx.Hash().Hex(),
