@@ -79,8 +79,8 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 
 func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var registerWriter *core.RegisterWriterPayload
-	// var removeWriter *core.RemoveWriterPayload
 	var addRecord *core.AddRecordPayload
+	// var removeWriter *core.RemoveWriterPayload
 	// var addRecordReader *core.AddRecordReaderPayload
 
 	switch txData.Type {
@@ -106,6 +106,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 		return payloadBuf, nil
 	case core.TxOperationRemoveWKey:
 	case core.TxPayloadBinaryType:
+		return nil, nil
 	}
 	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 }
