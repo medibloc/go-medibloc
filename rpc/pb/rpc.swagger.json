@@ -56,6 +56,22 @@
         ]
       }
     },
+    "/v1/node/medstate": {
+      "get": {
+        "operationId": "GetMedState",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetMedStateResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/transaction": {
       "get": {
         "operationId": "GetTransaction",
@@ -137,22 +153,6 @@
           "ApiService"
         ]
       }
-    },
-    "/v1/user/medstate": {
-      "get": {
-        "operationId": "GetMedState",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbGetMedStateResponse"
-            }
-          }
-        },
-        "tags": [
-          "ApiService"
-        ]
-      }
     }
   },
   "definitions": {
@@ -160,53 +160,67 @@
       "type": "object",
       "properties": {
         "hash": {
-          "type": "string"
+          "type": "string",
+          "title": "Block hash"
         },
         "parent_hash": {
-          "type": "string"
+          "type": "string",
+          "title": "Block parent hash"
         },
         "coinbase": {
-          "type": "string"
+          "type": "string",
+          "title": "Block coinbase address"
         },
         "timestamp": {
           "type": "string",
-          "format": "int64"
+          "format": "int64",
+          "title": "Block timestamp"
         },
         "chain_id": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "title": "Block chain id"
         },
         "alg": {
           "type": "integer",
-          "format": "int64"
+          "format": "int64",
+          "title": "Block signature algorithm"
         },
         "sign": {
-          "type": "string"
+          "type": "string",
+          "title": "Block signature"
         },
         "accs_root": {
-          "type": "string"
+          "type": "string",
+          "title": "Root hash of accounts trie"
         },
         "txs_root": {
-          "type": "string"
+          "type": "string",
+          "title": "Root hash of transactions trie"
         },
         "usage_root": {
-          "type": "string"
+          "type": "string",
+          "title": "Root hash of usage trie"
         },
         "records_root": {
-          "type": "string"
+          "type": "string",
+          "title": "Root hash of records trie"
         },
         "consensus_root": {
-          "type": "string"
+          "type": "string",
+          "title": "Root hash of consensus trie"
         },
         "transactions": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/rpcpbTransactionResponse"
-          }
+          },
+          "title": "Transactions in block"
         },
         "height": {
           "type": "string",
-          "format": "uint64"
+          "format": "uint64",
+          "title": "Block height"
         }
       }
     },

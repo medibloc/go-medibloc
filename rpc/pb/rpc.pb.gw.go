@@ -330,7 +330,7 @@ var (
 
 	pattern_ApiService_GetBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "block"}, ""))
 
-	pattern_ApiService_GetMedState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "user", "medstate"}, ""))
+	pattern_ApiService_GetMedState_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "node", "medstate"}, ""))
 
 	pattern_ApiService_GetTailBlock_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "block", "tail"}, ""))
 

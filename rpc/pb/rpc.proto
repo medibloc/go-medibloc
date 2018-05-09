@@ -3,7 +3,6 @@ syntax = "proto3";
 package rpcpb;
 
 import "google/api/annotations.proto";
-import "github.com/medibloc/go-medibloc/core/pb/block.proto";
 
 service ApiService {
 	rpc GetAccountState (GetAccountStateRequest) returns (GetAccountStateResponse) {
@@ -20,7 +19,7 @@ service ApiService {
 
 	rpc GetMedState (NonParamsRequest) returns (GetMedStateResponse) {
 		option (google.api.http) = {
-			get: "/v1/user/medstate"
+			get: "/v1/node/medstate"
 		};
 	}
 
