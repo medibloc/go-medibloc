@@ -379,7 +379,12 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 			break
 		}
 		err = block.ExecuteTransaction(tx)
-		if err != nil && err == core.ErrSmallTransactionNonce {
+		if err != nil && err == core.ErrLargeTransactionNonce {
+			if err := d.tm.Push(tx); err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to push back tx.")
+			}
 			continue
 		}
 		if err != nil {
@@ -387,17 +392,16 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 				"err": err,
 				"tx":  tx,
 			}).Error("Failed to execute transaction.")
-			block.RollBack()
-			return nil, err
+			continue
 		}
+
 		err = block.AcceptTransaction(tx)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
 				"tx":  tx,
 			}).Error("Failed to accept transaction.")
-			block.RollBack()
-			return nil, err
+			continue
 		}
 	}
 	block.Commit()
