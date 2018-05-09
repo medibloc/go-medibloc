@@ -79,11 +79,23 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 
 func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var registerWriter *core.RegisterWriterPayload
+	// var removeWriter *core.RemoveWriterPayload
+	var addRecord *core.AddRecordPayload
+	// var addRecordReader *core.AddRecordReaderPayload
 
-	// TODO: Add more tx types
 	switch txData.Type {
-	case core.TxPayloadBinaryType:
-		return nil, nil
+	case core.TxOperationSend:
+	case core.TxOperationAddRecord:
+		json.Unmarshal([]byte(txData.Payload), &addRecord)
+		payload := core.NewAddRecordPayload(addRecord.Hash, addRecord.Storage, addRecord.EncKey, addRecord.Seed)
+		payloadBuf, err := payload.ToBytes()
+		if err != nil {
+			return nil, err
+		}
+		return payloadBuf, nil
+	case core.TxOperationAddRecordReader:
+	case core.TxOperationVest:
+	case core.TxOperationWithdrawVesting:
 	case core.TxOperationRegisterWKey:
 		json.Unmarshal([]byte(txData.Payload), &registerWriter)
 		payload := core.NewRegisterWriterPayload(registerWriter.Writer)
@@ -92,6 +104,8 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
+	case core.TxOperationRemoveWKey:
+	case core.TxPayloadBinaryType:
 	}
 	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 }

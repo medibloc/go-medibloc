@@ -206,7 +206,7 @@ func (tx *Transaction) verifySign() error {
 	if err != nil {
 		return err
 	}
-	if tx.Type() == TxOperationAddRecord || !tx.from.Equals(signer) {
+	if tx.Type() != TxOperationAddRecord && !tx.from.Equals(signer) {
 		return ErrInvalidTransactionSigner
 	}
 	return nil
