@@ -12,7 +12,7 @@ service ApiService {
 		};
 	}
 
-    rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {
+    rpc GetBlock (GetBlockRequest) returns (BlockResponse) {
         option (google.api.http) = {
             get: "/v1/block"
         };
@@ -24,7 +24,7 @@ service ApiService {
 		};
 	}
 
-    rpc GetTailBlock (NonParamsRequest) returns (GetBlockResponse) {
+    rpc GetTailBlock (NonParamsRequest) returns (BlockResponse) {
         option (google.api.http) = {
             get: "/v1/block/tail"
         };
@@ -65,9 +65,35 @@ message GetBlockRequest {
     string hash = 1;
 }
 
-message GetBlockResponse {
-	// Block
-    corepb.Block block = 1;
+message BlockResponse {
+	// Block hash
+	string hash = 1;
+	// Block parent hash
+	string parent_hash = 2;
+	// Block coinbase address
+	string coinbase = 3;
+	// Block timestamp
+	int64 timestamp = 4;
+	// Block chain id
+	uint32 chain_id = 5;
+	// Block signature algorithm
+	uint32 alg = 6;
+	// Block signature
+	string sign = 7;
+	// Root hash of accounts trie
+	string accs_root = 8;
+	// Root hash of transactions trie
+	string txs_root = 9;
+	// Root hash of usage trie
+	string usage_root = 10;
+	// Root hash of records trie
+	string records_root = 11;
+	// Root hash of consensus trie
+	string consensus_root = 12;
+	// Transactions in block
+	repeated TransactionResponse transactions = 13;
+	// Block height
+	uint64 height = 14;
 }
 
 message NonParamsRequest {
@@ -127,12 +153,7 @@ message TransactionData {
 	// Transaction data type.
 	string type = 1;
 	// Transaction data payload.
-	Payload payload = 2;
-}
-
-message Payload {
-	// WriterPayload writer
-	string writer = 1;
+	string payload = 2;
 }
 
 message TransactionResponse {

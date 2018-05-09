@@ -22,7 +22,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetBlockResponse"
+              "$ref": "#/definitions/rpcpbBlockResponse"
             }
           }
         },
@@ -47,7 +47,7 @@
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetBlockResponse"
+              "$ref": "#/definitions/rpcpbBlockResponse"
             }
           }
         },
@@ -156,130 +156,57 @@
     }
   },
   "definitions": {
-    "corepbBlock": {
+    "rpcpbBlockResponse": {
       "type": "object",
       "properties": {
-        "header": {
-          "$ref": "#/definitions/corepbBlockHeader"
+        "hash": {
+          "type": "string"
+        },
+        "parent_hash": {
+          "type": "string"
+        },
+        "coinbase": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "chain_id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "alg": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "sign": {
+          "type": "string"
+        },
+        "accs_root": {
+          "type": "string"
+        },
+        "txs_root": {
+          "type": "string"
+        },
+        "usage_root": {
+          "type": "string"
+        },
+        "records_root": {
+          "type": "string"
+        },
+        "consensus_root": {
+          "type": "string"
         },
         "transactions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/corepbTransaction"
+            "$ref": "#/definitions/rpcpbTransactionResponse"
           }
         },
         "height": {
           "type": "string",
           "format": "uint64"
-        }
-      }
-    },
-    "corepbBlockHeader": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string",
-          "format": "byte"
-        },
-        "parent_hash": {
-          "type": "string",
-          "format": "byte"
-        },
-        "coinbase": {
-          "type": "string",
-          "format": "byte"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64"
-        },
-        "chain_id": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "alg": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "sign": {
-          "type": "string",
-          "format": "byte"
-        },
-        "accs_root": {
-          "type": "string",
-          "format": "byte"
-        },
-        "txs_root": {
-          "type": "string",
-          "format": "byte"
-        },
-        "usage_root": {
-          "type": "string",
-          "format": "byte"
-        },
-        "records_root": {
-          "type": "string",
-          "format": "byte"
-        },
-        "consensus_root": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
-    "corepbData": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string"
-        },
-        "payload": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
-    "corepbTransaction": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string",
-          "format": "byte"
-        },
-        "from": {
-          "type": "string",
-          "format": "byte"
-        },
-        "to": {
-          "type": "string",
-          "format": "byte"
-        },
-        "value": {
-          "type": "string",
-          "format": "byte"
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64"
-        },
-        "data": {
-          "$ref": "#/definitions/corepbData"
-        },
-        "nonce": {
-          "type": "string",
-          "format": "uint64"
-        },
-        "chain_id": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "alg": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "sign": {
-          "type": "string",
-          "format": "byte"
         }
       }
     },
@@ -299,15 +226,6 @@
           "type": "integer",
           "format": "int64",
           "title": "Account type"
-        }
-      }
-    },
-    "rpcpbGetBlockResponse": {
-      "type": "object",
-      "properties": {
-        "block": {
-          "$ref": "#/definitions/corepbBlock",
-          "title": "Block"
         }
       }
     },
@@ -335,15 +253,6 @@
         "version": {
           "type": "string",
           "title": "Med version"
-        }
-      }
-    },
-    "rpcpbPayload": {
-      "type": "object",
-      "properties": {
-        "writer": {
-          "type": "string",
-          "title": "WriterPayload writer"
         }
       }
     },
@@ -413,7 +322,7 @@
           "description": "Transaction data type."
         },
         "payload": {
-          "$ref": "#/definitions/rpcpbPayload",
+          "type": "string",
           "description": "Transaction data payload."
         }
       }

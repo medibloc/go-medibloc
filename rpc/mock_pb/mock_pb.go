@@ -55,13 +55,13 @@ func (mr *MockApiServiceClientMockRecorder) GetAccountState(ctx, in interface{},
 }
 
 // GetBlock mocks base method
-func (m *MockApiServiceClient) GetBlock(ctx context.Context, in *pb.GetBlockRequest, opts ...grpc.CallOption) (*pb.GetBlockResponse, error) {
+func (m *MockApiServiceClient) GetBlock(ctx context.Context, in *pb.GetBlockRequest, opts ...grpc.CallOption) (*pb.BlockResponse, error) {
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetBlock", varargs...)
-	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret0, _ := ret[0].(*pb.BlockResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -91,13 +91,13 @@ func (mr *MockApiServiceClientMockRecorder) GetMedState(ctx, in interface{}, opt
 }
 
 // GetTailBlock mocks base method
-func (m *MockApiServiceClient) GetTailBlock(ctx context.Context, in *pb.NonParamsRequest, opts ...grpc.CallOption) (*pb.GetBlockResponse, error) {
+func (m *MockApiServiceClient) GetTailBlock(ctx context.Context, in *pb.NonParamsRequest, opts ...grpc.CallOption) (*pb.BlockResponse, error) {
 	varargs := []interface{}{ctx, in}
 	for _, a := range opts {
 		varargs = append(varargs, a)
 	}
 	ret := m.ctrl.Call(m, "GetTailBlock", varargs...)
-	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret0, _ := ret[0].(*pb.BlockResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -181,9 +181,9 @@ func (mr *MockApiServiceServerMockRecorder) GetAccountState(arg0, arg1 interface
 }
 
 // GetBlock mocks base method
-func (m *MockApiServiceServer) GetBlock(arg0 context.Context, arg1 *pb.GetBlockRequest) (*pb.GetBlockResponse, error) {
+func (m *MockApiServiceServer) GetBlock(arg0 context.Context, arg1 *pb.GetBlockRequest) (*pb.BlockResponse, error) {
 	ret := m.ctrl.Call(m, "GetBlock", arg0, arg1)
-	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret0, _ := ret[0].(*pb.BlockResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -207,9 +207,9 @@ func (mr *MockApiServiceServerMockRecorder) GetMedState(arg0, arg1 interface{}) 
 }
 
 // GetTailBlock mocks base method
-func (m *MockApiServiceServer) GetTailBlock(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetBlockResponse, error) {
+func (m *MockApiServiceServer) GetTailBlock(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.BlockResponse, error) {
 	ret := m.ctrl.Call(m, "GetTailBlock", arg0, arg1)
-	ret0, _ := ret[0].(*pb.GetBlockResponse)
+	ret0, _ := ret[0].(*pb.BlockResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
