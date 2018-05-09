@@ -36,7 +36,7 @@ func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, err
 		Hash:      byteutils.Bytes2Hex(pbTx.Hash),
 		From:      byteutils.Bytes2Hex(pbTx.From),
 		To:        byteutils.Bytes2Hex(pbTx.To),
-		Value:     byteutils.Bytes2Hex(pbTx.From),
+		Value:     byteutils.Bytes2Hex(pbTx.Value),
 		Timestamp: pbTx.Timestamp,
 		Data: &rpcpb.TransactionData{
 			Type:    pbTx.Data.Type,
