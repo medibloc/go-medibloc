@@ -5,14 +5,3 @@ message Candidate {
   bytes address = 1;
   bytes collateral = 2;
 }
-
-message CandidateCache {
-  Candidate candidate = 1;
-  repeated bytes voters = 2;
-  bytes voted_power = 3;
-}
-
-message CandidateCachePool {
-  repeated CandidateCache candidates = 1;
-  bytes block_hash = 2;
-}
