@@ -5,13 +5,10 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 )
 
 type states struct {
@@ -19,15 +16,16 @@ type states struct {
 	txsState       *TrieBatch
 	usageState     *TrieBatch
 	recordsState   *TrieBatch
-	consensusState *TrieBatch
+	consensusState ConsensusState
 	candidacyState *TrieBatch
 
 	reservationQueue *ReservationQueue
+	votesCache       *votesCache
 
 	storage storage.Storage
 }
 
-func newStates(stor storage.Storage) (*states, error) {
+func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 	accState, err := NewAccountStateBatch(nil, stor)
 	if err != nil {
 		return nil, err
@@ -48,7 +46,7 @@ func newStates(stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	consensusState, err := NewTrieBatch(nil, stor)
+	consensusState, err := consensus.NewConsensusState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +57,7 @@ func newStates(stor storage.Storage) (*states, error) {
 	}
 
 	reservationQueue := NewEmptyReservationQueue(stor)
+	votesCache := newVotesCache()
 
 	return &states{
 		accState:         accState,
@@ -68,6 +67,7 @@ func newStates(stor storage.Storage) (*states, error) {
 		consensusState:   consensusState,
 		candidacyState:   candidacyState,
 		reservationQueue: reservationQueue,
+		votesCache:       votesCache,
 		storage:          stor,
 	}, nil
 }
@@ -93,7 +93,7 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	consensusState, err := NewTrieBatch(st.consensusState.RootHash(), st.storage)
+	consensusState, err := st.consensusState.Clone()
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +108,8 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	votesCache := st.votesCache.Clone()
+
 	return &states{
 		accState:         accState,
 		txsState:         txsState,
@@ -116,6 +118,7 @@ func (st *states) Clone() (*states, error) {
 		consensusState:   consensusState,
 		candidacyState:   candidacyState,
 		reservationQueue: reservationQueue,
+		votesCache:       votesCache,
 		storage:          st.storage,
 	}, nil
 }
@@ -133,35 +136,10 @@ func (st *states) BeginBatch() error {
 	if err := st.recordsState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.consensusState.BeginBatch(); err != nil {
-		return err
-	}
 	if err := st.candidacyState.BeginBatch(); err != nil {
 		return err
 	}
 	return st.reservationQueue.BeginBatch()
-}
-
-func (st *states) RollBack() error {
-	if err := st.accState.RollBack(); err != nil {
-		return err
-	}
-	if err := st.txsState.RollBack(); err != nil {
-		return err
-	}
-	if err := st.usageState.RollBack(); err != nil {
-		return err
-	}
-	if err := st.consensusState.RollBack(); err != nil {
-		return err
-	}
-	if err := st.recordsState.RollBack(); err != nil {
-		return err
-	}
-	if err := st.candidacyState.RollBack(); err != nil {
-		return err
-	}
-	return st.reservationQueue.RollBack()
 }
 
 func (st *states) Commit() error {
@@ -172,9 +150,6 @@ func (st *states) Commit() error {
 		return err
 	}
 	if err := st.usageState.Commit(); err != nil {
-		return err
-	}
-	if err := st.consensusState.Commit(); err != nil {
 		return err
 	}
 	if err := st.recordsState.Commit(); err != nil {
@@ -202,8 +177,8 @@ func (st *states) RecordsRoot() common.Hash {
 	return common.BytesToHash(st.recordsState.RootHash())
 }
 
-func (st *states) ConsensusRoot() common.Hash {
-	return common.BytesToHash(st.consensusState.RootHash())
+func (st *states) ConsensusRoot() ([]byte, error) {
+	return st.consensusState.RootBytes()
 }
 
 func (st *states) CandidacyRoot() common.Hash {
@@ -250,8 +225,8 @@ func (st *states) LoadRecordsRoot(rootHash common.Hash) error {
 	return nil
 }
 
-func (st *states) LoadConsensusRoot(rootHash common.Hash) error {
-	consensusState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+func (st *states) LoadConsensusRoot(consensus Consensus, rootBytes []byte) error {
+	consensusState, err := consensus.LoadConsensusState(rootBytes, st.storage)
 	if err != nil {
 		return err
 	}
@@ -274,6 +249,62 @@ func (st *states) LoadReservationQueue(hash common.Hash) error {
 		return err
 	}
 	st.reservationQueue = rq
+	return nil
+}
+
+func (st *states) ConstructVotesCache() error {
+	var votes map[common.Address]*util.Uint128
+	var votesCache *votesCache
+
+	accIter, err := st.accState.as.accounts.Iterator(nil)
+	if err != nil {
+		return err
+	}
+	exist, err := accIter.Next()
+	for exist {
+		if err != nil {
+			return err
+		}
+		accBytes := accIter.Value()
+		acc, err := loadAccount(accBytes)
+		if err != nil {
+			return err
+		}
+		votedAddr := common.BytesToAddress(acc.Voted())
+		if _, err := st.GetCandidate(votedAddr); err != nil {
+			return err
+		}
+		if votes[votedAddr] == nil {
+			votes[votedAddr] = acc.Vesting()
+		} else {
+			votes[votedAddr], err = votes[votedAddr].Add(acc.Vesting())
+			if err != nil {
+				return err
+			}
+		}
+		exist, err = accIter.Next()
+	}
+	candIter, err := st.candidacyState.Iterator(nil)
+	if err != nil {
+		return err
+	}
+	exist, err = candIter.Next()
+	for exist {
+		if err != nil {
+			return err
+		}
+		candBytes := candIter.Value()
+		pbCandidate := new(corepb.Candidate)
+		if err := proto.Unmarshal(candBytes, pbCandidate); err != nil {
+			return err
+		}
+		candAddr := common.BytesToAddress(pbCandidate.Address)
+		if _, ok := votes[candAddr]; ok {
+			votesCache.addCandidate(candAddr, votes[candAddr])
+		}
+		exist, err = candIter.Next()
+	}
+	st.votesCache = votesCache
 	return nil
 }
 
@@ -448,40 +479,40 @@ func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
 }
 
 // Dynasty returns members belonging to the current dynasty.
-func (st *states) Dynasty() (members []*common.Address, err error) {
-	iter, err := st.consensusState.Iterator(nil)
-	if err != nil && err != trie.ErrNotFound {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get trie iterator.")
-		return nil, err
-	}
-	if err != nil {
-		return members, nil
-	}
-
-	exist, err := iter.Next()
-	if err != nil {
-		return nil, err
-	}
-	for exist {
-		member := common.BytesToAddress(iter.Value())
-		members = append(members, &member)
-		exist, err = iter.Next()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return members, nil
+func (st *states) Dynasty() ([]*common.Address, error) {
+	return st.consensusState.Dynasty()
 }
 
 // SetDynasty sets dynasty members.
-func (st *states) SetDynasty(miners []*common.Address) error {
-	for _, miner := range miners {
-		err := st.consensusState.Put(miner.Bytes(), miner.Bytes())
-		if err != nil {
-			return err
-		}
+func (st *states) SetDynasty(miners []*common.Address, startTime int64) error {
+	return st.consensusState.InitDynasty(miners, startTime)
+}
+
+// Proposer returns address of block proposer set in consensus state
+func (st *states) Proposer() common.Address {
+	return st.consensusState.Proposer()
+}
+
+// TransitionDynasty transitions dynasty to a new one that is correct for the given time
+func (st *states) TransitionDynasty(now int64) error {
+	cs, err := st.consensusState.GetNextStateAfter(now - st.consensusState.Timestamp())
+	if err == nil {
+		st.consensusState = cs
+		return nil
+	}
+	if err != nil && err != ErrDynastyExpired {
+		return err
+	}
+	var miners []*common.Address
+	minerNum := st.consensusState.DynastySize()
+	if len(st.votesCache.candidates) < st.consensusState.DynastySize() {
+		minerNum = len(st.votesCache.candidates)
+	}
+	for i := 0; i < minerNum; i++ {
+		miners = append(miners, &st.votesCache.candidates[i].address)
+	}
+	if err := st.consensusState.InitDynasty(miners, now); err != nil {
+		return err
 	}
 	return nil
 }
@@ -498,6 +529,7 @@ func (st *states) GetCandidate(address common.Address) (*corepb.Candidate, error
 	return pbCandidate, nil
 }
 
+// AddCandidate makes an address candidate
 func (st *states) AddCandidate(address common.Address, collateral *util.Uint128) error {
 	_, err := st.GetCandidate(address)
 	if err != nil && err != ErrNotFound {
@@ -524,9 +556,14 @@ func (st *states) AddCandidate(address common.Address, collateral *util.Uint128)
 	if err := st.candidacyState.Put(address.Bytes(), candidateBytes); err != nil {
 		return err
 	}
-	return nil
+	if _, _, err := st.votesCache.getCandidate(address); err == ErrCandidateNotFound {
+		st.votesCache.addCandidate(address, util.Uint128Zero())
+		return nil
+	}
+	return st.votesCache.setCandidacy(address, true)
 }
 
+// QuitCandidacy makes an account quit from candidacy
 func (st *states) QuitCandidacy(address common.Address) error {
 	candidate, err := st.GetCandidate(address)
 	if err != nil {
@@ -539,7 +576,10 @@ func (st *states) QuitCandidacy(address common.Address) error {
 	if err := st.AddBalance(address, collateral); err != nil {
 		return err
 	}
-	return st.candidacyState.Delete(address.Bytes())
+	if err := st.candidacyState.Delete(address.Bytes()); err != nil {
+		return err
+	}
+	return st.votesCache.setCandidacy(address, false)
 }
 
 // GetReservedTasks returns reserved tasks in reservation queue
@@ -601,10 +641,30 @@ func (st *states) Vest(address common.Address, amount *util.Uint128) error {
 	if err := st.accState.SubBalance(address.Bytes(), amount); err != nil {
 		return err
 	}
-	return st.accState.AddVesting(address.Bytes(), amount)
+	if err := st.accState.AddVesting(address.Bytes(), amount); err != nil {
+		return err
+	}
+	voted, err := st.GetVoted(address)
+	if err == ErrNotVotedYet {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return st.votesCache.addVotesPower(voted, amount)
 }
 
 func (st *states) SubVesting(address common.Address, amount *util.Uint128) error {
+	acc, err := st.GetAccount(address)
+	if err != nil {
+		return err
+	}
+	voted := common.BytesToAddress(acc.Voted())
+	if voted != (common.Address{}) {
+		if err := st.votesCache.subtractVotesPower(voted, amount); err != nil {
+			return err
+		}
+	}
 	return st.accState.SubVesting(address.Bytes(), amount)
 }
 
@@ -612,10 +672,31 @@ func (st *states) Vote(address common.Address, voted common.Address) error {
 	if _, err := st.GetCandidate(voted); err != nil {
 		return err
 	}
+	acc, err := st.GetAccount(address)
+	if err != nil {
+		return err
+	}
+	oldVoted := common.BytesToAddress(acc.Voted())
+	if oldVoted == voted {
+		return ErrVoteDuplicate
+	}
+	if oldVoted != (common.Address{}) {
+		if err := st.votesCache.subtractVotesPower(oldVoted, acc.Vesting()); err != nil {
+			return err
+		}
+	}
 	if err := st.accState.SetVoted(address.Bytes(), voted.Bytes()); err != nil {
 		return err
 	}
-	return nil
+	return st.votesCache.addVotesPower(voted, acc.Vesting())
+}
+
+func (st *states) GetVoted(address common.Address) (common.Address, error) {
+	votedBytes, err := st.accState.GetVoted(address.Bytes())
+	if err != nil {
+		return common.Address{}, err
+	}
+	return common.BytesToAddress(votedBytes), nil
 }
 
 // BlockState possesses every states a block should have
@@ -625,8 +706,8 @@ type BlockState struct {
 }
 
 // NewBlockState creates a new block state
-func NewBlockState(stor storage.Storage) (*BlockState, error) {
-	states, err := newStates(stor)
+func NewBlockState(consensus Consensus, stor storage.Storage) (*BlockState, error) {
+	states, err := newStates(consensus, stor)
 	if err != nil {
 		return nil, err
 	}
