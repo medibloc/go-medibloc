@@ -194,3 +194,8 @@ func (m *Medlet) BlockManager() *core.BlockManager {
 func (m *Medlet) TransactionManager() *core.TransactionManager {
 	return m.transactionManager
 }
+
+// Consensus returns consensus
+func (m *Medlet) Consensus() core.Consensus {
+	return m.consensus
+}
