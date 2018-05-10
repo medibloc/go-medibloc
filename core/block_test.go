@@ -4,10 +4,12 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/medibloc/go-medibloc/util/test"
@@ -253,7 +255,15 @@ func TestGetExecutedBlock(t *testing.T) {
 
 	bd := newBlock.GetBlockData()
 
-	executedBlock, err := bd.GetExecutedBlock(newBlock.Storage())
+	medletCfg := &medletpb.Config{
+		Chain: &medletpb.ChainConfig{
+			ChainId:  test.ChainID,
+			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+		},
+	}
+	consensus := dpos.New(medletCfg)
+	executedBlock, err := bd.GetExecutedBlock(consensus, newBlock.Storage())
 	assert.NoError(t, err)
 	assert.NoError(t, executedBlock.VerifyState())
 }

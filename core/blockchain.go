@@ -49,6 +49,8 @@ type BlockChain struct {
 	// tailBlocks all tail blocks including mainTailBlock
 	tailBlocks *lru.Cache
 
+	consensus Consensus
+
 	storage storage.Storage
 }
 
@@ -81,9 +83,10 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 }
 
 // Setup sets up BlockChain.
-func (bc *BlockChain) Setup(genesis *corepb.Genesis, stor storage.Storage) error {
+func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor storage.Storage) error {
 	bc.genesis = genesis
 	bc.storage = stor
+	bc.consensus = consensus
 
 	// Check if there is data in storage.
 	_, err := bc.loadTailFromStorage()
@@ -320,7 +323,7 @@ func (bc *BlockChain) findCommonAncestorWithTail(block *Block) (*Block, error) {
 }
 
 func (bc *BlockChain) initGenesisToStorage() error {
-	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.storage)
+	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.consensus, bc.storage)
 	if err != nil {
 		return err
 	}
@@ -349,7 +352,7 @@ func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	block, err = bd.GetExecutedBlock(bc.storage)
+	block, err = bd.GetExecutedBlock(bc.consensus, bc.storage)
 	if err != nil {
 		return nil, err
 	}

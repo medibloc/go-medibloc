@@ -30,7 +30,7 @@ func getBlockChain(t *testing.T) *core.BlockChain {
 
 	bc, err := core.NewBlockChain(m.Config())
 	require.NoError(t, err)
-	err = bc.Setup(m.Genesis(), m.Storage())
+	err = bc.Setup(m.Genesis(), m.Consensus(), m.Storage())
 	require.NoError(t, err)
 	return bc
 }

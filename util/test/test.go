@@ -116,10 +116,23 @@ func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties
 	conf, dynasties := NewTestGenesisConf(t)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesis, err = core.NewGenesisBlock(conf, s)
+	genesis, err = core.NewGenesisBlock(conf, NewTestConsensus(), s)
 	require.NoError(t, err)
 
 	return genesis, dynasties
+}
+
+// NewTestConsensus returns a consensus for tests.
+func NewTestConsensus() core.Consensus {
+	medletCfg := &medletpb.Config{
+		Chain: &medletpb.ChainConfig{
+			ChainId:  ChainID,
+			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+		},
+	}
+	consensus := dpos.New(medletCfg)
+	return consensus
 }
 
 // NewBlockTestSet generates test block set from BlockID to parentBlockID index

@@ -77,7 +77,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus) error {
 	bm.consensus = consensus
 
-	err := bm.bc.Setup(genesis, stor)
+	err := bm.bc.Setup(genesis, consensus, stor)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

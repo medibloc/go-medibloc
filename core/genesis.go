@@ -2,6 +2,7 @@ package core
 
 import (
 	"io/ioutil"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -38,11 +39,11 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 }
 
 // NewGenesisBlock generates genesis block
-func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) {
+func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Storage) (*Block, error) {
 	if conf == nil {
 		return nil, ErrNilArgument
 	}
-	blockState, err := NewBlockState(sto)
+	blockState, err := NewBlockState(consensus, sto)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,7 @@ func NewGenesisBlock(conf *corepb.Genesis, sto storage.Storage) (*Block, error) 
 		member := common.HexToAddress(v)
 		members = append(members, &member)
 	}
-	genesisBlock.State().SetDynasty(members)
+	genesisBlock.State().SetDynasty(members, time.Now().Unix())
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Value)
