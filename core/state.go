@@ -95,7 +95,7 @@ func (acc *account) toBytes() ([]byte, error) {
 	return bytes, nil
 }
 
-func loadAccount(bytes []byte, storage storage.Storage) (*account, error) {
+func loadAccount(bytes []byte) (*account, error) {
 	pbAcc := &corepb.Account{}
 	if err := proto.Unmarshal(bytes, pbAcc); err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (as *accountState) GetAccount(address []byte) (Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	return loadAccount(bytes, as.storage)
+	return loadAccount(bytes)
 }
 
 // Account account interface
