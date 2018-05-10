@@ -16,26 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Consensus properties.
-const (
-	BlockInterval   = 15 * time.Second
-	DynastyInterval = 210 * BlockInterval
-	MinMintDuration = 2 * time.Second
-
-	miningTickInterval = time.Second
-)
-
-// Consensus error types.
-var (
-	ErrInvalidBlockInterval   = errors.New("invalid block interval")
-	ErrInvalidBlockProposer   = errors.New("invalid block proposer")
-	ErrInvalidBlockForgeTime  = errors.New("invalid time to forge block")
-	ErrFoundNilProposer       = errors.New("found a nil proposer")
-	ErrBlockMintedInNextSlot  = errors.New("cannot mint block now, there is a block minted in current slot")
-	ErrWaitingBlockInLastSlot = errors.New("cannot mint block now, waiting for last block")
-	ErrInvalidDynastySize     = errors.New("invalid dynasty size")
-)
-
 // Dpos returns dpos consensus model.
 type Dpos struct {
 	coinbase common.Address

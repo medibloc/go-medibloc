@@ -24,9 +24,6 @@ import (
 
 	"time"
 
-	goNet "net"
-	"strings"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -77,8 +74,7 @@ func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
 func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
-			ChainId:     ChainID,
-			DynastySize: 21,
+			ChainId: ChainID,
 		},
 		Consensus: &corepb.GenesisConsensus{
 			Dpos: &corepb.GenesisConsensusDpos{
@@ -90,7 +86,7 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
-	for i := 0; i < int(conf.Meta.DynastySize); i++ {
+	for i := 0; i < dpos.DynastySize; i++ {
 		privKey := NewPrivateKey(t)
 		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
 		require.NoError(t, err)
@@ -126,12 +122,11 @@ func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties
 func NewTestConsensus() core.Consensus {
 	medletCfg := &medletpb.Config{
 		Chain: &medletpb.ChainConfig{
-			ChainId:  ChainID,
 			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 		},
 	}
-	consensus := dpos.New(medletCfg)
+	consensus, _ := dpos.New(medletCfg)
 	return consensus
 }
 
@@ -186,7 +181,7 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 func SignBlock(t *testing.T, block *core.Block, dynasties Dynasties) {
 	members, err := block.State().Dynasty()
 	require.NoError(t, err)
-	proposer, err := dpos.FindProposer(block.Timestamp(), members, len(members))
+	proposer, err := dpos.FindProposer(block.Timestamp(), members)
 	require.NoError(t, err)
 
 	privKey := dynasties.findPrivKey(proposer)
@@ -353,6 +348,7 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 		Global: &medletpb.GlobalConfig{
 			ChainId: ChainID,
 		},
+		Chain: &medletpb.ChainConfig{},
 	}
 	for i := 0; i < n; i++ {
 		mgr := core.NewTransactionManager(cfg)
@@ -408,8 +404,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	err = bm.Setup(genesisConf, stor, ns, consensus)
 	require.NoError(t, err)
 	tm.Setup(ns)
-	err = consensus.Setup(genesisConf, bm, tm)
-	require.NoError(t, err)
+	consensus.Setup(genesisConf, bm, tm)
 
 	return &MockMedlet{
 		config:    cfg,
@@ -461,19 +456,4 @@ func (m *MockMedlet) BlockManager() *core.BlockManager {
 // Dynasties returns Dynasties.
 func (m *MockMedlet) Dynasties() Dynasties {
 	return m.dynasties
-}
-
-//FindRandomListenPorts returns empty ports
-func FindRandomListenPorts(n int) (ports []string) {
-	listens := make([]goNet.Listener, 0)
-	for i := 0; i < n; i++ {
-		lis, _ := goNet.Listen("tcp", ":0")
-		addr := lis.Addr().String()
-		ports = append(ports, strings.TrimLeft(addr, "[::]"))
-		listens = append(listens, lis)
-	}
-	for i := 0; i < n; i++ {
-		listens[i].Close()
-	}
-	return ports
 }

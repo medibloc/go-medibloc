@@ -26,4 +26,5 @@ var (
 	ErrInvalidProtoToConsensusState = errors.New("protobuf message cannot be converted into ConsensusState")
 	ErrBlockMintedInNextSlot        = errors.New("cannot mint block now, there is a block minted in current slot")
 	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
+	ErrInvalidDynastySize           = errors.New("invalid dynasty size")
 )

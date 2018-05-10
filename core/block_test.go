@@ -256,13 +256,16 @@ func TestGetExecutedBlock(t *testing.T) {
 	bd := newBlock.GetBlockData()
 
 	medletCfg := &medletpb.Config{
+		Global: &medletpb.GlobalConfig{
+			ChainId: test.ChainID,
+		},
 		Chain: &medletpb.ChainConfig{
-			ChainId:  test.ChainID,
 			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
 		},
 	}
-	consensus := dpos.New(medletCfg)
+	consensus, err := dpos.New(medletCfg)
+	assert.NoError(t, err)
 	executedBlock, err := bd.GetExecutedBlock(consensus, newBlock.Storage())
 	assert.NoError(t, err)
 	assert.NoError(t, executedBlock.VerifyState())
