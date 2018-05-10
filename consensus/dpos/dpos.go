@@ -11,6 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -70,6 +71,16 @@ func New(cfg *medletpb.Config) (*Dpos, error) {
 		dpos.minerKey = minerKey
 	}
 	return dpos, nil
+}
+
+// NewConsensusState generates new consensus state
+func (d *Dpos) NewConsensusState(rootHash []byte, storage storage.Storage) (core.ConsensusState, error) {
+	return NewConsensusState(rootHash, storage)
+}
+
+// LoadConsensusState loads a consensus state from marshalled bytes
+func (d *Dpos) LoadConsensusState(rootBytes []byte, storage storage.Storage) (core.ConsensusState, error) {
+	return LoadConsensusState(rootBytes, storage)
 }
 
 // Setup sets up dpos.

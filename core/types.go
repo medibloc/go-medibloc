@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.
@@ -96,8 +97,29 @@ var (
 	ErrReservedTaskNotProcessed         = errors.New("there are reservation task(s) to be processed in the block")
 	ErrInvalidReservedTaskType          = errors.New("type of reserved task is invalid")
 	ErrAlreadyInCandidacy               = errors.New("account is already a candidate")
-	ErrAlreadyVoted                     = errors.New("account has already voted the candidate")
+	ErrAlreadyVoted                     = errors.New("account has already voted for the candidate")
+	ErrNotVotedYet                      = errors.New("account has not voted for anyone")
+	ErrCandidateNotFound                = errors.New("candidate not found")
+	ErrVotesPowerGetsMinus              = errors.New("cannot subtract a bigger value from votes power")
+	ErrVotesCacheAlreadyBatching        = errors.New("votes cache is already in batch mode")
+	ErrCannotConstructVotesCacheInBatch = errors.New("votes cache cannot be constructed in batch mode")
+	ErrVoteDuplicate                    = errors.New("cannot vote already voted account")
+	ErrDynastyExpired                   = errors.New("dynasty in the consensus state has been expired")
 )
+
+// ConsensusState is an interface for a consensus state
+type ConsensusState interface {
+	Clone() (ConsensusState, error)
+	RootBytes() ([]byte, error)
+
+	Dynasty() ([]*common.Address, error)
+	InitDynasty(miners []*common.Address, startTime int64) error
+	Proposer() common.Address
+	Timestamp() int64
+	DynastySize() int
+
+	GetNextStateAfter(ellapsed int64) (ConsensusState, error)
+}
 
 // HashableBlock is an interface that can get its own or parent's hash.
 type HashableBlock interface {
@@ -116,4 +138,7 @@ type Consensus interface {
 	ForkChoice(bc *BlockChain) (newTail *Block)
 	VerifyProposer(bc *BlockChain, block *BlockData) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
+
+	NewConsensusState(rootHash []byte, storage storage.Storage) (ConsensusState, error)
+	LoadConsensusState(rootBytes []byte, storage storage.Storage) (ConsensusState, error)
 }
