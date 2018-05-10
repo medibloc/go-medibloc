@@ -100,7 +100,7 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 			nonce:   0,
 		}), nil
 	}
-	acc, err := loadAccount(accBytes, as.storage)
+	acc, err := loadAccount(accBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (as *AccountStateBatch) GetAccount(address []byte) (Account, error) {
 	}
 	accBytes, err := as.as.accounts.Get(address)
 	if err == nil {
-		acc, err := loadAccount(accBytes, as.storage)
+		acc, err := loadAccount(accBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -295,6 +295,18 @@ func (as *AccountStateBatch) SetVoted(address []byte, voted []byte) error {
 	}
 	acc.voted = voted
 	return nil
+}
+
+// GetVoted returned voted address of account
+func (as *AccountStateBatch) GetVoted(address []byte) ([]byte, error) {
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return nil, err
+	}
+	if len(acc.voted) == 0 {
+		return nil, ErrNotVotedYet
+	}
+	return acc.voted, nil
 }
 
 // RootHash returns root hash of accounts trie
