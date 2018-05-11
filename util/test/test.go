@@ -17,10 +17,13 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"crypto/rand"
 	"math/big"
+
+	goNet "net"
 
 	"time"
 
@@ -456,4 +459,19 @@ func (m *MockMedlet) BlockManager() *core.BlockManager {
 // Dynasties returns Dynasties.
 func (m *MockMedlet) Dynasties() Dynasties {
 	return m.dynasties
+}
+
+//FindRandomListenPorts returns empty ports
+func FindRandomListenPorts(n int) (ports []string) {
+	listens := make([]goNet.Listener, 0)
+	for i := 0; i < n; i++ {
+		lis, _ := goNet.Listen("tcp", ":0")
+		addr := lis.Addr().String()
+		ports = append(ports, strings.TrimLeft(addr, "[::]"))
+		listens = append(listens, lis)
+	}
+	for i := 0; i < n; i++ {
+		listens[i].Close()
+	}
+	return ports
 }

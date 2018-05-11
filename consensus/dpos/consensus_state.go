@@ -30,10 +30,8 @@ func NewConsensusState(dynastyRootHash []byte, storage storage.Storage) (*Consen
 		return nil, err
 	}
 	return &ConsensusState{
-		dynasty:   t,
-		storage:   storage,
-		timestamp: time.Now().Unix(),
-		startTime: time.Now().Unix(),
+		dynasty: t,
+		storage: storage,
 	}, nil
 }
 
@@ -77,7 +75,10 @@ func (cs *ConsensusState) InitDynasty(miners []*common.Address, startTime int64)
 	cs.dynasty = t
 	cs.startTime = startTime
 	cs.timestamp = startTime
-	cs.proposer = common.Address{}
+	cs.proposer, err = FindProposer(startTime, miners)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -111,6 +112,7 @@ func (cs *ConsensusState) GetNextStateAfter(elapsedTime int64) (core.ConsensusSt
 	consensusState := &ConsensusState{
 		dynasty:   dynastyTrie,
 		timestamp: cs.timestamp + elapsedTime,
+		startTime: cs.startTime,
 		storage:   cs.storage,
 	}
 	miners, err := TraverseDynasty(dynastyTrie)
@@ -129,6 +131,7 @@ func (cs *ConsensusState) ToProto() proto.Message {
 	return &consensuspb.ConsensusState{
 		DynastyRoot: cs.dynasty.RootHash(),
 		Proposer:    cs.proposer.Bytes(),
+		StartTime:   cs.startTime,
 		Timestamp:   cs.timestamp,
 	}
 }
@@ -143,6 +146,7 @@ func (cs *ConsensusState) FromProto(msg proto.Message) error {
 		cs.dynasty = t
 		cs.proposer = common.BytesToAddress(msg.Proposer)
 		cs.timestamp = msg.Timestamp
+		cs.startTime = msg.StartTime
 		return nil
 	}
 	return ErrInvalidProtoToConsensusState

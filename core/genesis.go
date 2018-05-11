@@ -2,7 +2,6 @@ package core
 
 import (
 	"io/ioutil"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -73,7 +72,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		member := common.HexToAddress(v)
 		members = append(members, &member)
 	}
-	genesisBlock.State().SetDynasty(members, time.Now().Unix())
+	genesisBlock.State().SetDynasty(members, int64(0))
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Value)

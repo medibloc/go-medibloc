@@ -470,16 +470,16 @@ func (block *Block) AcceptTransaction(tx *Transaction) error {
 
 // VerifyState verifies block states comparing with root hashes in header
 func (block *Block) VerifyState() error {
-	if !byteutils.Equal(block.state.AccountsRoot().Bytes(), block.AccountsRoot().Bytes()) {
+	if block.state.AccountsRoot() != block.AccountsRoot() {
 		return ErrInvalidBlockAccountsRoot
 	}
-	if !byteutils.Equal(block.state.TransactionsRoot().Bytes(), block.TransactionsRoot().Bytes()) {
+	if block.state.TransactionsRoot() != block.TransactionsRoot() {
 		return ErrInvalidBlockTxsRoot
 	}
-	if !byteutils.Equal(block.state.UsageRoot().Bytes(), block.UsageRoot().Bytes()) {
+	if block.state.UsageRoot() != block.UsageRoot() {
 		return ErrInvalidBlockTxsRoot
 	}
-	if !byteutils.Equal(block.state.RecordsRoot().Bytes(), block.RecordsRoot().Bytes()) {
+	if block.state.RecordsRoot() != block.RecordsRoot() {
 		return ErrInvalidBlockTxsRoot
 	}
 	consensusRoot, err := block.state.ConsensusRoot()
@@ -489,7 +489,7 @@ func (block *Block) VerifyState() error {
 	if !byteutils.Equal(consensusRoot, block.ConsensusRoot()) {
 		return ErrInvalidBlockConsensusRoot
 	}
-	if !byteutils.Equal(block.state.ReservationQueueHash().Bytes(), block.ReservationQueueHash().Bytes()) {
+	if block.state.ReservationQueueHash() != block.ReservationQueueHash() {
 		return ErrInvalidBlockReservationQueueHash
 	}
 	return nil
