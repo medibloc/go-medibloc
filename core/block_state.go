@@ -300,7 +300,7 @@ func (st *states) ConstructVotesCache() error {
 		}
 		candAddr := common.BytesToAddress(pbCandidate.Address)
 		if _, ok := votes[candAddr]; ok {
-			votesCache.addCandidate(candAddr, votes[candAddr])
+			votesCache.AddCandidate(candAddr, votes[candAddr])
 		}
 		exist, err = candIter.Next()
 	}
@@ -556,11 +556,11 @@ func (st *states) AddCandidate(address common.Address, collateral *util.Uint128)
 	if err := st.candidacyState.Put(address.Bytes(), candidateBytes); err != nil {
 		return err
 	}
-	if _, _, err := st.votesCache.getCandidate(address); err == ErrCandidateNotFound {
-		st.votesCache.addCandidate(address, util.Uint128Zero())
+	if _, _, err := st.votesCache.GetCandidate(address); err == ErrCandidateNotFound {
+		st.votesCache.AddCandidate(address, util.Uint128Zero())
 		return nil
 	}
-	return st.votesCache.setCandidacy(address, true)
+	return st.votesCache.SetCandidacy(address, true)
 }
 
 // QuitCandidacy makes an account quit from candidacy
@@ -579,7 +579,7 @@ func (st *states) QuitCandidacy(address common.Address) error {
 	if err := st.candidacyState.Delete(address.Bytes()); err != nil {
 		return err
 	}
-	return st.votesCache.setCandidacy(address, false)
+	return st.votesCache.SetCandidacy(address, false)
 }
 
 // GetReservedTasks returns reserved tasks in reservation queue
@@ -651,7 +651,7 @@ func (st *states) Vest(address common.Address, amount *util.Uint128) error {
 	if err != nil {
 		return err
 	}
-	return st.votesCache.addVotesPower(voted, amount)
+	return st.votesCache.AddVotesPower(voted, amount)
 }
 
 func (st *states) SubVesting(address common.Address, amount *util.Uint128) error {
@@ -661,7 +661,7 @@ func (st *states) SubVesting(address common.Address, amount *util.Uint128) error
 	}
 	voted := common.BytesToAddress(acc.Voted())
 	if voted != (common.Address{}) {
-		if err := st.votesCache.subtractVotesPower(voted, amount); err != nil {
+		if err := st.votesCache.SubtractVotesPower(voted, amount); err != nil {
 			return err
 		}
 	}
@@ -681,14 +681,14 @@ func (st *states) Vote(address common.Address, voted common.Address) error {
 		return ErrVoteDuplicate
 	}
 	if oldVoted != (common.Address{}) {
-		if err := st.votesCache.subtractVotesPower(oldVoted, acc.Vesting()); err != nil {
+		if err := st.votesCache.SubtractVotesPower(oldVoted, acc.Vesting()); err != nil {
 			return err
 		}
 	}
 	if err := st.accState.SetVoted(address.Bytes(), voted.Bytes()); err != nil {
 		return err
 	}
-	return st.votesCache.addVotesPower(voted, acc.Vesting())
+	return st.votesCache.AddVotesPower(voted, acc.Vesting())
 }
 
 func (st *states) GetVoted(address common.Address) (common.Address, error) {

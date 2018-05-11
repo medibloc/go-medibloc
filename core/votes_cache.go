@@ -51,7 +51,7 @@ func (vc *votesCache) Clone() *votesCache {
 	}
 }
 
-func (vc *votesCache) getCandidate(address common.Address) (int, *candidate, error) {
+func (vc *votesCache) GetCandidate(address common.Address) (int, *candidate, error) {
 	var idx int
 	for idx = 0; idx < vc.candidates.Len(); idx++ {
 		if vc.candidates[idx].address == address {
@@ -64,8 +64,8 @@ func (vc *votesCache) getCandidate(address common.Address) (int, *candidate, err
 	return idx, vc.candidates[idx], nil
 }
 
-func (vc *votesCache) addCandidate(address common.Address, votesPower *util.Uint128) {
-	_, c, err := vc.getCandidate(address)
+func (vc *votesCache) AddCandidate(address common.Address, votesPower *util.Uint128) {
+	_, c, err := vc.GetCandidate(address)
 	if err == nil {
 		c.candidacy = true
 		return
@@ -79,8 +79,8 @@ func (vc *votesCache) addCandidate(address common.Address, votesPower *util.Uint
 	sort.Sort(vc.candidates)
 }
 
-func (vc *votesCache) removeCandidate(address common.Address) error {
-	idx, _, err := vc.getCandidate(address)
+func (vc *votesCache) RemoveCandidate(address common.Address) error {
+	idx, _, err := vc.GetCandidate(address)
 	if err != nil {
 		return nil
 	}
@@ -88,13 +88,13 @@ func (vc *votesCache) removeCandidate(address common.Address) error {
 	return nil
 }
 
-func (vc *votesCache) addVotesPower(address common.Address, amount *util.Uint128) error {
-	_, c, err := vc.getCandidate(address)
+func (vc *votesCache) AddVotesPower(address common.Address, amount *util.Uint128) error {
+	_, c, err := vc.GetCandidate(address)
 	if err != nil && err != ErrCandidateNotFound {
 		return err
 	}
 	if err == ErrCandidateNotFound {
-		vc.addCandidate(address, amount)
+		vc.AddCandidate(address, amount)
 		return nil
 	}
 	c.votesPower, err = c.votesPower.Add(amount)
@@ -105,8 +105,8 @@ func (vc *votesCache) addVotesPower(address common.Address, amount *util.Uint128
 	return nil
 }
 
-func (vc *votesCache) subtractVotesPower(address common.Address, amount *util.Uint128) error {
-	_, c, err := vc.getCandidate(address)
+func (vc *votesCache) SubtractVotesPower(address common.Address, amount *util.Uint128) error {
+	_, c, err := vc.GetCandidate(address)
 	if err != nil {
 		return err
 	}
@@ -121,8 +121,8 @@ func (vc *votesCache) subtractVotesPower(address common.Address, amount *util.Ui
 	return nil
 }
 
-func (vc *votesCache) setCandidacy(address common.Address, candidacy bool) error {
-	_, c, err := vc.getCandidate(address)
+func (vc *votesCache) SetCandidacy(address common.Address, candidacy bool) error {
+	_, c, err := vc.GetCandidate(address)
 	if err != nil {
 		return err
 	}
