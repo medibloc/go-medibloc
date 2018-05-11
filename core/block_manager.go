@@ -178,8 +178,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Verify signature
 
-	err := bm.consensus.VerifyProposer(bm.bc, bd)
-	if err != nil {
+	if err := bm.consensus.VerifyProposer(bm.bc, bd); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
 			"blockData": bd,
@@ -187,27 +186,21 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	// Parent block exists in blockpool.
-	if bm.bp.FindParent(bd) != nil {
-		bm.bp.Push(bd)
-		return nil
+	if err := bm.bp.Push(bd); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Error("Failed to push to block pool.")
+		return err
 	}
 
 	// Parent block doesn't exist in blockchain.
 	parentOnChain := bm.bc.BlockByHash(bd.ParentHash())
 	if parentOnChain == nil {
-		bm.bp.Push(bd)
 		return nil
 	}
 
 	// Parent block exists in blockchain.
-	err = bm.bp.Push(bd)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to push BlockData to BlockPool.")
-		return err
-	}
 	all, tails, err := bm.findDescendantBlocks(parentOnChain)
 
 	bm.bc.PutVerifiedNewBlocks(parentOnChain, all, tails)
