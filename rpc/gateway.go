@@ -5,8 +5,12 @@ import (
 
 	"encoding/json"
 
+	"io"
+	"strings"
+
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/medibloc/go-medibloc/rpc/pb"
+	pb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
@@ -29,7 +33,14 @@ func httpServerRun(addr string, addrGrpc string) error {
 		return err
 	}
 
-	handler := cors.Default().Handler(mux)
+	httpMux := http.NewServeMux()
+	httpMux.HandleFunc("/swagger.json", func(w http.ResponseWriter, req *http.Request) {
+		io.Copy(w, strings.NewReader(pb.Swagger))
+	})
+
+	httpMux.Handle("/", mux)
+
+	handler := cors.Default().Handler(httpMux)
 	return http.ListenAndServe(addr, handler)
 }
 

@@ -1,7 +1,7 @@
 PB = $(wildcard *.proto)
 GO = $(PB:.proto=.pb.go)
 
-all: $(GO) mockgen
+all: $(GO) mockgen runscript
 
 %.pb.go: %.proto
 	protoc \
@@ -16,5 +16,10 @@ all: $(GO) mockgen
 mockgen:
 	mockgen -source ./rpc.pb.go -destination ../mock_pb/mock_pb.go
 
+runscript:
+	go run scripts/includetxt.go
+
 clean:
 	rm *.pb.go
+	rm *.pb.gw.go
+	rm *.json
