@@ -34,11 +34,15 @@ var (
 )
 
 func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, error) {
+	value, err := util.NewUint128FromFixedSizeByteSlice(pbTx.Value)
+	if err != nil {
+		return nil, err
+	}
 	return &rpcpb.TransactionResponse{
 		Hash:      byteutils.Bytes2Hex(pbTx.Hash),
 		From:      byteutils.Bytes2Hex(pbTx.From),
 		To:        byteutils.Bytes2Hex(pbTx.To),
-		Value:     byteutils.Bytes2Hex(pbTx.Value),
+		Value:     value.String(),
 		Timestamp: pbTx.Timestamp,
 		Data: &rpcpb.TransactionData{
 			Type:    pbTx.Data.Type,
