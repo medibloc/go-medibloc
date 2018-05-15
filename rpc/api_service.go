@@ -3,6 +3,8 @@ package rpc
 import (
 	"encoding/json"
 
+	"strconv"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -14,23 +16,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-// APIService errors
-var (
-	ErrMsgAccountNotFound            = "account not found"
-	ErrMsgBlockNotFound              = "block not found"
-	ErrMsgBuildTransactionFail       = "cannot build transaction"
-	ErrMsgConvertBlockFailed         = "cannot convert block"
-	ErrMsgConvertBlockResponseFailed = "cannot convert block response"
-	ErrMsgConvertTxResponseFailed    = "cannot convert transaction response"
-	ErrMsgGetTransactionFailed       = "cannot get transaction from state"
-	ErrMsgInvalidDataType            = "invalid transaction data type"
-	ErrMsgInvalidTransaction         = "invalid transaction"
-	ErrMsgInvalidTxValue             = "invalid transaction value"
-	ErrMsgInvalidTxDataPayload       = "invalid transaction data payload"
-	ErrMsgTransactionNotFound        = "transaction not found"
-	ErrMsgUnmarshalTransactionFailed = "cannot unmarshal transaction"
 )
 
 func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, error) {
@@ -152,9 +137,25 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 // nonce
 // staking (TODO)
 func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
-	// height := req.Height TODO get state for height
-	tailBlock := s.bm.TailBlock()
-	acc, err := tailBlock.State().GetAccount(common.HexToAddress(req.Address))
+	var block *core.Block
+	switch req.Height {
+	case GENESIS:
+		block = s.bm.BlockByHeight(1)
+	case CONFIRMED:
+		block = s.bm.LIB()
+	case TAIL:
+		block = s.bm.TailBlock()
+	default:
+		height, err := strconv.ParseUint(req.Height, 10, 64)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, ErrMsgConvertBlockHeightFailed)
+		}
+		block = s.bm.BlockByHeight(height)
+	}
+	if block == nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
+	}
+	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
 	if err != nil {
 		return nil, status.Error(codes.NotFound, ErrMsgAccountNotFound)
 	}
@@ -166,66 +167,57 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 
 // GetBlock returns block
 func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.BlockResponse, error) {
-	block := s.bm.BlockByHash(common.HexToHash(req.Hash))
-	if block != nil {
-		pb, err := block.ToProto()
-		if err == nil {
-			if pbBlock, ok := pb.(*corepb.Block); ok {
-				res, err := corePbBlock2rpcPbBlock(pbBlock)
-				if err != nil {
-					return nil, status.Error(codes.Internal, ErrMsgConvertBlockResponseFailed)
-				}
-				return res, nil
-			}
-		}
-		return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+	var block *core.Block
+	switch req.Hash {
+	case GENESIS:
+		block = s.bm.BlockByHeight(1)
+	case CONFIRMED:
+		block = s.bm.LIB()
+	case TAIL:
+		block = s.bm.TailBlock()
+	default:
+		block = s.bm.BlockByHash(common.HexToHash(req.Hash))
 	}
-	return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
-}
-
-// GetTailBlock returns tail block
-func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.BlockResponse, error) {
-	tailBlock := s.bm.TailBlock()
-	if tailBlock != nil {
-		pb, err := tailBlock.ToProto()
-		if err == nil {
-			if pbBlock, ok := pb.(*corepb.Block); ok {
-				res, err := corePbBlock2rpcPbBlock(pbBlock)
-				if err != nil {
-					return nil, status.Error(codes.Internal, ErrMsgConvertBlockResponseFailed)
-				}
-				return res, nil
-			}
-		}
-		return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+	if block == nil {
+		return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 	}
-	return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
+	pb, err := block.ToProto()
+	if err == nil {
+		if pbBlock, ok := pb.(*corepb.Block); ok {
+			res, err := corePbBlock2rpcPbBlock(pbBlock)
+			if err != nil {
+				return nil, status.Error(codes.Internal, ErrMsgConvertBlockResponseFailed)
+			}
+			return res, nil
+		}
+	}
+	return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 }
 
 // GetTransaction returns transaction
 func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.TransactionResponse, error) {
 	tailBlock := s.bm.TailBlock()
-	if tailBlock != nil {
-		// TODO: check req.Hash is nil
-		pb, err := tailBlock.State().GetTx(common.HexToHash(req.Hash))
-		if err != nil {
-			if err == trie.ErrNotFound {
-				return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
-			}
-			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
-		}
-		pbTx := new(corepb.Transaction)
-		err = proto.Unmarshal(pb, pbTx)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-		}
-		res, err := corePbTx2rpcPbTx(pbTx)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
-		}
-		return res, nil
+	if tailBlock == nil {
+		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
-	return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
+	// TODO: check req.Hash is nil
+	pb, err := tailBlock.State().GetTx(common.HexToHash(req.Hash))
+	if err != nil {
+		if err == trie.ErrNotFound {
+			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
+		}
+		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+	}
+	pbTx := new(corepb.Transaction)
+	err = proto.Unmarshal(pb, pbTx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
+	}
+	res, err := corePbTx2rpcPbTx(pbTx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
+	}
+	return res, nil
 }
 
 // SendTransaction sends transaction

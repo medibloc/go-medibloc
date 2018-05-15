@@ -90,24 +90,6 @@ func (mr *MockApiServiceClientMockRecorder) GetMedState(ctx, in interface{}, opt
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedState", reflect.TypeOf((*MockApiServiceClient)(nil).GetMedState), varargs...)
 }
 
-// GetTailBlock mocks base method
-func (m *MockApiServiceClient) GetTailBlock(ctx context.Context, in *pb.NonParamsRequest, opts ...grpc.CallOption) (*pb.BlockResponse, error) {
-	varargs := []interface{}{ctx, in}
-	for _, a := range opts {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "GetTailBlock", varargs...)
-	ret0, _ := ret[0].(*pb.BlockResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetTailBlock indicates an expected call of GetTailBlock
-func (mr *MockApiServiceClientMockRecorder) GetTailBlock(ctx, in interface{}, opts ...interface{}) *gomock.Call {
-	varargs := append([]interface{}{ctx, in}, opts...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTailBlock", reflect.TypeOf((*MockApiServiceClient)(nil).GetTailBlock), varargs...)
-}
-
 // GetTransaction mocks base method
 func (m *MockApiServiceClient) GetTransaction(ctx context.Context, in *pb.GetTransactionRequest, opts ...grpc.CallOption) (*pb.TransactionResponse, error) {
 	varargs := []interface{}{ctx, in}
@@ -204,19 +186,6 @@ func (m *MockApiServiceServer) GetMedState(arg0 context.Context, arg1 *pb.NonPar
 // GetMedState indicates an expected call of GetMedState
 func (mr *MockApiServiceServerMockRecorder) GetMedState(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedState", reflect.TypeOf((*MockApiServiceServer)(nil).GetMedState), arg0, arg1)
-}
-
-// GetTailBlock mocks base method
-func (m *MockApiServiceServer) GetTailBlock(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.BlockResponse, error) {
-	ret := m.ctrl.Call(m, "GetTailBlock", arg0, arg1)
-	ret0, _ := ret[0].(*pb.BlockResponse)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetTailBlock indicates an expected call of GetTailBlock
-func (mr *MockApiServiceServerMockRecorder) GetTailBlock(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTailBlock", reflect.TypeOf((*MockApiServiceServer)(nil).GetTailBlock), arg0, arg1)
 }
 
 // GetTransaction mocks base method

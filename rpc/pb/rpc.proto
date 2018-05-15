@@ -23,12 +23,6 @@ service ApiService {
 		};
 	}
 
-    rpc GetTailBlock (NonParamsRequest) returns (BlockResponse) {
-        option (google.api.http) = {
-            get: "/v1/block/tail"
-        };
-    }
-
 	rpc GetTransaction (GetTransactionRequest) returns (TransactionResponse) {
 		option (google.api.http) = {
 			get: "/v1/transaction"
@@ -46,8 +40,8 @@ service ApiService {
 message GetAccountStateRequest {
 	// Hex string of the account addresss.
 	string address = 1;
-	// block account state with height. If not specified, use 0 as tail height.
-	uint64 height = 2;
+	// block account state with height. Or the string "genesis", "confirmed", "tail".
+	string height = 2;
 }
 
 message GetAccountStateResponse {
@@ -60,7 +54,7 @@ message GetAccountStateResponse {
 }
 
 message GetBlockRequest {
-    // Block hash
+    // Block hash. Or the string "genesis", "confirmed", "tail".
     string hash = 1;
 }
 

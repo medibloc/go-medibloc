@@ -32,28 +32,12 @@ const (
         "parameters": [
           {
             "name": "hash",
-            "description": "Block hash.",
+            "description": "Block hash. Or the string \"genesis\", \"confirmed\", \"tail\".",
             "in": "query",
             "required": false,
             "type": "string"
           }
         ],
-        "tags": [
-          "ApiService"
-        ]
-      }
-    },
-    "/v1/block/tail": {
-      "get": {
-        "operationId": "GetTailBlock",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbBlockResponse"
-            }
-          }
-        },
         "tags": [
           "ApiService"
         ]
@@ -145,11 +129,10 @@ const (
           },
           {
             "name": "height",
-            "description": "block account state with height. If not specified, use 0 as tail height.",
+            "description": "block account state with height. Or the string \"genesis\", \"confirmed\", \"tail\".",
             "in": "query",
             "required": false,
-            "type": "string",
-            "format": "uint64"
+            "type": "string"
           }
         ],
         "tags": [

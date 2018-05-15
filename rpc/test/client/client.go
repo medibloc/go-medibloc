@@ -12,7 +12,7 @@ import (
 var (
 	ttype   = flag.String("ttype", "", "Type admin or api")
 	address = flag.String("addr", "", "Address")
-	height  = flag.Int("height", 1, "Height")
+	height  = flag.String("height", "1", "Height")
 )
 
 func main() {
@@ -26,7 +26,7 @@ func main() {
 	case "accountstate":
 		res, err := apiClient.GetAccountState(context.Background(), &rpcpb.GetAccountStateRequest{
 			Address: *address,
-			Height:  uint64(*height),
+			Height:  *height,
 		})
 		if err != nil {
 			log.Printf("Somethins is wrong in client main : %v", err)
