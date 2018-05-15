@@ -22,6 +22,8 @@ var (
 	ErrMsgBlockNotFound              = "block not found"
 	ErrMsgBuildTransactionFail       = "cannot build transaction"
 	ErrMsgConvertBlockFailed         = "cannot convert block"
+	ErrMsgConvertBlockResponseFailed = "cannot convert block response"
+	ErrMsgConvertTxResponseFailed    = "cannot convert transaction response"
 	ErrMsgGetTransactionFailed       = "cannot get transaction from state"
 	ErrMsgInvalidDataType            = "invalid transaction data type"
 	ErrMsgInvalidTransaction         = "invalid transaction"
@@ -163,12 +165,16 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	block := s.bm.BlockByHash(common.HexToHash(req.Hash))
 	if block != nil {
 		pb, err := block.ToProto()
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+		if err == nil {
+			if pbBlock, ok := pb.(*corepb.Block); ok {
+				res, err := corePbBlock2rpcPbBlock(pbBlock)
+				if err != nil {
+					return nil, status.Error(codes.Internal, ErrMsgConvertBlockResponseFailed)
+				}
+				return res, nil
+			}
 		}
-		if pbBlock, ok := pb.(*corepb.Block); ok {
-			return corePbBlock2rpcPbBlock(pbBlock)
-		}
+		return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 	}
 	return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 }
@@ -178,12 +184,16 @@ func (s *APIService) GetTailBlock(ctx context.Context, req *rpcpb.NonParamsReque
 	tailBlock := s.bm.TailBlock()
 	if tailBlock != nil {
 		pb, err := tailBlock.ToProto()
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+		if err == nil {
+			if pbBlock, ok := pb.(*corepb.Block); ok {
+				res, err := corePbBlock2rpcPbBlock(pbBlock)
+				if err != nil {
+					return nil, status.Error(codes.Internal, ErrMsgConvertBlockResponseFailed)
+				}
+				return res, nil
+			}
 		}
-		if pbBlock, ok := pb.(*corepb.Block); ok {
-			return corePbBlock2rpcPbBlock(pbBlock)
-		}
+		return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 	}
 	return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 }
@@ -205,7 +215,11 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
 		}
-		return corePbTx2rpcPbTx(pbTx)
+		res, err := corePbTx2rpcPbTx(pbTx)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
+		}
+		return res, nil
 	}
 	return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 }
