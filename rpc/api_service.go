@@ -33,7 +33,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 	return &rpcpb.GetMedStateResponse{
 		ChainId: tailBlock.ChainID(),
 		Height:  tailBlock.Height(),
-		Tail:    tailBlock.Hash().Str(),
+		Tail:    tailBlock.Hash().Hex(),
 	}, nil
 }
 
