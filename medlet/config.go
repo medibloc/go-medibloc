@@ -52,7 +52,7 @@ func createDefaultConfigFile(filename string) {
 func DefaultConfig() *medletpb.Config {
 	return &medletpb.Config{
 		Global: &medletpb.GlobalConfig{
-			ChainId: 1010,
+			ChainId: 1,
 			Datadir: "data.db",
 		},
 		Network: &medletpb.NetworkConfig{

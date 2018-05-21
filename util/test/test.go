@@ -48,7 +48,7 @@ type BlockID int
 
 var (
 	// ChainID chain ID
-	ChainID uint32 = 1010
+	ChainID uint32 = 1
 	// GenesisID genesis ID
 	GenesisID BlockID = -1
 

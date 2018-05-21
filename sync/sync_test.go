@@ -252,7 +252,7 @@ func TestForkResistance(t *testing.T) {
 func DefaultSyncTesterConfig() *medletpb.Config {
 	return &medletpb.Config{
 		Global: &medletpb.GlobalConfig{
-			ChainId: 1010,
+			ChainId: 1,
 			Datadir: "data.db",
 		},
 		Network: &medletpb.NetworkConfig{
