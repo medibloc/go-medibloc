@@ -91,7 +91,7 @@ nohup build/medi conf/test/3nodes/node3.conf &> /dev/null &
 # Get blockchain state
 $ curl localhost:9921/v1/user/medstate | jq .
 {
-  "chain_id": 1010,
+  "chain_id": 1,
   "tail": "9964d1dfde18bdae9ff2122be87222a3cc0f5c665f22f7359b113310d2c4a4f5",
   "height": "2942"
 }
