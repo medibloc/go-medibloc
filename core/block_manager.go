@@ -19,6 +19,8 @@ package core
 import (
 	"sync"
 
+	"time"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -33,6 +35,7 @@ import (
 var (
 	defaultBlockMessageChanSize = 128
 	blockPoolSize               = 128
+	newBlockBroadcastTimeLimit  = 3 * time.Second
 )
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
@@ -323,7 +326,17 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	// TODO @cl9200 Compare block timestamp and node's local time if MessageTypeNewBlock
+	if msg.MessageType() == MessageTypeNewBlock {
+		ts := time.Unix(bd.Timestamp(), 0)
+		now := time.Now()
+		if ts.After(now) && ts.Sub(now) > newBlockBroadcastTimeLimit || now.After(ts) && now.Sub(ts) > newBlockBroadcastTimeLimit {
+			logging.WithFields(logrus.Fields{
+				"block": bd,
+				"now":   now,
+			}).Warn("New block broadcast timeout.")
+			return
+		}
+	}
 
 	err = bm.push(bd)
 	if err != nil {
@@ -335,8 +348,9 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	// TODO @cl9200 Should we relay if it is MessageTypeResponseBlock?
-	bm.Relay(bd)
+	if msg.MessageType() == MessageTypeNewBlock {
+		bm.Relay(bd)
+	}
 }
 
 func (bm *BlockManager) handleRequestBlock(msg net.Message) {
