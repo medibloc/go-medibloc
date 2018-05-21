@@ -9,7 +9,8 @@
 *.test
 
 # Test data directory
-testdata/
+core/testdata/
+keystore/testdata/
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
