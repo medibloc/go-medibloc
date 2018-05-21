@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"strings"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +31,7 @@ func TestConfigNotExist(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	path := filepath.Join("testdata", t.Name()+".golden")
+	path := filepath.Join("testdata", strings.ToLower(t.Name())+".golden")
 	if *update {
 		ioutil.WriteFile(path, []byte(defaultConfigString()), 0644)
 	}
