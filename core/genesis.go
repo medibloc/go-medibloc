@@ -9,6 +9,8 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -157,4 +159,50 @@ func CheckGenesisBlock(block *Block) bool {
 		return true
 	}
 	return false
+}
+
+// CheckGenesisConf checks if block and genesis configuration match
+func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
+	if block.ChainID() != genesis.GetMeta().ChainId {
+		logging.Console().WithFields(logrus.Fields{
+			"block":   block,
+			"genesis": genesis,
+		}).Error("Genesis ChainID does not match.")
+		return false
+	}
+
+	members, err := block.State().Dynasty()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block":   block,
+			"genesis": genesis,
+			"err":     err,
+		}).Error("Failed to get dynasties.")
+		return false
+	}
+	if len(members) != len(genesis.GetConsensus().GetDpos().GetDynasty()) {
+		logging.Console().WithFields(logrus.Fields{
+			"block":   block,
+			"genesis": genesis,
+			"members": members,
+		}).Error("Size of genesis dynasties does not match.")
+		return false
+	}
+	for _, member := range members {
+		contains := false
+		for _, mm := range genesis.GetConsensus().GetDpos().GetDynasty() {
+			if member.Equals(common.HexToAddress(mm)) {
+				contains = true
+				break
+			}
+		}
+		if !contains {
+			logging.Console().WithFields(logrus.Fields{
+				"member": member,
+			}).Error("Members of genesis don't match.")
+			return false
+		}
+	}
+
+	return true
 }

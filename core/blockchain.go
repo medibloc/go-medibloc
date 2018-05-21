@@ -114,8 +114,13 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		return err
 	}
 
-	// TODO @cl9200 Make sure that bc.genesis and bc.genesisBlock are the same genesis settings.
-	// checkGenesisConfig(bc.genesisBlock, bc.genesis)
+	if !CheckGenesisConf(bc.genesisBlock, bc.genesis) {
+		logging.Console().WithFields(logrus.Fields{
+			"block":   bc.genesisBlock,
+			"genesis": bc.genesis,
+		}).Error("Failed to match genesis block and genesis configuration.")
+		return ErrGenesisNotMatch
+	}
 
 	// Load tail block
 	bc.mainTailBlock, err = bc.loadTailFromStorage()

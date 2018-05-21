@@ -81,7 +81,7 @@ func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns 
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to setup blockchain.")
+		}).Error("Failed to setup Blockchain.")
 		return err
 	}
 
