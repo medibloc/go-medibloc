@@ -300,14 +300,13 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 
 func (bm *BlockManager) loop() {
 	for {
-		// TODO @cl9200 Concurrent message processing with goroutine.
 		select {
 		case <-bm.quitCh:
 			return
 		case msg := <-bm.receiveBlockMessageCh:
-			bm.handleReceiveBlock(msg)
+			go bm.handleReceiveBlock(msg)
 		case msg := <-bm.requestBlockMessageCh:
-			bm.handleRequestBlock(msg)
+			go bm.handleRequestBlock(msg)
 		}
 	}
 }
