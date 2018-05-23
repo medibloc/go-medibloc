@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestNewBlock(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	coinbase := dynasties[0].Addr
 	_, err := core.NewBlock(test.ChainID, coinbase, genesis)
@@ -25,7 +26,7 @@ func TestNewBlock(t *testing.T) {
 }
 
 func TestSendExecution(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	coinbase := dynasties[0].Addr
 	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
@@ -106,7 +107,7 @@ func TestSendExecution(t *testing.T) {
 }
 
 func TestSendMoreThanBalance(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 	coinbase := dynasties[0].Addr
 	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
@@ -133,7 +134,7 @@ func TestSendMoreThanBalance(t *testing.T) {
 }
 
 func TestExecuteOnParentBlock(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 	coinbase := dynasties[0].Addr
 	firstBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
@@ -172,6 +173,7 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	}
 
 	firstBlock.BeginBatch()
+	assert.NoError(t, firstBlock.State().TransitionDynasty(firstBlock.Timestamp()))
 	assert.NoError(t, firstBlock.ExecuteTransaction(txs[0]))
 	assert.NoError(t, firstBlock.AcceptTransaction(txs[0]))
 	firstBlock.Commit()
@@ -190,7 +192,12 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	secondBlock, err := core.NewBlock(test.ChainID, coinbase, firstBlock)
 	assert.NoError(t, err)
 
+	nextBlockTime := (firstBlock.Timestamp()/int64(dpos.DynastyInterval/time.Second) + 1) * int64(dpos.DynastyInterval/time.Second)
+	deadline, err := dpos.CheckDeadline(firstBlock, time.Unix(nextBlockTime, 0))
+	assert.NoError(t, err)
 	secondBlock.BeginBatch()
+	secondBlock.SetTimestamp(deadline.Unix())
+	assert.NoError(t, secondBlock.State().TransitionDynasty(secondBlock.Timestamp()))
 	assert.NoError(t, secondBlock.ExecuteTransaction(txs[1]))
 	assert.NoError(t, secondBlock.AcceptTransaction(txs[1]))
 	secondBlock.Commit()
@@ -205,7 +212,7 @@ func TestExecuteOnParentBlock(t *testing.T) {
 }
 
 func TestGetExecutedBlock(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 	coinbase := dynasties[0].Addr
 	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
@@ -238,6 +245,7 @@ func TestGetExecutedBlock(t *testing.T) {
 	}
 
 	newBlock.BeginBatch()
+	assert.NoError(t, newBlock.State().TransitionDynasty(newBlock.Timestamp()))
 	assert.NoError(t, newBlock.ExecuteTransaction(txs[0]))
 	assert.NoError(t, newBlock.AcceptTransaction(txs[0]))
 	newBlock.Commit()
@@ -272,7 +280,7 @@ func TestGetExecutedBlock(t *testing.T) {
 }
 
 func TestExecuteReservedTasks(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 	from := dynasties[0].Addr
 	vestTx, err := core.NewTransaction(
 		test.ChainID,
@@ -343,8 +351,8 @@ func TestExecuteReservedTasks(t *testing.T) {
 
 func TestBlock_VerifyState(t *testing.T) {
 	logging.TestHook()
-	genesis, dynasties := test.NewTestGenesisBlock(t)
-	wrongGenesis, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	wrongGenesis, _, _ := test.NewTestGenesisBlock(t)
 	from, to := dynasties[0], dynasties[1]
 
 	tx, err := core.NewTransaction(test.ChainID, from.Addr, to.Addr, util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte{})
@@ -357,20 +365,17 @@ func TestBlock_VerifyState(t *testing.T) {
 
 	block, err := core.NewBlock(test.ChainID, from.Addr, genesis)
 	assert.NoError(t, err)
-	err = block.SetTransactions(core.Transactions{tx})
-	assert.NoError(t, err)
-	err = block.ExecuteAll()
-	assert.NoError(t, err)
-	err = block.Seal()
-	assert.NoError(t, err)
+	assert.NoError(t, block.SetTransactions(core.Transactions{tx}))
+	assert.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
+	assert.NoError(t, block.ExecuteAll())
+	assert.NoError(t, block.Seal())
 
 	bd := block.GetBlockData()
 	block, err = bd.ExecuteOnParentBlock(genesis)
 	assert.NoError(t, err)
-	err = block.VerifyState()
-	assert.NoError(t, err)
+	assert.NoError(t, block.VerifyState())
 
 	bd = block.GetBlockData()
-	block, err = bd.ExecuteOnParentBlock(wrongGenesis)
+	_, err = bd.ExecuteOnParentBlock(wrongGenesis)
 	assert.Error(t, err)
 }

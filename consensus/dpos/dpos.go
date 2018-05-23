@@ -234,7 +234,7 @@ func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, ciphe
 func (d *Dpos) mintBlock(now time.Time) error {
 	tail := d.bm.TailBlock()
 
-	deadline, err := checkDeadline(tail, now)
+	deadline, err := CheckDeadline(tail, now)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"lastSlot": lastMintSlot(now),
@@ -416,7 +416,8 @@ func mintDeadline(ts time.Time) time.Time {
 	return nextMintSlot(ts)
 }
 
-func checkDeadline(tail *core.Block, ts time.Time) (deadline time.Time, err error) {
+// CheckDeadline gets deadline time of the next block to produce
+func CheckDeadline(tail *core.Block, ts time.Time) (deadline time.Time, err error) {
 	last := lastMintSlot(ts)
 	next := nextMintSlot(ts)
 	if tail.Timestamp() >= next.Unix() {

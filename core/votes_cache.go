@@ -38,16 +38,16 @@ func (cs candidates) Swap(i, j int) {
 }
 
 func (vc *votesCache) Clone() *votesCache {
-	candidates := make(candidates, vc.candidates.Len())
-	for i := 0; i < vc.candidates.Len(); i++ {
-		candidates[i] = &candidate{
-			address:    vc.candidates[i].address,
-			votesPower: vc.candidates[i].votesPower.DeepCopy(),
-			candidacy:  vc.candidates[i].candidacy,
-		}
+	var cds candidates
+	for _, cand := range vc.candidates {
+		cds = append(cds, &candidate{
+			address:    cand.address,
+			votesPower: cand.votesPower.DeepCopy(),
+			candidacy:  cand.candidacy,
+		})
 	}
 	return &votesCache{
-		candidates: candidates,
+		candidates: cds,
 	}
 }
 

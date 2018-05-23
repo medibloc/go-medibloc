@@ -43,7 +43,7 @@ func TestProtoReservationQueue(t *testing.T) {
 		{core.RtWithdrawType, common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), payloads[2], int64(1400000000)},
 	}
 
-	genesis, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := test.NewTestGenesisBlock(t)
 
 	rq := core.NewEmptyReservationQueue(genesis.Storage())
 	rq.BeginBatch()
@@ -81,7 +81,7 @@ func TestPopTasksBefore(t *testing.T) {
 		{core.RtWithdrawType, common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), payloads[2], int64(1400000000)},
 	}
 
-	genesis, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := test.NewTestGenesisBlock(t)
 
 	rq := core.NewEmptyReservationQueue(genesis.Storage())
 	rq.BeginBatch()

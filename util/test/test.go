@@ -64,6 +64,9 @@ type AddrKeyPair struct {
 // Dynasties is a slice of dynasties.
 type Dynasties []*AddrKeyPair
 
+// Distributed is a slice of all accounts who got initial token distribution
+type Distributed []*AddrKeyPair
+
 func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
 	for _, dynasty := range d {
 		if dynasty.Addr.Equals(addr) {
@@ -74,7 +77,7 @@ func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
 }
 
 // NewTestGenesisConf returns a genesis configuration for tests.
-func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties) {
+func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties, distributed Distributed) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
 			ChainId: ChainID,
@@ -103,22 +106,40 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties
 			Addr:    addr,
 			PrivKey: privKey,
 		})
+		distributed = append(distributed, &AddrKeyPair{
+			Addr:    addr,
+			PrivKey: privKey,
+		})
+	}
+
+	for i := 0; i < 10; i++ {
+		privKey := NewPrivateKey(t)
+		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
+		require.NoError(t, err)
+		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
+			Address: addr.Hex(),
+			Value:   "1000000000",
+		})
+		distributed = append(distributed, &AddrKeyPair{
+			Addr:    addr,
+			PrivKey: privKey,
+		})
 	}
 
 	conf.Consensus.Dpos.Dynasty = dynasty
 	conf.TokenDistribution = tokenDist
-	return conf, dynasties
+	return conf, dynasties, distributed
 }
 
 // NewTestGenesisBlock returns a genesis block for tests.
-func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties) {
-	conf, dynasties := NewTestGenesisConf(t)
+func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties, distributed Distributed) {
+	conf, dynasties, distributed := NewTestGenesisConf(t)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	genesis, err = core.NewGenesisBlock(conf, NewTestConsensus(), s)
 	require.NoError(t, err)
 
-	return genesis, dynasties
+	return genesis, dynasties, distributed
 }
 
 // NewTestConsensus returns a consensus for tests.
@@ -199,6 +220,7 @@ func SignBlock(t *testing.T, block *core.Block, dynasties Dynasties) {
 // NewTestBlock return new block for test
 func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	block := getBlock(t, parent, "")
+	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 	err := block.Seal()
 	require.Nil(t, err)
 	return block
@@ -395,7 +417,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesisConf, dynasties := NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := NewTestGenesisConf(t)
 	require.NoError(t, err)
 	consensus, err := dpos.New(cfg)
 	require.NoError(t, err)

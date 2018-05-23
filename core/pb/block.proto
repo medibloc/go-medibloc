@@ -13,8 +13,9 @@ message BlockHeader {
   bytes txs_root = 9;
   bytes usage_root = 10;
   bytes records_root = 11;
-  bytes consensus_root = 12;
-  bytes reservation_queue_hash = 13;
+  bytes candidacy_root = 12;
+  bytes consensus_root = 13;
+  bytes reservation_queue_hash = 14;
 }
 
 message Block {

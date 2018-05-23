@@ -25,14 +25,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getBlockChain(t *testing.T) *core.BlockChain {
+func getBlockChain(t *testing.T) (*core.BlockChain, *testUtil.MockMedlet) {
 	m := testUtil.NewMockMedlet(t)
 
 	bc, err := core.NewBlockChain(m.Config())
 	require.NoError(t, err)
 	err = bc.Setup(m.Genesis(), m.Consensus(), m.Storage())
 	require.NoError(t, err)
-	return bc
+	return bc, m
+
 }
 
 func getBlockSlice(blockMap map[testUtil.BlockID]*core.Block, id testUtil.BlockID) []*core.Block {
@@ -40,8 +41,8 @@ func getBlockSlice(blockMap map[testUtil.BlockID]*core.Block, id testUtil.BlockI
 }
 
 func TestBlockChain_OnePath(t *testing.T) {
-	bc := getBlockChain(t)
-	genesis := bc.MainTailBlock()
+	bc, m := getBlockChain(t)
+	genesis := m.BlockManager().TailBlock()
 
 	idxToParent := []testUtil.BlockID{testUtil.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := testUtil.NewBlockTestSet(t, genesis, idxToParent)
@@ -72,8 +73,8 @@ func TestBlockChain_Tree(t *testing.T) {
 	}
 	// Put one-by-one
 	for _, test := range tests {
-		bc := getBlockChain(t)
-		genesis := bc.MainTailBlock()
+		bc, m := getBlockChain(t)
+		genesis := m.BlockManager().TailBlock()
 		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
 		for idx, parentID := range test.tree {
 			blocks := getBlockSlice(blockMap, testUtil.BlockID(idx))
@@ -83,8 +84,8 @@ func TestBlockChain_Tree(t *testing.T) {
 	}
 	// Put all
 	for _, test := range tests {
-		bc := getBlockChain(t)
-		genesis := bc.MainTailBlock()
+		bc, m := getBlockChain(t)
+		genesis := m.BlockManager().TailBlock()
 		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
 		notTail := make(map[testUtil.BlockID]bool)
 		for _, idx := range test.tree {

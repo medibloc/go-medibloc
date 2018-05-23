@@ -17,7 +17,7 @@ import (
 
 func TestUpdateUsage(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	genesis, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := test.NewTestGenesisBlock(t)
 	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
@@ -84,7 +84,7 @@ func TestUpdateUsage(t *testing.T) {
 
 func TestTooOldTxToAdd(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	genesis, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := test.NewTestGenesisBlock(t)
 	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
@@ -149,7 +149,7 @@ func TestTooOldTxToAdd(t *testing.T) {
 }
 
 func TestDynastyState(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	var expected []*common.Address
 	for _, dynasty := range dynasties {
@@ -159,6 +159,16 @@ func TestDynastyState(t *testing.T) {
 	actual, err := genesis.State().Dynasty()
 	assert.NoError(t, err)
 	assert.True(t, equalSlice(expected, actual))
+}
+
+func TestAddCandidate(t *testing.T) {
+	genesis, dynasty, distributed := test.NewTestGenesisBlock(t)
+
+	genesis.State().BeginBatch()
+	assert.NoError(t, genesis.State().AddCandidate(distributed[len(dynasty)].Addr, util.NewUint128FromUint(1000)))
+	_, err := genesis.State().GetCandidate(distributed[len(dynasty)].Addr)
+	assert.NoError(t, err)
+	genesis.State().Commit()
 }
 
 func equalSlice(expected, actual []*common.Address) bool {

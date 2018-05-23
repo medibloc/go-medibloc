@@ -94,7 +94,7 @@ func TestService_Start(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties := test.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := test.NewTestGenesisConf(t)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 
@@ -151,7 +151,7 @@ func TestForkResistance(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties := test.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := test.NewTestGenesisConf(t)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	t.Log("seedTesterID", seedTester.NodeID())

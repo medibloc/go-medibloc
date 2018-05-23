@@ -10,7 +10,7 @@ import (
 )
 
 func TestNewGenesisBlock(t *testing.T) {
-	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+	genesisBlock, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()

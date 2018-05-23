@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -79,7 +80,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 }
 
 func TestRegisterWriteKey(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 	writer := dynasties[0].Addr
 	payload := core.NewRegisterWriterPayload(writer)
 	payloadBuf, err := payload.ToBytes()
@@ -137,7 +138,7 @@ func TestRegisterWriteKey(t *testing.T) {
 }
 
 func TestVerifyDelegation(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	writer := dynasties[0]
 	payload := core.NewRegisterWriterPayload(writer.Addr)
@@ -185,7 +186,7 @@ func TestVerifyDelegation(t *testing.T) {
 }
 
 func TestAddRecord(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
@@ -228,7 +229,7 @@ func TestAddRecord(t *testing.T) {
 }
 
 func TestAddRecordReader(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
@@ -291,7 +292,7 @@ func TestAddRecordReader(t *testing.T) {
 }
 
 func TestVest(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	from := dynasties[0]
 	tx, err := core.NewTransaction(
@@ -324,7 +325,7 @@ func TestVest(t *testing.T) {
 }
 
 func TestWithdrawVesting(t *testing.T) {
-	genesis, dynasties := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	from := dynasties[0]
 	vestTx, err := core.NewTransaction(
@@ -374,11 +375,11 @@ func TestWithdrawVesting(t *testing.T) {
 }
 
 func TestBecomeCandidate(t *testing.T) {
-	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := test.NewTestGenesisBlock(t)
 
 	tx, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
+		distributed[dpos.DynastySize].Addr,
 		common.Address{},
 		util.NewUint128FromUint(10), 1,
 		core.TxOperationBecomeCandidate, []byte{},
@@ -386,7 +387,7 @@ func TestBecomeCandidate(t *testing.T) {
 	assert.NoError(t, err)
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	sig.InitSign(dynasties[0].PrivKey)
+	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
 	assert.NoError(t, tx.SignThis(sig))
 
 	genesisState, err := genesisBlock.State().Clone()
@@ -397,10 +398,10 @@ func TestBecomeCandidate(t *testing.T) {
 	assert.NoError(t, genesisState.AcceptTransaction(tx, genesisBlock.Timestamp()))
 	genesisState.Commit()
 
-	acc, err := genesisState.GetAccount(dynasties[0].Addr)
+	acc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-10)))
-	candidate, err := genesisState.GetCandidate(dynasties[0].Addr)
+	candidate, err := genesisState.GetCandidate(distributed[dpos.DynastySize].Addr)
 	assert.NoError(t, err)
 	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
 	assert.NoError(t, err)
@@ -408,18 +409,18 @@ func TestBecomeCandidate(t *testing.T) {
 }
 
 func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
-	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := test.NewTestGenesisBlock(t)
 
 	tx1, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
+		distributed[dpos.DynastySize].Addr,
 		common.Address{},
 		util.NewUint128FromUint(10), 1,
 		core.TxOperationBecomeCandidate, []byte{},
 	)
 	tx2, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
+		distributed[dpos.DynastySize].Addr,
 		common.Address{},
 		util.NewUint128FromUint(10), 2,
 		core.TxOperationBecomeCandidate, []byte{},
@@ -427,7 +428,7 @@ func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
 	assert.NoError(t, err)
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	sig.InitSign(dynasties[0].PrivKey)
+	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
 	assert.NoError(t, tx1.SignThis(sig))
 	assert.NoError(t, tx2.SignThis(sig))
 
@@ -441,11 +442,11 @@ func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
 }
 
 func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
-	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := test.NewTestGenesisBlock(t)
 
 	tx, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
+		distributed[dpos.DynastySize].Addr,
 		common.Address{},
 		util.NewUint128FromUint(1000000001), 1,
 		core.TxOperationBecomeCandidate, []byte{},
@@ -453,7 +454,7 @@ func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
 	assert.NoError(t, err)
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	sig.InitSign(dynasties[0].PrivKey)
+	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
 	assert.NoError(t, tx.SignThis(sig))
 
 	genesisState, err := genesisBlock.State().Clone()
@@ -464,17 +465,17 @@ func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
 }
 
 func TestQuitCandidacy(t *testing.T) {
-	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := test.NewTestGenesisBlock(t)
 	becomeTx, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
+		distributed[dpos.DynastySize].Addr,
 		common.Address{},
 		util.NewUint128FromUint(10), 1,
 		core.TxOperationBecomeCandidate, []byte{},
 	)
 	quitTx, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
+		distributed[dpos.DynastySize].Addr,
 		common.Address{},
 		util.NewUint128FromUint(0), 2,
 		core.TxOperationQuitCandidacy, []byte{},
@@ -482,7 +483,7 @@ func TestQuitCandidacy(t *testing.T) {
 	assert.NoError(t, err)
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	sig.InitSign(dynasties[0].PrivKey)
+	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
 	assert.NoError(t, becomeTx.SignThis(sig))
 	assert.NoError(t, quitTx.SignThis(sig))
 
@@ -496,18 +497,18 @@ func TestQuitCandidacy(t *testing.T) {
 	assert.NoError(t, genesisState.AcceptTransaction(quitTx, genesisBlock.Timestamp()))
 	genesisState.Commit()
 
-	acc, err := genesisState.GetAccount(dynasties[0].Addr)
+	acc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000)))
-	_, err = genesisState.GetCandidate(dynasties[0].Addr)
+	_, err = genesisState.GetCandidate(distributed[dpos.DynastySize].Addr)
 	assert.Equal(t, core.ErrNotFound, err)
 }
 
 func TestVote(t *testing.T) {
-	genesisBlock, dynasties := test.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := test.NewTestGenesisBlock(t)
 	becomeTx, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[1].Addr,
+		distributed[dpos.DynastySize+1].Addr,
 		common.Address{},
 		util.NewUint128FromUint(10), 1,
 		core.TxOperationBecomeCandidate, []byte{},
@@ -515,8 +516,8 @@ func TestVote(t *testing.T) {
 	assert.NoError(t, err)
 	voteTx, err := core.NewTransaction(
 		test.ChainID,
-		dynasties[0].Addr,
-		dynasties[1].Addr,
+		distributed[dpos.DynastySize].Addr,
+		distributed[dpos.DynastySize+1].Addr,
 		util.NewUint128FromUint(0), 1,
 		core.TxOperationVote, []byte{},
 	)
@@ -524,12 +525,12 @@ func TestVote(t *testing.T) {
 
 	votedSig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	votedSig.InitSign(dynasties[1].PrivKey)
+	votedSig.InitSign(distributed[dpos.DynastySize+1].PrivKey)
 	assert.NoError(t, becomeTx.SignThis(votedSig))
 
 	voterSig, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
-	voterSig.InitSign(dynasties[0].PrivKey)
+	voterSig.InitSign(distributed[dpos.DynastySize].PrivKey)
 	assert.NoError(t, voteTx.SignThis(voterSig))
 
 	genesisState, err := genesisBlock.State().Clone()
@@ -542,7 +543,7 @@ func TestVote(t *testing.T) {
 	assert.NoError(t, genesisState.AcceptTransaction(voteTx, genesisBlock.Timestamp()))
 	genesisState.Commit()
 
-	voterAcc, err := genesisState.GetAccount(dynasties[0].Addr)
+	voterAcc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
 	assert.NoError(t, err)
-	assert.Equal(t, dynasties[1].Addr.Bytes(), voterAcc.Voted())
+	assert.Equal(t, distributed[dpos.DynastySize+1].Addr.Bytes(), voterAcc.Voted())
 }

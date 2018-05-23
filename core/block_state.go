@@ -271,8 +271,10 @@ func (st *states) ConstructVotesCache() error {
 			return err
 		}
 		votedAddr := common.BytesToAddress(acc.Voted())
-		if _, err := st.GetCandidate(votedAddr); err != nil {
-			return err
+		_, err = st.GetCandidate(votedAddr)
+		if err != nil {
+			exist, err = accIter.Next()
+			continue
 		}
 		if votes[votedAddr] == nil {
 			votes[votedAddr] = acc.Vesting()

@@ -105,7 +105,6 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 			return err
 		}
 	}
-
 	// Load genesis block
 	bc.genesisBlock, err = bc.loadGenesisFromStorage()
 	if err != nil {

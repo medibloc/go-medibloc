@@ -36,6 +36,7 @@ func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
 
 func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.Dynasties) *core.BlockData {
 	block := testutil.NewTestBlockWithTxs(t, parent, dynasties[0])
+	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 	require.Nil(t, block.ExecuteAll())
 	require.Nil(t, block.Seal())
 	testutil.SignBlock(t, block, dynasties)
@@ -49,8 +50,9 @@ func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *cor
 	blockMap := make(map[testutil.BlockID]*core.Block)
 	blockMap[testutil.GenesisID] = genesis
 	blockDatas := make([]*core.BlockData, len(idxToParent))
-	for i, parentId := range idxToParent {
-		block := testutil.NewTestBlockWithTxs(t, blockMap[parentId], from)
+	for i, parentID := range idxToParent {
+		block := testutil.NewTestBlockWithTxs(t, blockMap[parentID], from)
+		require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 		require.Nil(t, block.ExecuteAll())
 		require.Nil(t, block.Seal())
 		testutil.SignBlock(t, block, dynasties)
@@ -72,8 +74,8 @@ func TestBlockManager_Sequential(t *testing.T) {
 	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
 	blockMap := make(map[testutil.BlockID]*core.Block)
 	blockMap[testutil.GenesisID] = genesis
-	for idx, parentId := range idxToParent {
-		blockData := nextBlockData(t, blockMap[parentId], dynasties)
+	for idx, parentID := range idxToParent {
+		blockData := nextBlockData(t, blockMap[parentID], dynasties)
 
 		err := bm.PushBlockData(blockData)
 		assert.Nil(t, err)
