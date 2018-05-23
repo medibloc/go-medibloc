@@ -593,8 +593,6 @@ func (bd *BlockData) VerifyIntegrity() error {
 		return ErrInvalidBlockHash
 	}
 
-	// TODO: Verify according to consensus algorithm
-
 	return nil
 }
 

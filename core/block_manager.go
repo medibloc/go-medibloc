@@ -179,7 +179,12 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Filter blocks of same height.
 
-	// TODO @cl9200 Verify signature
+	if err := bd.VerifyIntegrity(); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Debug("Failed to verify block signatures.")
+		return err
+	}
 
 	if err := bm.consensus.VerifyProposer(bm.bc, bd); err != nil {
 		logging.WithFields(logrus.Fields{
