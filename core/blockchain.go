@@ -346,14 +346,25 @@ func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
 	}
 	v, err := bc.storage.Get(hash.Bytes())
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":  err,
+			"hash": hash.Hex(),
+		}).Error("Failed to get block data from storage.")
 		return nil, err
 	}
 	bd, err := bytesToBlockData(v)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to unmarshal block data.")
 		return nil, err
 	}
 	block, err = bd.GetExecutedBlock(bc.consensus, bc.storage)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Error("Failed to get block from block data.")
 		return nil, err
 	}
 	bc.cacheBlock(block)

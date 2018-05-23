@@ -202,27 +202,59 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		consensus: consensus,
 	}
 	if block.state, err = NewBlockState(block.consensus, storage); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to create new block state.")
 		return nil, err
 	}
 	if err = block.state.LoadAccountsRoot(block.header.accsRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load accounts root.")
 		return nil, err
 	}
 	if err = block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load transaction root.")
 		return nil, err
 	}
 	if err = block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load usage root.")
 		return nil, err
 	}
 	if err = block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load records root.")
 		return nil, err
 	}
 	if err = block.state.LoadConsensusRoot(block.consensus, block.header.consensusRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load consensus root.")
 		return nil, err
 	}
 	if err := block.state.LoadReservationQueue(block.header.reservationQueueHash); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load reservation queue.")
 		return nil, err
 	}
 	if err := block.state.ConstructVotesCache(); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to construct votes cache.")
 		return nil, err
 	}
 	block.storage = storage
