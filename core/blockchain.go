@@ -89,7 +89,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	bc.consensus = consensus
 
 	// Check if there is data in storage.
-	_, err := bc.loadTailFromStorage()
+	_, err := bc.loadGenesisFromStorage()
 	if err != nil && err != storage.ErrKeyNotFound {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -118,7 +118,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		logging.Console().WithFields(logrus.Fields{
 			"block":   bc.genesisBlock,
 			"genesis": bc.genesis,
-		}).Error("Failed to match genesis block and genesis configuration.")
+		}).Fatal("Failed to match genesis block and genesis configuration.")
 		return ErrGenesisNotMatch
 	}
 
@@ -137,7 +137,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to LIB from storage.")
+		}).Fatal("Failed to load LIB from storage.")
 		return err
 	}
 	return nil
@@ -155,22 +155,6 @@ func (bc *BlockChain) BlockByHash(hash common.Hash) *Block {
 		return nil
 	}
 	return block
-}
-
-// BlockOnCanonicalByHash returns a block of given hash.
-func (bc *BlockChain) BlockOnCanonicalByHash(hash common.Hash) *Block {
-	blockByHash, err := bc.loadBlockByHash(hash)
-	if err != nil {
-		return nil
-	}
-	blockByHeight := bc.BlockOnCanonicalByHeight(blockByHash.Height())
-	if blockByHeight == nil {
-		return nil
-	}
-	if !blockByHeight.Hash().Equals(blockByHash.Hash()) {
-		return nil
-	}
-	return blockByHeight
 }
 
 // BlockOnCanonicalByHeight returns a block of given height.
@@ -327,11 +311,20 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 	for !to.Hash().Equals(from.Hash()) {
 		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash().Bytes())
 		if err != nil {
+			logging.WithFields(logrus.Fields{
+				"err":    err,
+				"height": to.height,
+				"hash":   to.Hash().Hex(),
+			}).Error("Failed to put block index to storage.")
 			return err
 		}
 		// TODO @cl9200 Remove tx in block from tx pool.
 		to = bc.BlockByHash(to.ParentHash())
 		if to == nil {
+			logging.WithFields(logrus.Fields{
+				"hash":       to.Hash().Hex(),
+				"parentHash": to.ParentHash().Hex(),
+			}).Error("Failed to find parent block when building block index by height.")
 			return ErrMissingParentBlock
 		}
 	}
@@ -341,18 +334,36 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 func (bc *BlockChain) initGenesisToStorage() error {
 	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.consensus, bc.storage)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create new genesis block.")
 		return err
 	}
 	if err = bc.storeBlock(genesisBlock); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to store new genesis block.")
 		return err
 	}
 	if err = bc.storeTailHashToStorage(genesisBlock); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to update tail hash to new genesis block.")
 		return err
 	}
 	if err = bc.storeHeightToStorage(genesisBlock); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to update block height of new genesis block. ")
 		return err
 	}
-	return bc.storeLIBHashToStorage(genesisBlock)
+	if err = bc.storeLIBHashToStorage(genesisBlock); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to update lib to new genesis block.")
+		return err
+	}
+	return nil
 }
 
 func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
@@ -360,7 +371,11 @@ func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
 	if block != nil {
 		return block, nil
 	}
+
 	v, err := bc.storage.Get(hash.Bytes())
+	if err == storage.ErrKeyNotFound {
+		return nil, ErrNotFound
+	}
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":  err,
@@ -368,6 +383,7 @@ func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
 		}).Error("Failed to get block data from storage.")
 		return nil, err
 	}
+
 	bd, err := bytesToBlockData(v)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -375,6 +391,7 @@ func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
 		}).Error("Failed to unmarshal block data.")
 		return nil, err
 	}
+
 	block, err = bd.GetExecutedBlock(bc.consensus, bc.storage)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -383,6 +400,7 @@ func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
 		}).Error("Failed to get block from block data.")
 		return nil, err
 	}
+
 	bc.cacheBlock(block)
 	return block, nil
 }
@@ -398,6 +416,9 @@ func (bc *BlockChain) loadBlockByHeight(height uint64) (*Block, error) {
 func (bc *BlockChain) loadTailFromStorage() (*Block, error) {
 	hash, err := bc.storage.Get([]byte(tailBlockKey))
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to load tail block hash from storage.")
 		return nil, err
 	}
 	return bc.loadBlockByHash(common.BytesToHash(hash))
@@ -406,6 +427,9 @@ func (bc *BlockChain) loadTailFromStorage() (*Block, error) {
 func (bc *BlockChain) loadLIBFromStorage() (*Block, error) {
 	hash, err := bc.storage.Get([]byte(libKey))
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to load lib hash from storage.")
 		return nil, err
 	}
 	return bc.loadBlockByHash(common.BytesToHash(hash))
@@ -418,14 +442,27 @@ func (bc *BlockChain) loadGenesisFromStorage() (*Block, error) {
 func (bc *BlockChain) storeBlock(block *Block) error {
 	pbBlock, err := block.ToProto()
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to convert block to proto.")
 		return err
 	}
 	value, err := proto.Marshal(pbBlock)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+			"pb":    pbBlock,
+		}).Error("Failed to marshal block.")
 		return err
 	}
 	err = bc.storage.Put(block.Hash().Bytes(), value)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to put block to storage.")
 		return err
 	}
 	bc.cacheBlock(block)

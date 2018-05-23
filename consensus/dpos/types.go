@@ -7,12 +7,10 @@ import (
 
 // Consensus properties.
 const (
-	BlockInterval              = 15 * time.Second
-	DynastyInterval            = 210 * BlockInterval
-	DynastySize                = 21
-	IterationInDynastyInterval = DynastyInterval / DynastySize
-	ConsensusSize              = DynastySize*2/3 + 1
-	MinMintDuration            = 2 * time.Second
+	BlockInterval   = 15 * time.Second
+	DynastyInterval = 210 * BlockInterval
+	DynastySize     = 21
+	MinMintDuration = 2 * time.Second
 
 	miningTickInterval = time.Second
 )
