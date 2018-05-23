@@ -138,8 +138,14 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		if gen := dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
 			dynastyGen = gen
 			confirmed = make(map[string]bool)
-			// TODO @cl9200 Replace member of dynasty.
-			// members, err = tail.State().Dynasty()
+			members, err = cur.State().Dynasty()
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"block": cur,
+					"err":   err,
+				}).Error("Failed to get members of dynasty.")
+				return lib
+			}
 		}
 
 		if cur.Height()-lib.Height() < uint64(d.consensusSize-len(confirmed)) {
