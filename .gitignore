@@ -30,3 +30,6 @@ report/
 # vendor
 vendor/
 
+# execution output
+data/
+logs/
