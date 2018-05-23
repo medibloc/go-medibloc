@@ -90,16 +90,31 @@ func (d *Dpos) Stop() {
 
 // ForkChoice chooses fork.
 func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
-	// TODO @cl9200 Filter tails that are forked before LIB.
-	tail := bc.MainTailBlock()
+	newTail = bc.MainTailBlock()
 	tails := bc.TailBlocks()
 	for _, block := range tails {
-		if block.Height() > tail.Height() {
-			tail = block
+		ancestor, err := bc.FindCommonAncestorWithTail(block)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"block": block,
+				"err":   err,
+			}).Warn("Failed to find ancestor of blocks.")
+			continue
+		}
+		if ancestor.Height() < bc.LIB().Height() {
+			logging.WithFields(logrus.Fields{
+				"block":    block,
+				"ancestor": ancestor,
+				"lib":      bc.LIB(),
+			}).Debug("Blocks forked before LIB can not be selected.")
+			continue
+		}
+		if block.Height() > newTail.Height() {
+			newTail = block
 		}
 	}
 
-	return tail
+	return newTail
 }
 
 // FindLIB finds new LIB.

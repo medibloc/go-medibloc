@@ -254,7 +254,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 
 // SetTailBlock sets tail block.
 func (bc *BlockChain) SetTailBlock(newTail *Block) error {
-	ancestor, err := bc.findCommonAncestorWithTail(newTail)
+	ancestor, err := bc.FindCommonAncestorWithTail(newTail)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"newTail": newTail,
@@ -285,6 +285,44 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 	return nil
 }
 
+// FindCommonAncestorWithTail finds common ancestor with a current tail block.
+func (bc *BlockChain) FindCommonAncestorWithTail(block *Block) (*Block, error) {
+	tail := bc.mainTailBlock
+	if tail.Height() > block.Height() {
+		tail = bc.BlockOnCanonicalByHeight(block.Height())
+	}
+	if tail == nil {
+		return nil, ErrMissingParentBlock
+	}
+
+	return bc.findCommonAncestor(tail, block)
+}
+
+func (bc *BlockChain) findCommonAncestor(a, b *Block) (*Block, error) {
+	if a.Height() > b.Height() {
+		a = bc.BlockByHash(a.ParentHash())
+		if a == nil {
+			return nil, ErrMissingParentBlock
+		}
+	}
+
+	for a.Height() < b.Height() {
+		b = bc.BlockByHash(b.ParentHash())
+		if b == nil {
+			return nil, ErrMissingParentBlock
+		}
+	}
+
+	for !a.Hash().Equals(b.Hash()) {
+		a = bc.BlockByHash(a.ParentHash())
+		b = bc.BlockByHash(b.ParentHash())
+		if a == nil || b == nil {
+			return nil, ErrMissingParentBlock
+		}
+	}
+	return b, nil
+}
+
 func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 	for !to.Hash().Equals(from.Hash()) {
 		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash().Bytes())
@@ -298,32 +336,6 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 		}
 	}
 	return nil
-}
-
-func (bc *BlockChain) findCommonAncestorWithTail(block *Block) (*Block, error) {
-	tail := bc.mainTailBlock
-	if tail.Height() > block.Height() {
-		tail = bc.BlockOnCanonicalByHeight(block.Height())
-	}
-	if tail == nil {
-		return nil, ErrMissingParentBlock
-	}
-
-	for tail.Height() < block.Height() {
-		block = bc.BlockByHash(block.ParentHash())
-		if block == nil {
-			return nil, ErrMissingParentBlock
-		}
-	}
-
-	for !tail.Hash().Equals(block.Hash()) {
-		tail = bc.BlockByHash(tail.ParentHash())
-		block = bc.BlockByHash(block.ParentHash())
-		if tail == nil || block == nil {
-			return nil, ErrMissingParentBlock
-		}
-	}
-	return block, nil
 }
 
 func (bc *BlockChain) initGenesisToStorage() error {
