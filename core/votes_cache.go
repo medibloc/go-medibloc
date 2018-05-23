@@ -16,7 +16,6 @@ type candidate struct {
 type candidates []*candidate
 
 type votesCache struct {
-	batching   bool
 	candidates candidates
 }
 
@@ -44,6 +43,7 @@ func (vc *votesCache) Clone() *votesCache {
 		candidates[i] = &candidate{
 			address:    vc.candidates[i].address,
 			votesPower: vc.candidates[i].votesPower.DeepCopy(),
+			candidacy:  vc.candidates[i].candidacy,
 		}
 	}
 	return &votesCache{
