@@ -495,6 +495,14 @@ func (st *states) Proposer() common.Address {
 
 // TransitionDynasty transitions dynasty to a new one that is correct for the given time
 func (st *states) TransitionDynasty(now int64) error {
+	if st.consensusState.Timestamp() == GenesisTimestamp {
+		cs, err := st.consensusState.GetNextStateAfterGenesis(now)
+		if err != nil {
+			return err
+		}
+		st.consensusState = cs
+		return nil
+	}
 	cs, err := st.consensusState.GetNextStateAfter(now - st.consensusState.Timestamp())
 	if err == nil {
 		st.consensusState = cs
@@ -508,8 +516,13 @@ func (st *states) TransitionDynasty(now int64) error {
 	if len(st.votesCache.candidates) < st.consensusState.DynastySize() {
 		minerNum = len(st.votesCache.candidates)
 	}
-	for i := 0; i < minerNum; i++ {
-		miners = append(miners, &st.votesCache.candidates[i].address)
+	for _, candidate := range st.votesCache.candidates {
+		if candidate.candidacy {
+			miners = append(miners, &candidate.address)
+			if len(miners) == minerNum {
+				break
+			}
+		}
 	}
 	if err := st.consensusState.InitDynasty(miners, now); err != nil {
 		return err

@@ -118,6 +118,7 @@ type ConsensusState interface {
 	Timestamp() int64
 	DynastySize() int
 
+	GetNextStateAfterGenesis(timestamp int64) (ConsensusState, error)
 	GetNextStateAfter(ellapsed int64) (ConsensusState, error)
 }
 

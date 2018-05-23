@@ -222,6 +222,9 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	if err := block.state.LoadReservationQueue(block.header.reservationQueueHash); err != nil {
 		return nil, err
 	}
+	if err := block.state.ConstructVotesCache(); err != nil {
+		return nil, err
+	}
 	block.storage = storage
 	return block, nil
 }
@@ -398,6 +401,11 @@ func (block *Block) ExecuteTransaction(tx *Transaction) error {
 // VerifyExecution executes txs in block and verify root hashes using block header
 func (block *Block) VerifyExecution() error {
 	block.BeginBatch()
+
+	if err := block.State().TransitionDynasty(block.Timestamp()); err != nil {
+		block.RollBack()
+		return err
+	}
 
 	if err := block.ExecuteAll(); err != nil {
 		logging.Console().WithFields(logrus.Fields{

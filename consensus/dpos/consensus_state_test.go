@@ -23,3 +23,13 @@ func TestLoadConsensusState(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, root1, root2)
 }
+
+func TestClone(t *testing.T) {
+	genesis, _ := test.NewTestGenesisBlock(t)
+	cs, err := dpos.NewConsensusState(nil, genesis.Storage())
+	assert.NoError(t, err)
+
+	clone, err := cs.Clone()
+	assert.NoError(t, err)
+	assert.Equal(t, cs, clone)
+}

@@ -245,7 +245,21 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	members, err := tail.State().Dynasty()
+	newState, err := tail.State().Clone()
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Debug("Failed to clone block state.")
+		return err
+	}
+	if err := newState.TransitionDynasty(deadline.Unix()); err != nil {
+		logging.WithFields(logrus.Fields{
+			"deadline": deadline,
+			"err":      err,
+		}).Debug("Failed to transition dynasty.")
+		return err
+	}
+	members, err := newState.Dynasty()
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"members": members,
@@ -341,6 +355,13 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 	block.SetTimestamp(deadline.Unix())
+	if err := block.State().TransitionDynasty(deadline.Unix()); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"deadline": deadline,
+			"err":      err,
+		}).Error("Failed to transition dynasty for a new block.")
+		return nil, err
+	}
 
 	block.BeginBatch()
 	for deadline.Sub(time.Now()) > 0 {

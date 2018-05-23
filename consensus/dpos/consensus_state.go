@@ -97,12 +97,36 @@ func (cs *ConsensusState) GetNextState(at int64) (core.ConsensusState, error) {
 	return cs.GetNextStateAfter(at - cs.timestamp)
 }
 
+// GetNextStateAfterGenesis returns consensus state after genesis block
+func (cs *ConsensusState) GetNextStateAfterGenesis(timestamp int64) (core.ConsensusState, error) {
+	deadline := mintDeadline(time.Unix(timestamp, 0))
+	dynastyTrie, err := cs.dynasty.Clone()
+	if err != nil {
+		return nil, err
+	}
+	consensusState := &ConsensusState{
+		dynasty:   dynastyTrie,
+		timestamp: deadline.Unix(),
+		startTime: deadline.Unix(),
+		storage:   cs.storage,
+	}
+	miners, err := TraverseDynasty(dynastyTrie)
+	if err != nil {
+		return nil, err
+	}
+	consensusState.proposer, err = FindProposer(deadline.Unix(), miners)
+	if err != nil {
+		return nil, err
+	}
+	return consensusState, nil
+}
+
 // GetNextStateAfter returns consensus state after certain amount of time
 func (cs *ConsensusState) GetNextStateAfter(elapsedTime int64) (core.ConsensusState, error) {
 	if cs.startTime+int64(DynastyInterval/time.Millisecond) < cs.timestamp+elapsedTime {
 		return nil, core.ErrDynastyExpired
 	}
-	if elapsedTime < 0 || elapsedTime%int64(BlockInterval/time.Millisecond) != 0 {
+	if elapsedTime < 0 || elapsedTime%int64(BlockInterval/time.Second) != 0 {
 		return nil, ErrInvalidBlockForgeTime
 	}
 	dynastyTrie, err := cs.dynasty.Clone()
@@ -176,7 +200,7 @@ func FindProposer(ts int64, miners []*common.Address) (common.Address, error) {
 		return common.Address{}, ErrInvalidBlockForgeTime
 	}
 	offsetInDynastyInterval := now % DynastyInterval
-	offsetInDynasty := int(offsetInDynastyInterval/time.Millisecond) % len(miners)
+	offsetInDynasty := int(offsetInDynastyInterval/BlockInterval) % len(miners)
 
 	if int(offsetInDynasty) >= len(miners) {
 		logging.WithFields(logrus.Fields{

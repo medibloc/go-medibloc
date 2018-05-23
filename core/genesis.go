@@ -66,13 +66,16 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
-
 	var members []*common.Address
 	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
 		member := common.HexToAddress(v)
+		if err := genesisBlock.State().AddCandidate(member, util.Uint128Zero()); err != nil {
+			return nil, err
+		}
 		members = append(members, &member)
 	}
 	genesisBlock.State().SetDynasty(members, int64(0))
+
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Value)
@@ -134,6 +137,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 	genesisBlock.header.accsRoot = genesisBlock.state.AccountsRoot()
 	genesisBlock.header.txsRoot = genesisBlock.state.TransactionsRoot()
+	genesisBlock.header.consensusRoot, err = genesisBlock.state.ConsensusRoot()
+	if err != nil {
+		return nil, err
+	}
 
 	genesisBlock.sealed = true
 
