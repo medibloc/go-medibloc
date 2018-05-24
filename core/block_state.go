@@ -254,7 +254,7 @@ func (st *states) LoadReservationQueue(hash common.Hash) error {
 
 func (st *states) ConstructVotesCache() error {
 	var votes map[common.Address]*util.Uint128
-	var votesCache *votesCache
+	votesCache := newVotesCache()
 
 	accIter, err := st.accState.as.accounts.Iterator(nil)
 	if err != nil {
