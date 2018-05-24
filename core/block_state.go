@@ -276,13 +276,14 @@ func (st *states) ConstructVotesCache() error {
 			exist, err = accIter.Next()
 			continue
 		}
-		if votes[votedAddr] == nil {
-			votes[votedAddr] = acc.Vesting()
-		} else {
+		_, ok := votes[votedAddr]
+		if ok {
 			votes[votedAddr], err = votes[votedAddr].Add(acc.Vesting())
 			if err != nil {
 				return err
 			}
+		} else {
+			votes[votedAddr] = acc.Vesting()
 		}
 		exist, err = accIter.Next()
 	}
