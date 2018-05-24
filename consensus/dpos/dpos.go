@@ -417,15 +417,16 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 
-	err = block.BeginBatch()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to begin batch of new block.")
-		return nil, err
-	}
 	for deadline.Sub(time.Now()) > 0 {
+		err = block.BeginBatch()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":   err,
+				"block": block,
+			}).Error("Failed to begin batch of new block.")
+			return nil, err
+		}
+
 		tx := d.tm.Pop()
 		if tx == nil {
 			break
@@ -437,6 +438,13 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 					"err": err,
 				}).Error("Failed to push back tx.")
 			}
+			err = block.RollBack()
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to rollback new block.")
+				return nil, err
+			}
 			continue
 		}
 		if err != nil {
@@ -444,6 +452,14 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 				"err": err,
 				"tx":  tx,
 			}).Error("Failed to execute transaction.")
+
+			err = block.RollBack()
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to rollback new block.")
+				return nil, err
+			}
 			continue
 		}
 
@@ -453,16 +469,25 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 				"err": err,
 				"tx":  tx,
 			}).Error("Failed to accept transaction.")
+
+			err = block.RollBack()
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to rollback new block.")
+				return nil, err
+			}
 			continue
 		}
-	}
-	err = block.Commit()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to commit new block.")
-		return nil, err
+
+		err = block.Commit()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":   err,
+				"block": block,
+			}).Error("Failed to commit new block.")
+			return nil, err
+		}
 	}
 	return block, nil
 }
