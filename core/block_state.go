@@ -88,7 +88,7 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	recordsState, err := NewTrieBatch(st.usageState.RootHash(), st.storage)
+	recordsState, err := NewTrieBatch(st.recordsState.RootHash(), st.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (st *states) LoadReservationQueue(hash common.Hash) error {
 }
 
 func (st *states) ConstructVotesCache() error {
-	var votes map[common.Address]*util.Uint128
+	votes := make(map[common.Address]*util.Uint128)
 	votesCache := newVotesCache()
 
 	accIter, err := st.accState.as.accounts.Iterator(nil)
