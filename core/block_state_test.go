@@ -171,6 +171,62 @@ func TestAddCandidate(t *testing.T) {
 	genesis.State().Commit()
 }
 
+func TestCloneGenesisState(t *testing.T) {
+	genesis, _, _ := test.NewTestGenesisBlock(t)
+
+	st := genesis.State()
+	cl, err := st.Clone()
+	assert.NoError(t, err)
+	assert.Equal(t, st.AccountsRoot(), cl.AccountsRoot())
+	assert.Equal(t, st.TransactionsRoot(), cl.TransactionsRoot())
+	assert.Equal(t, st.UsageRoot(), cl.UsageRoot())
+	assert.Equal(t, st.RecordsRoot(), cl.RecordsRoot())
+
+	stCs, err := st.ConsensusRoot()
+	assert.NoError(t, err)
+	clCs, err := cl.ConsensusRoot()
+	assert.NoError(t, err)
+	assert.Equal(t, stCs, clCs)
+
+	assert.Equal(t, st.CandidacyRoot(), cl.CandidacyRoot())
+	assert.Equal(t, st.ReservationQueueHash(), cl.ReservationQueueHash())
+}
+
+func TestCloneState(t *testing.T) {
+	genesis, _, users := test.NewTestGenesisBlock(t)
+
+	st := genesis.State()
+
+	st.BeginBatch()
+
+	addRecordTx, err := core.NewTransaction(test.ChainID, users[0].Addr, common.Address{},
+		util.Uint128Zero(), 1, core.TxPayloadBinaryType, []byte("abcd"))
+	assert.NoError(t, err)
+
+	assert.NoError(t, st.AddRecord(addRecordTx, common.Hash{}, "storage", []byte("key"), []byte("seed"), users[0].Addr, users[0].Addr))
+	assert.NoError(t, st.Vest(users[1].Addr, util.NewUint128FromUint(100)))
+	assert.NoError(t, st.SubVesting(users[1].Addr, util.NewUint128FromUint(10)))
+	assert.NoError(t, st.Vote(users[2].Addr, users[3].Addr))
+
+	st.Commit()
+
+	cl, err := st.Clone()
+	assert.NoError(t, err)
+	assert.Equal(t, st.AccountsRoot(), cl.AccountsRoot())
+	assert.Equal(t, st.TransactionsRoot(), cl.TransactionsRoot())
+	assert.Equal(t, st.UsageRoot(), cl.UsageRoot())
+	assert.Equal(t, st.RecordsRoot(), cl.RecordsRoot())
+
+	stCs, err := st.ConsensusRoot()
+	assert.NoError(t, err)
+	clCs, err := cl.ConsensusRoot()
+	assert.NoError(t, err)
+	assert.Equal(t, stCs, clCs)
+
+	assert.Equal(t, st.CandidacyRoot(), cl.CandidacyRoot())
+	assert.Equal(t, st.ReservationQueueHash(), cl.ReservationQueueHash())
+}
+
 func equalSlice(expected, actual []*common.Address) bool {
 	if len(expected) != len(actual) {
 		return false
