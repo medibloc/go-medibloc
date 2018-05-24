@@ -210,6 +210,14 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// Parent block exists in blockchain.
 	all, tails, err := bm.findDescendantBlocks(parentOnChain)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"parent": parentOnChain,
+			"block":  bd,
+			"err":    err,
+		}).Error("Failed to find descendant blocks.")
+		return err
+	}
 
 	bm.bc.PutVerifiedNewBlocks(parentOnChain, all, tails)
 
@@ -249,6 +257,11 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		childData := v.(*BlockData)
 		block, err := childData.ExecuteOnParentBlock(parent)
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":    err,
+				"block":  block,
+				"parent": parent,
+			}).Error("Failed to execute on a parent block.")
 			return nil, nil, err
 		}
 

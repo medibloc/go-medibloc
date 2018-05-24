@@ -524,28 +524,59 @@ func (block *Block) AcceptTransaction(tx *Transaction) error {
 // VerifyState verifies block states comparing with root hashes in header
 func (block *Block) VerifyState() error {
 	if block.state.AccountsRoot() != block.AccountsRoot() {
+		logging.WithFields(logrus.Fields{
+			"state":  block.state.AccountsRoot().Hex(),
+			"header": block.AccountsRoot().Hex(),
+		}).Warn("Failed to verify accounts root.")
 		return ErrInvalidBlockAccountsRoot
 	}
 	if block.state.TransactionsRoot() != block.TransactionsRoot() {
+		logging.WithFields(logrus.Fields{
+			"state":  block.state.TransactionsRoot().Hex(),
+			"header": block.TransactionsRoot().Hex(),
+		}).Warn("Failed to verify transactions root.")
 		return ErrInvalidBlockTxsRoot
 	}
 	if block.state.UsageRoot() != block.UsageRoot() {
+		logging.WithFields(logrus.Fields{
+			"state":  block.state.UsageRoot().Hex(),
+			"header": block.UsageRoot().Hex(),
+		}).Warn("Failed to verify usage root.")
 		return ErrInvalidBlockUsageRoot
 	}
 	if block.state.RecordsRoot() != block.RecordsRoot() {
+		logging.WithFields(logrus.Fields{
+			"state":  block.state.RecordsRoot().Hex(),
+			"header": block.RecordsRoot().Hex(),
+		}).Warn("Failed to verify records root.")
 		return ErrInvalidBlockRecordsRoot
 	}
 	if block.state.CandidacyRoot() != block.CandidacyRoot() {
+		logging.WithFields(logrus.Fields{
+			"state":  block.state.CandidacyRoot().Hex(),
+			"header": block.CandidacyRoot().Hex(),
+		}).Warn("Failed to verify candidacy root.")
 		return ErrInvalidBlockCandidacyRoot
 	}
 	consensusRoot, err := block.state.ConsensusRoot()
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to get state of consensus root.")
 		return err
 	}
 	if !byteutils.Equal(consensusRoot, block.ConsensusRoot()) {
+		logging.WithFields(logrus.Fields{
+			"state":  byteutils.Bytes2Hex(consensusRoot),
+			"header": byteutils.Bytes2Hex(block.ConsensusRoot()),
+		}).Warn("Failed to verify consensus root.")
 		return ErrInvalidBlockConsensusRoot
 	}
 	if block.state.ReservationQueueHash() != block.ReservationQueueHash() {
+		logging.WithFields(logrus.Fields{
+			"state":  block.state.ReservationQueueHash().Hex(),
+			"header": block.ReservationQueueHash().Hex(),
+		}).Warn("Failed to verify reservation queue hash.")
 		return ErrInvalidBlockReservationQueueHash
 	}
 	return nil
