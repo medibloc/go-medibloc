@@ -1,3 +1,18 @@
+// Copyright (C) 2018  MediBloc
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>
+
 package net
 
 import (
@@ -41,13 +56,13 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			"PutMessageTest1",
 			make(chan Message, 8),
 			[]msgTypes{
-				msgTypes{
+				{
 					PingMessage,
 					false,
 				},
 			},
 			[]baseMsgFields{
-				baseMsgFields{
+				{
 					"FirstPing",
 					PingMessage,
 					"from",
@@ -60,19 +75,19 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			"PutMessageTest2",
 			make(chan Message, 8),
 			[]msgTypes{
-				msgTypes{
+				{
 					PingMessage,
 					false,
 				},
 			},
 			[]baseMsgFields{
-				baseMsgFields{
+				{
 					"FirstPing",
 					PingMessage,
 					"from",
 					[]byte{0x00},
 				},
-				baseMsgFields{
+				{
 					"FirstPong",
 					PongMessage,
 					"from",
@@ -85,19 +100,19 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			"PutMessageTest3",
 			make(chan Message, 8),
 			[]msgTypes{
-				msgTypes{
+				{
 					PingMessage,
 					false,
 				},
 			},
 			[]baseMsgFields{
-				baseMsgFields{
+				{
 					"FirstPong",
 					PongMessage,
 					"from",
 					[]byte{0x01},
 				},
-				baseMsgFields{
+				{
 					"FirstPing",
 					PingMessage,
 					"from",
@@ -110,19 +125,19 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			"PutMessageTest4",
 			make(chan Message, 8),
 			[]msgTypes{
-				msgTypes{
+				{
 					PingMessage,
 					false,
 				},
 			},
 			[]baseMsgFields{
-				baseMsgFields{
+				{
 					"FirstPing",
 					PingMessage,
 					"from",
 					[]byte{0x00},
 				},
-				baseMsgFields{
+				{
 					"SecondPing",
 					PingMessage,
 					"from",
@@ -135,19 +150,19 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			"PutMessageTest5",
 			make(chan Message, 8),
 			[]msgTypes{
-				msgTypes{
+				{
 					PingMessage,
 					true,
 				},
 			},
 			[]baseMsgFields{
-				baseMsgFields{
+				{
 					"FirstPing",
 					PingMessage,
 					"from",
 					[]byte{0x00},
 				},
-				baseMsgFields{
+				{
 					"SecondPing",
 					PingMessage,
 					"from",
@@ -160,35 +175,35 @@ func TestDispatcher_PutMessage(t *testing.T) {
 			"PutMessageTest6",
 			make(chan Message, 8),
 			[]msgTypes{
-				msgTypes{
+				{
 					PingMessage,
 					true,
 				},
-				msgTypes{
+				{
 					PongMessage,
 					false,
 				},
 			},
 			[]baseMsgFields{
-				baseMsgFields{
+				{
 					"FirstPing",
 					PingMessage,
 					"from",
 					[]byte{0x00},
 				},
-				baseMsgFields{
+				{
 					"FirstPong",
 					PongMessage,
 					"from",
 					[]byte{0x01},
 				},
-				baseMsgFields{
+				{
 					"SecondPing",
 					PingMessage,
 					"from",
 					[]byte{0x00},
 				},
-				baseMsgFields{
+				{
 					"SecondPong",
 					PongMessage,
 					"from",
