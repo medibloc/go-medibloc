@@ -107,7 +107,7 @@ $ tail -f logs/log3/medibloc.log
 ```
 
 ### Demo
-* [Demo video link](https://youtu.be/lNFWxu36QYE)
+* [Demo video link](https://youtu.be/igmLEfxw-u8)
 
 ## Library
 * medjs
