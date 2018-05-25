@@ -112,9 +112,7 @@ $ tail -f logs/log3/medibloc.log
 ## Library
 * medjs
     * [Github](https://github.com/medibloc/medjs)
-    * Document (TODO)
-* Blockchain API
-    * Doucment (TODO)
+    * [Document](https://medjs.readthedocs.io/en/latest/)
 
 ## Testing
 ```bash
