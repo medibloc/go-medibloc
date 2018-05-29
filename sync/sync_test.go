@@ -25,6 +25,7 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
@@ -265,31 +266,15 @@ func TestForkResistance(t *testing.T) {
 }
 
 func DefaultSyncTesterConfig() *medletpb.Config {
-	return &medletpb.Config{
-		Global: &medletpb.GlobalConfig{
-			ChainId: 1,
-			Datadir: "data.db",
-		},
-		Network: &medletpb.NetworkConfig{
-			Seed:                       make([]string, 0),
-			Listen:                     make([]string, 0),
-			PrivateKey:                 "",
-			NetworkId:                  0,
-			RouteTableSyncLoopInterval: 2000,
-		},
-		Chain: &medletpb.ChainConfig{
-			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		},
-		Sync: &medletpb.SyncConfig{
-			SeedingMinChunkSize:        1,
-			SeedingMaxChunkSize:        100,
-			SeedingMaxConcurrentPeers:  5,
-			DownloadChunkSize:          50,
-			DownloadMaxConcurrentTasks: 5,
-			DownloadChunkCacheSize:     10,
-		},
-	}
+	cfg := medlet.DefaultConfig()
+	cfg.Network.Listen = nil
+	cfg.Network.RouteTableSyncLoopInterval = 2000
+	cfg.Chain.BlockCacheSize = 1
+	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+	cfg.Sync.SeedingMinChunkSize = 1
+	cfg.Sync.DownloadChunkCacheSize = 10
+	return cfg
 }
 
 func convertIpv4ListensToMultiAddrSeeds(ipv4s []string, nodeID string) (multiAddrs []string) {

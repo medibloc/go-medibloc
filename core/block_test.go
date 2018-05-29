@@ -25,7 +25,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/medibloc/go-medibloc/util/test"
@@ -278,16 +278,12 @@ func TestGetExecutedBlock(t *testing.T) {
 
 	bd := newBlock.GetBlockData()
 
-	medletCfg := &medletpb.Config{
-		Global: &medletpb.GlobalConfig{
-			ChainId: test.ChainID,
-		},
-		Chain: &medletpb.ChainConfig{
-			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		},
-	}
-	consensus, err := dpos.New(medletCfg)
+	cfg := medlet.DefaultConfig()
+	cfg.Chain.BlockCacheSize = 1
+	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+
+	consensus, err := dpos.New(cfg)
 	assert.NoError(t, err)
 	executedBlock, err := bd.GetExecutedBlock(consensus, newBlock.Storage())
 	assert.NoError(t, err)

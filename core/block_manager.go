@@ -33,7 +33,6 @@ import (
 
 var (
 	defaultBlockMessageChanSize = 128
-	blockPoolSize               = 128
 	newBlockBroadcastTimeLimit  = 3 * time.Second
 )
 
@@ -52,7 +51,7 @@ type BlockManager struct {
 
 // NewBlockManager returns BlockManager.
 func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
-	bp, err := NewBlockPool(blockPoolSize)
+	bp, err := NewBlockPool(int(cfg.Chain.BlockPoolSize))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

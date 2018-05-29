@@ -28,10 +28,8 @@ import (
 )
 
 const (
-	blockCacheSize = 128
-	tailCacheSize  = 128
-	tailBlockKey   = "blockchain_tail"
-	libKey         = "blockchain_lib"
+	tailBlockKey = "blockchain_tail"
+	libKey       = "blockchain_lib"
 )
 
 // BlockChain manages blockchain structure.
@@ -60,20 +58,20 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 	}
 
 	var err error
-	bc.cachedBlocks, err = lru.New(blockCacheSize)
+	bc.cachedBlocks, err = lru.New(int(cfg.Chain.BlockCacheSize))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
-			"cacheSize": blockCacheSize,
+			"cacheSize": cfg.Chain.BlockCacheSize,
 		}).Fatal("Failed to create block cache.")
 		return nil, err
 	}
 
-	bc.tailBlocks, err = lru.New(tailCacheSize)
+	bc.tailBlocks, err = lru.New(int(cfg.Chain.TailCacheSize))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
-			"cacheSize": tailCacheSize,
+			"cacheSize": cfg.Chain.TailCacheSize,
 		}).Fatal("Failed to create tail block cache.")
 		return nil, err
 	}

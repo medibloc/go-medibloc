@@ -61,9 +61,19 @@ message ChainConfig {
     // Supported signature cipher list. ["ECC_SECP256K1"]
     repeated string signature_ciphers = 24;
 
+    // Block cache size
+    uint32 block_cache_size = 25;
+    // Tail cache size
+    uint32 tail_cache_size = 26;
+    // Blockpool size
+    uint32 block_pool_size = 27;
+    // Transaction pool size
+    uint32 transaction_pool_size = 28;
+
     // TODO account manager
     // Miner private key.
-    string privkey = 25;
+    string privkey = 29;
+
 }
 
 message RPCConfig {

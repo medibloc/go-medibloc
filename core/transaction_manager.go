@@ -26,7 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var transactionPoolSize = 262144
+var defaultTransactionkMessageChanSize = 128
 
 // TransactionManager manages transactions' pool and network service.
 type TransactionManager struct {
@@ -43,9 +43,9 @@ type TransactionManager struct {
 func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 	return &TransactionManager{
 		chainID:           cfg.Global.ChainId,
-		receivedMessageCh: make(chan net.Message, transactionPoolSize),
+		receivedMessageCh: make(chan net.Message, defaultTransactionkMessageChanSize),
 		quitCh:            make(chan int, 1),
-		pool:              NewTransactionPool(transactionPoolSize),
+		pool:              NewTransactionPool(int(cfg.Chain.TransactionPoolSize)),
 	}
 }
 

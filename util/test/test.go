@@ -34,6 +34,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
@@ -143,13 +144,11 @@ func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties
 
 // NewTestConsensus returns a consensus for tests.
 func NewTestConsensus() core.Consensus {
-	medletCfg := &medletpb.Config{
-		Chain: &medletpb.ChainConfig{
-			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		},
-	}
-	consensus, _ := dpos.New(medletCfg)
+	cfg := medlet.DefaultConfig()
+	cfg.Chain.BlockCacheSize = 1
+	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+	consensus, _ := dpos.New(cfg)
 	return consensus
 }
 
@@ -368,12 +367,8 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	tm.WaitStreamReady()
 	tm.WaitRouteTableSync()
 
-	cfg := &medletpb.Config{
-		Global: &medletpb.GlobalConfig{
-			ChainId: ChainID,
-		},
-		Chain: &medletpb.ChainConfig{},
-	}
+	cfg := medlet.DefaultConfig()
+	cfg.Chain.BlockCacheSize = 1
 	for i := 0; i < n; i++ {
 		mgr := core.NewTransactionManager(cfg)
 		mgr.Setup(svc[i])
@@ -403,15 +398,10 @@ type MockMedlet struct {
 
 // NewMockMedlet returns MockMedlet.
 func NewMockMedlet(t *testing.T) *MockMedlet {
-	cfg := &medletpb.Config{
-		Global: &medletpb.GlobalConfig{
-			ChainId: ChainID,
-		},
-		Chain: &medletpb.ChainConfig{
-			Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-			Miner:    "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		},
-	}
+	cfg := medlet.DefaultConfig()
+	cfg.Chain.BlockCacheSize = 1
+	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
