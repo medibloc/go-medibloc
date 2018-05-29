@@ -23,12 +23,12 @@ var ErrKeyNotFound = errors.New("not found")
 
 // Storage interface of Storage.
 type Storage interface {
-  // Delete delete the key entry in Storage.
-  Delete(key []byte) error
+	// Delete delete the key entry in Storage.
+	Delete(key []byte) error
 
-  // Get return the value to the key in Storage.
-  Get(key []byte) ([]byte, error)
+	// Get return the value to the key in Storage.
+	Get(key []byte) ([]byte, error)
 
-  // Put put the key-value entry to Storage.
-  Put(key []byte, value []byte) error
+	// Put put the key-value entry to Storage.
+	Put(key []byte, value []byte) error
 }
