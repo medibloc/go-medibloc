@@ -156,8 +156,8 @@ func (bc *BlockChain) BlockByHash(hash common.Hash) *Block {
 	return block
 }
 
-// BlockOnCanonicalByHeight returns a block of given height.
-func (bc *BlockChain) BlockOnCanonicalByHeight(height uint64) *Block {
+// BlockByHeight returns a block of given height.
+func (bc *BlockChain) BlockByHeight(height uint64) *Block {
 	if height > bc.mainTailBlock.Height() {
 		return nil
 	}
@@ -272,7 +272,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 func (bc *BlockChain) FindCommonAncestorWithTail(block *Block) (*Block, error) {
 	tail := bc.mainTailBlock
 	if tail.Height() > block.Height() {
-		tail = bc.BlockOnCanonicalByHeight(block.Height())
+		tail = bc.BlockByHeight(block.Height())
 	}
 	if tail == nil {
 		return nil, ErrMissingParentBlock

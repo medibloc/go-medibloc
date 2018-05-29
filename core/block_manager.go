@@ -123,7 +123,7 @@ func (bm *BlockManager) ChainID() uint32 {
 func (bm *BlockManager) BlockByHeight(height uint64) *Block {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
-	return bm.bc.BlockOnCanonicalByHeight(height)
+	return bm.bc.BlockByHeight(height)
 }
 
 // BlockByHash returns the block contained in the chain by hash.
