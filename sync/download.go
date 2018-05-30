@@ -108,10 +108,10 @@ func (d *download) subscribeLoop() {
 
 		select {
 		case <-timerChan:
-			if !d.majorityCheck(len(d.pidRootHashesMap)) {
-				d.sendMetaQuery()
-				retryMetaRequestCnt++
-			}
+			//if !d.majorityCheck(len(d.pidRootHashesMap)) {
+			d.sendMetaQuery()
+			retryMetaRequestCnt++
+			//}
 			logging.WithFields(logrus.Fields{
 				"taskQueue":         d.taskQueue,
 				"runningTasks":      d.runningTasks,

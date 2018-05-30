@@ -105,7 +105,7 @@ func (st *SyncTester) NodeID() string {
 
 func TestService_Start(t *testing.T) {
 	var (
-		nBlocks   = 500
+		nBlocks   = 100
 		chunkSize = 20
 	)
 
@@ -162,7 +162,7 @@ func TestForkResistance(t *testing.T) {
 
 	var (
 		nMajors   = 6
-		nBlocks   = 500
+		nBlocks   = 50
 		chunkSize = 20
 	)
 
@@ -249,10 +249,25 @@ func TestForkResistance(t *testing.T) {
 
 	newbieTester.syncService.ActiveDownload()
 
+	count := 0
+	prevSize := uint64(0)
 	for {
 		if newbieTester.blockManager.TailBlock().Height() > uint64(nBlocks-chunkSize+1) {
 			break
 		}
+
+		curSize := newbieTester.blockManager.TailBlock().Height()
+		if curSize == prevSize {
+			count++
+		} else {
+			count = 0
+		}
+		if count > 100 {
+			t.Logf("Current Height(%v) <= Expected Height(%v)", curSize, nBlocks-chunkSize+1)
+			require.True(t, false)
+		}
+		prevSize = curSize
+
 		time.Sleep(100 * time.Millisecond)
 	}
 
