@@ -3,7 +3,6 @@ package corepb;
 
 message Record {
   bytes hash = 1;
-  string storage = 2;
-  bytes owner = 3;
-  int64 timestamp = 4;
+  bytes owner = 2;
+  int64 timestamp = 3;
 }

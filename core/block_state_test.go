@@ -218,7 +218,7 @@ func TestCloneState(t *testing.T) {
 		util.Uint128Zero(), 1, core.TxPayloadBinaryType, []byte("abcd"))
 	assert.NoError(t, err)
 
-	assert.NoError(t, st.AddRecord(addRecordTx, []byte("recordHash"), "storage", []byte("key"), []byte("seed"), users[0].Addr, users[0].Addr))
+	assert.NoError(t, st.AddRecord(addRecordTx, []byte("recordHash"), users[0].Addr))
 	assert.NoError(t, st.Vest(users[1].Addr, util.NewUint128FromUint(100)))
 	assert.NoError(t, st.SubVesting(users[1].Addr, util.NewUint128FromUint(10)))
 	assert.NoError(t, st.Vote(users[2].Addr, users[3].Addr))

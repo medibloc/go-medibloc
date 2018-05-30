@@ -92,7 +92,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	case core.TxOperationSend:
 	case core.TxOperationAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
-		payload := core.NewAddRecordPayload(addRecord.Hash, addRecord.Storage, addRecord.EncKey, addRecord.Seed)
+		payload := core.NewAddRecordPayload(addRecord.Hash)
 		payloadBuf, err := payload.ToBytes()
 		if err != nil {
 			return nil, err

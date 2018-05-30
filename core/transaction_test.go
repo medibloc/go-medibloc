@@ -204,10 +204,7 @@ func TestAddRecord(t *testing.T) {
 	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
 	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
-	storage := "ipfs"
-	encKey := []byte("abcdef")
-	seed := []byte("5eed")
-	payload := core.NewAddRecordPayload(recordHash, storage, encKey, seed)
+	payload := core.NewAddRecordPayload(recordHash)
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 	owner := dynasties[0]
@@ -236,11 +233,6 @@ func TestAddRecord(t *testing.T) {
 	record, err := genesisState.GetRecord(recordHash)
 	assert.NoError(t, err)
 	assert.Equal(t, record.Hash, recordHash)
-	assert.Equal(t, record.Storage, storage)
-	assert.Equal(t, len(record.Readers), 1)
-	assert.Equal(t, record.Readers[0].Address, owner.Addr.Bytes())
-	assert.Equal(t, record.Readers[0].EncKey, encKey)
-	assert.Equal(t, record.Readers[0].Seed, seed)
 }
 
 func TestVest(t *testing.T) {

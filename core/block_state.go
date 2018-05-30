@@ -347,21 +347,11 @@ func (st *states) SubBalance(address common.Address, amount *util.Uint128) error
 	return st.accState.SubBalance(address.Bytes(), amount)
 }
 
-func (st *states) AddRecord(tx *Transaction, hash []byte, storage string,
-	encKey []byte, seed []byte,
-	owner common.Address, writer common.Address) error {
+func (st *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) error {
 	record := &corepb.Record{
 		Hash:      hash,
-		Storage:   storage,
 		Owner:     tx.from.Bytes(),
 		Timestamp: tx.Timestamp(),
-		Readers: []*corepb.Reader{
-			{
-				Address: tx.from.Bytes(),
-				EncKey:  encKey,
-				Seed:    seed,
-			},
-		},
 	}
 	recordBytes, err := proto.Marshal(record)
 	if err != nil {

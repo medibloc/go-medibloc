@@ -383,15 +383,11 @@ func (tx *Transaction) removeWriteKey(bs *BlockState) error {
 }
 
 func (tx *Transaction) addRecord(bs *BlockState) error {
-	signer, err := tx.recoverSigner()
-	if err != nil {
-		return err
-	}
 	payload, err := BytesToAddRecordPayload(tx.Data())
 	if err != nil {
 		return err
 	}
-	return bs.AddRecord(tx, payload.Hash, payload.Storage, payload.EncKey, payload.Seed, tx.from, signer)
+	return bs.AddRecord(tx, payload.Hash, tx.from)
 }
 
 func (tx *Transaction) vest(bs *BlockState) error {

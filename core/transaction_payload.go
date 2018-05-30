@@ -81,12 +81,9 @@ type AddRecordPayload struct {
 }
 
 // NewAddRecordPayload generates a AddRecordPayload
-func NewAddRecordPayload(hash []byte, storage string, encKey, seed []byte) *AddRecordPayload {
+func NewAddRecordPayload(hash []byte) *AddRecordPayload {
 	return &AddRecordPayload{
-		Hash:    hash,
-		Storage: storage,
-		EncKey:  encKey,
-		Seed:    seed,
+		Hash: hash,
 	}
 }
 
