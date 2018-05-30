@@ -496,17 +496,31 @@ func (block *Block) ExecuteAll() error {
 
 	for _, tx := range block.transactions {
 		if err := block.ExecuteTransaction(tx); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":   err,
+				"tx":    tx,
+				"block": block,
+			}).Warn("Failed to execute a transaction.")
 			block.RollBack()
 			return err
 		}
 
 		if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":   err,
+				"tx":    tx,
+				"block": block,
+			}).Warn("Failed to accept a transaction.")
 			block.RollBack()
 			return err
 		}
 	}
 
 	if err := block.ExecuteReservedTasks(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Warn("Failed to execute reserved tasks.")
 		block.RollBack()
 		return err
 	}

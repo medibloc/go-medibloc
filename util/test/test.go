@@ -80,7 +80,8 @@ func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
 func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties, distributed Distributed) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
-			ChainId: ChainID,
+			ChainId:     ChainID,
+			DynastySize: dpos.DynastySize,
 		},
 		Consensus: &corepb.GenesisConsensus{
 			Dpos: &corepb.GenesisConsensusDpos{

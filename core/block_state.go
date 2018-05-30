@@ -24,6 +24,8 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 type states struct {
@@ -448,15 +450,27 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		}
 		usageBytes, err = proto.Marshal(usage)
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"usage": usage,
+				"err":   err,
+			}).Error("Failed to marshal usage.")
 			return err
 		}
 		return st.usageState.Put(tx.from.Bytes(), usageBytes)
 	default:
+		logging.Console().WithFields(logrus.Fields{
+			"from": tx.from.Hex(),
+			"err":  err,
+		}).Error("Failed to get usage from trie.")
 		return err
 	}
 
 	pbUsage := new(corepb.Usage)
 	if err := proto.Unmarshal(usageBytes, pbUsage); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"pb":  pbUsage,
+		}).Error("Failed to unmarshal proto.")
 		return err
 	}
 
@@ -473,6 +487,10 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 
 	pbBytes, err := proto.Marshal(pbUsage)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"pb":  pbUsage,
+		}).Error("Failed to marshal proto.")
 		return err
 	}
 
@@ -798,19 +816,36 @@ func (bs *BlockState) ExecuteTx(tx *Transaction) error {
 func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error {
 	pbTx, err := tx.ToProto()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"tx":  tx,
+		}).Error("Failed to convert a transaction to proto.")
 		return err
 	}
 
 	txBytes, err := proto.Marshal(pbTx)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"pb":  pbTx,
+		}).Error("Failed to marshal proto.")
 		return err
 	}
 
 	if err := bs.PutTx(tx.hash, txBytes); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"tx":  tx,
+		}).Error("Failed to put a transaction to block state.")
 		return err
 	}
 
 	if err := bs.updateUsage(tx, blockTime); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"tx":        tx,
+			"blockTime": blockTime,
+		}).Error("Failed to update usage.")
 		return err
 	}
 

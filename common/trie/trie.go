@@ -84,6 +84,7 @@ type Trie struct {
 func NewTrie(rootHash []byte, storage storage.Storage) (*Trie, error) {
 	switch {
 	case byteutils.Equal(common.ZeroHash().Bytes(), rootHash):
+		return &Trie{rootHash: nil, storage: storage}, nil
 	case rootHash != nil:
 		if _, err := storage.Get(rootHash); err != nil {
 			return nil, err
