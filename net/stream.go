@@ -140,6 +140,8 @@ func (s *Stream) IsConnected() bool {
 
 // IsHandshakeSucceed return if the handshake in the stream succeed
 func (s *Stream) IsHandshakeSucceed() bool {
+	s.syncMutex.Lock()
+	defer s.syncMutex.Unlock()
 	return s.status == streamStatusHandshakeSucceed
 }
 
@@ -477,9 +479,12 @@ func (s *Stream) handleMessage(message *MedMessage) error {
 	}
 
 	// check handshake status.
+	s.syncMutex.Lock()
 	if s.status != streamStatusHandshakeSucceed {
+		s.syncMutex.Unlock()
 		return ErrShouldCloseConnectionAndExitLoop
 	}
+	s.syncMutex.Unlock()
 
 	switch messageName {
 	case SYNCROUTE:
@@ -680,7 +685,9 @@ func (s *Stream) finishHandshake() {
 		"stream": s.String(),
 	}).Debug("Finished handshake.")
 
+	s.syncMutex.Lock()
 	s.status = streamStatusHandshakeSucceed
+	s.syncMutex.Unlock()
 	s.handshakeSucceedCh <- true
 }
 
