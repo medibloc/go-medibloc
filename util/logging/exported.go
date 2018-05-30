@@ -43,120 +43,120 @@ func WithError(err error) *logrus.Entry {
 
 // Debugf logs a message at level Debug on the verbose logger.
 func Debugf(format string, args ...interface{}) {
-	vLog().Debugf(format, args)
+	vLog().Debugf(format, args...)
 }
 
 // Infof logs a message at level Info on the verbose logger.
 func Infof(format string, args ...interface{}) {
-	vLog().Infof(format, args)
+	vLog().Infof(format, args...)
 }
 
 // Printf logs a message at level Info on the verbose logger.
 func Printf(format string, args ...interface{}) {
-	vLog().Printf(format, args)
+	vLog().Printf(format, args...)
 }
 
 // Warnf logs a message at level Warn on the verbose logger.
 func Warnf(format string, args ...interface{}) {
-	vLog().Warnf(format, args)
+	vLog().Warnf(format, args...)
 }
 
 // Warningf logs a message at level Warn on the verbose logger.
 func Warningf(format string, args ...interface{}) {
-	vLog().Warningf(format, args)
+	vLog().Warningf(format, args...)
 }
 
 // Errorf logs a message at level Error on the verbose logger.
 func Errorf(format string, args ...interface{}) {
-	vLog().Errorf(format, args)
+	vLog().Errorf(format, args...)
 }
 
 // Fatalf logs a message at level Fatal on the verbose logger.
 func Fatalf(format string, args ...interface{}) {
-	vLog().Fatalf(format, args)
+	vLog().Fatalf(format, args...)
 }
 
 // Panicf logs a message at level Panic on the verbose logger.
 func Panicf(format string, args ...interface{}) {
-	vLog().Panicf(format, args)
+	vLog().Panicf(format, args...)
 }
 
 // Debug logs a message at level Debug on the verbose logger.
 func Debug(args ...interface{}) {
-	vLog().Debug(args)
+	vLog().Debug(args...)
 }
 
 // Info logs a message at level Info on the verbose logger.
 func Info(args ...interface{}) {
-	vLog().Info(args)
+	vLog().Info(args...)
 }
 
 // Print logs a message at level Info on the verbose logger.
 func Print(args ...interface{}) {
-	vLog().Print(args)
+	vLog().Print(args...)
 }
 
 // Warn logs a message at level Warn on the verbose logger.
 func Warn(args ...interface{}) {
-	vLog().Warn(args)
+	vLog().Warn(args...)
 }
 
 // Warning logs a message at level Warn on the verbose logger.
 func Warning(args ...interface{}) {
-	vLog().Warning(args)
+	vLog().Warning(args...)
 }
 
 // Error logs a message at level Error on the verbose logger.
 func Error(args ...interface{}) {
-	vLog().Error(args)
+	vLog().Error(args...)
 }
 
 // Fatal logs a message at level Fatal on the verbose logger.
 func Fatal(args ...interface{}) {
-	vLog().Fatal(args)
+	vLog().Fatal(args...)
 }
 
 // Panic logs a message at level Panic on the verbose logger.
 func Panic(args ...interface{}) {
-	vLog().Panic(args)
+	vLog().Panic(args...)
 }
 
 // Debugln logs a message at level Debug on the verbose logger.
 func Debugln(args ...interface{}) {
-	vLog().Debugln(args)
+	vLog().Debugln(args...)
 }
 
 // Infoln logs a message at level Info on the verbose logger.
 func Infoln(args ...interface{}) {
-	vLog().Infoln(args)
+	vLog().Infoln(args...)
 }
 
 // Println logs a message at level Info on the verbose logger.
 func Println(args ...interface{}) {
-	vLog().Println(args)
+	vLog().Println(args...)
 }
 
 // Warnln logs a message at level Warn on the verbose logger.
 func Warnln(args ...interface{}) {
-	vLog().Warnln(args)
+	vLog().Warnln(args...)
 }
 
 // Warningln logs a message at level Warn on the verbose logger.
 func Warningln(args ...interface{}) {
-	vLog().Warningln(args)
+	vLog().Warningln(args...)
 }
 
 // Errorln logs a message at level Error on the verbose logger.
 func Errorln(args ...interface{}) {
-	vLog().Errorln(args)
+	vLog().Errorln(args...)
 }
 
 // Fatalln logs a message at level Fatal on the verbose logger.
 func Fatalln(args ...interface{}) {
-	vLog().Fatalln(args)
+	vLog().Fatalln(args...)
 }
 
 // Panicln logs a message at level Panic on the verbose logger.
 func Panicln(args ...interface{}) {
-	vLog().Panicln(args)
+	vLog().Panicln(args...)
 }
