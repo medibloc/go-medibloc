@@ -339,8 +339,6 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.removeWriteKey(bs)
 	case TxOperationAddRecord:
 		return tx.addRecord(bs)
-	case TxOperationAddRecordReader:
-		return tx.addRecordReader(bs)
 	case TxOperationVest:
 		return tx.vest(bs)
 	case TxOperationWithdrawVesting:
@@ -394,14 +392,6 @@ func (tx *Transaction) addRecord(bs *BlockState) error {
 		return err
 	}
 	return bs.AddRecord(tx, payload.Hash, payload.Storage, payload.EncKey, payload.Seed, tx.from, signer)
-}
-
-func (tx *Transaction) addRecordReader(bs *BlockState) error {
-	payload, err := BytesToAddRecordReaderPayload(tx.Data())
-	if err != nil {
-		return err
-	}
-	return bs.AddRecordReader(tx, payload.Hash, payload.Address, payload.EncKey, payload.Seed)
 }
 
 func (tx *Transaction) vest(bs *BlockState) error {

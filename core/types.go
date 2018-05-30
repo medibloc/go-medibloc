@@ -26,7 +26,6 @@ import (
 const (
 	TxOperationSend            = ""
 	TxOperationAddRecord       = "add_record"
-	TxOperationAddRecordReader = "add_record_reader"
 	TxOperationVest            = "vest"
 	TxOperationWithdrawVesting = "withdraw_vesting"
 	TxOperationRegisterWKey    = "register_wkey"

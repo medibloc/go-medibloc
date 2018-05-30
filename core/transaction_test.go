@@ -243,69 +243,6 @@ func TestAddRecord(t *testing.T) {
 	assert.Equal(t, record.Readers[0].Seed, seed)
 }
 
-func TestAddRecordReader(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
-
-	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
-	storage := "ipfs"
-	ownerEncKey := []byte("abcdef")
-	ownerSeed := []byte("5eed")
-	addRecordPayload := core.NewAddRecordPayload(recordHash, storage, ownerEncKey, ownerSeed)
-	addRecordPayloadBuf, err := addRecordPayload.ToBytes()
-	assert.NoError(t, err)
-	owner := dynasties[0]
-	txAddRecord, err := core.NewTransaction(test.ChainID,
-		owner.Addr,
-		common.Address{},
-		util.Uint128Zero(), 1,
-		core.TxOperationAddRecord, addRecordPayloadBuf)
-	assert.NoError(t, err)
-
-	privKey := owner.PrivKey
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(privKey)
-	assert.NoError(t, txAddRecord.SignThis(sig))
-
-	reader := dynasties[1]
-	readerEncKey := []byte("123456")
-	readerSeed := []byte("2eed")
-	addRecordReaderPayload := core.NewAddRecordReaderPayload(recordHash, reader.Addr, readerEncKey, readerSeed)
-	addRecordReaderPayloadBuf, err := addRecordReaderPayload.ToBytes()
-	assert.NoError(t, err)
-
-	txAddRecordReader, err := core.NewTransaction(test.ChainID,
-		owner.Addr,
-		common.Address{},
-		util.Uint128Zero(), 2,
-		core.TxOperationAddRecordReader, addRecordReaderPayloadBuf)
-	assert.NoError(t, err)
-	assert.NoError(t, txAddRecordReader.SignThis(sig))
-
-	genesisState, err := genesis.State().Clone()
-	assert.NoError(t, err)
-
-	genesisState.BeginBatch()
-	assert.NoError(t, txAddRecord.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, genesis.Timestamp()))
-	assert.NoError(t, txAddRecordReader.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txAddRecordReader, genesis.Timestamp()))
-	genesisState.Commit()
-
-	record, err := genesisState.GetRecord(recordHash)
-	assert.NoError(t, err)
-	assert.Equal(t, record.Hash, recordHash)
-	assert.Equal(t, record.Storage, storage)
-	assert.Equal(t, len(record.Readers), 2)
-	assert.Equal(t, record.Readers[0].Address, owner.Addr.Bytes())
-	assert.Equal(t, record.Readers[0].EncKey, ownerEncKey)
-	assert.Equal(t, record.Readers[0].Seed, ownerSeed)
-	assert.Equal(t, record.Readers[1].Address, reader.Addr.Bytes())
-	assert.Equal(t, record.Readers[1].EncKey, readerEncKey)
-	assert.Equal(t, record.Readers[1].Seed, readerSeed)
-}
-
 func TestVest(t *testing.T) {
 	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 

@@ -103,35 +103,3 @@ func BytesToAddRecordPayload(b []byte) (*AddRecordPayload, error) {
 func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
-
-// AddRecordReaderPayload is payload type for TxOperationAddRecordReader
-type AddRecordReaderPayload struct {
-	Hash    []byte
-	Address common.Address
-	EncKey  []byte
-	Seed    []byte
-}
-
-// NewAddRecordReaderPayload generates a AddRecordReaderPayload
-func NewAddRecordReaderPayload(hash []byte, address common.Address, encKey, seed []byte) *AddRecordReaderPayload {
-	return &AddRecordReaderPayload{
-		Hash:    hash,
-		Address: address,
-		EncKey:  encKey,
-		Seed:    seed,
-	}
-}
-
-// BytesToAddRecordReaderPayload converts bytes to AddRecordReaderPayload struct
-func BytesToAddRecordReaderPayload(b []byte) (*AddRecordReaderPayload, error) {
-	payload := new(AddRecordReaderPayload)
-	if err := json.Unmarshal(b, payload); err != nil {
-		return nil, ErrInvalidTxPayload
-	}
-	return payload, nil
-}
-
-// ToBytes returns marshalled AddRecordReaderPayload
-func (payload *AddRecordReaderPayload) ToBytes() ([]byte, error) {
-	return json.Marshal(payload)
-}

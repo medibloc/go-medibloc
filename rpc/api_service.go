@@ -87,7 +87,6 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var registerWriter *core.RegisterWriterPayload
 	var addRecord *core.AddRecordPayload
 	// var removeWriter *core.RemoveWriterPayload
-	// var addRecordReader *core.AddRecordReaderPayload
 
 	switch txData.Type {
 	case core.TxOperationSend:
@@ -99,7 +98,6 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case core.TxOperationAddRecordReader:
 	case core.TxOperationVest:
 	case core.TxOperationWithdrawVesting:
 	case core.TxOperationRegisterWKey:

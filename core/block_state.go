@@ -23,7 +23,6 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -374,35 +373,6 @@ func (st *states) AddRecord(tx *Transaction, hash []byte, storage string,
 	}
 
 	return st.accState.AddRecord(tx.from.Bytes(), hash)
-}
-
-func (st *states) AddRecordReader(tx *Transaction, dataHash []byte, reader common.Address, encKey []byte, seed []byte) error {
-	recordBytes, err := st.recordsState.Get(dataHash)
-	if err != nil {
-		return err
-	}
-	pbRecord := new(corepb.Record)
-	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
-		return err
-	}
-	if byteutils.Equal(pbRecord.Owner, tx.from.Bytes()) == false {
-		return ErrTxIsNotFromRecordOwner
-	}
-	for _, r := range pbRecord.Readers {
-		if byteutils.Equal(reader.Bytes(), r.Address) {
-			return ErrRecordReaderAlreadyAdded
-		}
-	}
-	pbRecord.Readers = append(pbRecord.Readers, &corepb.Reader{
-		Address: reader.Bytes(),
-		EncKey:  encKey,
-		Seed:    seed,
-	})
-	b, err := proto.Marshal(pbRecord)
-	if err != nil {
-		return err
-	}
-	return st.recordsState.Put(dataHash, b)
 }
 
 func (st *states) GetRecord(hash []byte) (*corepb.Record, error) {
