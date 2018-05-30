@@ -203,7 +203,7 @@ func TestVerifyDelegation(t *testing.T) {
 func TestAddRecord(t *testing.T) {
 	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
-	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
 	encKey := []byte("abcdef")
 	seed := []byte("5eed")
@@ -235,7 +235,7 @@ func TestAddRecord(t *testing.T) {
 
 	record, err := genesisState.GetRecord(recordHash)
 	assert.NoError(t, err)
-	assert.Equal(t, record.Hash, recordHash.Bytes())
+	assert.Equal(t, record.Hash, recordHash)
 	assert.Equal(t, record.Storage, storage)
 	assert.Equal(t, len(record.Readers), 1)
 	assert.Equal(t, record.Readers[0].Address, owner.Addr.Bytes())
@@ -246,7 +246,7 @@ func TestAddRecord(t *testing.T) {
 func TestAddRecordReader(t *testing.T) {
 	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
 
-	recordHash := common.HexToHash("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	storage := "ipfs"
 	ownerEncKey := []byte("abcdef")
 	ownerSeed := []byte("5eed")
@@ -295,7 +295,7 @@ func TestAddRecordReader(t *testing.T) {
 
 	record, err := genesisState.GetRecord(recordHash)
 	assert.NoError(t, err)
-	assert.Equal(t, record.Hash, recordHash.Bytes())
+	assert.Equal(t, record.Hash, recordHash)
 	assert.Equal(t, record.Storage, storage)
 	assert.Equal(t, len(record.Readers), 2)
 	assert.Equal(t, record.Readers[0].Address, owner.Addr.Bytes())

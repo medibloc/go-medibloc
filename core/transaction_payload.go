@@ -73,7 +73,7 @@ func (payload *RemoveWriterPayload) ToBytes() ([]byte, error) {
 
 // AddRecordPayload is payload type for TxOperationAddRecord
 type AddRecordPayload struct {
-	Hash common.Hash
+	Hash []byte
 	// TODO: Signature string
 	Storage string
 	EncKey  []byte
@@ -81,7 +81,7 @@ type AddRecordPayload struct {
 }
 
 // NewAddRecordPayload generates a AddRecordPayload
-func NewAddRecordPayload(hash common.Hash, storage string, encKey, seed []byte) *AddRecordPayload {
+func NewAddRecordPayload(hash []byte, storage string, encKey, seed []byte) *AddRecordPayload {
 	return &AddRecordPayload{
 		Hash:    hash,
 		Storage: storage,
@@ -106,14 +106,14 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 
 // AddRecordReaderPayload is payload type for TxOperationAddRecordReader
 type AddRecordReaderPayload struct {
-	Hash    common.Hash
+	Hash    []byte
 	Address common.Address
 	EncKey  []byte
 	Seed    []byte
 }
 
 // NewAddRecordReaderPayload generates a AddRecordReaderPayload
-func NewAddRecordReaderPayload(hash common.Hash, address common.Address, encKey, seed []byte) *AddRecordReaderPayload {
+func NewAddRecordReaderPayload(hash []byte, address common.Address, encKey, seed []byte) *AddRecordReaderPayload {
 	return &AddRecordReaderPayload{
 		Hash:    hash,
 		Address: address,

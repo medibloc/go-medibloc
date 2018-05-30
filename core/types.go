@@ -143,8 +143,8 @@ type ConsensusState interface {
 
 // HashableBlock is an interface that can get its own or parent's hash.
 type HashableBlock interface {
-	Hash() common.Hash
-	ParentHash() common.Hash
+	Hash() []byte
+	ParentHash() []byte
 }
 
 // Serializable interface for serializing/deserializing

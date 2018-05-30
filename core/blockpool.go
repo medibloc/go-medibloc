@@ -19,7 +19,7 @@ import (
 	"sync"
 
 	"github.com/hashicorp/golang-lru"
-	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -78,7 +78,7 @@ func (bp *BlockPool) Push(block HashableBlock) error {
 		clb.linkParent(lb)
 	}
 
-	bp.cache.Add(block.Hash(), lb)
+	bp.cache.Add(byteutils.Bytes2Hex(block.Hash()), lb)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (bp *BlockPool) Remove(block HashableBlock) {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
-	bp.cache.Remove(block.Hash())
+	bp.cache.Remove(byteutils.Bytes2Hex(block.Hash()))
 }
 
 // FindParent finds parent block.
@@ -123,7 +123,7 @@ func (bp *BlockPool) FindChildren(block HashableBlock) (childBlocks []HashableBl
 	defer bp.mu.RUnlock()
 
 	// Found parameter block.
-	if v, ok := bp.cache.Get(block.Hash()); ok {
+	if v, ok := bp.cache.Get(byteutils.Bytes2Hex(block.Hash())); ok {
 		lb := v.(*linkedBlock)
 		for _, v := range lb.childLinkedBlocks {
 			childBlocks = append(childBlocks, v.block)
@@ -141,11 +141,11 @@ func (bp *BlockPool) FindChildren(block HashableBlock) (childBlocks []HashableBl
 
 // Has returns true if BlockPool contains block.
 func (bp *BlockPool) Has(block HashableBlock) bool {
-	return bp.cache.Contains(block.Hash())
+	return bp.cache.Contains(byteutils.Bytes2Hex(block.Hash()))
 }
 
 func (bp *BlockPool) findParentLinkedBlock(block HashableBlock) *linkedBlock {
-	if plb, ok := bp.cache.Get(block.ParentHash()); ok {
+	if plb, ok := bp.cache.Get(byteutils.Bytes2Hex(block.ParentHash())); ok {
 		return plb.(*linkedBlock)
 	}
 	return nil
@@ -160,10 +160,10 @@ func (bp *BlockPool) findChildLinkedBlocks(block HashableBlock) (childBlocks []*
 		}
 
 		lb := v.(*linkedBlock)
-		if lb.block.Hash() == GenesisHash {
+		if byteutils.Equal(lb.block.Hash(), GenesisHash) {
 			continue
 		}
-		if lb.block.ParentHash() == block.Hash() {
+		if byteutils.Equal(lb.block.ParentHash(), block.Hash()) {
 			childBlocks = append(childBlocks, lb)
 		}
 	}
@@ -173,13 +173,13 @@ func (bp *BlockPool) findChildLinkedBlocks(block HashableBlock) (childBlocks []*
 type linkedBlock struct {
 	block             HashableBlock
 	parentLinkedBlock *linkedBlock
-	childLinkedBlocks map[common.Hash]*linkedBlock
+	childLinkedBlocks map[string]*linkedBlock
 }
 
 func newLinkedBlock(block HashableBlock) *linkedBlock {
 	return &linkedBlock{
 		block:             block,
-		childLinkedBlocks: make(map[common.Hash]*linkedBlock),
+		childLinkedBlocks: make(map[string]*linkedBlock),
 	}
 }
 
@@ -196,11 +196,11 @@ func (lb *linkedBlock) dispose() {
 }
 
 func (lb *linkedBlock) linkParent(plb *linkedBlock) {
-	plb.childLinkedBlocks[lb.block.Hash()] = lb
+	plb.childLinkedBlocks[byteutils.Bytes2Hex(lb.block.Hash())] = lb
 	lb.parentLinkedBlock = plb
 }
 
 func (lb *linkedBlock) unlinkParent(plb *linkedBlock) {
-	delete(plb.childLinkedBlocks, lb.block.Hash())
+	delete(plb.childLinkedBlocks, byteutils.Bytes2Hex(lb.block.Hash()))
 	lb.parentLinkedBlock = nil
 }

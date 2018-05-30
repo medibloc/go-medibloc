@@ -151,8 +151,8 @@ func TestService_Start(t *testing.T) {
 	t.Logf("Height(%v) block of New Node	    : %v", newTail.Height(), newTail.Hash())
 	t.Logf("Height(%v) block of Origin Node	: %v", newTail.Height(), seedTester.blockManager.BlockByHeight(newTail.Height()).Hash())
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		require.NotNil(t, seedTester.blockManager.BlockByHeight(i), "Seeder Height:%v, Hash:%v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash().Bytes()))
-		require.NotNil(t, receiveTester.blockManager.BlockByHeight(i), "Receiver Height Missing:%v, Hash: %v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash().Bytes()))
+		require.NotNil(t, seedTester.blockManager.BlockByHeight(i), "Seeder Height:%v, Hash:%v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash()))
+		require.NotNil(t, receiveTester.blockManager.BlockByHeight(i), "Receiver Height Missing:%v, Hash: %v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash()))
 		require.Equal(t, seedTester.blockManager.BlockByHeight(i).Hash(), receiveTester.blockManager.BlockByHeight(i).Hash())
 	}
 }

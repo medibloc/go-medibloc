@@ -20,8 +20,8 @@ import (
 
 	"sort"
 
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/hashheap"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -34,7 +34,7 @@ type TransactionPool struct {
 
 	candidates *hashheap.HashedHeap
 	buckets    *hashheap.HashedHeap
-	all        map[common.Hash]*Transaction
+	all        map[string]*Transaction
 }
 
 // NewTransactionPool returns TransactionPool.
@@ -43,16 +43,16 @@ func NewTransactionPool(size int) *TransactionPool {
 		size:       size,
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
-		all:        make(map[common.Hash]*Transaction),
+		all:        make(map[string]*Transaction),
 	}
 }
 
 // Get returns transaction by tx hash.
-func (pool *TransactionPool) Get(hash common.Hash) *Transaction {
+func (pool *TransactionPool) Get(hash []byte) *Transaction {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
-	return pool.all[hash]
+	return pool.all[byteutils.Bytes2Hex(hash)]
 }
 
 // Del deletes transaction.
@@ -95,10 +95,10 @@ func (pool *TransactionPool) Pop() *Transaction {
 
 func (pool *TransactionPool) push(tx *Transaction) error {
 	// push to all
-	if _, ok := pool.all[tx.Hash()]; ok {
+	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; ok {
 		return ErrDuplicatedTransaction
 	}
-	pool.all[tx.Hash()] = tx
+	pool.all[byteutils.Bytes2Hex(tx.Hash())] = tx
 
 	from := tx.From().Str()
 
@@ -124,10 +124,10 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 
 func (pool *TransactionPool) del(tx *Transaction) {
 	// Remove from all
-	if _, ok := pool.all[tx.Hash()]; !ok {
+	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; !ok {
 		return
 	}
-	delete(pool.all, tx.Hash())
+	delete(pool.all, byteutils.Bytes2Hex(tx.Hash()))
 
 	from := tx.From().Str()
 
@@ -231,7 +231,7 @@ func (b *bucket) peekLast() *Transaction {
 
 func (b *bucket) del(tx *Transaction) {
 	for i, tt := range b.txs {
-		if tt.Transaction.Hash() == tx.Hash() {
+		if byteutils.Equal(tt.Transaction.Hash(), tx.Hash()) {
 			b.txs = append(b.txs[:i], b.txs[i+1:]...)
 			return
 		}

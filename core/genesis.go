@@ -24,13 +24,14 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
 
 var (
 	// GenesisHash is hash of genesis block
-	GenesisHash = common.Hash{}
+	GenesisHash = []byte("genesisHash")
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
@@ -170,7 +171,7 @@ func CheckGenesisBlock(block *Block) bool {
 	if block == nil {
 		return false
 	}
-	if block.Hash().Equals(GenesisHash) {
+	if byteutils.Equal(block.Hash(), GenesisHash) {
 		return true
 	}
 	return false

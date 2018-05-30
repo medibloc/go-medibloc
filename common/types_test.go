@@ -21,16 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBytesConversion(t *testing.T) {
-	bytes := []byte{5}
-	hash := BytesToHash(bytes)
-
-	var exp Hash
-	exp[31] = 5
-
-	assert.Equalf(t, hash, exp, "expected %x got %x", exp, hash)
-}
-
 func TestIsHexAddress(t *testing.T) {
 	tests := []struct {
 		str string

@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/sync/pb"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -39,7 +39,7 @@ type downloadTask struct {
 	from                uint64
 	chunkSize           uint64
 	peers               map[string]struct{}
-	rootHash            common.Hash
+	rootHash            string
 	blocks              []*core.BlockData
 	createdTime         time.Time
 	startTime           time.Time
@@ -50,7 +50,7 @@ type downloadTask struct {
 	pid                 string
 }
 
-func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash common.Hash, doneCh chan *downloadTask) *downloadTask {
+func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash string, doneCh chan *downloadTask) *downloadTask {
 	dt := &downloadTask{
 		netService:          netService,
 		query:               nil,
@@ -111,7 +111,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 		return ErrFailVerification
 	}
 
-	var downloadedHashes []common.Hash
+	var downloadedHashes [][]byte
 	blocks := make([]*core.BlockData, 0, dt.chunkSize)
 	for _, pbBlock := range blockChunk.Blocks {
 		block := new(core.BlockData)
@@ -129,8 +129,8 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 		downloadedHashes = append(downloadedHashes, block.Hash())
 	}
 
-	rootHash := common.BytesToHash(generateHashTrie(downloadedHashes).RootHash())
-	if rootHash != dt.rootHash {
+	rootHash := generateHashTrie(downloadedHashes).RootHash()
+	if !byteutils.Equal(rootHash, byteutils.Hex2Bytes(dt.rootHash)) {
 		logging.WithFields(logrus.Fields{
 			"err":     err,
 			"msgFrom": message.MessageFrom(),

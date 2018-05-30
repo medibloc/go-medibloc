@@ -23,10 +23,10 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/sync/pb"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -41,8 +41,8 @@ type download struct {
 	downloadStart    bool
 	from             uint64
 	chunkSize        uint64
-	pidRootHashesMap map[string][]common.Hash
-	rootHashPIDsMap  map[common.Hash]map[string]struct{}
+	pidRootHashesMap map[string][]string
+	rootHashPIDsMap  map[string]map[string]struct{}
 	taskQueue        []*downloadTask
 	runningTasks     map[uint64]*downloadTask
 	finishedTasks    *taskList
@@ -62,8 +62,8 @@ func newDownload(config *medletpb.SyncConfig) *download {
 		downloadStart:    false,
 		from:             0,
 		chunkSize:        config.DownloadChunkSize,
-		pidRootHashesMap: make(map[string][]common.Hash),
-		rootHashPIDsMap:  make(map[common.Hash]map[string]struct{}),
+		pidRootHashesMap: make(map[string][]string),
+		rootHashPIDsMap:  make(map[string]map[string]struct{}),
 		taskQueue:        make([]*downloadTask, 0),
 		runningTasks:     make(map[uint64]*downloadTask),
 		finishedTasks:    nil,
@@ -199,20 +199,20 @@ func (d *download) updateMeta(message net.Message) {
 }
 
 func (d *download) setPIDRootHashesMap(pid string, rootHashesByte [][]byte) {
-	rootHashes := make([]common.Hash, len(rootHashesByte))
+	rootHashes := make([]string, len(rootHashesByte))
 	for i, rootHash := range rootHashesByte {
-		rootHashes[i] = common.BytesToHash(rootHash)
+		rootHashes[i] = byteutils.Bytes2Hex(rootHash)
 	}
 	d.pidRootHashesMap[pid] = rootHashes
 }
 
 func (d *download) setRootHashPIDsMap(pid string, rootHashesByte [][]byte) {
-	for _, rootHashByte := range rootHashesByte {
-		rootHash := common.BytesToHash(rootHashByte)
-		if _, ok := d.rootHashPIDsMap[rootHash]; ok == false {
-			d.rootHashPIDsMap[rootHash] = make(map[string]struct{})
+	for _, rootHash := range rootHashesByte {
+		rootHashHex := byteutils.Bytes2Hex(rootHash)
+		if _, ok := d.rootHashPIDsMap[rootHashHex]; ok == false {
+			d.rootHashPIDsMap[rootHashHex] = make(map[string]struct{})
 		}
-		d.rootHashPIDsMap[rootHash][pid] = struct{}{}
+		d.rootHashPIDsMap[rootHashHex][pid] = struct{}{}
 	}
 }
 
@@ -222,19 +222,19 @@ func (d *download) checkMajorMeta() {
 	}
 	i := len(d.runningTasks) + d.finishedTasks.Len() + len(d.taskQueue)
 	for {
-		peerCounter := make(map[common.Hash]int)
+		peerCounter := make(map[string]int)
 		for _, rootHashes := range d.pidRootHashesMap {
 			if len(rootHashes) > i {
 				peerCounter[rootHashes[i]]++
 			}
 		}
 		majorNotFound := true
-		for rootHash, nPeers := range peerCounter {
+		for rootHashHex, nPeers := range peerCounter {
 			if d.majorityCheck(nPeers) {
 				logging.Infof("Major RootHash was found from %v", d.from+uint64(i)*d.chunkSize)
 				//createDownloadTask
 				majorNotFound = false
-				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHash], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHash, d.taskDoneCh)
+				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHashHex], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHashHex, d.taskDoneCh)
 				d.taskQueue = append(d.taskQueue, t)
 				d.runNextTask()
 				break
@@ -283,7 +283,7 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 func (d *download) sendMetaQuery() error {
 	mq := new(syncpb.MetaQuery)
 	mq.From = d.from
-	mq.Hash = d.bm.LIB().Hash().Bytes()
+	mq.Hash = d.bm.LIB().Hash()
 	mq.ChunkSize = d.chunkSize
 
 	sendData, err := proto.Marshal(mq)

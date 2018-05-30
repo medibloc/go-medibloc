@@ -32,7 +32,7 @@ import (
 
 // Transaction struct represents transaction
 type Transaction struct {
-	hash      common.Hash
+	hash      []byte
 	from      common.Address
 	to        common.Address
 	value     *util.Uint128
@@ -55,7 +55,7 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
 	}
 
 	return &corepb.Transaction{
-		Hash:      tx.hash.Bytes(),
+		Hash:      tx.hash,
 		From:      tx.from.Bytes(),
 		To:        tx.to.Bytes(),
 		Value:     value,
@@ -71,7 +71,7 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
 // FromProto converts corepb.Transaction to Transaction
 func (tx *Transaction) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Transaction); ok {
-		tx.hash = common.BytesToHash(msg.Hash)
+		tx.hash = msg.Hash
 		tx.from = common.BytesToAddress(msg.From)
 		tx.to = common.BytesToAddress(msg.To)
 
@@ -106,7 +106,7 @@ func BuildTransaction(
 	nonce uint64,
 	timestamp int64,
 	data *corepb.Data,
-	hash common.Hash,
+	hash []byte,
 	alg uint32,
 	sign []byte) (*Transaction, error) {
 	return &Transaction{
@@ -131,7 +131,7 @@ func NewTransaction(
 	nonce uint64,
 	payloadType string,
 	payload []byte) (*Transaction, error) {
-	return NewTransactionWithSign(chainID, from, to, value, nonce, payloadType, payload, common.BytesToHash([]byte{}), []byte{})
+	return NewTransactionWithSign(chainID, from, to, value, nonce, payloadType, payload, []byte{}, []byte{})
 }
 
 // NewTransactionWithSign generates a Transaction instance with sign
@@ -142,7 +142,7 @@ func NewTransactionWithSign(
 	nonce uint64,
 	payloadType string,
 	payload []byte,
-	hash common.Hash,
+	hash []byte,
 	sign []byte) (*Transaction, error) {
 
 	return &Transaction{
@@ -158,12 +158,12 @@ func NewTransactionWithSign(
 	}, nil
 }
 
-func (tx *Transaction) calcHash() (common.Hash, error) {
+func (tx *Transaction) calcHash() ([]byte, error) {
 	hasher := sha3.New256()
 
 	value, err := tx.value.ToFixedSizeByteSlice()
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
 	}
 	hasher.Write(tx.from.Bytes())
 	hasher.Write(tx.to.Bytes())
@@ -176,7 +176,7 @@ func (tx *Transaction) calcHash() (common.Hash, error) {
 	hasher.Write(byteutils.FromUint32(uint32(tx.alg)))
 
 	hash := hasher.Sum(nil)
-	return common.BytesToHash(hash), nil
+	return hash, nil
 }
 
 // SignThis signs tx with given signature interface
@@ -187,7 +187,7 @@ func (tx *Transaction) SignThis(signer signature.Signature) error {
 		return err
 	}
 
-	sig, err := signer.Sign(hash.Bytes())
+	sig, err := signer.Sign(hash)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
 	if err != nil {
 		return err
 	}
-	if wantedHash.Equals(tx.hash) == false {
+	if !byteutils.Equal(wantedHash, tx.hash) {
 		return ErrInvalidTransactionHash
 	}
 
@@ -233,7 +233,7 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	pubKey, err := signature.RecoverPublic(tx.hash.Bytes(), tx.sign)
+	pubKey, err := signature.RecoverPublic(tx.hash, tx.sign)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -303,7 +303,7 @@ func (tx *Transaction) Nonce() uint64 {
 }
 
 // Hash returns hash
-func (tx *Transaction) Hash() common.Hash {
+func (tx *Transaction) Hash() []byte {
 	return tx.hash
 }
 

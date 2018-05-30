@@ -19,7 +19,6 @@ import (
 	"sort"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -45,18 +44,18 @@ func (tasks ReservedTasks) Swap(i, j int) {
 // ReservationQueue manages multiple instances with ReservedTask type
 type ReservationQueue struct {
 	tasks   ReservedTasks
-	hash    common.Hash
+	hash    []byte
 	storage storage.Storage
 
 	batching bool
-	snapshot common.Hash
+	snapshot []byte
 }
 
 // NewEmptyReservationQueue returns empty reserved queue
 func NewEmptyReservationQueue(storage storage.Storage) *ReservationQueue {
 	return &ReservationQueue{
 		tasks:   ReservedTasks{},
-		hash:    common.ZeroHash(),
+		hash:    nil,
 		storage: storage,
 	}
 }
@@ -90,11 +89,11 @@ func (rq *ReservationQueue) FromProto(msg proto.Message) error {
 }
 
 // LoadReservationQueue loads reservation queue by hash from storage
-func LoadReservationQueue(storage storage.Storage, hash common.Hash) (*ReservationQueue, error) {
-	if common.IsZeroHash(hash) {
+func LoadReservationQueue(storage storage.Storage, hash []byte) (*ReservationQueue, error) {
+	if hash == nil {
 		return NewEmptyReservationQueue(storage), nil
 	}
-	b, err := storage.Get(hash.Bytes())
+	b, err := storage.Get(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +109,7 @@ func LoadReservationQueue(storage storage.Storage, hash common.Hash) (*Reservati
 	if err != nil {
 		return nil, err
 	}
-	if !byteutils.Equal(hash.Bytes(), hashCalc) {
+	if !byteutils.Equal(hash, hashCalc) {
 		return nil, ErrInvalidReservationQueueHash
 	}
 	rq.hash = hash
@@ -128,7 +127,7 @@ func (rq *ReservationQueue) Storage() storage.Storage {
 }
 
 // Hash returns rq.hash
-func (rq *ReservationQueue) Hash() common.Hash {
+func (rq *ReservationQueue) Hash() []byte {
 	return rq.hash
 }
 
@@ -147,7 +146,7 @@ func (rq *ReservationQueue) Commit() error {
 		return err
 	}
 	rq.batching = false
-	rq.snapshot = common.ZeroHash()
+	rq.snapshot = nil
 	return nil
 }
 
@@ -159,7 +158,7 @@ func (rq *ReservationQueue) RollBack() error {
 	}
 	rq.tasks = reloadedRq.tasks
 	rq.batching = false
-	rq.snapshot = common.ZeroHash()
+	rq.snapshot = nil
 	return nil
 }
 
@@ -174,7 +173,7 @@ func (rq *ReservationQueue) AddTask(t *ReservedTask) error {
 	if err != nil {
 		return err
 	}
-	rq.hash = common.BytesToHash(hash)
+	rq.hash = hash
 	return nil
 }
 
@@ -216,7 +215,7 @@ func (rq *ReservationQueue) popOnlyBefore(timestamp int64) *ReservedTask {
 }
 
 func (rq *ReservationQueue) save() error {
-	if common.IsZeroHash(rq.hash) {
+	if rq.hash == nil {
 		return nil
 	}
 	msg, err := rq.ToProto()
@@ -227,7 +226,7 @@ func (rq *ReservationQueue) save() error {
 	if err != nil {
 		return err
 	}
-	return rq.storage.Put(rq.hash.Bytes(), b)
+	return rq.storage.Put(rq.hash, b)
 }
 
 func (rq *ReservationQueue) calcHash() ([]byte, error) {

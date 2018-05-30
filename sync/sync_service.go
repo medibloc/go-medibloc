@@ -16,7 +16,6 @@
 package sync
 
 import (
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -76,7 +75,7 @@ func (ss *Service) ActiveDownload() {
 	ss.Download.start()
 }
 
-func generateHashTrie(hashes []common.Hash) *trie.Trie {
+func generateHashTrie(hashes [][]byte) *trie.Trie {
 	store, err := storage.NewMemoryStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -94,7 +93,7 @@ func generateHashTrie(hashes []common.Hash) *trie.Trie {
 	}
 
 	for _, h := range hashes {
-		hashTrie.Put(h.Bytes(), h.Bytes())
+		hashTrie.Put(h, h)
 	}
 
 	return hashTrie

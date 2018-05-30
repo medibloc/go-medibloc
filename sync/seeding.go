@@ -19,11 +19,11 @@ import (
 	"errors"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/sync/pb"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -113,11 +113,11 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		"chunkSize": q.ChunkSize,
 	}).Info("Sync: Seeding manager received hashMeta request.")
 
-	if common.BytesToHash(q.Hash) != s.bm.BlockByHeight(q.From).Hash() {
+	if !byteutils.Equal(q.Hash, s.bm.BlockByHeight(q.From).Hash()) {
 		logging.WithFields(logrus.Fields{
 			"height":           q.From,
 			"hashInQuery":      s.bm.BlockByHeight(q.From).Hash(),
-			"hashInBlockChain": common.BytesToHash(q.Hash),
+			"hashInBlockChain": byteutils.Bytes2Hex(q.Hash),
 		}).Info("Block hash is different")
 		return
 	}
@@ -141,7 +141,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		return
 	}
 
-	allHashes := make([]common.Hash, tailHeight-q.From+1)
+	allHashes := make([][]byte, tailHeight-q.From+1)
 	for i := uint64(0); i < tailHeight-q.From+1; i++ {
 		allHashes[i] = s.bm.BlockByHeight(i + q.From).Hash()
 	}

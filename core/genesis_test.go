@@ -34,7 +34,7 @@ func TestNewGenesisBlock(t *testing.T) {
 
 	sto := genesisBlock.Storage()
 
-	accStateBatch, err := core.NewAccountStateBatch(genesisBlock.AccountsRoot().Bytes(), sto)
+	accStateBatch, err := core.NewAccountStateBatch(genesisBlock.AccountsRoot(), sto)
 	assert.NoError(t, err)
 	accState := accStateBatch.AccountState()
 

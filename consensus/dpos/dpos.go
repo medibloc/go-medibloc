@@ -153,7 +153,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	}
 	dynastyGen := int64(-1)
 
-	for !cur.Hash().Equals(lib.Hash()) {
+	for !byteutils.Equal(cur.Hash(), lib.Hash()) {
 		if gen := dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
 			dynastyGen = gen
 			confirmed = make(map[string]bool)
@@ -250,7 +250,7 @@ func (d *Dpos) VerifyProposer(bc *core.BlockChain, block *core.BlockData) error 
 }
 
 func verifyBlockSign(proposer *common.Address, block *core.BlockData) error {
-	signer, err := recoverSignerFromSignature(block.Alg(), block.Hash().Bytes(), block.Signature())
+	signer, err := recoverSignerFromSignature(block.Alg(), block.Hash(), block.Signature())
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":      err,

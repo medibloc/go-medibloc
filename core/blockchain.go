@@ -18,7 +18,6 @@ package core
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/golang-lru"
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
@@ -146,7 +145,7 @@ func (bc *BlockChain) ChainID() uint32 {
 }
 
 // BlockByHash returns a block of given hash.
-func (bc *BlockChain) BlockByHash(hash common.Hash) *Block {
+func (bc *BlockChain) BlockByHash(hash []byte) *Block {
 	block, err := bc.loadBlockByHash(hash)
 	if err != nil {
 		return nil
@@ -294,7 +293,7 @@ func (bc *BlockChain) findCommonAncestor(a, b *Block) (*Block, error) {
 		}
 	}
 
-	for !a.Hash().Equals(b.Hash()) {
+	for !byteutils.Equal(a.Hash(), b.Hash()) {
 		a = bc.BlockByHash(a.ParentHash())
 		b = bc.BlockByHash(b.ParentHash())
 		if a == nil || b == nil {
@@ -305,13 +304,13 @@ func (bc *BlockChain) findCommonAncestor(a, b *Block) (*Block, error) {
 }
 
 func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
-	for !to.Hash().Equals(from.Hash()) {
-		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash().Bytes())
+	for !byteutils.Equal(to.Hash(), from.Hash()) {
+		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash())
 		if err != nil {
 			logging.WithFields(logrus.Fields{
 				"err":    err,
 				"height": to.height,
-				"hash":   to.Hash().Hex(),
+				"hash":   byteutils.Bytes2Hex(to.Hash()),
 			}).Error("Failed to put block index to storage.")
 			return err
 		}
@@ -319,8 +318,8 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 		to = bc.BlockByHash(to.ParentHash())
 		if to == nil {
 			logging.WithFields(logrus.Fields{
-				"hash":       to.Hash().Hex(),
-				"parentHash": to.ParentHash().Hex(),
+				"hash":       byteutils.Bytes2Hex(to.Hash()),
+				"parentHash": byteutils.Bytes2Hex(to.ParentHash()),
 			}).Error("Failed to find parent block when building block index by height.")
 			return ErrMissingParentBlock
 		}
@@ -363,20 +362,20 @@ func (bc *BlockChain) initGenesisToStorage() error {
 	return nil
 }
 
-func (bc *BlockChain) loadBlockByHash(hash common.Hash) (*Block, error) {
+func (bc *BlockChain) loadBlockByHash(hash []byte) (*Block, error) {
 	block := bc.loadBlockFromCache(hash)
 	if block != nil {
 		return block, nil
 	}
 
-	v, err := bc.storage.Get(hash.Bytes())
+	v, err := bc.storage.Get(hash)
 	if err == storage.ErrKeyNotFound {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":  err,
-			"hash": hash.Hex(),
+			"hash": byteutils.Bytes2Hex(hash),
 		}).Error("Failed to get block data from storage.")
 		return nil, err
 	}
@@ -407,7 +406,7 @@ func (bc *BlockChain) loadBlockByHeight(height uint64) (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bc.loadBlockByHash(common.BytesToHash(hash))
+	return bc.loadBlockByHash(hash)
 }
 
 func (bc *BlockChain) loadTailFromStorage() (*Block, error) {
@@ -418,7 +417,7 @@ func (bc *BlockChain) loadTailFromStorage() (*Block, error) {
 		}).Error("Failed to load tail block hash from storage.")
 		return nil, err
 	}
-	return bc.loadBlockByHash(common.BytesToHash(hash))
+	return bc.loadBlockByHash(hash)
 }
 
 func (bc *BlockChain) loadLIBFromStorage() (*Block, error) {
@@ -429,7 +428,7 @@ func (bc *BlockChain) loadLIBFromStorage() (*Block, error) {
 		}).Error("Failed to load lib hash from storage.")
 		return nil, err
 	}
-	return bc.loadBlockByHash(common.BytesToHash(hash))
+	return bc.loadBlockByHash(hash)
 }
 
 func (bc *BlockChain) loadGenesisFromStorage() (*Block, error) {
@@ -454,7 +453,7 @@ func (bc *BlockChain) storeBlock(block *Block) error {
 		}).Error("Failed to marshal block.")
 		return err
 	}
-	err = bc.storage.Put(block.Hash().Bytes(), value)
+	err = bc.storage.Put(block.Hash(), value)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -467,24 +466,24 @@ func (bc *BlockChain) storeBlock(block *Block) error {
 }
 
 func (bc *BlockChain) storeTailHashToStorage(block *Block) error {
-	return bc.storage.Put([]byte(tailBlockKey), block.Hash().Bytes())
+	return bc.storage.Put([]byte(tailBlockKey), block.Hash())
 }
 
 func (bc *BlockChain) storeLIBHashToStorage(block *Block) error {
-	return bc.storage.Put([]byte(libKey), block.Hash().Bytes())
+	return bc.storage.Put([]byte(libKey), block.Hash())
 }
 
 func (bc *BlockChain) storeHeightToStorage(block *Block) error {
 	height := byteutils.FromUint64(block.Height())
-	return bc.storage.Put(height, block.Hash().Bytes())
+	return bc.storage.Put(height, block.Hash())
 }
 
 func (bc *BlockChain) cacheBlock(block *Block) {
-	bc.cachedBlocks.Add(block.Hash().Str(), block)
+	bc.cachedBlocks.Add(byteutils.Bytes2Hex(block.Hash()), block)
 }
 
-func (bc *BlockChain) loadBlockFromCache(hash common.Hash) *Block {
-	v, ok := bc.cachedBlocks.Get(hash.Str())
+func (bc *BlockChain) loadBlockFromCache(hash []byte) *Block {
+	v, ok := bc.cachedBlocks.Get(byteutils.Bytes2Hex(hash))
 	if !ok {
 		return nil
 	}
@@ -492,9 +491,9 @@ func (bc *BlockChain) loadBlockFromCache(hash common.Hash) *Block {
 }
 
 func (bc *BlockChain) addToTailBlocks(block *Block) {
-	bc.tailBlocks.Add(block.Hash().Str(), block)
+	bc.tailBlocks.Add(byteutils.Bytes2Hex(block.Hash()), block)
 }
 
 func (bc *BlockChain) removeFromTailBlocks(block *Block) {
-	bc.tailBlocks.Remove(block.Hash().Str())
+	bc.tailBlocks.Remove(byteutils.Bytes2Hex(block.Hash()))
 }

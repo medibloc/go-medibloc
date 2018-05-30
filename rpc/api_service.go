@@ -143,7 +143,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 	return &rpcpb.GetMedStateResponse{
 		ChainId: tailBlock.ChainID(),
 		Height:  tailBlock.Height(),
-		Tail:    tailBlock.Hash().Hex(),
+		Tail:    byteutils.Bytes2Hex(tailBlock.Hash()),
 	}, nil
 }
 
@@ -191,7 +191,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	case TAIL:
 		block = s.bm.TailBlock()
 	default:
-		block = s.bm.BlockByHash(common.HexToHash(req.Hash))
+		block = s.bm.BlockByHash(byteutils.Hex2Bytes(req.Hash))
 	}
 	if block == nil {
 		return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
@@ -216,7 +216,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
 	// TODO: check req.Hash is nil
-	pb, err := tailBlock.State().GetTx(common.HexToHash(req.Hash))
+	pb, err := tailBlock.State().GetTx(byteutils.Hex2Bytes(req.Hash))
 	if err != nil {
 		if err == trie.ErrNotFound {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
@@ -256,7 +256,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 			Type:    req.Data.Type,
 			Payload: payloadBuf,
 		},
-		common.HexToHash(req.Hash),
+		byteutils.Hex2Bytes(req.Hash),
 		req.Alg,
 		byteutils.Hex2Bytes(req.Sign))
 	if err != nil {
@@ -266,6 +266,6 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 	return &rpcpb.SendTransactionResponse{
-		Hash: tx.Hash().Hex(),
+		Hash: byteutils.Bytes2Hex(tx.Hash()),
 	}, nil
 }

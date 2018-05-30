@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -126,7 +125,7 @@ func (bm *BlockManager) BlockByHeight(height uint64) *Block {
 }
 
 // BlockByHash returns the block contained in the chain by hash.
-func (bm *BlockManager) BlockByHash(hash common.Hash) *Block {
+func (bm *BlockManager) BlockByHash(hash []byte) *Block {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 	return bm.bc.BlockByHash(hash)
@@ -298,7 +297,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 	unlinkedBlock := v.(*BlockData)
 
 	downloadMsg := &corepb.DownloadParentBlock{
-		Hash: unlinkedBlock.Hash().Bytes(),
+		Hash: unlinkedBlock.Hash(),
 		Sign: unlinkedBlock.Signature(),
 	}
 	bytes, err := proto.Marshal(downloadMsg)
@@ -388,14 +387,14 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	if byteutils.Equal(pbDownloadParentBlock.Hash, GenesisHash.Bytes()) {
+	if byteutils.Equal(pbDownloadParentBlock.Hash, GenesisHash) {
 		logging.WithFields(logrus.Fields{
 			"hash": byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),
 		}).Debug("Asked to download genesis's parent, ignore it.")
 		return
 	}
 
-	block := bm.bc.BlockByHash(common.BytesToHash(pbDownloadParentBlock.Hash))
+	block := bm.bc.BlockByHash(pbDownloadParentBlock.Hash)
 	if block == nil {
 		logging.WithFields(logrus.Fields{
 			"hash": byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),

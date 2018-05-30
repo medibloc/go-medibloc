@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -83,7 +84,7 @@ func TestTransactionManagerDupTxFromNet(t *testing.T) {
 	var count int
 	for {
 		recv := receiver.Pop()
-		if recv != nil && recv.Hash() == normal.Hash() {
+		if recv != nil && byteutils.Equal(recv.Hash(), normal.Hash()) {
 			break
 		}
 		if recv != nil {

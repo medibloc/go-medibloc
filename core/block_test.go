@@ -107,7 +107,7 @@ func TestSendExecution(t *testing.T) {
 
 	assert.NoError(t, newBlock.VerifyState())
 
-	accStateBatch, err := core.NewAccountStateBatch(newBlock.AccountsRoot().Bytes(), newBlock.Storage())
+	accStateBatch, err := core.NewAccountStateBatch(newBlock.AccountsRoot(), newBlock.Storage())
 	assert.NoError(t, err)
 	accState := accStateBatch.AccountState()
 

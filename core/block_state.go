@@ -178,36 +178,36 @@ func (st *states) Commit() error {
 	return st.reservationQueue.Commit()
 }
 
-func (st *states) AccountsRoot() common.Hash {
-	return common.BytesToHash(st.accState.RootHash())
+func (st *states) AccountsRoot() []byte {
+	return st.accState.RootHash()
 }
 
-func (st *states) TransactionsRoot() common.Hash {
-	return common.BytesToHash(st.txsState.RootHash())
+func (st *states) TransactionsRoot() []byte {
+	return st.txsState.RootHash()
 }
 
-func (st *states) UsageRoot() common.Hash {
-	return common.BytesToHash(st.usageState.RootHash())
+func (st *states) UsageRoot() []byte {
+	return st.usageState.RootHash()
 }
 
-func (st *states) RecordsRoot() common.Hash {
-	return common.BytesToHash(st.recordsState.RootHash())
+func (st *states) RecordsRoot() []byte {
+	return st.recordsState.RootHash()
 }
 
 func (st *states) ConsensusRoot() ([]byte, error) {
 	return st.consensusState.RootBytes()
 }
 
-func (st *states) CandidacyRoot() common.Hash {
-	return common.BytesToHash(st.candidacyState.RootHash())
+func (st *states) CandidacyRoot() []byte {
+	return st.candidacyState.RootHash()
 }
 
-func (st *states) ReservationQueueHash() common.Hash {
+func (st *states) ReservationQueueHash() []byte {
 	return st.reservationQueue.Hash()
 }
 
-func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
-	accState, err := NewAccountStateBatch(rootHash.Bytes(), st.storage)
+func (st *states) LoadAccountsRoot(rootHash []byte) error {
+	accState, err := NewAccountStateBatch(rootHash, st.storage)
 	if err != nil {
 		return err
 	}
@@ -215,8 +215,8 @@ func (st *states) LoadAccountsRoot(rootHash common.Hash) error {
 	return nil
 }
 
-func (st *states) LoadTransactionsRoot(rootHash common.Hash) error {
-	txsState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+func (st *states) LoadTransactionsRoot(rootHash []byte) error {
+	txsState, err := NewTrieBatch(rootHash, st.storage)
 	if err != nil {
 		return err
 	}
@@ -224,8 +224,8 @@ func (st *states) LoadTransactionsRoot(rootHash common.Hash) error {
 	return nil
 }
 
-func (st *states) LoadUsageRoot(rootHash common.Hash) error {
-	usageState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+func (st *states) LoadUsageRoot(rootHash []byte) error {
+	usageState, err := NewTrieBatch(rootHash, st.storage)
 	if err != nil {
 		return err
 	}
@@ -233,8 +233,8 @@ func (st *states) LoadUsageRoot(rootHash common.Hash) error {
 	return nil
 }
 
-func (st *states) LoadRecordsRoot(rootHash common.Hash) error {
-	recordsState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+func (st *states) LoadRecordsRoot(rootHash []byte) error {
+	recordsState, err := NewTrieBatch(rootHash, st.storage)
 	if err != nil {
 		return err
 	}
@@ -251,8 +251,8 @@ func (st *states) LoadConsensusRoot(consensus Consensus, rootBytes []byte) error
 	return nil
 }
 
-func (st *states) LoadCandidacyRoot(rootHash common.Hash) error {
-	candidacyState, err := NewTrieBatch(rootHash.Bytes(), st.storage)
+func (st *states) LoadCandidacyRoot(rootHash []byte) error {
+	candidacyState, err := NewTrieBatch(rootHash, st.storage)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func (st *states) LoadCandidacyRoot(rootHash common.Hash) error {
 	return nil
 }
 
-func (st *states) LoadReservationQueue(hash common.Hash) error {
+func (st *states) LoadReservationQueue(hash []byte) error {
 	rq, err := LoadReservationQueue(st.storage, hash)
 	if err != nil {
 		return err
@@ -348,11 +348,11 @@ func (st *states) SubBalance(address common.Address, amount *util.Uint128) error
 	return st.accState.SubBalance(address.Bytes(), amount)
 }
 
-func (st *states) AddRecord(tx *Transaction, hash common.Hash, storage string,
+func (st *states) AddRecord(tx *Transaction, hash []byte, storage string,
 	encKey []byte, seed []byte,
 	owner common.Address, writer common.Address) error {
 	record := &corepb.Record{
-		Hash:      hash.Bytes(),
+		Hash:      hash,
 		Storage:   storage,
 		Owner:     tx.from.Bytes(),
 		Timestamp: tx.Timestamp(),
@@ -369,15 +369,15 @@ func (st *states) AddRecord(tx *Transaction, hash common.Hash, storage string,
 		return err
 	}
 
-	if err := st.recordsState.Put(hash.Bytes(), recordBytes); err != nil {
+	if err := st.recordsState.Put(hash, recordBytes); err != nil {
 		return err
 	}
 
-	return st.accState.AddRecord(tx.from.Bytes(), hash.Bytes())
+	return st.accState.AddRecord(tx.from.Bytes(), hash)
 }
 
-func (st *states) AddRecordReader(tx *Transaction, dataHash common.Hash, reader common.Address, encKey []byte, seed []byte) error {
-	recordBytes, err := st.recordsState.Get(dataHash.Bytes())
+func (st *states) AddRecordReader(tx *Transaction, dataHash []byte, reader common.Address, encKey []byte, seed []byte) error {
+	recordBytes, err := st.recordsState.Get(dataHash)
 	if err != nil {
 		return err
 	}
@@ -402,11 +402,11 @@ func (st *states) AddRecordReader(tx *Transaction, dataHash common.Hash, reader 
 	if err != nil {
 		return err
 	}
-	return st.recordsState.Put(dataHash.Bytes(), b)
+	return st.recordsState.Put(dataHash, b)
 }
 
-func (st *states) GetRecord(hash common.Hash) (*corepb.Record, error) {
-	recordBytes, err := st.recordsState.Get(hash.Bytes())
+func (st *states) GetRecord(hash []byte) (*corepb.Record, error) {
+	recordBytes, err := st.recordsState.Get(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -421,12 +421,12 @@ func (st *states) incrementNonce(address common.Address) error {
 	return st.accState.IncrementNonce(address.Bytes())
 }
 
-func (st *states) GetTx(txHash common.Hash) ([]byte, error) {
-	return st.txsState.Get(txHash.Bytes())
+func (st *states) GetTx(txHash []byte) ([]byte, error) {
+	return st.txsState.Get(txHash)
 }
 
-func (st *states) PutTx(txHash common.Hash, txBytes []byte) error {
-	return st.txsState.Put(txHash.Bytes(), txBytes)
+func (st *states) PutTx(txHash []byte, txBytes []byte) error {
+	return st.txsState.Put(txHash, txBytes)
 }
 
 func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
@@ -443,7 +443,7 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		usage := &corepb.Usage{
 			Timestamps: []*corepb.TxTimestamp{
 				{
-					Hash:      tx.Hash().Bytes(),
+					Hash:      tx.Hash(),
 					Timestamp: tx.Timestamp(),
 				},
 			},
@@ -480,7 +480,7 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 			break
 		}
 	}
-	pbUsage.Timestamps = append(pbUsage.Timestamps[idx:], &corepb.TxTimestamp{Hash: tx.Hash().Bytes(), Timestamp: tx.Timestamp()})
+	pbUsage.Timestamps = append(pbUsage.Timestamps[idx:], &corepb.TxTimestamp{Hash: tx.Hash(), Timestamp: tx.Timestamp()})
 	sort.Slice(pbUsage.Timestamps, func(i, j int) bool {
 		return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp
 	})
