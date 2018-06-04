@@ -170,7 +170,10 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 	}
 	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
 	if err != nil {
-		return nil, status.Error(codes.NotFound, ErrMsgAccountNotFound)
+		return &rpcpb.GetAccountStateResponse{
+			Balance: util.Uint128Zero().String(),
+			Nonce:   0,
+		}, nil
 	}
 	return &rpcpb.GetAccountStateResponse{
 		Balance: acc.Balance().String(),

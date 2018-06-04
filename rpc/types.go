@@ -27,7 +27,6 @@ const (
 
 // Error response strings of APIService
 const (
-	ErrMsgAccountNotFound            = "account not found"
 	ErrMsgBlockNotFound              = "block not found"
 	ErrMsgBuildTransactionFail       = "cannot build transaction"
 	ErrMsgConvertBlockFailed         = "cannot convert block"
