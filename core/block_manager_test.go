@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	testutil "github.com/medibloc/go-medibloc/util/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -129,4 +130,31 @@ func TestBlockManager_Tree(t *testing.T) {
 			require.Nil(t, err)
 		}
 	}
+}
+
+func TestBlockManager_CircularParentLink(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
+
+	block := testutil.NewTestBlock(t, genesis)
+	testutil.SignBlock(t, block, dynasties)
+	err := bm.PushBlockData(block.GetBlockData())
+	require.NoError(t, err)
+
+	parent := block.ParentHash()
+	hash := block.Hash()
+	pb := &corepb.Block{
+		Header: &corepb.BlockHeader{
+			Hash:       parent,
+			ParentHash: hash,
+			ChainId:    1,
+		},
+	}
+	var bd core.BlockData
+	err = bd.FromProto(pb)
+	require.NoError(t, err)
+	err = bm.PushBlockData(&bd)
+	require.Error(t, core.ErrInvalidBlockHash)
 }
