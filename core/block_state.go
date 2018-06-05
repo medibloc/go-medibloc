@@ -479,9 +479,14 @@ func (st *states) Dynasty() ([]*common.Address, error) {
 	return st.consensusState.Dynasty()
 }
 
+// DynastySize returns size of dynasties.
+func (st *states) DynastySize() int {
+	return st.consensusState.DynastySize()
+}
+
 // SetDynasty sets dynasty members.
-func (st *states) SetDynasty(miners []*common.Address, startTime int64) error {
-	return st.consensusState.InitDynasty(miners, startTime)
+func (st *states) SetDynasty(miners []*common.Address, dynastySize int, startTime int64) error {
+	return st.consensusState.InitDynasty(miners, dynastySize, startTime)
 }
 
 // Proposer returns address of block proposer set in consensus state
@@ -509,7 +514,13 @@ func (st *states) TransitionDynasty(now int64) error {
 	}
 	var miners []*common.Address
 	minerNum := st.consensusState.DynastySize()
-	if len(st.votesCache.candidates) < st.consensusState.DynastySize() {
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get dynasty size from state.")
+		return err
+	}
+	if len(st.votesCache.candidates) < minerNum {
 		minerNum = len(st.votesCache.candidates)
 	}
 	for _, candidate := range st.votesCache.candidates {
@@ -520,7 +531,7 @@ func (st *states) TransitionDynasty(now int64) error {
 			}
 		}
 	}
-	if err := st.consensusState.InitDynasty(miners, now); err != nil {
+	if err := st.consensusState.InitDynasty(miners, minerNum, now); err != nil {
 		return err
 	}
 	return nil

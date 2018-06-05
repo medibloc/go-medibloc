@@ -30,10 +30,11 @@ import (
 
 // ConsensusState represents state for managing dynasty
 type ConsensusState struct {
-	dynasty   *trie.Trie
-	proposer  common.Address
-	timestamp int64
-	startTime int64
+	dynasty     *trie.Trie
+	dynastySize int
+	proposer    common.Address
+	timestamp   int64
+	startTime   int64
 
 	storage storage.Storage
 }
@@ -77,21 +78,34 @@ func (cs *ConsensusState) Proposer() common.Address {
 }
 
 // InitDynasty sets all witnesses for the dynasty
-func (cs *ConsensusState) InitDynasty(miners []*common.Address, startTime int64) error {
+func (cs *ConsensusState) InitDynasty(miners []*common.Address, dynastySize int, startTime int64) error {
 	t, err := trie.NewTrie(nil, cs.storage)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create new trie.")
 		return err
 	}
 	for _, addr := range miners {
 		if err := t.Put(addr.Bytes(), addr.Bytes()); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":     err,
+				"address": addr.Hex(),
+			}).Error("Failed to put dynasty members.")
 			return err
 		}
 	}
 	cs.dynasty = t
+	cs.dynastySize = dynastySize
 	cs.startTime = startTime
 	cs.timestamp = startTime
 	cs.proposer, err = FindProposer(startTime, miners)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":    err,
+			"miners": miners,
+			"time":   startTime,
+		}).Error("Failed to find proposer.")
 		return err
 	}
 	return nil
@@ -104,7 +118,7 @@ func (cs *ConsensusState) Dynasty() ([]*common.Address, error) {
 
 // DynastySize returns dynasty size of dpos
 func (cs *ConsensusState) DynastySize() int {
-	return DynastySize
+	return cs.dynastySize
 }
 
 // GetNextState returns consensus state at a certain time
@@ -120,10 +134,11 @@ func (cs *ConsensusState) GetNextStateAfterGenesis(timestamp int64) (core.Consen
 		return nil, err
 	}
 	consensusState := &ConsensusState{
-		dynasty:   dynastyTrie,
-		timestamp: deadline.Unix(),
-		startTime: deadline.Unix(),
-		storage:   cs.storage,
+		dynasty:     dynastyTrie,
+		dynastySize: cs.dynastySize,
+		timestamp:   deadline.Unix(),
+		startTime:   deadline.Unix(),
+		storage:     cs.storage,
 	}
 	miners, err := TraverseDynasty(dynastyTrie)
 	if err != nil {
@@ -149,10 +164,11 @@ func (cs *ConsensusState) GetNextStateAfter(elapsedTime int64) (core.ConsensusSt
 		return nil, err
 	}
 	consensusState := &ConsensusState{
-		dynasty:   dynastyTrie,
-		timestamp: cs.timestamp + elapsedTime,
-		startTime: cs.startTime,
-		storage:   cs.storage,
+		dynasty:     dynastyTrie,
+		dynastySize: cs.dynastySize,
+		timestamp:   cs.timestamp + elapsedTime,
+		startTime:   cs.startTime,
+		storage:     cs.storage,
 	}
 	miners, err := TraverseDynasty(dynastyTrie)
 	if err != nil {
@@ -169,6 +185,7 @@ func (cs *ConsensusState) GetNextStateAfter(elapsedTime int64) (core.ConsensusSt
 func (cs *ConsensusState) ToProto() proto.Message {
 	return &consensuspb.ConsensusState{
 		DynastyRoot: cs.dynasty.RootHash(),
+		DynastySize: int64(cs.dynastySize),
 		Proposer:    cs.proposer.Bytes(),
 		StartTime:   cs.startTime,
 		Timestamp:   cs.timestamp,
@@ -183,6 +200,7 @@ func (cs *ConsensusState) FromProto(msg proto.Message) error {
 			return err
 		}
 		cs.dynasty = t
+		cs.dynastySize = int(msg.DynastySize)
 		cs.proposer = common.BytesToAddress(msg.Proposer)
 		cs.timestamp = msg.Timestamp
 		cs.startTime = msg.StartTime

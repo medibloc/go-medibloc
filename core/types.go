@@ -131,7 +131,7 @@ type ConsensusState interface {
 	RootBytes() ([]byte, error)
 
 	Dynasty() ([]*common.Address, error)
-	InitDynasty(miners []*common.Address, startTime int64) error
+	InitDynasty(miners []*common.Address, dynastySize int, startTime int64) error
 	Proposer() common.Address
 	Timestamp() int64
 	DynastySize() int

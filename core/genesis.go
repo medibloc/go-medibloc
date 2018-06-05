@@ -84,6 +84,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
+	dynastySize := int(conf.GetMeta().DynastySize)
 	var members []*common.Address
 	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
 		member := common.HexToAddress(v)
@@ -92,7 +93,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		members = append(members, &member)
 	}
-	genesisBlock.State().SetDynasty(members, int64(0))
+	genesisBlock.State().SetDynasty(members, dynastySize, int64(0))
 
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
@@ -184,6 +185,14 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 			"block":   block,
 			"genesis": genesis,
 		}).Error("Genesis ChainID does not match.")
+		return false
+	}
+
+	if block.State().DynastySize() != int(genesis.Meta.DynastySize) {
+		logging.Console().WithFields(logrus.Fields{
+			"sizeInBlock":  block.State().DynastySize(),
+			"sizeInConfig": genesis.Meta.DynastySize,
+		}).Error("Genesis's dynasty size does not match.")
 		return false
 	}
 
