@@ -21,6 +21,8 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 // account default item in state
@@ -130,6 +132,50 @@ func (as *accountState) GetAccount(address []byte) (Account, error) {
 	return loadAccount(bytes)
 }
 
+func (as *accountState) Accounts() ([]Account, error) {
+	var accounts []Account
+	iter, err := as.accounts.Iterator(nil)
+	if err == trie.ErrNotFound {
+		return accounts, nil
+	}
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get iterator of account trie.")
+		return nil, err
+	}
+
+	exist, err := iter.Next()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to iterate account trie.")
+		return nil, err
+	}
+
+	for exist {
+		accBytes := iter.Value()
+		account, err := loadAccount(accBytes)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":   err,
+				"bytes": accBytes,
+			}).Error("Failed to get accounts from trie.")
+			return nil, err
+		}
+		accounts = append(accounts, account)
+		exist, err = iter.Next()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to iterate account trie.")
+			return nil, err
+		}
+	}
+	return accounts, nil
+
+}
+
 // Account account interface
 type Account interface {
 	// Address getter for address
@@ -153,4 +199,6 @@ type Account interface {
 type AccountState interface {
 	// GetAccount get account for address
 	GetAccount(address []byte) (Account, error)
+
+	Accounts() ([]Account, error)
 }

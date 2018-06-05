@@ -19,9 +19,13 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewGenesisBlock(t *testing.T) {
@@ -45,4 +49,49 @@ func TestNewGenesisBlock(t *testing.T) {
 
 	expectedBalance, _ := util.NewUint128FromString("1000000000")
 	assert.Zerof(t, acc.Balance().Cmp(expectedBalance), "Balance of new account in genesis block should equal to %s", expectedBalance.String())
+}
+
+func TestCheckGenesisBlock(t *testing.T) {
+	//conf, dynasties, distributed := test.NewTestGenesisConf(t)
+	conf, _, _ := test.NewTestGenesisConf(t)
+	stor, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	consensus := test.NewTestConsensus(t)
+	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
+	require.NoError(t, err)
+
+	ok := core.CheckGenesisConf(genesis, conf)
+	require.True(t, ok)
+
+	modified := copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.Meta.ChainId = 9898
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.Meta.DynastySize = 22
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.Consensus.Dpos.Dynasty = modified.Consensus.Dpos.Dynasty[1:]
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.Consensus.Dpos.Dynasty[0] = "Wrong Address"
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.TokenDistribution = modified.TokenDistribution[1:]
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.TokenDistribution[2].Address = "Wrong Address"
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.TokenDistribution[3].Value = "989898"
+	require.False(t, core.CheckGenesisConf(genesis, modified))
+
+	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
+	modified.TokenDistribution[4].Value = "Wrong Value"
+	require.False(t, core.CheckGenesisConf(genesis, modified))
 }

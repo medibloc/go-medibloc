@@ -229,5 +229,53 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		}
 	}
 
+	accounts, err := block.State().accState.AccountState().Accounts()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get accounts from block.")
+		return false
+	}
+
+	tokenDist := genesis.GetTokenDistribution()
+	if len(accounts) != len(tokenDist) {
+		logging.Console().WithFields(logrus.Fields{
+			"accountCount": len(accounts),
+			"tokenCount":   len(tokenDist),
+		}).Error("Size of token distribution accounts does not match.")
+		return false
+	}
+
+	for _, account := range accounts {
+		contains := false
+		for _, token := range tokenDist {
+			if token.Address == byteutils.Bytes2Hex(account.Address()) {
+				balance, err := util.NewUint128FromString(token.Value)
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("Failed to convert balance from string to uint128.")
+					return false
+				}
+				if balance.Cmp(account.Balance()) != 0 {
+					logging.Console().WithFields(logrus.Fields{
+						"balanceInBlock": account.Balance(),
+						"balanceInConf":  balance,
+						"account":        byteutils.Bytes2Hex(account.Address()),
+					}).Error("Genesis's token balance does not match.")
+					return false
+				}
+				contains = true
+				break
+			}
+		}
+		if !contains {
+			logging.Console().WithFields(logrus.Fields{
+				"account": byteutils.Bytes2Hex(account.Address()),
+			}).Error("Accounts of token distribution don't match.")
+			return false
+		}
+	}
+
 	return true
 }
