@@ -387,14 +387,14 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 
 // MockMedlet sets up components for tests.
 type MockMedlet struct {
-	config    *medletpb.Config
-	storage   storage.Storage
-	genesis   *corepb.Genesis
-	ns        net.Service
-	bm        *core.BlockManager
-	tm        *core.TransactionManager
-	consensus core.Consensus
-	dynasties Dynasties
+	config             *medletpb.Config
+	genesis            *corepb.Genesis
+	netService         net.Service
+	storage            storage.Storage
+	blockManager       *core.BlockManager
+	transactionManager *core.TransactionManager
+	consensus          core.Consensus
+	dynasties          Dynasties
 }
 
 // NewMockMedlet returns MockMedlet.
@@ -404,10 +404,9 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 
+	genesisConf, dynasties, _ := NewTestGenesisConf(t)
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
-	require.NoError(t, err)
-	genesisConf, dynasties, _ := NewTestGenesisConf(t)
 	require.NoError(t, err)
 	consensus, err := dpos.New(cfg)
 	require.NoError(t, err)
@@ -419,28 +418,24 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	err = bm.Setup(genesisConf, stor, ns, consensus)
 	require.NoError(t, err)
 	tm.Setup(ns)
-	consensus.Setup(genesisConf, bm, tm)
+	err = consensus.Setup(genesisConf, bm, tm)
+	require.NoError(t, err)
 
 	return &MockMedlet{
-		config:    cfg,
-		storage:   stor,
-		genesis:   genesisConf,
-		ns:        ns,
-		bm:        bm,
-		tm:        tm,
-		consensus: consensus,
-		dynasties: dynasties,
+		config:             cfg,
+		genesis:            genesisConf,
+		netService:         ns,
+		storage:            stor,
+		blockManager:       bm,
+		transactionManager: tm,
+		consensus:          consensus,
+		dynasties:          dynasties,
 	}
 }
 
 // Config returns config.
 func (m *MockMedlet) Config() *medletpb.Config {
 	return m.config
-}
-
-// Storage return storage.
-func (m *MockMedlet) Storage() storage.Storage {
-	return m.storage
 }
 
 // Genesis return genesis configuration.
@@ -450,22 +445,27 @@ func (m *MockMedlet) Genesis() *corepb.Genesis {
 
 // NetService returns net.Service.
 func (m *MockMedlet) NetService() net.Service {
-	return m.ns
+	return m.netService
+}
+
+// Storage return storage.
+func (m *MockMedlet) Storage() storage.Storage {
+	return m.storage
+}
+
+// BlockManager returns BlockManager.
+func (m *MockMedlet) BlockManager() *core.BlockManager {
+	return m.blockManager
+}
+
+// TransactionManager returns TransactionManager.
+func (m *MockMedlet) TransactionManager() *core.TransactionManager {
+	return m.transactionManager
 }
 
 // Consensus returns Consensus.
 func (m *MockMedlet) Consensus() core.Consensus {
 	return m.consensus
-}
-
-// TransactionManager returns TransactionManager.
-func (m *MockMedlet) TransactionManager() *core.TransactionManager {
-	return m.tm
-}
-
-// BlockManager returns BlockManager.
-func (m *MockMedlet) BlockManager() *core.BlockManager {
-	return m.bm
 }
 
 // Dynasties returns Dynasties.
