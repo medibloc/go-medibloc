@@ -3,7 +3,8 @@ package consensuspb;
 
 message ConsensusState {
   bytes dynasty_root = 1;
-  bytes proposer = 2;
-  int64 timestamp = 3;
-  int64 start_time = 4;
+  int64 dynasty_size = 2;
+  bytes proposer = 3;
+  int64 timestamp = 4;
+  int64 start_time = 5;
 }
