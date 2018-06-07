@@ -112,19 +112,10 @@ func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
 	newTail = bc.MainTailBlock()
 	tails := bc.TailBlocks()
 	for _, block := range tails {
-		ancestor, err := bc.FindCommonAncestorWithTail(block)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"block": block,
-				"err":   err,
-			}).Error("Failed to find ancestor of blocks.")
-			continue
-		}
-		if ancestor.Height() < bc.LIB().Height() {
+		if bc.IsForkedBeforeLIB(block) {
 			logging.WithFields(logrus.Fields{
-				"block":    block,
-				"ancestor": ancestor,
-				"lib":      bc.LIB(),
+				"block": block,
+				"lib":   bc.LIB(),
 			}).Debug("Blocks forked before LIB can not be selected.")
 			continue
 		}

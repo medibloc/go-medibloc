@@ -234,12 +234,13 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 
 // SetTailBlock sets tail block.
 func (bc *BlockChain) SetTailBlock(newTail *Block) error {
-	ancestor, err := bc.FindCommonAncestorWithTail(newTail)
+	ancestor, err := bc.FindAncestorOnCanonical(newTail, true)
 	if err != nil {
-		logging.WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
+			"err":     err,
 			"newTail": newTail,
 			"tail":    bc.mainTailBlock,
-		}).Error("Failed to find common ancestor with tail.")
+		}).Error("Failed to find ancestor in canonical chain.")
 		return err
 	}
 
@@ -265,42 +266,45 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 	return nil
 }
 
-// FindCommonAncestorWithTail finds common ancestor with a current tail block.
-func (bc *BlockChain) FindCommonAncestorWithTail(block *Block) (*Block, error) {
+// FindAncestorOnCanonical finds most recent ancestor block in canonical chain.
+func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*Block, error) {
 	tail := bc.mainTailBlock
-	if tail.Height() > block.Height() {
-		tail = bc.BlockByHeight(block.Height())
-	}
-	if tail == nil {
-		return nil, ErrMissingParentBlock
+	for tail.Height() < block.Height() {
+		parentHash := block.ParentHash()
+		block = bc.BlockByHash(parentHash)
+		if block == nil {
+			logging.Console().WithFields(logrus.Fields{
+				"hash": parentHash,
+			}).Error("Failed to find block by hash.")
+			return nil, ErrMissingParentBlock
+		}
 	}
 
-	return bc.findCommonAncestor(tail, block)
+	lib := bc.LIB()
+	for !byteutils.Equal(bc.BlockByHeight(block.Height()).Hash(), block.Hash()) {
+		parentHash := block.ParentHash()
+		block = bc.BlockByHash(parentHash)
+		if block == nil {
+			logging.Console().WithFields(logrus.Fields{
+				"hash": parentHash,
+			}).Error("Failed to find block by hash.")
+			return nil, ErrMissingParentBlock
+		}
+
+		if breakAtLIB && block.height < lib.Height() {
+			return nil, ErrMissingParentBlock
+		}
+	}
+	return block, nil
 }
 
-func (bc *BlockChain) findCommonAncestor(a, b *Block) (*Block, error) {
-	if a.Height() > b.Height() {
-		a = bc.BlockByHash(a.ParentHash())
-		if a == nil {
-			return nil, ErrMissingParentBlock
-		}
+// IsForkedBeforeLIB checks if the block is forked before LIB.
+func (bc *BlockChain) IsForkedBeforeLIB(block *Block) bool {
+	_, err := bc.FindAncestorOnCanonical(block, true)
+	if err != nil {
+		return true
 	}
-
-	for a.Height() < b.Height() {
-		b = bc.BlockByHash(b.ParentHash())
-		if b == nil {
-			return nil, ErrMissingParentBlock
-		}
-	}
-
-	for !byteutils.Equal(a.Hash(), b.Hash()) {
-		a = bc.BlockByHash(a.ParentHash())
-		b = bc.BlockByHash(b.ParentHash())
-		if a == nil || b == nil {
-			return nil, ErrMissingParentBlock
-		}
-	}
-	return b, nil
+	return false
 }
 
 func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
@@ -496,4 +500,54 @@ func (bc *BlockChain) addToTailBlocks(block *Block) {
 
 func (bc *BlockChain) removeFromTailBlocks(block *Block) {
 	bc.tailBlocks.Remove(byteutils.Bytes2Hex(block.Hash()))
+}
+
+func (bc *BlockChain) removeBlock(block *Block) error {
+	if byteutils.Equal(bc.BlockByHeight(block.Height()).Hash(), block.Hash()) {
+		logging.Console().WithFields(logrus.Fields{
+			"block": block,
+		}).Error("Can not remove block on canonical chain.")
+		return ErrCannotRemoveBlockOnCanonical
+	}
+
+	err := bc.storage.Delete(block.Hash())
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to delete blocks in storage.")
+		return err
+	}
+	bc.cachedBlocks.Remove(byteutils.Bytes2Hex(block.Hash()))
+	return nil
+}
+
+func (bc *BlockChain) removeForkedBranch(tail *Block) error {
+	ancestor, err := bc.FindAncestorOnCanonical(tail, false)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to find ancestor in canonical.")
+		return err
+	}
+
+	block := tail
+	for !byteutils.Equal(ancestor.Hash(), block.Hash()) {
+		err = bc.removeBlock(block)
+		if err != nil {
+			return err
+		}
+
+		parentHash := block.ParentHash()
+		block = bc.BlockByHash(parentHash)
+		if block == nil {
+			logging.Console().WithFields(logrus.Fields{
+				"hash": parentHash,
+			}).Error("Failed to find block by hash.")
+			return ErrMissingParentBlock
+		}
+	}
+
+	bc.removeFromTailBlocks(tail)
+	return nil
 }
