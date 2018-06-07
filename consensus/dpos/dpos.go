@@ -328,24 +328,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		}).Error("Failed to transition dynasty.")
 		return err
 	}
-	members, err := newState.Dynasty()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"members": members,
-			"err":     err,
-		}).Error("Failed to get dynasty members.")
-		return err
-	}
-
-	proposer, err := FindProposer(deadline.Unix(), members)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"members":  members,
-			"deadline": deadline,
-			"err":      err,
-		}).Error("Failed to find block proposer.")
-		return err
-	}
+	proposer := newState.Proposer()
 
 	if !d.miner.Equals(proposer) {
 		logging.WithFields(logrus.Fields{
