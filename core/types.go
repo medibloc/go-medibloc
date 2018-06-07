@@ -72,6 +72,7 @@ var (
 	ErrNotBatching                      = errors.New("not batching")
 	ErrVestingNotEnough                 = errors.New("vesting is not enough")
 	ErrCannotConvertTransaction         = errors.New("proto message cannot be converted into Transaction")
+	ErrCannotRevertLIB                  = errors.New("cannot revert latest irreversible block")
 	ErrDuplicatedBlock                  = errors.New("duplicated block")
 	ErrDuplicatedTransaction            = errors.New("duplicated transaction")
 	ErrGenesisNotMatch                  = errors.New("genesis block does not match")

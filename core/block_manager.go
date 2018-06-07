@@ -174,6 +174,13 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return ErrDuplicatedBlock
 	}
 
+	if bd.Height() <= bm.bc.LIB().Height() {
+		logging.WithFields(logrus.Fields{
+			"blockData": bd,
+		}).Debug("Received a block forked before current LIB.")
+		return ErrCannotRevertLIB
+	}
+
 	// TODO @cl9200 Filter blocks of same height.
 
 	if err := bd.VerifyIntegrity(); err != nil {
