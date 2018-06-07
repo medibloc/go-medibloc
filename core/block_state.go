@@ -514,12 +514,6 @@ func (st *states) TransitionDynasty(now int64) error {
 	}
 	var miners []*common.Address
 	minerNum := st.consensusState.DynastySize()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get dynasty size from state.")
-		return err
-	}
 	if len(st.votesCache.candidates) < minerNum {
 		minerNum = len(st.votesCache.candidates)
 	}
