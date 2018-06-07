@@ -229,6 +229,19 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 		return err
 	}
 	bc.lib = newLIB
+
+	for _, tail := range bc.TailBlocks() {
+		if !bc.IsForkedBeforeLIB(tail) {
+			continue
+		}
+		err = bc.removeForkedBranch(tail)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":   err,
+				"block": tail,
+			}).Error("Failed to remove a forked branch.")
+		}
+	}
 	return nil
 }
 

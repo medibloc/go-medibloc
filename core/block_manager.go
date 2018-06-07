@@ -212,6 +212,13 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return nil
 	}
 
+	if bm.bc.IsForkedBeforeLIB(parentOnChain) {
+		logging.WithFields(logrus.Fields{
+			"blockData": bd,
+		}).Debug("Received a block forked before current LIB.")
+		return ErrCannotRevertLIB
+	}
+
 	// Parent block exists in blockchain.
 	all, tails, err := bm.findDescendantBlocks(parentOnChain)
 	if err != nil {
