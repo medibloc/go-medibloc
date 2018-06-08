@@ -281,32 +281,39 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 
 // FindAncestorOnCanonical finds most recent ancestor block in canonical chain.
 func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*Block, error) {
+	var err error
+
 	tail := bc.mainTailBlock
 	for tail.Height() < block.Height() {
-		parentHash := block.ParentHash()
-		block = bc.BlockByHash(parentHash)
-		if block == nil {
-			logging.Console().WithFields(logrus.Fields{
-				"hash": parentHash,
-			}).Error("Failed to find block by hash.")
-			return nil, ErrMissingParentBlock
+		block, err = bc.parentBlock(block)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	lib := bc.LIB()
-	for !byteutils.Equal(bc.BlockByHeight(block.Height()).Hash(), block.Hash()) {
-		parentHash := block.ParentHash()
-		block = bc.BlockByHash(parentHash)
-		if block == nil {
+	for {
+		canonical := bc.BlockByHeight(block.Height())
+		if canonical == nil {
 			logging.Console().WithFields(logrus.Fields{
-				"hash": parentHash,
-			}).Error("Failed to find block by hash.")
+				"height": block.Height(),
+			}).Error("Failed to get the block of height.")
 			return nil, ErrMissingParentBlock
+		}
+
+		if byteutils.Equal(canonical.Hash(), block.Hash()) {
+			break
+		}
+
+		block, err = bc.parentBlock(block)
+		if err != nil {
+			return nil, err
 		}
 
 		if breakAtLIB && block.height < lib.Height() {
 			return nil, ErrMissingParentBlock
 		}
+
 	}
 	return block, nil
 }
@@ -318,6 +325,18 @@ func (bc *BlockChain) IsForkedBeforeLIB(block *Block) bool {
 		return true
 	}
 	return false
+}
+
+func (bc *BlockChain) parentBlock(block *Block) (*Block, error) {
+	parentHash := block.ParentHash()
+	block = bc.BlockByHash(parentHash)
+	if block == nil {
+		logging.Console().WithFields(logrus.Fields{
+			"hash": parentHash,
+		}).Error("Failed to find a parent block by hash.")
+		return nil, ErrMissingParentBlock
+	}
+	return block, nil
 }
 
 func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
@@ -332,13 +351,9 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 			return err
 		}
 		// TODO @cl9200 Remove tx in block from tx pool.
-		to = bc.BlockByHash(to.ParentHash())
-		if to == nil {
-			logging.WithFields(logrus.Fields{
-				"hash":       byteutils.Bytes2Hex(to.Hash()),
-				"parentHash": byteutils.Bytes2Hex(to.ParentHash()),
-			}).Error("Failed to find parent block when building block index by height.")
-			return ErrMissingParentBlock
+		to, err = bc.parentBlock(to)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -516,7 +531,8 @@ func (bc *BlockChain) removeFromTailBlocks(block *Block) {
 }
 
 func (bc *BlockChain) removeBlock(block *Block) error {
-	if byteutils.Equal(bc.BlockByHeight(block.Height()).Hash(), block.Hash()) {
+	canonical := bc.BlockByHeight(block.Height())
+	if canonical != nil && byteutils.Equal(canonical.Hash(), block.Hash()) {
 		logging.Console().WithFields(logrus.Fields{
 			"block": block,
 		}).Error("Can not remove block on canonical chain.")
@@ -551,13 +567,9 @@ func (bc *BlockChain) removeForkedBranch(tail *Block) error {
 			return err
 		}
 
-		parentHash := block.ParentHash()
-		block = bc.BlockByHash(parentHash)
-		if block == nil {
-			logging.Console().WithFields(logrus.Fields{
-				"hash": parentHash,
-			}).Error("Failed to find block by hash.")
-			return ErrMissingParentBlock
+		block, err = bc.parentBlock(block)
+		if err != nil {
+			return err
 		}
 	}
 
