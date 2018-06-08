@@ -368,6 +368,11 @@ func (bd *BlockData) Height() uint64 {
 	return bd.height
 }
 
+// SetHeight sets height.
+func (bd *BlockData) SetHeight(height uint64) {
+	bd.height = height
+}
+
 // Transactions returns txs in block
 func (bd *BlockData) Transactions() Transactions {
 	return bd.transactions

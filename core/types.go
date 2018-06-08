@@ -94,6 +94,7 @@ var (
 	ErrMissingParentBlock               = errors.New("cannot find the block's parent block in storage")
 	ErrBlockNotExist                    = errors.New("block not exist")
 	ErrBlockNotSealed                   = errors.New("block should be sealed first to be signed")
+	ErrInvalidBlockHeight               = errors.New("block height should be one block higher than the parent")
 	ErrInvalidBlockAccountsRoot         = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot              = errors.New("invalid transactions state root hash")
 	ErrInvalidBlockUsageRoot            = errors.New("invalid usage state root hash")

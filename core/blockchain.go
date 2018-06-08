@@ -293,6 +293,10 @@ func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*B
 
 	lib := bc.LIB()
 	for {
+		if breakAtLIB && block.height < lib.Height() {
+			return nil, ErrMissingParentBlock
+		}
+
 		canonical := bc.BlockByHeight(block.Height())
 		if canonical == nil {
 			logging.Console().WithFields(logrus.Fields{
@@ -308,10 +312,6 @@ func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*B
 		block, err = bc.parentBlock(block)
 		if err != nil {
 			return nil, err
-		}
-
-		if breakAtLIB && block.height < lib.Height() {
-			return nil, ErrMissingParentBlock
 		}
 
 	}

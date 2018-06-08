@@ -158,3 +158,64 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	err = bm.PushBlockData(&bd)
 	require.Error(t, core.ErrInvalidBlockHash)
 }
+
+func TestBlockManager_FilterByLIB(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
+	dynastySize := int(m.Genesis().GetMeta().GetDynastySize())
+
+	idxToParent := []testutil.BlockID{testutil.GenesisID}
+	for i := 0; i < dynastySize; i++ {
+		idxToParent = append(idxToParent, testutil.BlockID(i))
+	}
+	idxToParent = append(idxToParent, testutil.BlockID(0))
+	idxToParent = append(idxToParent, testutil.BlockID(1))
+	idxToParent = append(idxToParent, testutil.BlockID(dynastySize*2/3))
+	idxToParent = append(idxToParent, testutil.BlockID(dynastySize*2/3+1))
+
+	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
+	for i := 0; i < dynastySize; i++ {
+		err := bm.PushBlockData(blockDatas[i])
+		assert.NoError(t, err)
+	}
+
+	assert.Len(t, blockDatas, dynastySize+5)
+	err := bm.PushBlockData(blockDatas[dynastySize+1])
+	assert.Equal(t, core.ErrCannotRevertLIB, err)
+	err = bm.PushBlockData(blockDatas[dynastySize+2])
+	assert.Equal(t, core.ErrCannotRevertLIB, err)
+	err = bm.PushBlockData(blockDatas[dynastySize+3])
+	assert.NoError(t, err)
+	err = bm.PushBlockData(blockDatas[dynastySize+4])
+	assert.NoError(t, err)
+
+	parent := bm.BlockByHeight(3)
+	bd := nextBlockData(t, parent, dynasties)
+	bd.SetHeight(20)
+	err = bm.PushBlockData(bd)
+	assert.Equal(t, core.ErrCannotRevertLIB, err)
+}
+
+func TestBlockManager_PruneByLIB(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
+	dynastySize := int(m.Genesis().GetMeta().GetDynastySize())
+
+	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 0}
+	for i := 1; i < dynastySize; i++ {
+		idxToParent = append(idxToParent, testutil.BlockID(i+1))
+	}
+
+	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
+	for _, blockData := range blockDatas {
+		err := bm.PushBlockData(blockData)
+		assert.NoError(t, err)
+	}
+
+	assert.Nil(t, bm.BlockByHash(blockDatas[1].Hash()))
+	assert.NotNil(t, bm.BlockByHash(blockDatas[2].Hash()))
+}
