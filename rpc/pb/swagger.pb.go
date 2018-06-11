@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -302,6 +302,10 @@ const (
         "sign": {
           "type": "string",
           "description": "Transaction sign."
+        },
+        "payer_sign": {
+          "type": "string",
+          "description": "Transaction payer's sign."
         }
       }
     },

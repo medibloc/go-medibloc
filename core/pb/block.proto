@@ -46,4 +46,5 @@ message Transaction {
 
   uint32 alg = 9;
   bytes sign = 10;
+  bytes payerSign = 11;
 }

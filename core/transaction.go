@@ -42,6 +42,7 @@ type Transaction struct {
 	chainID   uint32
 	alg       algorithm.Algorithm
 	sign      []byte
+	payerSign []byte
 }
 
 // Transactions is just multiple txs
@@ -65,6 +66,7 @@ func (tx *Transaction) ToProto() (proto.Message, error) {
 		ChainId:   tx.chainID,
 		Alg:       uint32(tx.alg),
 		Sign:      tx.sign,
+		PayerSign: tx.payerSign,
 	}, nil
 }
 
@@ -91,6 +93,7 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 		}
 		tx.alg = alg
 		tx.sign = msg.Sign
+		tx.payerSign = msg.PayerSign
 
 		return nil
 	}
@@ -108,7 +111,8 @@ func BuildTransaction(
 	data *corepb.Data,
 	hash []byte,
 	alg uint32,
-	sign []byte) (*Transaction, error) {
+	sign []byte,
+	payerSign []byte) (*Transaction, error) {
 	return &Transaction{
 		from:      from,
 		to:        to,
@@ -120,6 +124,7 @@ func BuildTransaction(
 		hash:      hash,
 		alg:       algorithm.Algorithm(alg),
 		sign:      sign,
+		payerSign: payerSign,
 	}, nil
 }
 
@@ -131,7 +136,7 @@ func NewTransaction(
 	nonce uint64,
 	payloadType string,
 	payload []byte) (*Transaction, error) {
-	return NewTransactionWithSign(chainID, from, to, value, nonce, payloadType, payload, []byte{}, []byte{})
+	return NewTransactionWithSign(chainID, from, to, value, nonce, payloadType, payload, []byte{}, []byte{}, []byte{})
 }
 
 // NewTransactionWithSign generates a Transaction instance with sign
@@ -143,7 +148,8 @@ func NewTransactionWithSign(
 	payloadType string,
 	payload []byte,
 	hash []byte,
-	sign []byte) (*Transaction, error) {
+	sign []byte,
+	payerSign []byte) (*Transaction, error) {
 
 	return &Transaction{
 		from:      from,
@@ -155,6 +161,7 @@ func NewTransactionWithSign(
 		chainID:   chainID,
 		hash:      hash,
 		sign:      sign,
+		payerSign: payerSign,
 	}, nil
 }
 
@@ -196,6 +203,22 @@ func (tx *Transaction) SignThis(signer signature.Signature) error {
 	return nil
 }
 
+func (tx *Transaction) getPayerSignTarget() []byte {
+	return append(tx.hash, tx.sign...)
+}
+
+// SignByPayer puts payer's sign in tx
+func (tx *Transaction) SignByPayer(signer signature.Signature) error {
+	target := tx.getPayerSignTarget()
+
+	sig, err := signer.Sign(target)
+	if err != nil {
+		return err
+	}
+	tx.payerSign = sig
+	return nil
+}
+
 // VerifyIntegrity returns transaction verify result, including Hash and Signature.
 func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
 	// check ChainID.
@@ -221,7 +244,7 @@ func (tx *Transaction) verifySign() error {
 	if err != nil {
 		return err
 	}
-	if tx.Type() != TxOperationAddRecord && !tx.from.Equals(signer) {
+	if !tx.from.Equals(signer) {
 		return ErrInvalidTransactionSigner
 	}
 	return nil
@@ -310,6 +333,11 @@ func (tx *Transaction) Hash() []byte {
 // Signature returns tx signature
 func (tx *Transaction) Signature() []byte {
 	return tx.sign
+}
+
+// PayerSignature returns tx payer signature
+func (tx *Transaction) PayerSignature() []byte {
+	return tx.payerSign
 }
 
 // String returns string representation of tx

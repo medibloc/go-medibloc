@@ -259,7 +259,8 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		},
 		byteutils.Hex2Bytes(req.Hash),
 		req.Alg,
-		byteutils.Hex2Bytes(req.Sign))
+		byteutils.Hex2Bytes(req.Sign),
+		byteutils.Hex2Bytes(req.PayerSign))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
 	}
