@@ -37,8 +37,6 @@ type account struct {
 	nonce uint64
 	// voted account
 	voted []byte
-	// writers
-	writers [][]byte
 	// records
 	records [][]byte
 }
@@ -63,10 +61,6 @@ func (acc *account) Voted() []byte {
 	return acc.voted
 }
 
-func (acc *account) Writers() [][]byte {
-	return acc.writers
-}
-
 func (acc *account) Records() [][]byte {
 	return acc.records
 }
@@ -86,7 +80,6 @@ func (acc *account) toBytes() ([]byte, error) {
 		Vesting: vestingBytes,
 		Voted:   acc.voted,
 		Nonce:   acc.nonce,
-		Writers: acc.writers,
 		Records: acc.records,
 	}
 	bytes, err := proto.Marshal(pbAcc)
@@ -111,7 +104,6 @@ func loadAccount(bytes []byte) (*account, error) {
 		vesting: vesting,
 		voted:   pbAcc.Voted,
 		nonce:   pbAcc.Nonce,
-		writers: pbAcc.Writers,
 		records: pbAcc.Records,
 	}
 	return acc, nil
@@ -189,8 +181,6 @@ type Account interface {
 	Nonce() uint64
 
 	Voted() []byte
-
-	Writers() [][]byte
 
 	Records() [][]byte
 }

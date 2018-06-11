@@ -264,27 +264,6 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 	return common.PublicKeyToAddress(pubKey)
 }
 
-// VerifyDelegation verifies if tx signer is equal to tx.from or one of tx.from's writers
-func (tx *Transaction) VerifyDelegation(bs *BlockState) error {
-	signer, err := tx.recoverSigner()
-	if err != nil {
-		return err
-	}
-	if byteutils.Equal(tx.from.Bytes(), signer.Bytes()) {
-		return nil
-	}
-	acc, err := bs.GetAccount(tx.from)
-	if err != nil {
-		return err
-	}
-	for _, w := range acc.Writers() {
-		if byteutils.Equal(signer.Bytes(), w) {
-			return nil
-		}
-	}
-	return ErrInvalidTxDelegation
-}
-
 // From returns from
 func (tx *Transaction) From() common.Address {
 	return tx.from
@@ -361,10 +340,6 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 	}
 
 	switch tx.Type() {
-	case TxOperationRegisterWKey:
-		return tx.registerWriteKey(bs)
-	case TxOperationRemoveWKey:
-		return tx.removeWriteKey(bs)
 	case TxOperationAddRecord:
 		return tx.addRecord(bs)
 	case TxOperationVest:
@@ -392,22 +367,6 @@ func (tx *Transaction) transfer(bs *BlockState) error {
 		return err
 	}
 	return bs.AddBalance(tx.to, tx.value)
-}
-
-func (tx *Transaction) registerWriteKey(bs *BlockState) error {
-	payload, err := BytesToRegisterWriterPayload(tx.Data())
-	if err != nil {
-		return err
-	}
-	return bs.AddWriter(tx.from, payload.Writer)
-}
-
-func (tx *Transaction) removeWriteKey(bs *BlockState) error {
-	payload, err := BytesToRemoveWriterPayload(tx.Data())
-	if err != nil {
-		return err
-	}
-	return bs.RemoveWriter(tx.from, payload.Writer)
 }
 
 func (tx *Transaction) addRecord(bs *BlockState) error {

@@ -335,14 +335,6 @@ func (st *states) AddBalance(address common.Address, amount *util.Uint128) error
 	return st.accState.AddBalance(address.Bytes(), amount)
 }
 
-func (st *states) AddWriter(address common.Address, writer common.Address) error {
-	return st.accState.AddWriter(address.Bytes(), writer.Bytes())
-}
-
-func (st *states) RemoveWriter(address common.Address, writer common.Address) error {
-	return st.accState.RemoveWriter(address.Bytes(), writer.Bytes())
-}
-
 func (st *states) SubBalance(address common.Address, amount *util.Uint128) error {
 	return st.accState.SubBalance(address.Bytes(), amount)
 }

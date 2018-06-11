@@ -84,9 +84,7 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 }
 
 func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
-	var registerWriter *core.RegisterWriterPayload
 	var addRecord *core.AddRecordPayload
-	// var removeWriter *core.RemoveWriterPayload
 
 	switch txData.Type {
 	case core.TxOperationSend:
@@ -100,15 +98,6 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 		return payloadBuf, nil
 	case core.TxOperationVest:
 	case core.TxOperationWithdrawVesting:
-	case core.TxOperationRegisterWKey:
-		json.Unmarshal([]byte(txData.Payload), &registerWriter)
-		payload := core.NewRegisterWriterPayload(registerWriter.Writer)
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOperationRemoveWKey:
 	case core.TxPayloadBinaryType:
 		return nil, nil
 	}

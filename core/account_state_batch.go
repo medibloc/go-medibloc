@@ -144,48 +144,6 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 	return nil
 }
 
-// AddWriter adds writer address of this account
-// writers can use the account's bandwidth and add record of her
-func (as *AccountStateBatch) AddWriter(address []byte, newWriter []byte) error {
-	if !as.batching {
-		return ErrNotBatching
-	}
-	acc, err := as.getAccount(address)
-	if err != nil {
-		return err
-	}
-	for _, w := range acc.writers {
-		if byteutils.Equal(newWriter, w) {
-			return ErrWriterAlreadyRegistered
-		}
-	}
-	acc.writers = append(acc.writers, newWriter)
-	return nil
-}
-
-// RemoveWriter removes a writer from account's writers list
-func (as *AccountStateBatch) RemoveWriter(address []byte, writer []byte) error {
-	if !as.batching {
-		return ErrNotBatching
-	}
-	acc, err := as.getAccount(address)
-	if err != nil {
-		return err
-	}
-	writers := [][]byte{}
-	for _, w := range acc.writers {
-		if byteutils.Equal(writer, w) {
-			continue
-		}
-		writers = append(writers, w)
-	}
-	if len(acc.writers) == len(writers) {
-		return ErrWriterNotFound
-	}
-	acc.writers = writers
-	return nil
-}
-
 // AddRecord adds a record hash in account's records list
 func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	if !as.batching {

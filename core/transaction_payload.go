@@ -17,59 +17,7 @@ package core
 
 import (
 	"encoding/json"
-
-	"github.com/medibloc/go-medibloc/common"
 )
-
-// RegisterWriterPayload is payload type for TxOperationRegisterWKey tx
-type RegisterWriterPayload struct {
-	// Writer to register
-	Writer common.Address
-}
-
-// NewRegisterWriterPayload generates a RegisterWriterPayload
-func NewRegisterWriterPayload(writer common.Address) *RegisterWriterPayload {
-	return &RegisterWriterPayload{Writer: writer}
-}
-
-// BytesToRegisterWriterPayload converts bytes to RegisterWriterPayload struct
-func BytesToRegisterWriterPayload(b []byte) (*RegisterWriterPayload, error) {
-	payload := new(RegisterWriterPayload)
-	if err := json.Unmarshal(b, payload); err != nil {
-		return nil, ErrInvalidTxPayload
-	}
-	return payload, nil
-}
-
-// ToBytes returns marshaled RegisterWriterPayload
-func (payload *RegisterWriterPayload) ToBytes() ([]byte, error) {
-	return json.Marshal(payload)
-}
-
-// RemoveWriterPayload is payload type for TxOperationRemoveWKey tx
-type RemoveWriterPayload struct {
-	// Writer to remove
-	Writer common.Address
-}
-
-// NewRemoveWriterPayload generates a RemoveWriterPayload
-func NewRemoveWriterPayload(writer common.Address) *RemoveWriterPayload {
-	return &RemoveWriterPayload{Writer: writer}
-}
-
-// BytesToRemoveWriterPayload converts bytes to RemoveWriterPayload struct
-func BytesToRemoveWriterPayload(b []byte) (*RemoveWriterPayload, error) {
-	payload := new(RemoveWriterPayload)
-	if err := json.Unmarshal(b, payload); err != nil {
-		return nil, ErrInvalidTxPayload
-	}
-	return payload, nil
-}
-
-// ToBytes returns marshaled RemoveWriterPayload
-func (payload *RemoveWriterPayload) ToBytes() ([]byte, error) {
-	return json.Marshal(payload)
-}
 
 // AddRecordPayload is payload type for TxOperationAddRecord
 type AddRecordPayload struct {
