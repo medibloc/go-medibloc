@@ -28,8 +28,6 @@ const (
 	TxOperationAddRecord       = "add_record"
 	TxOperationVest            = "vest"
 	TxOperationWithdrawVesting = "withdraw_vesting"
-	TxOperationRegisterWKey    = "register_wkey"
-	TxOperationRemoveWKey      = "remove_wkey"
 	TxOperationBecomeCandidate = "become_candidate"
 	TxOperationQuitCandidacy   = "quit_candidacy"
 	TxOperationVote            = "vote"
