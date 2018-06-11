@@ -201,10 +201,15 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block) (*Block, error) {
 
 // prepareExecution by setting states and storage as those of parents
 func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
-	var err error
+	if parent.Height()+1 != bd.Height() {
+		return nil, ErrInvalidBlockHeight
+	}
+
 	block := &Block{
 		BlockData: bd,
 	}
+
+	var err error
 	if block.state, err = parent.state.Clone(); err != nil {
 		return nil, err
 	}
@@ -385,7 +390,7 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 }
 
 func (bd *BlockData) String() string {
-	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v>", bd.Height(), bd.Hash(), bd.ParentHash())
+	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v>", bd.Height(), byteutils.Bytes2Hex(bd.Hash()), byteutils.Bytes2Hex(bd.ParentHash()))
 }
 
 // Storage returns storage used by block

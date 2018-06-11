@@ -220,14 +220,16 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	// Parent block exists in blockchain.
-	all, tails, err := bm.findDescendantBlocks(parentOnChain)
-	if err != nil {
+	all, tails, fails := bm.findDescendantBlocks(parentOnChain)
+	for _, fail := range fails {
+		bm.bp.Remove(fail)
+	}
+	if len(all) == 0 {
 		logging.Console().WithFields(logrus.Fields{
 			"parent": parentOnChain,
 			"block":  bd,
-			"err":    err,
 		}).Error("Failed to find descendant blocks.")
-		return err
+		return ErrCannotExecuteOnParentBlock
 	}
 
 	bm.bc.PutVerifiedNewBlocks(parentOnChain, all, tails)
@@ -237,7 +239,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	newTail := bm.consensus.ForkChoice(bm.bc)
-	err = bm.bc.SetTailBlock(newTail)
+	err := bm.bc.SetTailBlock(newTail)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
@@ -262,7 +264,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	return nil
 }
 
-func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails []*Block, err error) {
+func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails []*Block, fails []*BlockData) {
 	children := bm.bp.FindChildren(parent)
 	for _, v := range children {
 		childData := v.(*BlockData)
@@ -272,14 +274,12 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 				"err":    err,
 				"block":  block,
 				"parent": parent,
-			}).Error("Failed to execute on a parent block.")
-			return nil, nil, err
+			}).Warn("Failed to execute on a parent block.")
+			fails = append(fails, childData)
+			continue
 		}
 
-		childAll, childTails, err := bm.findDescendantBlocks(block)
-		if err != nil {
-			return nil, nil, err
-		}
+		childAll, childTails, childFail := bm.findDescendantBlocks(block)
 
 		all = append(all, block)
 		all = append(all, childAll...)
@@ -289,8 +289,10 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		} else {
 			tails = append(tails, childTails...)
 		}
+
+		fails = append(fails, childFail...)
 	}
-	return all, tails, nil
+	return all, tails, fails
 }
 
 // requestMissingBlock requests a missing block to connect to blockchain.

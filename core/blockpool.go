@@ -125,8 +125,8 @@ func (bp *BlockPool) FindChildren(block HashableBlock) (childBlocks []HashableBl
 	// Found parameter block.
 	if v, ok := bp.cache.Get(byteutils.Bytes2Hex(block.Hash())); ok {
 		lb := v.(*linkedBlock)
-		for _, v := range lb.childLinkedBlocks {
-			childBlocks = append(childBlocks, v.block)
+		for _, vv := range lb.childLinkedBlocks {
+			childBlocks = append(childBlocks, vv.block)
 		}
 		return childBlocks
 	}

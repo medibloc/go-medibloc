@@ -74,6 +74,7 @@ var (
 	ErrCannotConvertTransaction         = errors.New("proto message cannot be converted into Transaction")
 	ErrCannotRevertLIB                  = errors.New("cannot revert latest irreversible block")
 	ErrCannotRemoveBlockOnCanonical     = errors.New("cannot remove block on canonical chain")
+	ErrCannotExecuteOnParentBlock       = errors.New("cannot execute on parent block")
 	ErrDuplicatedBlock                  = errors.New("duplicated block")
 	ErrDuplicatedTransaction            = errors.New("duplicated transaction")
 	ErrGenesisNotMatch                  = errors.New("genesis block does not match")

@@ -219,3 +219,37 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	assert.Nil(t, bm.BlockByHash(blockDatas[1].Hash()))
 	assert.NotNil(t, bm.BlockByHash(blockDatas[2].Hash()))
 }
+
+func TestBlockManager_InvalidHeight(t *testing.T) {
+	m := testutil.NewMockMedlet(t)
+	bm := m.BlockManager()
+	genesis := bm.TailBlock()
+	dynasties := m.Dynasties()
+
+	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
+	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
+	for _, blockData := range blockDatas {
+		err := bm.PushBlockData(blockData)
+		assert.NoError(t, err)
+	}
+
+	parent := bm.BlockByHeight(3)
+	bd := nextBlockData(t, parent, dynasties)
+	tests := []struct {
+		height uint64
+		err    error
+	}{
+		{0, core.ErrCannotRevertLIB},
+		{1, core.ErrCannotRevertLIB},
+		{2, core.ErrCannotExecuteOnParentBlock},
+		{3, core.ErrCannotExecuteOnParentBlock},
+		{5, core.ErrCannotExecuteOnParentBlock},
+		{6, core.ErrCannotExecuteOnParentBlock},
+		{999, core.ErrCannotExecuteOnParentBlock},
+		{4, nil},
+	}
+	for _, test := range tests {
+		bd.SetHeight(test.height)
+		assert.Equal(t, test.err, bm.PushBlockData(bd), "testcase = %v", test)
+	}
+}
