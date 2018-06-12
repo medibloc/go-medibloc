@@ -42,6 +42,7 @@ type Medlet struct {
 	blockManager       *core.BlockManager
 	transactionManager *core.TransactionManager
 	consensus          *dpos.Dpos
+	eventEmitter       *core.EventEmitter
 }
 
 // New returns a new medlet.
@@ -107,6 +108,8 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 func (m *Medlet) Setup() error {
 	logging.Console().Info("Setting up Medlet...")
 
+	m.eventEmitter = core.NewEventEmitter(40960)
+
 	m.rpc.Setup(m.blockManager, m.transactionManager)
 
 	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus)
@@ -148,6 +151,8 @@ func (m *Medlet) Start() error {
 		return err
 	}
 
+	m.eventEmitter.Start()
+
 	m.blockManager.Start()
 
 	m.transactionManager.Start()
@@ -162,6 +167,8 @@ func (m *Medlet) Start() error {
 
 // Stop stops the services of the medlet.
 func (m *Medlet) Stop() {
+	m.eventEmitter.Stop()
+
 	m.netService.Stop()
 
 	m.blockManager.Stop()
@@ -213,4 +220,9 @@ func (m *Medlet) TransactionManager() *core.TransactionManager {
 // Consensus returns consensus
 func (m *Medlet) Consensus() core.Consensus {
 	return m.consensus
+}
+
+// EventEmitter returns event emitter.
+func (m *Medlet) EventEmitter() *core.EventEmitter {
+	return m.eventEmitter
 }
