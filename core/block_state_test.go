@@ -242,6 +242,47 @@ func TestCloneState(t *testing.T) {
 	assert.Equal(t, st.ReservationQueueHash(), cl.ReservationQueueHash())
 }
 
+func TestPayerUsageUpdate(t *testing.T) {
+	genesis, _, users := test.NewTestGenesisBlock(t)
+
+	st := genesis.State()
+
+	usage0, err := st.GetUsage(users[0].Addr)
+	assert.NoError(t, err)
+	usage1, err := st.GetUsage(users[1].Addr)
+	assert.NoError(t, err)
+	st.BeginBatch()
+
+	txPayed, err := core.NewTransaction(test.ChainID, users[0].Addr, users[2].Addr,
+		util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte(""))
+	assert.NoError(t, err)
+
+	sig0, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig0.InitSign(users[0].PrivKey)
+
+	sig1, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig1.InitSign(users[1].PrivKey)
+
+	assert.NoError(t, txPayed.SignThis(sig0))
+	assert.NoError(t, txPayed.SignByPayer(sig1))
+
+	assert.NoError(t, st.ExecuteTx(txPayed))
+	assert.NoError(t, st.AcceptTransaction(txPayed, txPayed.Timestamp()))
+
+	st.Commit()
+
+	usage0Updated, err := st.GetUsage(users[0].Addr)
+	assert.NoError(t, err)
+	usage1Updated, err := st.GetUsage(users[1].Addr)
+	assert.NoError(t, err)
+
+	assert.Equal(t, usage0, usage0Updated)
+	assert.NotEqual(t, usage1, usage1Updated)
+	assert.Equal(t, 1, len(usage1Updated))
+}
+
 func equalSlice(expected, actual []*common.Address) bool {
 	if len(expected) != len(actual) {
 		return false

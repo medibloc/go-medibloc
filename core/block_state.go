@@ -388,7 +388,14 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		return ErrTooOldTransaction
 	}
 
-	usageBytes, err := st.usageState.Get(tx.from.Bytes())
+	payer, err := tx.recoverPayer()
+	if err == ErrPayerSignatureNotExist {
+		payer = tx.from
+	} else if err != nil {
+		return err
+	}
+
+	usageBytes, err := st.usageState.Get(payer.Bytes())
 	switch err {
 	case nil:
 	case ErrNotFound:
@@ -408,11 +415,11 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 			}).Error("Failed to marshal usage.")
 			return err
 		}
-		return st.usageState.Put(tx.from.Bytes(), usageBytes)
+		return st.usageState.Put(payer.Bytes(), usageBytes)
 	default:
 		logging.Console().WithFields(logrus.Fields{
-			"from": tx.from.Hex(),
-			"err":  err,
+			"payer": payer.Hex(),
+			"err":   err,
 		}).Error("Failed to get usage from trie.")
 		return err
 	}
@@ -446,7 +453,7 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		return err
 	}
 
-	return st.usageState.Put(tx.from.Bytes(), pbBytes)
+	return st.usageState.Put(payer.Bytes(), pbBytes)
 }
 
 func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {

@@ -204,7 +204,32 @@ func (tx *Transaction) SignThis(signer signature.Signature) error {
 }
 
 func (tx *Transaction) getPayerSignTarget() []byte {
-	return append(tx.hash, tx.sign...)
+	hasher := sha3.New256()
+
+	hasher.Write(tx.hash)
+	hasher.Write(tx.sign)
+
+	hash := hasher.Sum(nil)
+	return hash
+}
+
+func (tx *Transaction) recoverPayer() (common.Address, error) {
+	if tx.payerSign == nil || len(tx.payerSign) == 0 {
+		return common.Address{}, ErrPayerSignatureNotExist
+	}
+	msg := tx.getPayerSignTarget()
+
+	signature, err := crypto.NewSignature(tx.alg)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	pubKey, err := signature.RecoverPublic(msg, tx.payerSign)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	return common.PublicKeyToAddress(pubKey)
 }
 
 // SignByPayer puts payer's sign in tx

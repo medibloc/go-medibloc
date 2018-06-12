@@ -125,6 +125,7 @@ var (
 	ErrCannotConstructVotesCacheInBatch = errors.New("votes cache cannot be constructed in batch mode")
 	ErrVoteDuplicate                    = errors.New("cannot vote already voted account")
 	ErrDynastyExpired                   = errors.New("dynasty in the consensus state has been expired")
+	ErrPayerSignatureNotExist           = errors.New("payer signature does not exist in the tx")
 )
 
 // ConsensusState is an interface for a consensus state
