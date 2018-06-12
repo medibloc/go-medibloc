@@ -53,8 +53,9 @@ func TestEventEmitter(t *testing.T) {
 	// Check buffered channel
 	eventCh1 := subscriber1.EventChan()
 	eventCount1, eventCount2 := 0, 0
+	receiving := true
 
-	for {
+	for receiving {
 		e := <-eventCh1
 		if e.Topic == topics[0] {
 			eventCount1++
@@ -63,7 +64,7 @@ func TestEventEmitter(t *testing.T) {
 		}
 
 		if e.Data == strconv.Itoa(totalEventCount-1) {
-			return
+			receiving = false
 		}
 	}
 
