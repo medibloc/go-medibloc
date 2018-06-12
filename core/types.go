@@ -164,3 +164,9 @@ type Consensus interface {
 	NewConsensusState(rootHash []byte, storage storage.Storage) (ConsensusState, error)
 	LoadConsensusState(rootBytes []byte, storage storage.Storage) (ConsensusState, error)
 }
+
+// Event structure
+type Event struct {
+	Topic string
+	Data  string
+}
