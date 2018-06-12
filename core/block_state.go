@@ -392,6 +392,9 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 	if err == ErrPayerSignatureNotExist {
 		payer = tx.from
 	} else if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to recover payer address.")
 		return err
 	}
 
