@@ -388,7 +388,7 @@ func TestVote(t *testing.T) {
 }
 
 func TestAddCertification(t *testing.T) {
-	genesis, _, users := test.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t)
 
 	certs := []struct {
 		issuer         common.Address
@@ -414,7 +414,7 @@ func TestAddCertification(t *testing.T) {
 	payloadBuf, err := payload.ToBytes()
 	assert.NoError(t, err)
 
-	addCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, certs[0].certified,
+	addCertTx, err := core.NewTransaction(testutil.ChainID, certs[0].issuer, certs[0].certified,
 		util.Uint128Zero(), 1, core.TxOperationAddCertification, payloadBuf)
 	assert.NoError(t, err)
 
@@ -456,7 +456,7 @@ func TestAddCertification(t *testing.T) {
 }
 
 func TestRevokeCertification(t *testing.T) {
-	genesis, _, users := test.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t)
 
 	certs := []struct {
 		issuer         common.Address
@@ -484,7 +484,7 @@ func TestRevokeCertification(t *testing.T) {
 	addCertPayloadBuf, err := addCertPayload.ToBytes()
 	assert.NoError(t, err)
 
-	addCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, certs[0].certified,
+	addCertTx, err := core.NewTransaction(testutil.ChainID, certs[0].issuer, certs[0].certified,
 		util.Uint128Zero(), 1, core.TxOperationAddCertification, addCertPayloadBuf)
 	assert.NoError(t, err)
 
@@ -492,7 +492,7 @@ func TestRevokeCertification(t *testing.T) {
 	revokeCertPayloadBuf, err := revokeCertPayload.ToBytes()
 	assert.NoError(t, err)
 
-	revokeCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, common.Address{},
+	revokeCertTx, err := core.NewTransaction(testutil.ChainID, certs[0].issuer, common.Address{},
 		util.Uint128Zero(), 2, core.TxOperationRevokeCertification, revokeCertPayloadBuf)
 
 	revokeCertTx.SetTimestamp(certs[0].revocationTime)
@@ -535,7 +535,7 @@ func TestRevokeCertification(t *testing.T) {
 }
 
 func TestRevokeCertificationByInvalidAccount(t *testing.T) {
-	genesis, _, users := test.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t)
 
 	certs := []struct {
 		issuer         common.Address
@@ -567,7 +567,7 @@ func TestRevokeCertificationByInvalidAccount(t *testing.T) {
 	addCertPayloadBuf, err := addCertPayload.ToBytes()
 	assert.NoError(t, err)
 
-	addCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, certs[0].certified,
+	addCertTx, err := core.NewTransaction(testutil.ChainID, certs[0].issuer, certs[0].certified,
 		util.Uint128Zero(), 1, core.TxOperationAddCertification, addCertPayloadBuf)
 	assert.NoError(t, err)
 
@@ -575,7 +575,7 @@ func TestRevokeCertificationByInvalidAccount(t *testing.T) {
 	revokeCertPayloadBuf, err := revokeCertPayload.ToBytes()
 	assert.NoError(t, err)
 
-	revokeCertTx, err := core.NewTransaction(test.ChainID, certs[0].revoker, common.Address{},
+	revokeCertTx, err := core.NewTransaction(testutil.ChainID, certs[0].revoker, common.Address{},
 		util.Uint128Zero(), 2, core.TxOperationRevokeCertification, revokeCertPayloadBuf)
 
 	revokeCertTx.SetTimestamp(certs[0].revocationTime)
