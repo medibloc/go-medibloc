@@ -61,6 +61,17 @@ type AddrKeyPair struct {
 	PrivKey signature.PrivateKey
 }
 
+// NewAddrKeyPair creates a pair of address and private key.
+func NewAddrKeyPair(t *testing.T) *AddrKeyPair {
+	privKey := NewPrivateKey(t)
+	addr, err := common.PublicKeyToAddress(privKey.PublicKey())
+	require.NoError(t, err)
+	return &AddrKeyPair{
+		Addr:    addr,
+		PrivKey: privKey,
+	}
+}
+
 // Dynasties is a slice of dynasties.
 type Dynasties []*AddrKeyPair
 
@@ -94,37 +105,24 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
 	for i := 0; i < dpos.DynastySize; i++ {
-		privKey := NewPrivateKey(t)
-		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
-		require.NoError(t, err)
-		dynasty = append(dynasty, addr.Hex())
+		keypair := NewAddrKeyPair(t)
+		dynasty = append(dynasty, keypair.Addr.Hex())
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
-			Address: addr.Hex(),
+			Address: keypair.Addr.Hex(),
 			Value:   "1000000000",
 		})
 
-		dynasties = append(dynasties, &AddrKeyPair{
-			Addr:    addr,
-			PrivKey: privKey,
-		})
-		distributed = append(distributed, &AddrKeyPair{
-			Addr:    addr,
-			PrivKey: privKey,
-		})
+		dynasties = append(dynasties, keypair)
+		distributed = append(distributed, keypair)
 	}
 
 	for i := 0; i < 10; i++ {
-		privKey := NewPrivateKey(t)
-		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
-		require.NoError(t, err)
+		keypair := NewAddrKeyPair(t)
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
-			Address: addr.Hex(),
+			Address: keypair.Addr.Hex(),
 			Value:   "1000000000",
 		})
-		distributed = append(distributed, &AddrKeyPair{
-			Addr:    addr,
-			PrivKey: privKey,
-		})
+		distributed = append(distributed, keypair)
 	}
 
 	conf.Consensus.Dpos.Dynasty = dynasty
