@@ -41,12 +41,12 @@ cover:
 test:
 	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
 	@-mkdir -p $(REPORT_DIR)
-	@go test ./... 2>&1 | tee ${TEST_REPORT}
+	@go test ./... 2>&1 | tee ${TEST_REPORT} | grep -v "^?"
 
 test-slow:
 	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
 	@-mkdir -p $(REPORT_DIR)
-	@go test -race -cover ./... 2>&1 | tee ${TEST_REPORT}
+	@go test -race -cover ./... 2>&1 | tee ${TEST_REPORT} | grep -v "^?"
 
 vet:
 	@echo $(COLOR)[VET] $(VET_REPORT)$(ENDCOLOR)
