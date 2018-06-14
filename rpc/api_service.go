@@ -48,10 +48,11 @@ func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, err
 			Type:    pbTx.Data.Type,
 			Payload: string(pbTx.Data.Payload),
 		},
-		Nonce:   pbTx.Nonce,
-		ChainId: pbTx.ChainId,
-		Alg:     pbTx.Alg,
-		Sign:    byteutils.Bytes2Hex(pbTx.Sign),
+		Nonce:     pbTx.Nonce,
+		ChainId:   pbTx.ChainId,
+		Alg:       pbTx.Alg,
+		Sign:      byteutils.Bytes2Hex(pbTx.Sign),
+		PayerSign: byteutils.Bytes2Hex(pbTx.PayerSign),
 	}, nil
 }
 
@@ -85,6 +86,8 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 
 func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var addRecord *core.AddRecordPayload
+	var addCertification *core.AddCertificationPayload
+	var revokeCertification *core.RevokeCertificationPayload
 
 	switch txData.Type {
 	case core.TxOperationSend:
@@ -100,6 +103,23 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	case core.TxOperationWithdrawVesting:
 	case core.TxPayloadBinaryType:
 		return nil, nil
+	case core.TxOperationAddCertification:
+		json.Unmarshal([]byte(txData.Payload), &addCertification)
+		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
+			addCertification.ExpirationTime, addCertification.CertificateHash)
+		payloadBuf, err := payload.ToBytes()
+		if err != nil {
+			return nil, err
+		}
+		return payloadBuf, nil
+	case core.TxOperationRevokeCertification:
+		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
+		payload := core.NewRevokeCertificationPayload(revokeCertification.CertificateHash)
+		payloadBuf, err := payload.ToBytes()
+		if err != nil {
+			return nil, err
+		}
+		return payloadBuf, nil
 	}
 	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 }
