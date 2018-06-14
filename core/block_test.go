@@ -27,7 +27,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -361,7 +360,6 @@ func TestExecuteReservedTasks(t *testing.T) {
 }
 
 func TestBlock_VerifyState(t *testing.T) {
-	logging.TestHook()
 	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 	wrongGenesis, _, _ := testutil.NewTestGenesisBlock(t)
 	from, to := dynasties[0], dynasties[1]

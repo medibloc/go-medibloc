@@ -59,7 +59,6 @@ type MedServiceTestManager struct {
 
 // NewMedServiceTestManager returns medServicesTestManager
 func NewMedServiceTestManager(nodeNum int, seedNum int) *MedServiceTestManager {
-	logging.TestHook()
 	if nodeNum < 1 {
 		return nil
 	}
@@ -132,7 +131,6 @@ type NodeTestManager struct {
 
 // NewNodeTestManager returns nodeTestManager
 func NewNodeTestManager(nodeNum int, seedNum int) *NodeTestManager {
-	logging.TestHook()
 	if nodeNum < 1 {
 		return nil
 	}
@@ -209,7 +207,6 @@ func (ntm *NodeTestManager) WaitStreamReady() {
 }
 
 func makeNewTestDispatcher() *Dispatcher {
-	logging.TestHook()
 	return NewDispatcher()
 }
 
