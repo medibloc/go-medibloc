@@ -22,10 +22,6 @@ import (
 // AddRecordPayload is payload type for TxOperationAddRecord
 type AddRecordPayload struct {
 	Hash []byte
-	// TODO: Signature string
-	Storage string
-	EncKey  []byte
-	Seed    []byte
 }
 
 // NewAddRecordPayload generates a AddRecordPayload
