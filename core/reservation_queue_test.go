@@ -21,7 +21,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,7 +58,7 @@ func TestProtoReservationQueue(t *testing.T) {
 		{core.RtWithdrawType, common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), payloads[2], int64(1400000000)},
 	}
 
-	genesis, _, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
 
 	rq := core.NewEmptyReservationQueue(genesis.Storage())
 	rq.BeginBatch()
@@ -96,7 +96,7 @@ func TestPopTasksBefore(t *testing.T) {
 		{core.RtWithdrawType, common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"), payloads[2], int64(1400000000)},
 	}
 
-	genesis, _, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
 
 	rq := core.NewEmptyReservationQueue(genesis.Storage())
 	rq.BeginBatch()

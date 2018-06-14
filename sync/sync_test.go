@@ -30,7 +30,7 @@ import (
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +42,7 @@ type SyncTester struct {
 	config       *medletpb.Config
 	medService   net.Service
 	storage      storage.Storage
-	dynasties    test.Dynasties
+	dynasties    testutil.Dynasties
 	blockManager BlockManager
 	syncService  *Service
 }
@@ -55,10 +55,10 @@ func removeRouteTableCache(t *testing.T) {
 	}
 }
 
-func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Genesis, dynasties test.Dynasties) *SyncTester {
+func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Genesis, dynasties testutil.Dynasties) *SyncTester {
 	removeRouteTableCache(t)
 	if len(config.Network.Listen) < 1 {
-		port := test.FindRandomListenPorts(1)
+		port := testutil.FindRandomListenPorts(1)
 		addr := fmt.Sprintf("%s:%s", DOMAIN, port[0])
 		config.Network.Listen = append(config.Network.Listen, addr)
 	}
@@ -110,13 +110,13 @@ func TestService_Start(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := test.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 
 	for i := 1; i < nBlocks; i++ {
-		b := test.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		test.SignBlock(t, b, seedTester.dynasties)
+		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
+		testutil.SignBlock(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 	}
 	require.Equal(t, uint64(nBlocks), seedTester.blockManager.TailBlock().Height())
@@ -167,7 +167,7 @@ func TestForkResistance(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := test.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	t.Log("seedTesterID", seedTester.NodeID())
@@ -189,8 +189,8 @@ func TestForkResistance(t *testing.T) {
 
 	//Generate blocks and push to seed tester and major tester
 	for i := 1; i < nBlocks; i++ {
-		b := test.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		test.SignBlock(t, b, seedTester.dynasties)
+		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
+		testutil.SignBlock(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 		for _, st := range majorTesters {
 			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
@@ -218,8 +218,8 @@ func TestForkResistance(t *testing.T) {
 
 	//Generate diff blocks and push to minor tester
 	for i := 1; i < nBlocks; i++ {
-		b := test.NewTestBlock(t, minorTesters[0].blockManager.TailBlock())
-		test.SignBlock(t, b, seedTester.dynasties)
+		b := testutil.NewTestBlock(t, minorTesters[0].blockManager.TailBlock())
+		testutil.SignBlock(t, b, seedTester.dynasties)
 
 		for _, st := range minorTesters {
 			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))

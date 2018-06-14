@@ -20,12 +20,12 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadConsensusState(t *testing.T) {
-	genesis, _, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
 	cs, err := dpos.NewConsensusState(nil, genesis.Storage())
 	assert.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestLoadConsensusState(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	genesis, _, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
 	cs, err := dpos.NewConsensusState(nil, genesis.Storage())
 	assert.NoError(t, err)
 

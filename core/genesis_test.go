@@ -22,14 +22,14 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewGenesisBlock(t *testing.T) {
-	genesisBlock, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesisBlock, dynasties, _ := testutil.NewTestGenesisBlock(t)
 
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
@@ -52,11 +52,11 @@ func TestNewGenesisBlock(t *testing.T) {
 }
 
 func TestCheckGenesisBlock(t *testing.T) {
-	//conf, dynasties, distributed := test.NewTestGenesisConf(t)
-	conf, _, _ := test.NewTestGenesisConf(t)
+	//conf, dynasties, distributed := testutil.NewTestGenesisConf(t)
+	conf, _, _ := testutil.NewTestGenesisConf(t)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus := test.NewTestConsensus(t)
+	consensus := testutil.NewTestConsensus(t)
 	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 

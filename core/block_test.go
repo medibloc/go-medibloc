@@ -28,23 +28,23 @@ import (
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewBlock(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 
 	coinbase := dynasties[0].Addr
-	_, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	_, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 }
 
 func TestSendExecution(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 
 	coinbase := dynasties[0].Addr
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	cases := []struct {
@@ -81,7 +81,7 @@ func TestSendExecution(t *testing.T) {
 	signers := make([]signature.Signature, len(cases))
 
 	for i, c := range cases {
-		txs[i], err = core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		txs[i], err = core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
@@ -122,9 +122,9 @@ func TestSendExecution(t *testing.T) {
 }
 
 func TestSendMoreThanBalance(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 	coinbase := dynasties[0].Addr
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	fromKey := dynasties[1].PrivKey
@@ -133,7 +133,7 @@ func TestSendMoreThanBalance(t *testing.T) {
 	balance := util.NewUint128FromUint(1000000090)
 	sendingAmount, err := balance.Add(util.NewUint128FromUint(1))
 
-	tx, err := core.NewTransaction(test.ChainID, from, to, sendingAmount, 1, core.TxPayloadBinaryType, []byte{})
+	tx, err := core.NewTransaction(testutil.ChainID, from, to, sendingAmount, 1, core.TxPayloadBinaryType, []byte{})
 	assert.NoError(t, err)
 
 	signer, err := crypto.NewSignature(algorithm.SECP256K1)
@@ -149,9 +149,9 @@ func TestSendMoreThanBalance(t *testing.T) {
 }
 
 func TestExecuteOnParentBlock(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 	coinbase := dynasties[0].Addr
-	firstBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	firstBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	cases := []struct {
@@ -178,7 +178,7 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	signers := make([]signature.Signature, len(cases))
 
 	for i, c := range cases {
-		txs[i], err = core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		txs[i], err = core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
@@ -204,7 +204,7 @@ func TestExecuteOnParentBlock(t *testing.T) {
 	assert.NoError(t, firstBlock.SignThis(blockSigner))
 	assert.NoError(t, firstBlock.VerifyState())
 
-	secondBlock, err := core.NewBlock(test.ChainID, coinbase, firstBlock)
+	secondBlock, err := core.NewBlock(testutil.ChainID, coinbase, firstBlock)
 	assert.NoError(t, err)
 
 	nextBlockTime := (firstBlock.Timestamp()/int64(dpos.DynastyInterval/time.Second) + 1) * int64(dpos.DynastyInterval/time.Second)
@@ -227,9 +227,9 @@ func TestExecuteOnParentBlock(t *testing.T) {
 }
 
 func TestGetExecutedBlock(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 	coinbase := dynasties[0].Addr
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	cases := []struct {
@@ -250,7 +250,7 @@ func TestGetExecutedBlock(t *testing.T) {
 	signers := make([]signature.Signature, len(cases))
 
 	for i, c := range cases {
-		txs[i], err = core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		txs[i], err = core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
@@ -291,17 +291,17 @@ func TestGetExecutedBlock(t *testing.T) {
 }
 
 func TestExecuteReservedTasks(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 	from := dynasties[0].Addr
 	vestTx, err := core.NewTransaction(
-		test.ChainID,
+		testutil.ChainID,
 		from,
 		common.Address{},
 		util.NewUint128FromUint(333), 1,
 		core.TxOperationVest, []byte{},
 	)
 	withdrawTx, err := core.NewTransaction(
-		test.ChainID,
+		testutil.ChainID,
 		from,
 		common.Address{},
 		util.NewUint128FromUint(333), 2,
@@ -318,7 +318,7 @@ func TestExecuteReservedTasks(t *testing.T) {
 	assert.NoError(t, withdrawTx.SignThis(sig))
 
 	coinbase := from
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 	newBlock.SetTimestamp(int64(1000))
 
@@ -362,11 +362,11 @@ func TestExecuteReservedTasks(t *testing.T) {
 
 func TestBlock_VerifyState(t *testing.T) {
 	logging.TestHook()
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
-	wrongGenesis, _, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	wrongGenesis, _, _ := testutil.NewTestGenesisBlock(t)
 	from, to := dynasties[0], dynasties[1]
 
-	tx, err := core.NewTransaction(test.ChainID, from.Addr, to.Addr, util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte{})
+	tx, err := core.NewTransaction(testutil.ChainID, from.Addr, to.Addr, util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte{})
 	assert.NoError(t, err)
 	txSigner, err := crypto.NewSignature(algorithm.SECP256K1)
 	assert.NoError(t, err)
@@ -374,7 +374,7 @@ func TestBlock_VerifyState(t *testing.T) {
 	err = tx.SignThis(txSigner)
 	assert.NoError(t, err)
 
-	block, err := core.NewBlock(test.ChainID, from.Addr, genesis)
+	block, err := core.NewBlock(testutil.ChainID, from.Addr, genesis)
 	assert.NoError(t, err)
 	assert.NoError(t, block.SetTransactions(core.Transactions{tx}))
 	assert.NoError(t, block.State().TransitionDynasty(block.Timestamp()))

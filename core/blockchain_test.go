@@ -19,13 +19,13 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
-	testUtil "github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func getBlockChain(t *testing.T) (*core.BlockChain, *testUtil.MockMedlet) {
-	m := testUtil.NewMockMedlet(t)
+func getBlockChain(t *testing.T) (*core.BlockChain, *testutil.MockMedlet) {
+	m := testutil.NewMockMedlet(t)
 
 	bc, err := core.NewBlockChain(m.Config())
 	require.NoError(t, err)
@@ -35,7 +35,7 @@ func getBlockChain(t *testing.T) (*core.BlockChain, *testUtil.MockMedlet) {
 
 }
 
-func getBlockSlice(blockMap map[testUtil.BlockID]*core.Block, id testUtil.BlockID) []*core.Block {
+func getBlockSlice(blockMap map[testutil.BlockID]*core.Block, id testutil.BlockID) []*core.Block {
 	return []*core.Block{blockMap[id]}
 }
 
@@ -43,8 +43,8 @@ func TestBlockChain_OnePath(t *testing.T) {
 	bc, m := getBlockChain(t)
 	genesis := m.BlockManager().TailBlock()
 
-	idxToParent := []testUtil.BlockID{testUtil.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := testUtil.NewBlockTestSet(t, genesis, idxToParent)
+	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
+	blockMap := testutil.NewBlockTestSet(t, genesis, idxToParent)
 
 	err := bc.PutVerifiedNewBlocks(blockMap[0], getBlockSlice(blockMap, 0), getBlockSlice(blockMap, 0))
 	assert.NotNil(t, err)
@@ -54,7 +54,7 @@ func TestBlockChain_OnePath(t *testing.T) {
 
 	for _, idx := range idxToParent[2:] {
 		blocks := getBlockSlice(blockMap, idx)
-		err = bc.PutVerifiedNewBlocks(blockMap[testUtil.BlockID(idx-1)], blocks, blocks)
+		err = bc.PutVerifiedNewBlocks(blockMap[testutil.BlockID(idx-1)], blocks, blocks)
 		assert.Nil(t, err)
 		err = bc.SetTailBlock(blocks[0])
 		assert.Nil(t, err)
@@ -64,19 +64,19 @@ func TestBlockChain_OnePath(t *testing.T) {
 
 func TestBlockChain_Tree(t *testing.T) {
 	tests := []struct {
-		tree []testUtil.BlockID
+		tree []testutil.BlockID
 	}{
-		{[]testUtil.BlockID{testUtil.GenesisID, 0, 0, 1, 1, 1, 1}},
-		{[]testUtil.BlockID{testUtil.GenesisID, 0, 0, 0, 0, 1, 2, 2, 3}},
-		{[]testUtil.BlockID{testUtil.GenesisID, 0, 1, 1, 2, 2, 3, 3}},
+		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 1, 1, 1}},
+		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 0, 0, 1, 2, 2, 3}},
+		{[]testutil.BlockID{testutil.GenesisID, 0, 1, 1, 2, 2, 3, 3}},
 	}
 	// Put one-by-one
 	for _, test := range tests {
 		bc, m := getBlockChain(t)
 		genesis := m.BlockManager().TailBlock()
-		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
+		blockMap := testutil.NewBlockTestSet(t, genesis, test.tree)
 		for idx, parentID := range test.tree {
-			blocks := getBlockSlice(blockMap, testUtil.BlockID(idx))
+			blocks := getBlockSlice(blockMap, testutil.BlockID(idx))
 			err := bc.PutVerifiedNewBlocks(blockMap[parentID], blocks, blocks)
 			assert.Nil(t, err)
 		}
@@ -85,8 +85,8 @@ func TestBlockChain_Tree(t *testing.T) {
 	for _, test := range tests {
 		bc, m := getBlockChain(t)
 		genesis := m.BlockManager().TailBlock()
-		blockMap := testUtil.NewBlockTestSet(t, genesis, test.tree)
-		notTail := make(map[testUtil.BlockID]bool)
+		blockMap := testutil.NewBlockTestSet(t, genesis, test.tree)
+		notTail := make(map[testutil.BlockID]bool)
 		for _, idx := range test.tree {
 			notTail[idx] = true
 		}

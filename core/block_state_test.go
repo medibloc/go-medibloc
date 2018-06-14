@@ -26,14 +26,14 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateUsage(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	genesis, _, _ := test.NewTestGenesisBlock(t)
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	privHexes := []string{
@@ -76,7 +76,7 @@ func TestUpdateUsage(t *testing.T) {
 	blockState.BeginBatch()
 
 	for i, c := range cases {
-		txs[i], err = core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		txs[i], err = core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		signers[i], err = crypto.NewSignature(algorithm.SECP256K1)
@@ -99,8 +99,8 @@ func TestUpdateUsage(t *testing.T) {
 
 func TestTooOldTxToAdd(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	genesis, _, _ := test.NewTestGenesisBlock(t)
-	newBlock, err := core.NewBlock(test.ChainID, coinbase, genesis)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
 	privHexes := []string{
@@ -148,7 +148,7 @@ func TestTooOldTxToAdd(t *testing.T) {
 	blockState.BeginBatch()
 
 	for i, c := range cases {
-		tx, err := core.NewTransaction(test.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
+		tx, err := core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
 		tx.SetTimestamp(c.timestamp)
@@ -164,7 +164,7 @@ func TestTooOldTxToAdd(t *testing.T) {
 }
 
 func TestDynastyState(t *testing.T) {
-	genesis, dynasties, _ := test.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
 
 	var expected []*common.Address
 	for _, dynasty := range dynasties {
@@ -177,7 +177,7 @@ func TestDynastyState(t *testing.T) {
 }
 
 func TestAddCandidate(t *testing.T) {
-	genesis, dynasty, distributed := test.NewTestGenesisBlock(t)
+	genesis, dynasty, distributed := testutil.NewTestGenesisBlock(t)
 
 	genesis.State().BeginBatch()
 	assert.NoError(t, genesis.State().AddCandidate(distributed[len(dynasty)].Addr, util.NewUint128FromUint(1000)))
@@ -187,7 +187,7 @@ func TestAddCandidate(t *testing.T) {
 }
 
 func TestCloneGenesisState(t *testing.T) {
-	genesis, _, _ := test.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t)
 
 	st := genesis.State()
 	cl, err := st.Clone()
@@ -208,13 +208,13 @@ func TestCloneGenesisState(t *testing.T) {
 }
 
 func TestCloneState(t *testing.T) {
-	genesis, _, users := test.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t)
 
 	st := genesis.State()
 
 	st.BeginBatch()
 
-	addRecordTx, err := core.NewTransaction(test.ChainID, users[0].Addr, common.Address{},
+	addRecordTx, err := core.NewTransaction(testutil.ChainID, users[0].Addr, common.Address{},
 		util.Uint128Zero(), 1, core.TxPayloadBinaryType, []byte("abcd"))
 	assert.NoError(t, err)
 
@@ -243,7 +243,7 @@ func TestCloneState(t *testing.T) {
 }
 
 func TestPayerUsageUpdate(t *testing.T) {
-	genesis, _, users := test.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t)
 
 	st := genesis.State()
 
@@ -253,7 +253,7 @@ func TestPayerUsageUpdate(t *testing.T) {
 	assert.NoError(t, err)
 	st.BeginBatch()
 
-	txPayed, err := core.NewTransaction(test.ChainID, users[0].Addr, users[2].Addr,
+	txPayed, err := core.NewTransaction(testutil.ChainID, users[0].Addr, users[2].Addr,
 		util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte(""))
 	assert.NoError(t, err)
 

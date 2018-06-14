@@ -21,7 +21,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
-	testutil "github.com/medibloc/go-medibloc/util/test"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
