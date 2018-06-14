@@ -24,13 +24,15 @@ import (
 
 // Transaction's string representation.
 const (
-	TxOperationSend            = ""
-	TxOperationAddRecord       = "add_record"
-	TxOperationVest            = "vest"
-	TxOperationWithdrawVesting = "withdraw_vesting"
-	TxOperationBecomeCandidate = "become_candidate"
-	TxOperationQuitCandidacy   = "quit_candidacy"
-	TxOperationVote            = "vote"
+	TxOperationSend                = ""
+	TxOperationAddRecord           = "add_record"
+	TxOperationVest                = "vest"
+	TxOperationWithdrawVesting     = "withdraw_vesting"
+	TxOperationBecomeCandidate     = "become_candidate"
+	TxOperationQuitCandidacy       = "quit_candidacy"
+	TxOperationVote                = "vote"
+	TxOperationAddCertification    = "add_certification"
+	TxOperationRevokeCertification = "revoke_certification"
 )
 
 // Transaction payload type.
@@ -99,12 +101,17 @@ var (
 	ErrInvalidBlockUsageRoot            = errors.New("invalid usage state root hash")
 	ErrInvalidBlockRecordsRoot          = errors.New("invalid records state root hash")
 	ErrInvalidBlockCandidacyRoot        = errors.New("invalid candidacy state root hash")
+	ErrInvalidBlockCertificationRoot    = errors.New("invalid certification state root hash")
 	ErrInvalidBlockReservationQueueHash = errors.New("invalid reservation queue hash")
 	ErrInvalidBlockConsensusRoot        = errors.New("invalid block consensus root hash")
 	ErrTooOldTransaction                = errors.New("transaction timestamp is too old")
 	ErrInvalidTxPayload                 = errors.New("cannot unmarshal tx payload")
 	ErrRecordAlreadyAdded               = errors.New("record hash already added")
 	ErrRecordReaderAlreadyAdded         = errors.New("record reader hash already added")
+	ErrCertReceivedAlreadyAdded         = errors.New("hash of received cert already added")
+	ErrCertIssuedAlreadyAdded           = errors.New("hash of issued cert already added")
+	ErrCertAlreadyRevoked               = errors.New("cert to revoke has already been revoked")
+	ErrInvalidCertificationRevoker      = errors.New("only issuer of the cert can revoke it")
 	ErrTxIsNotFromRecordOwner           = errors.New("adding record reader should be done by record owner")
 	ErrCannotConvertResevedTask         = errors.New("proto message cannot be converted into ResevedTask")
 	ErrCannotConvertResevedTasks        = errors.New("proto message cannot be converted into ResevedTasks")

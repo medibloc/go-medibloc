@@ -36,12 +36,13 @@ type BlockHeader struct {
 	hash       []byte
 	parentHash []byte
 
-	accsRoot      []byte
-	txsRoot       []byte
-	usageRoot     []byte
-	recordsRoot   []byte
-	candidacyRoot []byte
-	consensusRoot []byte
+	accsRoot          []byte
+	txsRoot           []byte
+	usageRoot         []byte
+	recordsRoot       []byte
+	candidacyRoot     []byte
+	certificationRoot []byte
+	consensusRoot     []byte
 
 	reservationQueueHash []byte
 
@@ -63,6 +64,7 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		UsageRoot:            b.usageRoot,
 		RecordsRoot:          b.recordsRoot,
 		CandidacyRoot:        b.candidacyRoot,
+		CertificationRoot:    b.certificationRoot,
 		ConsensusRoot:        b.consensusRoot,
 		ReservationQueueHash: b.reservationQueueHash,
 		Coinbase:             b.coinbase.Bytes(),
@@ -83,6 +85,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.usageRoot = msg.UsageRoot
 		b.recordsRoot = msg.RecordsRoot
 		b.candidacyRoot = msg.CandidacyRoot
+		b.certificationRoot = msg.CertificationRoot
 		b.consensusRoot = msg.ConsensusRoot
 		b.reservationQueueHash = msg.ReservationQueueHash
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
@@ -262,6 +265,9 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	if err = block.state.LoadCandidacyRoot(block.header.candidacyRoot); err != nil {
 		return nil, err
 	}
+	if err = block.state.LoadCertificationRoot(block.header.certificationRoot); err != nil {
+		return nil, err
+	}
 	if err = block.state.LoadConsensusRoot(block.consensus, block.header.consensusRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -358,6 +364,11 @@ func (bd *BlockData) CandidacyRoot() []byte {
 	return bd.header.candidacyRoot
 }
 
+// CertificationRoot returns root hash of certification trie
+func (bd *BlockData) CertificationRoot() []byte {
+	return bd.header.certificationRoot
+}
+
 // ConsensusRoot returns root hash of consensus trie
 func (bd *BlockData) ConsensusRoot() []byte {
 	return bd.header.consensusRoot
@@ -420,6 +431,7 @@ func (block *Block) Seal() error {
 	block.header.usageRoot = block.state.UsageRoot()
 	block.header.recordsRoot = block.state.RecordsRoot()
 	block.header.candidacyRoot = block.state.CandidacyRoot()
+	block.header.certificationRoot = block.state.CertificationRoot()
 	consensusRoot, err := block.state.ConsensusRoot()
 	if err != nil {
 		return err
@@ -451,6 +463,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 	hasher.Write(bd.UsageRoot())
 	hasher.Write(bd.RecordsRoot())
 	hasher.Write(bd.CandidacyRoot())
+	hasher.Write(bd.CertificationRoot())
 	hasher.Write(bd.ConsensusRoot())
 	hasher.Write(bd.ReservationQueueHash())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
@@ -597,6 +610,13 @@ func (block *Block) VerifyState() error {
 		}).Warn("Failed to verify candidacy root.")
 		return ErrInvalidBlockCandidacyRoot
 	}
+	if !byteutils.Equal(block.state.CertificationRoot(), block.CertificationRoot()) {
+		logging.WithFields(logrus.Fields{
+			"state":  byteutils.Bytes2Hex(block.state.CertificationRoot()),
+			"header": byteutils.Bytes2Hex(block.CertificationRoot()),
+		}).Warn("Failed to verify certification root.")
+		return ErrInvalidBlockCertificationRoot
+	}
 	consensusRoot, err := block.state.ConsensusRoot()
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -692,6 +712,7 @@ func (block *Block) GetBlockData() *BlockData {
 			usageRoot:            block.UsageRoot(),
 			recordsRoot:          block.RecordsRoot(),
 			candidacyRoot:        block.CandidacyRoot(),
+			certificationRoot:    block.CertificationRoot(),
 			consensusRoot:        block.ConsensusRoot(),
 			reservationQueueHash: block.ReservationQueueHash(),
 			coinbase:             block.Coinbase(),

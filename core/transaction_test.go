@@ -17,6 +17,7 @@ package core_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
@@ -384,4 +385,213 @@ func TestVote(t *testing.T) {
 	voterAcc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, distributed[dpos.DynastySize+1].Addr.Bytes(), voterAcc.Voted())
+}
+
+func TestAddCertification(t *testing.T) {
+	genesis, _, users := test.NewTestGenesisBlock(t)
+
+	certs := []struct {
+		issuer         common.Address
+		issuerPrivKey  signature.PrivateKey
+		certified      common.Address
+		issueTime      int64
+		expirationTime int64
+		hash           []byte
+	}{
+		{
+			users[0].Addr,
+			users[0].PrivKey,
+			users[1].Addr,
+			time.Now().Unix(),
+			time.Now().Unix() + int64(100000),
+			byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e"),
+		},
+	}
+
+	st := genesis.State()
+
+	payload := core.NewAddCertificationPayload(certs[0].issueTime, certs[0].expirationTime, certs[0].hash)
+	payloadBuf, err := payload.ToBytes()
+	assert.NoError(t, err)
+
+	addCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, certs[0].certified,
+		util.Uint128Zero(), 1, core.TxOperationAddCertification, payloadBuf)
+	assert.NoError(t, err)
+
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(certs[0].issuerPrivKey)
+	assert.NoError(t, addCertTx.SignThis(sig))
+
+	st.BeginBatch()
+	assert.NoError(t, addCertTx.ExecuteOnState(st))
+	assert.NoError(t, st.AcceptTransaction(addCertTx, genesis.Timestamp()))
+	st.Commit()
+
+	accs := []core.Account{}
+	for i := 0; i < 2; i++ {
+		acc, err := st.GetAccount(users[i].Addr)
+		assert.NoError(t, err)
+		accs = append(accs, acc)
+	}
+	assert.Equal(t, 1, len(accs[0].CertsIssued()))
+	assert.Equal(t, 0, len(accs[0].CertsReceived()))
+	assert.Equal(t, 0, len(accs[1].CertsIssued()))
+	assert.Equal(t, 1, len(accs[1].CertsReceived()))
+
+	assert.Equal(t, byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e"), accs[0].CertsIssued()[0])
+	assert.Equal(t, byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e"), accs[1].CertsReceived()[0])
+
+	certHash := accs[0].CertsIssued()[0]
+
+	cert, err := st.GetCertification(certs[0].hash)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cert.CertificateHash, certHash)
+	assert.Equal(t, cert.Issuer, users[0].Addr.Bytes())
+	assert.Equal(t, cert.Certified, users[1].Addr.Bytes())
+	assert.Equal(t, cert.IssueTime, certs[0].issueTime)
+	assert.Equal(t, cert.ExpirationTime, certs[0].expirationTime)
+	assert.Equal(t, cert.RevocationTime, int64(0))
+}
+
+func TestRevokeCertification(t *testing.T) {
+	genesis, _, users := test.NewTestGenesisBlock(t)
+
+	certs := []struct {
+		issuer         common.Address
+		issuerPrivKey  signature.PrivateKey
+		certified      common.Address
+		issueTime      int64
+		expirationTime int64
+		revocationTime int64
+		hash           []byte
+	}{
+		{
+			users[0].Addr,
+			users[0].PrivKey,
+			users[1].Addr,
+			time.Now().Unix(),
+			time.Now().Unix() + int64(100000),
+			time.Now().Unix() + int64(100),
+			byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e"),
+		},
+	}
+
+	st := genesis.State()
+
+	addCertPayload := core.NewAddCertificationPayload(certs[0].issueTime, certs[0].expirationTime, certs[0].hash)
+	addCertPayloadBuf, err := addCertPayload.ToBytes()
+	assert.NoError(t, err)
+
+	addCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, certs[0].certified,
+		util.Uint128Zero(), 1, core.TxOperationAddCertification, addCertPayloadBuf)
+	assert.NoError(t, err)
+
+	revokeCertPayload := core.NewRevokeCertificationPayload(certs[0].hash)
+	revokeCertPayloadBuf, err := revokeCertPayload.ToBytes()
+	assert.NoError(t, err)
+
+	revokeCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, common.Address{},
+		util.Uint128Zero(), 2, core.TxOperationRevokeCertification, revokeCertPayloadBuf)
+
+	revokeCertTx.SetTimestamp(certs[0].revocationTime)
+
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	sig.InitSign(certs[0].issuerPrivKey)
+	assert.NoError(t, addCertTx.SignThis(sig))
+	assert.NoError(t, revokeCertTx.SignThis(sig))
+
+	st.BeginBatch()
+	assert.NoError(t, addCertTx.ExecuteOnState(st))
+	assert.NoError(t, st.AcceptTransaction(addCertTx, genesis.Timestamp()))
+	assert.NoError(t, revokeCertTx.ExecuteOnState(st))
+	assert.NoError(t, st.AcceptTransaction(revokeCertTx, genesis.Timestamp()))
+	st.Commit()
+
+	accs := []core.Account{}
+	for i := 0; i < 2; i++ {
+		acc, err := st.GetAccount(users[i].Addr)
+		assert.NoError(t, err)
+		accs = append(accs, acc)
+	}
+	assert.Equal(t, 1, len(accs[0].CertsIssued()))
+	assert.Equal(t, 0, len(accs[0].CertsReceived()))
+	assert.Equal(t, 0, len(accs[1].CertsIssued()))
+	assert.Equal(t, 1, len(accs[1].CertsReceived()))
+
+	certHash := accs[0].CertsIssued()[0]
+
+	cert, err := st.GetCertification(certs[0].hash)
+	assert.NoError(t, err)
+
+	assert.Equal(t, cert.CertificateHash, certHash)
+	assert.Equal(t, cert.Issuer, users[0].Addr.Bytes())
+	assert.Equal(t, cert.Certified, users[1].Addr.Bytes())
+	assert.Equal(t, cert.IssueTime, certs[0].issueTime)
+	assert.Equal(t, cert.ExpirationTime, certs[0].expirationTime)
+	assert.Equal(t, cert.RevocationTime, certs[0].revocationTime)
+}
+
+func TestRevokeCertificationByInvalidAccount(t *testing.T) {
+	genesis, _, users := test.NewTestGenesisBlock(t)
+
+	certs := []struct {
+		issuer         common.Address
+		issuerPrivKey  signature.PrivateKey
+		revoker        common.Address
+		revokerPrivKey signature.PrivateKey
+		certified      common.Address
+		issueTime      int64
+		expirationTime int64
+		revocationTime int64
+		hash           []byte
+	}{
+		{
+			users[0].Addr,
+			users[0].PrivKey,
+			users[2].Addr,
+			users[2].PrivKey,
+			users[1].Addr,
+			time.Now().Unix(),
+			time.Now().Unix() + int64(100000),
+			time.Now().Unix() + int64(100),
+			byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e"),
+		},
+	}
+
+	st := genesis.State()
+
+	addCertPayload := core.NewAddCertificationPayload(certs[0].issueTime, certs[0].expirationTime, certs[0].hash)
+	addCertPayloadBuf, err := addCertPayload.ToBytes()
+	assert.NoError(t, err)
+
+	addCertTx, err := core.NewTransaction(test.ChainID, certs[0].issuer, certs[0].certified,
+		util.Uint128Zero(), 1, core.TxOperationAddCertification, addCertPayloadBuf)
+	assert.NoError(t, err)
+
+	revokeCertPayload := core.NewRevokeCertificationPayload(certs[0].hash)
+	revokeCertPayloadBuf, err := revokeCertPayload.ToBytes()
+	assert.NoError(t, err)
+
+	revokeCertTx, err := core.NewTransaction(test.ChainID, certs[0].revoker, common.Address{},
+		util.Uint128Zero(), 2, core.TxOperationRevokeCertification, revokeCertPayloadBuf)
+
+	revokeCertTx.SetTimestamp(certs[0].revocationTime)
+
+	addSig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	addSig.InitSign(certs[0].issuerPrivKey)
+	assert.NoError(t, addCertTx.SignThis(addSig))
+
+	revokeSig, err := crypto.NewSignature(algorithm.SECP256K1)
+	assert.NoError(t, err)
+	revokeSig.InitSign(certs[0].revokerPrivKey)
+	assert.NoError(t, revokeCertTx.SignThis(revokeSig))
+
+	st.BeginBatch()
+	assert.NoError(t, addCertTx.ExecuteOnState(st))
+	assert.NoError(t, st.AcceptTransaction(addCertTx, genesis.Timestamp()))
+	assert.Error(t, core.ErrInvalidCertificationRevoker, revokeCertTx.ExecuteOnState(st))
 }

@@ -157,6 +157,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	genesisBlock.header.accsRoot = genesisBlock.state.AccountsRoot()
 	genesisBlock.header.txsRoot = genesisBlock.state.TransactionsRoot()
 	genesisBlock.header.candidacyRoot = genesisBlock.state.CandidacyRoot()
+	genesisBlock.header.certificationRoot = genesisBlock.state.CertificationRoot()
 	genesisBlock.header.consensusRoot, err = genesisBlock.state.ConsensusRoot()
 	if err != nil {
 		return nil, err

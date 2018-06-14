@@ -28,12 +28,13 @@ import (
 )
 
 type states struct {
-	accState       *AccountStateBatch
-	txsState       *TrieBatch
-	usageState     *TrieBatch
-	recordsState   *TrieBatch
-	consensusState ConsensusState
-	candidacyState *TrieBatch
+	accState           *AccountStateBatch
+	txsState           *TrieBatch
+	usageState         *TrieBatch
+	recordsState       *TrieBatch
+	consensusState     ConsensusState
+	candidacyState     *TrieBatch
+	certificationState *TrieBatch
 
 	reservationQueue *ReservationQueue
 	votesCache       *votesCache
@@ -72,19 +73,25 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
+	certificationState, err := NewTrieBatch(nil, stor)
+	if err != nil {
+		return nil, err
+	}
+
 	reservationQueue := NewEmptyReservationQueue(stor)
 	votesCache := newVotesCache()
 
 	return &states{
-		accState:         accState,
-		txsState:         txsState,
-		usageState:       usageState,
-		recordsState:     recordsState,
-		consensusState:   consensusState,
-		candidacyState:   candidacyState,
-		reservationQueue: reservationQueue,
-		votesCache:       votesCache,
-		storage:          stor,
+		accState:           accState,
+		txsState:           txsState,
+		usageState:         usageState,
+		recordsState:       recordsState,
+		consensusState:     consensusState,
+		candidacyState:     candidacyState,
+		certificationState: certificationState,
+		reservationQueue:   reservationQueue,
+		votesCache:         votesCache,
+		storage:            stor,
 	}, nil
 }
 
@@ -119,6 +126,11 @@ func (st *states) Clone() (*states, error) {
 		return nil, err
 	}
 
+	certificationState, err := NewTrieBatch(st.certificationState.RootHash(), st.storage)
+	if err != nil {
+		return nil, err
+	}
+
 	reservationQueue, err := LoadReservationQueue(st.storage, st.reservationQueue.Hash())
 	if err != nil {
 		return nil, err
@@ -127,15 +139,16 @@ func (st *states) Clone() (*states, error) {
 	votesCache := st.votesCache.Clone()
 
 	return &states{
-		accState:         accState,
-		txsState:         txsState,
-		usageState:       usageState,
-		recordsState:     recordsState,
-		consensusState:   consensusState,
-		candidacyState:   candidacyState,
-		reservationQueue: reservationQueue,
-		votesCache:       votesCache,
-		storage:          st.storage,
+		accState:           accState,
+		txsState:           txsState,
+		usageState:         usageState,
+		recordsState:       recordsState,
+		consensusState:     consensusState,
+		candidacyState:     candidacyState,
+		certificationState: certificationState,
+		reservationQueue:   reservationQueue,
+		votesCache:         votesCache,
+		storage:            st.storage,
 	}, nil
 }
 
@@ -155,6 +168,9 @@ func (st *states) BeginBatch() error {
 	if err := st.candidacyState.BeginBatch(); err != nil {
 		return err
 	}
+	if err := st.certificationState.BeginBatch(); err != nil {
+		return err
+	}
 	return st.reservationQueue.BeginBatch()
 }
 
@@ -172,6 +188,9 @@ func (st *states) Commit() error {
 		return err
 	}
 	if err := st.candidacyState.Commit(); err != nil {
+		return err
+	}
+	if err := st.certificationState.Commit(); err != nil {
 		return err
 	}
 	return st.reservationQueue.Commit()
@@ -199,6 +218,10 @@ func (st *states) ConsensusRoot() ([]byte, error) {
 
 func (st *states) CandidacyRoot() []byte {
 	return st.candidacyState.RootHash()
+}
+
+func (st *states) CertificationRoot() []byte {
+	return st.certificationState.RootHash()
 }
 
 func (st *states) ReservationQueueHash() []byte {
@@ -256,6 +279,15 @@ func (st *states) LoadCandidacyRoot(rootHash []byte) error {
 		return err
 	}
 	st.candidacyState = candidacyState
+	return nil
+}
+
+func (st *states) LoadCertificationRoot(rootHash []byte) error {
+	certificationState, err := NewTrieBatch(rootHash, st.storage)
+	if err != nil {
+		return err
+	}
+	st.certificationState = certificationState
 	return nil
 }
 
@@ -713,6 +745,71 @@ func (st *states) GetVoted(address common.Address) (common.Address, error) {
 		return common.Address{}, err
 	}
 	return common.BytesToAddress(votedBytes), nil
+}
+
+func (st *states) AddCertification(hash []byte,
+	issuerAddr common.Address, certifiedAddr common.Address,
+	issueTime int64, expirationTime int64) error {
+	if err := st.accState.AddCertReceived(certifiedAddr.Bytes(), hash); err != nil {
+		return err
+	}
+	if err := st.accState.AddCertIssued(issuerAddr.Bytes(), hash); err != nil {
+		return err
+	}
+	pbCertification := &corepb.Certification{
+		CertificateHash: hash,
+		Issuer:          issuerAddr.Bytes(),
+		Certified:       certifiedAddr.Bytes(),
+		IssueTime:       issueTime,
+		ExpirationTime:  expirationTime,
+		RevocationTime:  int64(0),
+	}
+	certificationBytes, err := proto.Marshal(pbCertification)
+	if err != nil {
+		return err
+	}
+	if err := st.certificationState.Put(hash, certificationBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (st *states) RevokeCertification(hash []byte, revoker common.Address, revokeTime int64) error {
+	certificationBytes, err := st.certificationState.Get(hash)
+	if err != nil {
+		return nil
+	}
+	pbCertification := new(corepb.Certification)
+	if err := proto.Unmarshal(certificationBytes, pbCertification); err != nil {
+		return err
+	}
+	if common.BytesToAddress(pbCertification.Issuer) != revoker {
+		return ErrInvalidCertificationRevoker
+	}
+	if pbCertification.RevocationTime > int64(0) {
+		return ErrCertAlreadyRevoked
+	}
+	pbCertification.RevocationTime = revokeTime
+	modifiedBytes, err := proto.Marshal(pbCertification)
+	if err != nil {
+		return err
+	}
+	if err := st.certificationState.Put(hash, modifiedBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (st *states) GetCertification(hash []byte) (*corepb.Certification, error) {
+	certificationBytes, err := st.certificationState.Get(hash)
+	if err != nil {
+		return nil, err
+	}
+	pbCertification := new(corepb.Certification)
+	if err := proto.Unmarshal(certificationBytes, pbCertification); err != nil {
+		return nil, err
+	}
+	return pbCertification, nil
 }
 
 // BlockState possesses every states a block should have

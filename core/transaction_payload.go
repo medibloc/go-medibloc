@@ -44,3 +44,59 @@ func BytesToAddRecordPayload(b []byte) (*AddRecordPayload, error) {
 func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
+
+// AddCertificationPayload is payload type for TxOperationAddCertification
+type AddCertificationPayload struct {
+	IssueTime       int64
+	ExpirationTime  int64
+	CertificateHash []byte
+}
+
+// NewAddCertificationPayload generates a AddCertificationPayload
+func NewAddCertificationPayload(issueTime int64, expirationTime int64, certHash []byte) *AddCertificationPayload {
+	return &AddCertificationPayload{
+		IssueTime:       issueTime,
+		ExpirationTime:  expirationTime,
+		CertificateHash: certHash,
+	}
+}
+
+// BytesToAddCertificationPayload converts bytes to AddCertificationPayload struct
+func BytesToAddCertificationPayload(b []byte) (*AddCertificationPayload, error) {
+	payload := new(AddCertificationPayload)
+	if err := json.Unmarshal(b, payload); err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	return payload, nil
+}
+
+// ToBytes returns marshalled AddCertificationPayload
+func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
+	return json.Marshal(payload)
+}
+
+// RevokeCertificationPayload is payload type for TxOperationRevokeCertification
+type RevokeCertificationPayload struct {
+	CertificateHash []byte
+}
+
+// NewRevokeCertificationPayload generates a RevokeCertificationPayload
+func NewRevokeCertificationPayload(hash []byte) *RevokeCertificationPayload {
+	return &RevokeCertificationPayload{
+		CertificateHash: hash,
+	}
+}
+
+// BytesToRevokeCertificationPayload converts bytes to RevokeCertificationPayload struct
+func BytesToRevokeCertificationPayload(b []byte) (*RevokeCertificationPayload, error) {
+	payload := new(RevokeCertificationPayload)
+	if err := json.Unmarshal(b, payload); err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	return payload, nil
+}
+
+// ToBytes returns marshalled RevokeCertificationPayload
+func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
+	return json.Marshal(payload)
+}

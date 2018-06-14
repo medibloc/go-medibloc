@@ -377,6 +377,10 @@ func (tx *Transaction) ExecuteOnState(bs *BlockState) error {
 		return tx.quitCandidacy(bs)
 	case TxOperationVote:
 		return tx.vote(bs)
+	case TxOperationAddCertification:
+		return tx.addCertification(bs)
+	case TxOperationRevokeCertification:
+		return tx.revokeCertification(bs)
 	default:
 		return tx.transfer(bs)
 	}
@@ -420,4 +424,21 @@ func (tx *Transaction) quitCandidacy(bs *BlockState) error {
 
 func (tx *Transaction) vote(bs *BlockState) error {
 	return bs.Vote(tx.from, tx.to)
+}
+
+func (tx *Transaction) addCertification(bs *BlockState) error {
+	payload, err := BytesToAddCertificationPayload(tx.Data())
+	if err != nil {
+		return err
+	}
+	return bs.AddCertification(payload.CertificateHash, tx.from, tx.to,
+		payload.IssueTime, payload.ExpirationTime)
+}
+
+func (tx *Transaction) revokeCertification(bs *BlockState) error {
+	payload, err := BytesToRevokeCertificationPayload(tx.Data())
+	if err != nil {
+		return err
+	}
+	return bs.RevokeCertification(payload.CertificateHash, tx.from, tx.Timestamp())
 }
