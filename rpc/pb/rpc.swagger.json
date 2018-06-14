@@ -374,6 +374,10 @@
         "sign": {
           "type": "string",
           "description": "Transaction sign."
+        },
+        "payer_sign": {
+          "type": "string",
+          "description": "Transaction payer's sign."
         }
       }
     }

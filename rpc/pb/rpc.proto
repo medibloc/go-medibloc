@@ -172,4 +172,6 @@ message TransactionResponse {
 	uint32 alg = 9;
 	// Transaction sign.
 	string sign = 10;
+	// Transaction payer's sign.
+	string payer_sign = 11;
 }
