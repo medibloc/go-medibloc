@@ -10,4 +10,6 @@ message Account {
     bytes voted = 6;
     repeated bytes writers = 7;
     repeated bytes records = 8;
+    repeated bytes certs_received = 9;
+    repeated bytes certs_issued = 10;
 }

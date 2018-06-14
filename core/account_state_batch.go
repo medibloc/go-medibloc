@@ -108,11 +108,14 @@ func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
 	if err != nil {
 		// create account not exist in
 		return stageAndReturn(&account{
-			address: address,
-			balance: util.NewUint128(),
-			vesting: util.NewUint128(),
-			voted:   []byte{},
-			nonce:   0,
+			address:       address,
+			balance:       util.NewUint128(),
+			vesting:       util.NewUint128(),
+			voted:         []byte{},
+			nonce:         0,
+			records:       [][]byte{},
+			certsReceived: [][]byte{},
+			certsIssued:   [][]byte{},
 		}), nil
 	}
 	acc, err := loadAccount(accBytes)
@@ -280,6 +283,42 @@ func (as *AccountStateBatch) GetVoted(address []byte) ([]byte, error) {
 		return nil, ErrNotVotedYet
 	}
 	return acc.voted, nil
+}
+
+// AddCertReceived adds a cert hash in certReceived
+func (as *AccountStateBatch) AddCertReceived(address []byte, certHash []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	for _, r := range acc.certsReceived {
+		if byteutils.Equal(certHash, r) {
+			return ErrCertReceivedAlreadyAdded
+		}
+	}
+	acc.certsReceived = append(acc.certsReceived, certHash)
+	return nil
+}
+
+// AddCertIssued adds a cert hash info in certIssued
+func (as *AccountStateBatch) AddCertIssued(address []byte, certHash []byte) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+	for _, r := range acc.certsIssued {
+		if byteutils.Equal(certHash, r) {
+			return ErrCertIssuedAlreadyAdded
+		}
+	}
+	acc.certsIssued = append(acc.certsIssued, certHash)
+	return nil
 }
 
 // RootHash returns root hash of accounts trie

@@ -39,6 +39,10 @@ type account struct {
 	voted []byte
 	// records
 	records [][]byte
+	// certs received by a certifier
+	certsReceived [][]byte
+	// certs issued as a certifier
+	certsIssued [][]byte
 }
 
 func (acc *account) Address() []byte {
@@ -65,6 +69,14 @@ func (acc *account) Records() [][]byte {
 	return acc.records
 }
 
+func (acc *account) CertsReceived() [][]byte {
+	return acc.certsReceived
+}
+
+func (acc *account) CertsIssued() [][]byte {
+	return acc.certsIssued
+}
+
 func (acc *account) toBytes() ([]byte, error) {
 	balanceBytes, err := acc.balance.ToFixedSizeByteSlice()
 	if err != nil {
@@ -75,12 +87,14 @@ func (acc *account) toBytes() ([]byte, error) {
 		return nil, err
 	}
 	pbAcc := &corepb.Account{
-		Address: acc.address,
-		Balance: balanceBytes,
-		Vesting: vestingBytes,
-		Voted:   acc.voted,
-		Nonce:   acc.nonce,
-		Records: acc.records,
+		Address:       acc.address,
+		Balance:       balanceBytes,
+		Vesting:       vestingBytes,
+		Voted:         acc.voted,
+		Nonce:         acc.nonce,
+		Records:       acc.records,
+		CertsReceived: acc.certsReceived,
+		CertsIssued:   acc.certsIssued,
 	}
 	bytes, err := proto.Marshal(pbAcc)
 	if err != nil {
@@ -99,12 +113,14 @@ func loadAccount(bytes []byte) (*account, error) {
 	vesting := util.NewUint128()
 	vesting.FromFixedSizeByteSlice(pbAcc.Vesting)
 	acc := &account{
-		address: pbAcc.Address,
-		balance: balance,
-		vesting: vesting,
-		voted:   pbAcc.Voted,
-		nonce:   pbAcc.Nonce,
-		records: pbAcc.Records,
+		address:       pbAcc.Address,
+		balance:       balance,
+		vesting:       vesting,
+		voted:         pbAcc.Voted,
+		nonce:         pbAcc.Nonce,
+		records:       pbAcc.Records,
+		certsReceived: pbAcc.CertsReceived,
+		certsIssued:   pbAcc.CertsIssued,
 	}
 	return acc, nil
 }
@@ -183,6 +199,10 @@ type Account interface {
 	Voted() []byte
 
 	Records() [][]byte
+
+	CertsReceived() [][]byte
+
+	CertsIssued() [][]byte
 }
 
 // AccountState account state interface
