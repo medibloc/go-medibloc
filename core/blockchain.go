@@ -154,15 +154,15 @@ func (bc *BlockChain) BlockByHash(hash []byte) *Block {
 }
 
 // BlockByHeight returns a block of given height.
-func (bc *BlockChain) BlockByHeight(height uint64) *Block {
+func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
 	if height > bc.mainTailBlock.Height() {
-		return nil
+		return nil, ErrBlockNotExist
 	}
 	block, err := bc.loadBlockByHeight(height)
 	if err != nil {
-		return nil
+		return nil, ErrBlockNotExist
 	}
-	return block
+	return block, nil
 }
 
 // MainTailBlock returns MainTailBlock.
@@ -297,8 +297,8 @@ func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*B
 			return nil, ErrMissingParentBlock
 		}
 
-		canonical := bc.BlockByHeight(block.Height())
-		if canonical == nil {
+		canonical, err := bc.BlockByHeight(block.Height())
+		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"height": block.Height(),
 			}).Error("Failed to get the block of height.")
@@ -531,7 +531,15 @@ func (bc *BlockChain) removeFromTailBlocks(block *Block) {
 }
 
 func (bc *BlockChain) removeBlock(block *Block) error {
-	canonical := bc.BlockByHeight(block.Height())
+	canonical, err := bc.BlockByHeight(block.Height())
+
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"height": block.Height(),
+		}).Error("Failed to get the block of height.")
+		return ErrCannotRemoveBlockOnCanonical
+	}
+
 	if canonical != nil && byteutils.Equal(canonical.Hash(), block.Hash()) {
 		logging.Console().WithFields(logrus.Fields{
 			"block": block,
@@ -539,7 +547,7 @@ func (bc *BlockChain) removeBlock(block *Block) error {
 		return ErrCannotRemoveBlockOnCanonical
 	}
 
-	err := bc.storage.Delete(block.Hash())
+	err = bc.storage.Delete(block.Hash())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,

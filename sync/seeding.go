@@ -113,10 +113,18 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		"chunkSize": q.ChunkSize,
 	}).Info("Sync: Seeding manager received hashMeta request.")
 
-	if !byteutils.Equal(q.Hash, s.bm.BlockByHeight(q.From).Hash()) {
+	block, err := s.bm.BlockByHeight(q.From)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"height": q.From,
+			"err":    err,
+		}).Info("Fail to blockByHeight for comparing block hash.")
+	}
+
+	if !byteutils.Equal(q.Hash, block.Hash()) {
 		logging.WithFields(logrus.Fields{
 			"height":           q.From,
-			"hashInQuery":      s.bm.BlockByHeight(q.From).Hash(),
+			"hashInQuery":      block.Hash(),
 			"hashInBlockChain": byteutils.Bytes2Hex(q.Hash),
 		}).Info("Block hash is different")
 		return
@@ -143,7 +151,15 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 
 	allHashes := make([][]byte, tailHeight-q.From+1)
 	for i := uint64(0); i < tailHeight-q.From+1; i++ {
-		allHashes[i] = s.bm.BlockByHeight(i + q.From).Hash()
+		block, err = s.bm.BlockByHeight(i + q.From)
+		if err != nil {
+			logging.WithFields(logrus.Fields{
+				"height": i,
+				"err":    err,
+			}).Info("Fail to blockByHeight for gathering canonical chain hashes")
+		}
+
+		allHashes[i] = block.Hash()
 	}
 
 	n := (tailHeight - q.From + 1) / q.ChunkSize
@@ -214,7 +230,15 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 	pbBlockChunk := make([]*corepb.Block, q.ChunkSize)
 
 	for i := uint64(0); i < q.ChunkSize; i++ {
-		pbBlock, err := s.bm.BlockByHeight(i + q.From).ToProto()
+		block, err := s.bm.BlockByHeight(i + q.From)
+		if err != nil {
+			logging.WithFields(logrus.Fields{
+				"height": i,
+				"err":    err,
+			}).Info("Fail to blockByHeight for make blockChunk")
+		}
+
+		pbBlock, err := block.ToProto()
 		if err != nil {
 			logging.Error("Fail to convert block to pbBlock")
 		}

@@ -160,9 +160,10 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 // staking (TODO)
 func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
 	var block *core.Block
+	var err error
 	switch req.Height {
 	case GENESIS:
-		block = s.bm.BlockByHeight(1)
+		block, err = s.bm.BlockByHeight(1)
 	case CONFIRMED:
 		block = s.bm.LIB()
 	case TAIL:
@@ -172,9 +173,9 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, ErrMsgConvertBlockHeightFailed)
 		}
-		block = s.bm.BlockByHeight(height)
+		block, err = s.bm.BlockByHeight(height)
 	}
-	if block == nil {
+	if block == nil || err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
 	}
 	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
@@ -193,9 +194,10 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 // GetBlock returns block
 func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.BlockResponse, error) {
 	var block *core.Block
+	var err error
 	switch req.Hash {
 	case GENESIS:
-		block = s.bm.BlockByHeight(1)
+		block, err = s.bm.BlockByHeight(1)
 	case CONFIRMED:
 		block = s.bm.LIB()
 	case TAIL:
@@ -203,7 +205,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	default:
 		block = s.bm.BlockByHash(byteutils.Hex2Bytes(req.Hash))
 	}
-	if block == nil {
+	if block == nil || err != nil {
 		return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 	}
 	pb, err := block.ToProto()

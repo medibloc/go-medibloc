@@ -191,7 +191,8 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	err = bm.PushBlockData(blockDatas[dynastySize+4])
 	assert.NoError(t, err)
 
-	parent := bm.BlockByHeight(3)
+	parent, err := bm.BlockByHeight(3)
+	require.Nil(t, err)
 	bd := nextBlockData(t, parent, dynasties)
 	bd.SetHeight(20)
 	err = bm.PushBlockData(bd)
@@ -233,7 +234,8 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	parent := bm.BlockByHeight(3)
+	parent, err := bm.BlockByHeight(3)
+	require.Nil(t, err)
 	bd := nextBlockData(t, parent, dynasties)
 	tests := []struct {
 		height uint64

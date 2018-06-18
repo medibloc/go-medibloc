@@ -118,7 +118,7 @@ func (bm *BlockManager) ChainID() uint32 {
 }
 
 // BlockByHeight returns the block contained in the chain by height.
-func (bm *BlockManager) BlockByHeight(height uint64) *Block {
+func (bm *BlockManager) BlockByHeight(height uint64) (*Block, error) {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 	return bm.bc.BlockByHeight(height)

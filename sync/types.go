@@ -21,7 +21,7 @@ import (
 
 //BlockManager is interface of core.blockmanager.
 type BlockManager interface {
-	BlockByHeight(height uint64) *core.Block
+	BlockByHeight(height uint64) (*core.Block, error)
 	BlockByHash(hash []byte) *core.Block
 	LIB() *core.Block
 	TailBlock() *core.Block

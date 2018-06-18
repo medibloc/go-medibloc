@@ -5,11 +5,12 @@
 package mock_rpcpb
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	pb "github.com/medibloc/go-medibloc/rpc/pb"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
-	reflect "reflect"
 )
 
 // MockApiServiceClient is a mock of ApiServiceClient interface

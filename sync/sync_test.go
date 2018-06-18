@@ -29,7 +29,6 @@ import (
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -149,11 +148,14 @@ func TestService_Start(t *testing.T) {
 
 	newTail := receiveTester.blockManager.TailBlock()
 	t.Logf("Height(%v) block of New Node	    : %v", newTail.Height(), newTail.Hash())
-	t.Logf("Height(%v) block of Origin Node	: %v", newTail.Height(), seedTester.blockManager.BlockByHeight(newTail.Height()).Hash())
+	t.Logf("Height(%v) block of Origin Node	: %v", newTail.Height(), seedTester.blockManager.TailBlock().Hash())
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		require.NotNil(t, seedTester.blockManager.BlockByHeight(i), "Seeder Height:%v, Hash:%v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash()))
-		require.NotNil(t, receiveTester.blockManager.BlockByHeight(i), "Receiver Height Missing:%v, Hash: %v", i, byteutils.Bytes2Hex(seedTester.blockManager.BlockByHeight(i).Hash()))
-		require.Equal(t, seedTester.blockManager.BlockByHeight(i).Hash(), receiveTester.blockManager.BlockByHeight(i).Hash())
+		seedTesterBlock, seedErr := seedTester.blockManager.BlockByHeight(i)
+		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
+		receiveTesterBlock, receiveErr := receiveTester.blockManager.BlockByHeight(i)
+		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
+
+		require.Equal(t, seedTesterBlock.Hash(), receiveTesterBlock.Hash())
 	}
 }
 
@@ -274,9 +276,14 @@ func TestForkResistance(t *testing.T) {
 
 	newTail := newbieTester.blockManager.TailBlock()
 	t.Logf("Height(%v) block of newbie tester	: %v", newTail.Height(), newTail.Hash())
-	t.Logf("Height(%v) block of seed tester	  : %v", newTail.Height(), seedTester.blockManager.BlockByHeight(newTail.Height()).Hash())
+	t.Logf("Height(%v) block of seed tester	  : %v", newTail.Height(), seedTester.blockManager.TailBlock().Hash())
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		require.Equal(t, seedTester.blockManager.BlockByHeight(i).Hash(), newbieTester.blockManager.BlockByHeight(i).Hash())
+		seedTesterBlock, seedErr := seedTester.blockManager.BlockByHeight(i)
+		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
+		newbieTesterBlock, receiveErr := newbieTester.blockManager.BlockByHeight(i)
+		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
+
+		require.Equal(t, seedTesterBlock.Hash(), newbieTesterBlock.Hash())
 	}
 	//t.Logf(newbieTester.syncService.Download.finishedTasks)
 }
