@@ -67,6 +67,19 @@ func (sm *StreamManager) Count() int32 {
 	return atomic.LoadInt32(&sm.activePeersCount)
 }
 
+// EstablishedCount return handShakeSucceed peer count
+func (sm *StreamManager) EstablishedCount() int32 {
+	cnt := int32(0)
+	sm.allStreams.Range(func(key, value interface{}) bool {
+		stream := value.(*Stream)
+		if stream.IsHandshakeSucceed() {
+			cnt++
+		}
+		return true
+	})
+	return cnt
+}
+
 // Start stream manager service
 func (sm *StreamManager) Start() {
 	logging.Console().Info("Starting MedService StreamManager...")

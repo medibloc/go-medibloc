@@ -295,8 +295,10 @@ func (d *download) sendMetaQuery() error {
 	}
 	d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 	logging.WithFields(logrus.Fields{
-		"mq":       mq,
-		"sendData": sendData,
+		"mq":                       mq,
+		"sendData":                 sendData,
+		"numberOfPeers":            d.netService.Node().PeersCount(),
+		"numberOfEstablishedPeers": d.netService.Node().EstablishedPeersCount(),
 	}).Info("Sync Meta Request was sent")
 	return nil
 }

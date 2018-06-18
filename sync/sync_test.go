@@ -132,7 +132,7 @@ func TestService_Start(t *testing.T) {
 	receiveTester.Start()
 
 	for {
-		if receiveTester.medService.Node().PeersCount() >= 1 {
+		if receiveTester.medService.Node().EstablishedPeersCount() >= 1 {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -239,7 +239,7 @@ func TestForkResistance(t *testing.T) {
 	newbieTester.Start()
 
 	for {
-		nPeers := newbieTester.medService.Node().PeersCount()
+		nPeers := newbieTester.medService.Node().EstablishedPeersCount()
 		if nPeers >= int32(nMajors+nMinors) {
 			t.Log("Number of connected peers:", nPeers)
 			break
@@ -253,6 +253,7 @@ func TestForkResistance(t *testing.T) {
 	prevSize := uint64(0)
 	for {
 		if newbieTester.blockManager.TailBlock().Height() > uint64(nBlocks-chunkSize+1) {
+			newbieTester.syncService.Stop()
 			break
 		}
 

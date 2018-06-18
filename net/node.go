@@ -183,6 +183,11 @@ func (node *Node) PeersCount() int32 {
 	return node.streamManager.Count()
 }
 
+// EstablishedPeersCount return handShakeSucceed steam count.
+func (node *Node) EstablishedPeersCount() int32 {
+	return node.streamManager.EstablishedCount()
+}
+
 // RouteTable return route table.
 func (node *Node) RouteTable() *RouteTable {
 	return node.routeTable
