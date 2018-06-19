@@ -157,4 +157,11 @@ message SyncConfig {
     uint32 download_max_concurrent_tasks = 5;
     // Chunk Cache Size
     uint64 download_chunk_cache_size = 6;
+    // Minimum Number of Peers to pass majority check
+    uint32 minimum_peers = 7;
+
+    // Blockchunk request interval - second
+    uint32 request_interval = 10;
+    // Timeout for finishing download  - second
+    uint32 finisher_timeout = 11;
 }

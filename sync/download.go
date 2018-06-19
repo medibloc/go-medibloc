@@ -22,6 +22,8 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -37,40 +39,59 @@ type download struct {
 	messageCh  chan net.Message
 	quitCh     chan bool
 
-	activated        bool
-	downloadStart    bool
-	from             uint64
-	chunkSize        uint64
-	pidRootHashesMap map[string][]string
-	rootHashPIDsMap  map[string]map[string]struct{}
-	taskQueue        []*downloadTask
-	runningTasks     map[uint64]*downloadTask
-	finishedTasks    *taskList
-	taskAddCh        chan *downloadTask
-	taskDoneCh       chan *downloadTask
-	maxRunningTask   uint32
-	chunkCacheSize   uint64
+	mu        sync.Mutex
+	activated bool
+
+	downloadStart     bool
+	from              uint64
+	chunkSize         uint64
+	pidRootHashesMap  map[string][]string
+	rootHashPIDsMap   map[string]map[string]struct{}
+	taskQueue         []*downloadTask
+	runningTasks      map[uint64]*downloadTask
+	finishedTasks     *taskList
+	taskAddCh         chan *downloadTask
+	taskDoneCh        chan *downloadTask
+	maxRunningTask    uint32
+	chunkCacheSize    uint64
+	minimumPeersCount uint32
+	respondingPeers   map[string]struct{}
+	minorPeers        map[string]struct{}
+	interval          time.Duration
+	timeout           time.Duration
+}
+
+//IsActivated return status of activation
+func (d *download) IsActivated() bool {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.activated
 }
 
 func newDownload(config *medletpb.SyncConfig) *download {
 	return &download{
-		netService:       nil,
-		bm:               nil,
-		messageCh:        make(chan net.Message, 128),
-		quitCh:           make(chan bool, 1),
-		activated:        false,
-		downloadStart:    false,
-		from:             0,
-		chunkSize:        config.DownloadChunkSize,
-		pidRootHashesMap: make(map[string][]string),
-		rootHashPIDsMap:  make(map[string]map[string]struct{}),
-		taskQueue:        make([]*downloadTask, 0),
-		runningTasks:     make(map[uint64]*downloadTask),
-		finishedTasks:    nil,
-		taskAddCh:        make(chan *downloadTask, 2),
-		taskDoneCh:       make(chan *downloadTask),
-		maxRunningTask:   config.DownloadMaxConcurrentTasks,
-		chunkCacheSize:   config.DownloadChunkCacheSize,
+		netService:        nil,
+		bm:                nil,
+		messageCh:         make(chan net.Message, 128),
+		quitCh:            make(chan bool, 1),
+		activated:         false,
+		downloadStart:     false,
+		from:              0,
+		chunkSize:         config.DownloadChunkSize,
+		pidRootHashesMap:  make(map[string][]string),
+		rootHashPIDsMap:   make(map[string]map[string]struct{}),
+		taskQueue:         make([]*downloadTask, 0),
+		runningTasks:      make(map[uint64]*downloadTask),
+		finishedTasks:     nil,
+		taskAddCh:         make(chan *downloadTask, 2),
+		taskDoneCh:        make(chan *downloadTask),
+		maxRunningTask:    config.DownloadMaxConcurrentTasks,
+		chunkCacheSize:    config.DownloadChunkCacheSize,
+		minimumPeersCount: config.MinimumPeers,
+		respondingPeers:   make(map[string]struct{}),
+		minorPeers:        make(map[string]struct{}),
+		interval:          time.Duration(config.RequestInterval) * time.Second,
+		timeout:           time.Duration(config.FinisherTimeout) * time.Second,
 	}
 }
 
@@ -81,6 +102,11 @@ func (d *download) setup(netService net.Service, bm BlockManager) {
 
 func (d *download) start() {
 	logging.Console().Info("Sync: Download manager is started.")
+
+	d.mu.Lock()
+	d.activated = true
+	d.mu.Unlock()
+
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 
@@ -95,23 +121,25 @@ func (d *download) start() {
 }
 
 func (d *download) stop() {
-	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
-	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
-
 	d.quitCh <- true
 }
 
 func (d *download) subscribeLoop() {
-	timerChan := time.NewTicker(time.Second * 3).C //TODO: set timeout
-	retryMetaRequestCnt := 0
-	for {
+	defer d.deregisterSubscriber()
 
+	intervalTicker := time.NewTicker(d.interval)
+	timeoutTimer := time.NewTimer(d.timeout)
+	prevEstablishedPeersCount := int32(0)
+
+	for {
 		select {
-		case <-timerChan:
-			//if !d.majorityCheck(len(d.pidRootHashesMap)) {
-			d.sendMetaQuery()
-			retryMetaRequestCnt++
-			//}
+		case <-intervalTicker.C:
+			hasWork := false
+			if prevEstablishedPeersCount < d.netService.Node().EstablishedPeersCount() {
+				hasWork = true
+				d.sendMetaQuery()
+				prevEstablishedPeersCount = d.netService.Node().EstablishedPeersCount()
+			}
 			logging.WithFields(logrus.Fields{
 				"taskQueue":         d.taskQueue,
 				"runningTasks":      d.runningTasks,
@@ -120,10 +148,21 @@ func (d *download) subscribeLoop() {
 			}).Info("Sync: download service status")
 
 			if len(d.runningTasks) > 0 {
+				hasWork = true
 				for _, t := range d.runningTasks {
 					t.sendBlockChunkRequest()
 				}
 			}
+			if !hasWork {
+				continue
+			}
+
+		case <-timeoutTimer.C:
+			logging.Console().WithFields(logrus.Fields{
+				"from": d.from,
+				"to":   d.bm.TailBlock().Height(),
+			}).Info("Sync: Download manager is stopped by timeout")
+			return
 		case <-d.quitCh:
 			logging.Console().WithFields(logrus.Fields{
 				"from": d.from,
@@ -138,6 +177,10 @@ func (d *download) subscribeLoop() {
 				d.findTaskForBlockChunk(message)
 			}
 		}
+		if !timeoutTimer.Stop() {
+			<-timeoutTimer.C
+		}
+		timeoutTimer.Reset(d.timeout)
 	}
 }
 
@@ -192,6 +235,7 @@ func (d *download) updateMeta(message net.Message) {
 		return
 	}
 
+	d.respondingPeers[message.MessageFrom()] = struct{}{}
 	d.setPIDRootHashesMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.setRootHashPIDsMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.checkMajorMeta()
@@ -232,9 +276,10 @@ func (d *download) checkMajorMeta() {
 		for rootHashHex, nPeers := range peerCounter {
 			if d.majorityCheck(nPeers) {
 				logging.Infof("Major RootHash was found from %v", d.from+uint64(i)*d.chunkSize)
+				d.findMinorPeers(i, rootHashHex)
 				//createDownloadTask
 				majorNotFound = false
-				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHashHex], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHashHex, d.taskDoneCh)
+				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHashHex], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHashHex, d.taskDoneCh, d.interval)
 				d.taskQueue = append(d.taskQueue, t)
 				d.runNextTask()
 				break
@@ -245,6 +290,21 @@ func (d *download) checkMajorMeta() {
 			break
 		}
 		i++
+	}
+}
+
+func (d *download) findMinorPeers(index int, majorHashHex string) {
+	for pid, rootHashes := range d.pidRootHashesMap {
+		if _, ok := d.minorPeers[pid]; ok {
+			continue
+		}
+		if len(rootHashes) <= index {
+			d.minorPeers[pid] = struct{}{}
+			continue
+		}
+		if majorHashHex != rootHashes[index] {
+			d.minorPeers[pid] = struct{}{}
+		}
 	}
 }
 
@@ -275,7 +335,7 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 		if len(d.taskQueue) > 0 {
 			d.runNextTask()
 		} else if len(d.runningTasks) == 0 {
-			d.downloadFinishCheck()
+			logging.Info("kakakaka")
 		}
 	}
 }
@@ -293,7 +353,9 @@ func (d *download) sendMetaQuery() error {
 		}).Debug("Failed to marshal MetaQuery")
 		return err
 	}
-	d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	filter := new(net.ChainSyncPeersFilter)
+	filter.SetExcludedPIDs(d.respondingPeers)
+	d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, filter)
 	logging.WithFields(logrus.Fields{
 		"mq":                       mq,
 		"sendData":                 sendData,
@@ -303,21 +365,24 @@ func (d *download) sendMetaQuery() error {
 	return nil
 }
 
-func (d *download) downloadFinishCheck() {
-	logging.Console().Debug("finished task:", d.finishedTasks)
-	lastFinishedTask := d.finishedTasks.tasks[len(d.finishedTasks.tasks)-1]
-	if len(d.pidRootHashesMap[lastFinishedTask.pid]) > len(d.finishedTasks.tasks) {
-		return
-	}
-
-	if d.finishedTasks.CacheSize() > 0 {
-		return
-	}
-	logging.WithFields(logrus.Fields{
-		"height": d.bm.TailBlock().Height(),
-	}).Info("Sync Service Download complete")
-	d.quitCh <- true
-}
+//func (d *download) downloadFinishCheck() {
+//	logging.Console().Debug("finished task:", d.finishedTasks)
+//	lastFinishedTask := d.finishedTasks.tasks[len(d.finishedTasks.tasks)-1]
+//
+//	lastRootHashHex := d.finishedTasks.tasks[len(d.finishedTasks.tasks)-1].rootHash
+//
+//	if len(d.pidRootHashesMap[lastFinishedTask.pid]) > len(d.finishedTasks.tasks) {
+//		return
+//	}
+//
+//	if d.finishedTasks.CacheSize() > 0 {
+//		return
+//	}
+//	logging.WithFields(logrus.Fields{
+//		"height": d.bm.TailBlock().Height(),
+//	}).Info("Sync Service Download complete")
+//	d.stop()
+//}
 
 func (d *download) pushBlockDataChunk() error {
 	for {
@@ -345,10 +410,18 @@ func (d *download) pushBlockDataChunk() error {
 func (d *download) majorityCheck(n int) bool {
 	numberOfPeers := float64(d.netService.Node().PeersCount())
 	majorTh := int(math.Ceil(numberOfPeers / 2.0))
-	if n < majorTh {
+	if n < majorTh || n < int(d.minimumPeersCount) {
 		return false
 	}
 	return true
+}
+
+func (d *download) deregisterSubscriber() {
+	d.mu.Lock()
+	d.activated = false
+	d.mu.Unlock()
+	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
+	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 }
 
 // taskList manages finished tasks.

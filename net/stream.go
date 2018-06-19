@@ -78,6 +78,11 @@ type Stream struct {
 	msgCount                  map[string]int
 }
 
+//PID return whole IDB58 encoded string
+func (s *Stream) PID() string {
+	return peer.IDB58Encode(s.pid)
+}
+
 // NewStream return a new Stream
 func NewStream(stream libnet.Stream, node *Node) *Stream {
 	return newStreamInstance(stream.Conn().RemotePeer(), stream.Conn().RemoteMultiaddr(), stream, node)

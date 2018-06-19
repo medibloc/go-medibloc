@@ -91,8 +91,9 @@ func TestHook() *test.Hook {
 	mu.Lock()
 	defer mu.Unlock()
 
+	Init("/tmp", "info", 0)
+
 	logger, hook := test.NewNullLogger()
 	clog = logger
-	vlog = logger
 	return hook
 }

@@ -48,9 +48,10 @@ type downloadTask struct {
 	quitCh              chan bool
 	doneCh              chan *downloadTask
 	pid                 string
+	interval            time.Duration
 }
 
-func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash string, doneCh chan *downloadTask) *downloadTask {
+func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash string, doneCh chan *downloadTask, interval time.Duration) *downloadTask {
 	dt := &downloadTask{
 		netService:          netService,
 		query:               nil,
@@ -66,9 +67,10 @@ func newDownloadTask(netService net.Service, peers map[string]struct{}, from uin
 		quitCh:              make(chan bool, 2),
 		doneCh:              doneCh,
 		pid:                 "",
+		interval:            interval,
 	}
 	dt.generateBlockChunkQuery()
-	dt.startTime = time.Now().Add(-5 * time.Second)
+	dt.startTime = time.Now().Add(-1 * interval)
 	return dt
 }
 
@@ -166,7 +168,7 @@ func (dt *downloadTask) generateBlockChunkQuery() {
 }
 
 func (dt *downloadTask) sendBlockChunkRequest() {
-	if time.Now().Sub(dt.startTime) < 3*time.Second {
+	if time.Now().Sub(dt.startTime) < dt.interval {
 		return
 	}
 	randomIndex := rand.Intn(len(dt.peers))

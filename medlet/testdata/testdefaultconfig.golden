@@ -30,10 +30,13 @@ app: <
   >
 >
 sync: <
-  seeding_min_chunk_size: 10
+  seeding_min_chunk_size: 1
   seeding_max_chunk_size: 100
   seeding_max_concurrent_peers: 5
   download_chunk_size: 50
   download_max_concurrent_tasks: 5
-  download_chunk_cache_size: 100
+  download_chunk_cache_size: 10
+  minimum_peers: 1
+  request_interval: 1
+  finisher_timeout: 5
 >

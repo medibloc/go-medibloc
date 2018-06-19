@@ -134,20 +134,28 @@ func TestService_Start(t *testing.T) {
 	receiveTester := NewSyncTester(t, conf, genesisConf, dynasties)
 	receiveTester.Start()
 
-	for {
-		if receiveTester.medService.Node().EstablishedPeersCount() >= 1 {
-			break
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-
 	receiveTester.syncService.ActiveDownload()
+
+	count := 0
+	prevSize := uint64(0)
 	for {
-		if receiveTester.blockManager.TailBlock().Height() >= uint64(nBlocks-chunkSize+1) {
+		if !receiveTester.syncService.IsActiveDownload() {
 			break
 		}
 
-		time.Sleep(10 * time.Millisecond)
+		curSize := receiveTester.blockManager.TailBlock().Height()
+		if curSize == prevSize {
+			count++
+		} else {
+			count = 0
+		}
+		if count > 100 {
+			t.Logf("Timeout for syncTest: Current Height(%v)", curSize)
+			require.True(t, false)
+		}
+		prevSize = curSize
+
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	newTail := receiveTester.blockManager.TailBlock()
@@ -241,25 +249,17 @@ func TestForkResistance(t *testing.T) {
 	conf := DefaultSyncTesterConfig()
 	conf.Network.Seed = seedMultiAddr
 	conf.Sync.DownloadChunkSize = uint64(chunkSize)
+	conf.Sync.MinimumPeers = uint32(nMajors)
+
 	newbieTester := NewSyncTester(t, conf, genesisConf, dynasties)
 	newbieTester.Start()
-
-	for {
-		nPeers := newbieTester.medService.Node().EstablishedPeersCount()
-		if nPeers >= int32(nMajors+nMinors) {
-			t.Log("Number of connected peers:", nPeers)
-			break
-		}
-		time.Sleep(2 * time.Second)
-	}
 
 	newbieTester.syncService.ActiveDownload()
 
 	count := 0
 	prevSize := uint64(0)
 	for {
-		if newbieTester.blockManager.TailBlock().Height() > uint64(nBlocks-chunkSize+1) {
-			newbieTester.syncService.Stop()
+		if !newbieTester.syncService.IsActiveDownload() {
 			break
 		}
 
@@ -270,7 +270,7 @@ func TestForkResistance(t *testing.T) {
 			count = 0
 		}
 		if count > 100 {
-			t.Logf("Current Height(%v) <= Expected Height(%v)", curSize, nBlocks-chunkSize+1)
+			t.Logf("Current Height(%v)", curSize)
 			require.True(t, false)
 		}
 		prevSize = curSize
@@ -289,7 +289,6 @@ func TestForkResistance(t *testing.T) {
 
 		require.Equal(t, seedTesterBlock.Hash(), newbieTesterBlock.Hash())
 	}
-	//t.Logf(newbieTester.syncService.Download.finishedTasks)
 }
 
 func DefaultSyncTesterConfig() *medletpb.Config {

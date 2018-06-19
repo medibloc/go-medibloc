@@ -21,10 +21,26 @@ import (
 
 // ChainSyncPeersFilter will filter some peers randomly
 type ChainSyncPeersFilter struct {
+	excludedPIDs map[string]struct{}
+}
+
+//SetExcludedPIDs set excludedPIDs
+func (filter *ChainSyncPeersFilter) SetExcludedPIDs(excludedPIDs map[string]struct{}) {
+	filter.excludedPIDs = excludedPIDs
 }
 
 // Filter implements PeerFilterAlgorithm interface
 func (filter *ChainSyncPeersFilter) Filter(peers PeersSlice) PeersSlice {
+	if filter.excludedPIDs != nil {
+		filteredPeersSlice := make(PeersSlice, 0)
+		for _, p := range peers {
+			if _, ok := filter.excludedPIDs[p.(*Stream).PID()]; ok {
+				continue
+			}
+			filteredPeersSlice = append(filteredPeersSlice, p)
+		}
+		return filteredPeersSlice
+	}
 	return peers
 }
 

@@ -67,12 +67,17 @@ func (ss *Service) Stop() {
 
 //ActiveDownload start download manager
 func (ss *Service) ActiveDownload() {
-	if ss.Download.activated == true {
+	if ss.Download.IsActivated() == true {
 		logging.Console().Error("Sync: download Manager is already activated.")
 		return
 	}
 	logging.Info("Sync: Download manager started.")
 	ss.Download.start()
+}
+
+//IsActiveDownload return download isActivated
+func (ss *Service) IsActiveDownload() bool {
+	return ss.Download.IsActivated()
 }
 
 func generateHashTrie(hashes [][]byte) *trie.Trie {
