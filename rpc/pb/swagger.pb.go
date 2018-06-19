@@ -59,6 +59,32 @@ const (
         ]
       }
     },
+    "/v1/subscribe": {
+      "post": {
+        "operationId": "Subscribe",
+        "responses": {
+          "200": {
+            "description": "(streaming responses)",
+            "schema": {
+              "$ref": "#/definitions/rpcpbSubscribeResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/rpcpbSubscribeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/transaction": {
       "get": {
         "operationId": "GetTransaction",
@@ -315,6 +341,28 @@ const (
         "hash": {
           "type": "string",
           "description": "Hex string of transaction hash."
+        }
+      }
+    },
+    "rpcpbSubscribeRequest": {
+      "type": "object",
+      "properties": {
+        "topics": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rpcpbSubscribeResponse": {
+      "type": "object",
+      "properties": {
+        "topic": {
+          "type": "string"
+        },
+        "data": {
+          "type": "string"
         }
       }
     },

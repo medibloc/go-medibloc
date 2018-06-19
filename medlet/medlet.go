@@ -110,7 +110,7 @@ func (m *Medlet) Setup() error {
 
 	m.eventEmitter = core.NewEventEmitter(40960)
 
-	m.rpc.Setup(m.blockManager, m.transactionManager)
+	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter)
 
 	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus)
 	if err != nil {

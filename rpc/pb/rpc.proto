@@ -35,6 +35,13 @@ service ApiService {
           body: "*"
       };
 	}
+
+	rpc Subscribe (SubscribeRequest) returns (stream SubscribeResponse) {
+		option (google.api.http) = {
+			post: "/v1/subscribe"
+			body: "*"
+		};
+	}
 }
 
 message GetAccountStateRequest {
@@ -174,4 +181,13 @@ message TransactionResponse {
 	string sign = 10;
 	// Transaction payer's sign.
 	string payer_sign = 11;
+}
+
+message SubscribeRequest {
+	repeated string topics = 1;
+}
+
+message SubscribeResponse {
+	string topic = 1;
+	string data = 2;
 }

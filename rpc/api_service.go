@@ -128,12 +128,14 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 type APIService struct {
 	bm *core.BlockManager
 	tm *core.TransactionManager
+	ee *core.EventEmitter
 }
 
-func newAPIService(bm *core.BlockManager, tm *core.TransactionManager) *APIService {
+func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter) *APIService {
 	return &APIService{
 		bm: bm,
 		tm: tm,
+		ee: ee,
 	}
 }
 
@@ -281,4 +283,26 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	return &rpcpb.SendTransactionResponse{
 		Hash: byteutils.Bytes2Hex(tx.Hash()),
 	}, nil
+}
+
+// Subscribe to listen event
+func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiService_SubscribeServer) error {
+
+	eventSub := core.NewEventSubscriber(1024, req.Topics)
+
+	s.ee.Register(eventSub)
+	defer s.ee.Deregister(eventSub)
+
+	for {
+		select {
+		case event := <-eventSub.EventChan():
+			err := stream.Send(&rpcpb.SubscribeResponse{
+				Topic: event.Topic,
+				Data:  event.Data,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
 }

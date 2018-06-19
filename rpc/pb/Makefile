@@ -13,8 +13,12 @@ all: $(GO) mockgen runscript
 
 %.proto:
 
+# mockgen:
+# 	mockgen -source ./rpc.pb.go -destination ../mock_pb/mock_pb.go
+
+# For "Stream" mock
 mockgen:
-	mockgen -source ./rpc.pb.go -destination ../mock_pb/mock_pb.go
+	mockgen github.com/medibloc/go-medibloc/rpc/pb ApiServiceClient,ApiService_SubscribeClient,ApiServiceServer,ApiService_SubscribeServer > ../mock_pb/mock_pb.go
 
 runscript:
 	go run scripts/includetxt.go

@@ -29,7 +29,7 @@ import (
 func TestAPIService_GetMedState(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	client := mock_rpcpb.NewMockApiServiceClient(ctrl)
+	client := mock_pb.NewMockApiServiceClient(ctrl)
 
 	{
 		expected := &rpcpb.GetMedStateResponse{Tail: "meditail"}
@@ -46,7 +46,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 func TestAPIService_GetAccountState(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	client := mock_rpcpb.NewMockApiServiceClient(ctrl)
+	client := mock_pb.NewMockApiServiceClient(ctrl)
 
 	{
 		balance, _ := util.NewUint128FromInt(11223344)
