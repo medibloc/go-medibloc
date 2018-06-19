@@ -1,0 +1,19 @@
+language: go
+
+go:
+  - "1.10.x"
+
+before_install:
+  - go get github.com/golang/dep/cmd/dep
+  - go get golang.org/x/tools/cmd/goimports
+  - go get golang.org/x/lint/golint
+  - go get github.com/mattn/goveralls
+
+install:
+  - make dep
+
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
