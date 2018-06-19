@@ -101,14 +101,13 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		blockManager:       bm,
 		transactionManager: tm,
 		consensus:          consensus,
+		eventEmitter:       core.NewEventEmitter(40960),
 	}, nil
 }
 
 // Setup sets up medlet.
 func (m *Medlet) Setup() error {
 	logging.Console().Info("Setting up Medlet...")
-
-	m.eventEmitter = core.NewEventEmitter(40960)
 
 	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter)
 
