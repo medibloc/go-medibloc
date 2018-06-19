@@ -372,6 +372,7 @@ func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionMa
 	for i := 0; i < n; i++ {
 		mgr := core.NewTransactionManager(cfg)
 		mgr.Setup(svc[i])
+		mgr.InjectEmitter(core.NewEventEmitter(128))
 		mgr.Start()
 		mgrs = append(mgrs, mgr)
 	}

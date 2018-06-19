@@ -35,6 +35,8 @@ type TransactionPool struct {
 	candidates *hashheap.HashedHeap
 	buckets    *hashheap.HashedHeap
 	all        map[string]*Transaction
+
+	eventEmitter *EventEmitter
 }
 
 // NewTransactionPool returns TransactionPool.
@@ -45,6 +47,11 @@ func NewTransactionPool(size int) *TransactionPool {
 		buckets:    hashheap.New(),
 		all:        make(map[string]*Transaction),
 	}
+}
+
+// SetEventEmitter set emitter to transaction pool
+func (pool *TransactionPool) SetEventEmitter(emitter *EventEmitter) {
+	pool.eventEmitter = emitter
 }
 
 // Get returns transaction by tx hash.
@@ -73,6 +80,12 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 	}
 
 	pool.evict()
+
+	event := &Event{
+		Topic: TopicPendingTransaction,
+		Data:  tx.String(),
+	}
+	pool.eventEmitter.Trigger(event)
 
 	return nil
 }

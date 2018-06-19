@@ -57,6 +57,11 @@ func (mgr *TransactionManager) Setup(ns net.Service) {
 	}
 }
 
+// InjectEmitter inject emitter generated from medlet to transaction manager
+func (mgr *TransactionManager) InjectEmitter(emitter *EventEmitter) {
+	mgr.pool.SetEventEmitter(emitter)
+}
+
 // Start starts TransactionManager.
 func (mgr *TransactionManager) Start() {
 	logging.Console().WithFields(logrus.Fields{

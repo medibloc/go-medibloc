@@ -34,6 +34,7 @@ func TestTransactionPool(t *testing.T) {
 	}
 
 	pool := core.NewTransactionPool(128)
+	pool.SetEventEmitter(core.NewEventEmitter(128))
 	for _, tx := range txs {
 		err := pool.Push(tx)
 		assert.NoError(t, err)
@@ -53,6 +54,7 @@ func TestDuplicatedTx(t *testing.T) {
 	tx := testutil.NewRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
+	pool.SetEventEmitter(core.NewEventEmitter(128))
 
 	err := pool.Push(tx)
 	assert.NoError(t, err)
@@ -65,6 +67,7 @@ func TestTransactionGetDel(t *testing.T) {
 	tx2 := testutil.NewRandomSignedTransaction(t)
 
 	pool := core.NewTransactionPool(128)
+	pool.SetEventEmitter(core.NewEventEmitter(128))
 	err := pool.Push(tx1)
 	assert.NoError(t, err)
 	err = pool.Push(tx2)
@@ -101,6 +104,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 	}
 
 	pool := core.NewTransactionPool(3)
+	pool.SetEventEmitter(core.NewEventEmitter(128))
 	for _, tx := range txs {
 		err := pool.Push(tx)
 		assert.NoError(t, err)

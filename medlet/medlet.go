@@ -129,6 +129,8 @@ func (m *Medlet) Setup() error {
 		}).Fatal("Failed to setup consensus.")
 	}
 
+	m.transactionManager.InjectEmitter(m.eventEmitter)
+
 	logging.Console().Info("Set up Medlet.")
 	return nil
 }
