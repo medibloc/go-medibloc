@@ -48,6 +48,8 @@ type BlockChain struct {
 	consensus Consensus
 
 	storage storage.Storage
+
+	eventEmitter *EventEmitter
 }
 
 // NewBlockChain return new BlockChain instance
@@ -76,6 +78,11 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 	}
 
 	return bc, nil
+}
+
+// SetEventEmitter set emitter to blockchian
+func (bc *BlockChain) SetEventEmitter(emitter *EventEmitter) {
+	bc.eventEmitter = emitter
 }
 
 // Setup sets up BlockChain.
@@ -276,6 +283,13 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 		return err
 	}
 	bc.mainTailBlock = newTail
+
+	event := &Event{
+		Topic: TopicNewTailBlock,
+		Data:  newTail.GetBlockData().String(),
+	}
+	bc.eventEmitter.Trigger(event)
+
 	return nil
 }
 

@@ -73,6 +73,11 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 	}, nil
 }
 
+// InjectEmitter inject emitter generated from medlet to block manager
+func (bm *BlockManager) InjectEmitter(emitter *EventEmitter) {
+	bm.bc.SetEventEmitter(emitter)
+}
+
 // Setup sets up BlockManager.
 func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus) error {
 	bm.consensus = consensus

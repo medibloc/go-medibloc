@@ -78,6 +78,10 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 	tm := core.NewTransactionManager(config)
 	require.NoError(t, err)
 
+	eventEmitter := core.NewEventEmitter(128)
+	bm.InjectEmitter(eventEmitter)
+	tm.InjectEmitter(eventEmitter)
+
 	consensus.Setup(genesisConf, bm, tm)
 
 	ss := NewService(config.Sync)

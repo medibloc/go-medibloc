@@ -130,6 +130,7 @@ func (m *Medlet) Setup() error {
 	}
 
 	m.transactionManager.InjectEmitter(m.eventEmitter)
+	m.blockManager.InjectEmitter(m.eventEmitter)
 
 	logging.Console().Info("Set up Medlet.")
 	return nil

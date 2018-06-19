@@ -41,6 +41,7 @@ func getBlockSlice(blockMap map[testutil.BlockID]*core.Block, id testutil.BlockI
 
 func TestBlockChain_OnePath(t *testing.T) {
 	bc, m := getBlockChain(t)
+	bc.SetEventEmitter(core.NewEventEmitter(128))
 	genesis := m.BlockManager().TailBlock()
 
 	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}

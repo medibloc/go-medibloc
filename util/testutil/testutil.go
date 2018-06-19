@@ -412,8 +412,10 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	require.NoError(t, err)
 	bm, err := core.NewBlockManager(cfg)
 	require.NoError(t, err)
+	bm.InjectEmitter(core.NewEventEmitter(128))
 	tm := core.NewTransactionManager(cfg)
 	require.NoError(t, err)
+	tm.InjectEmitter(core.NewEventEmitter(128))
 
 	err = bm.Setup(genesisConf, stor, ns, consensus)
 	require.NoError(t, err)
