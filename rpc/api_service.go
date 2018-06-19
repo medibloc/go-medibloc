@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"strconv"
 
@@ -295,6 +296,8 @@ func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiServ
 
 	for {
 		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
 		case event := <-eventSub.EventChan():
 			err := stream.Send(&rpcpb.SubscribeResponse{
 				Topic: event.Topic,
