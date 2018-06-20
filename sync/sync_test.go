@@ -44,6 +44,7 @@ type SyncTester struct {
 	dynasties    testutil.Dynasties
 	blockManager BlockManager
 	syncService  *Service
+	eventEmitter *core.EventEmitter
 }
 
 func removeRouteTableCache(t *testing.T) {
@@ -78,9 +79,9 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 	tm := core.NewTransactionManager(config)
 	require.NoError(t, err)
 
-	eventEmitter := core.NewEventEmitter(128)
-	bm.InjectEmitter(eventEmitter)
-	tm.InjectEmitter(eventEmitter)
+	ee := core.NewEventEmitter(128)
+	bm.InjectEmitter(ee)
+	tm.InjectEmitter(ee)
 
 	consensus.Setup(genesisConf, bm, tm)
 
@@ -94,12 +95,14 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 		dynasties:    dynasties,
 		blockManager: bm,
 		syncService:  ss,
+		eventEmitter: ee,
 	}
 }
 
 func (st *SyncTester) Start() {
 	st.medService.Start()
 	st.syncService.Start()
+	st.eventEmitter.Start()
 }
 
 func (st *SyncTester) NodeID() string {
@@ -116,7 +119,6 @@ func TestService_Start(t *testing.T) {
 	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
-
 	for i := 1; i < nBlocks; i++ {
 		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
 		testutil.SignBlock(t, b, seedTester.dynasties)
@@ -135,7 +137,6 @@ func TestService_Start(t *testing.T) {
 	receiveTester.Start()
 
 	receiveTester.syncService.ActiveDownload()
-
 	count := 0
 	prevSize := uint64(0)
 	for {
@@ -157,7 +158,7 @@ func TestService_Start(t *testing.T) {
 
 		time.Sleep(100 * time.Millisecond)
 	}
-
+	fmt.Println("----")
 	newTail := receiveTester.blockManager.TailBlock()
 	t.Logf("Height(%v) block of New Node	    : %v", newTail.Height(), newTail.Hash())
 	t.Logf("Height(%v) block of Origin Node	: %v", newTail.Height(), seedTester.blockManager.TailBlock().Hash())
