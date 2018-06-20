@@ -1,5 +1,8 @@
 # Go MediBloc
 Official implementation of the medibloc blockchain.
+[![Go Report Card](https://goreportcard.com/badge/github.com/medibloc/go-medibloc)](https://goreportcard.com/report/github.com/medibloc/go-medibloc)
+[![Build Status](https://travis-ci.com/medibloc/go-medibloc.svg?branch=master)](https://travis-ci.com/medibloc/go-medibloc)
+[![codecov](https://codecov.io/gh/medibloc/go-medibloc/branch/master/graph/badge.svg)](https://codecov.io/gh/medibloc/go-medibloc)
 
 ## How to Build
 ### Build Requirements
