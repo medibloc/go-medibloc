@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/util/logging"
+	"os"
 )
 
 func TestMain(m *testing.M) {
 	logging.TestHook()
-	m.Run()
+	os.Exit(m.Run())
 }
