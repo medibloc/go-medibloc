@@ -290,6 +290,14 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) error {
 	}
 	bc.mainTailBlock = newTail
 
+	for _, tx := range newTail.GetBlockData().Transactions() {
+		event := &Event{
+			Topic: TopicTransactionExecutionResult,
+			Data:  tx.String(),
+		}
+		bc.eventEmitter.Trigger(event)
+	}
+
 	event := &Event{
 		Topic: TopicNewTailBlock,
 		Data:  newTail.GetBlockData().String(),
