@@ -108,6 +108,8 @@ func TestBlockManager_Reverse(t *testing.T) {
 func TestBlockManager_Tree(t *testing.T) {
 	m := testutil.NewMockMedlet(t)
 	bm := m.BlockManager()
+	tm := m.TransactionManager()
+	bm.InjectTransactionManager(tm)
 	genesis := bm.TailBlock()
 	dynasties := m.Dynasties()
 
@@ -202,6 +204,8 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 func TestBlockManager_PruneByLIB(t *testing.T) {
 	m := testutil.NewMockMedlet(t)
 	bm := m.BlockManager()
+	tm := m.TransactionManager()
+	bm.InjectTransactionManager(tm)
 	genesis := bm.TailBlock()
 	dynasties := m.Dynasties()
 	dynastySize := int(m.Genesis().GetMeta().GetDynastySize())

@@ -40,6 +40,7 @@ type BlockManager struct {
 	mu        sync.RWMutex
 	bc        *BlockChain
 	bp        *BlockPool
+	tm        *TransactionManager
 	ns        net.Service
 	consensus Consensus
 
@@ -76,6 +77,11 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 // InjectEmitter inject emitter generated from medlet to block manager
 func (bm *BlockManager) InjectEmitter(emitter *EventEmitter) {
 	bm.bc.SetEventEmitter(emitter)
+}
+
+// InjectTransactionManager inject transaction manager from medlet to block manager
+func (bm *BlockManager) InjectTransactionManager(tm *TransactionManager) {
+	bm.tm = tm
 }
 
 // Setup sets up BlockManager.
@@ -244,12 +250,18 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	newTail := bm.consensus.ForkChoice(bm.bc)
-	err := bm.bc.SetTailBlock(newTail)
+	revertBlocks, err := bm.bc.SetTailBlock(newTail)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set new tail block.")
 		return err
+	}
+	// REVERT
+	if len(revertBlocks) != 0 {
+		if err := bm.revertBlocks(revertBlocks); err != nil {
+			return nil
+		}
 	}
 
 	newLIB := bm.consensus.FindLIB(bm.bc)
@@ -298,6 +310,26 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		fails = append(fails, childFail...)
 	}
 	return all, tails, fails
+}
+
+func (bm *BlockManager) revertBlocks(blocks []*Block) error {
+	for _, block := range blocks {
+		for _, tx := range block.Transactions() {
+			// Return transactions
+			err := bm.tm.Push(tx)
+			if err != nil {
+				return err
+			}
+		}
+
+		event := &Event{
+			Topic: TopicRevertBlock,
+			Data:  block.String(),
+		}
+		bm.bc.eventEmitter.Trigger(event)
+		logging.Console().Warn("A block is reverted.")
+	}
+	return nil
 }
 
 // requestMissingBlock requests a missing block to connect to blockchain.

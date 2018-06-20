@@ -733,6 +733,17 @@ func (block *Block) GetBlockData() *BlockData {
 	return bd
 }
 
+// EmitTxExecutionEvent emits events of txs in the block
+func (block *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
+	for _, tx := range block.Transactions() {
+		event := &Event{
+			Topic: TopicTransactionExecutionResult,
+			Data:  tx.String(),
+		}
+		emitter.Trigger(event)
+	}
+}
+
 func bytesToBlockData(bytes []byte) (*BlockData, error) {
 	pb := new(corepb.Block)
 	if err := proto.Unmarshal(bytes, pb); err != nil {
