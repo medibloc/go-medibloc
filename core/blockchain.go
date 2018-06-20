@@ -237,6 +237,12 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	}
 	bc.lib = newLIB
 
+	event := &Event{
+		Topic: TopicLibBlock,
+		Data:  newLIB.GetBlockData().String(),
+	}
+	bc.eventEmitter.Trigger(event)
+
 	for _, tail := range bc.TailBlocks() {
 		if !bc.IsForkedBeforeLIB(tail) {
 			continue
