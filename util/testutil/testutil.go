@@ -25,7 +25,6 @@ import (
 	goNet "net"
 
 	"time"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -486,6 +485,15 @@ func FindRandomListenPorts(n int) (ports []string) {
 	}
 	for i := 0; i < n; i++ {
 		listens[i].Close()
+		for {
+			conn, err := goNet.DialTimeout("tcp", listens[i].Addr().String(), time.Millisecond*50)
+			if err != nil {
+				break
+			}
+			conn.Close()
+			time.Sleep(time.Millisecond * 50)
+		}
 	}
+
 	return ports
 }

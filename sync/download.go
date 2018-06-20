@@ -335,7 +335,7 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 		if len(d.taskQueue) > 0 {
 			d.runNextTask()
 		} else if len(d.runningTasks) == 0 {
-			logging.Info("kakakaka")
+			logging.Info("No more task in queue and running Tasks")
 		}
 	}
 }
