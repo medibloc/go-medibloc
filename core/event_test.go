@@ -142,7 +142,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, eventCount1, eventCountDist[topics[0]])
-	assert.Equal(t, eventCountDist[topics[0]] > eventCount2, true)
+	assert.Equal(t, eventCountDist[topics[0]] >= eventCount2, true)
 
 	emitter.Stop()
 }
