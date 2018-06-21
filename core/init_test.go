@@ -3,8 +3,9 @@ package core_test
 import (
 	"testing"
 
-	"github.com/medibloc/go-medibloc/util/logging"
 	"os"
+
+	"github.com/medibloc/go-medibloc/util/logging"
 )
 
 func TestMain(m *testing.M) {

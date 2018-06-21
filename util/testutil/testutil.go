@@ -25,6 +25,7 @@ import (
 	goNet "net"
 
 	"time"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
