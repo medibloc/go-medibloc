@@ -41,7 +41,7 @@ type SyncTester struct {
 	config       *medletpb.Config
 	medService   net.Service
 	storage      storage.Storage
-	dynasties    testutil.Dynasties
+	dynasties    testutil.AddrKeyPairs
 	blockManager BlockManager
 	syncService  *Service
 	eventEmitter *core.EventEmitter
@@ -55,7 +55,7 @@ func removeRouteTableCache(t *testing.T) {
 	}
 }
 
-func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Genesis, dynasties testutil.Dynasties) *SyncTester {
+func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Genesis, dynasties testutil.AddrKeyPairs) *SyncTester {
 	removeRouteTableCache(t)
 	if len(config.Network.Listen) < 1 {
 		port := testutil.FindRandomListenPorts(1)

@@ -26,6 +26,10 @@ import (
 
 	"time"
 
+	"io/ioutil"
+
+	"fmt"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -39,6 +43,7 @@ import (
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,8 +52,6 @@ import (
 type BlockID int
 
 var (
-	// ChainID chain ID
-	ChainID uint32 = 1
 	// GenesisID genesis ID
 	GenesisID BlockID = -1
 
@@ -72,14 +75,30 @@ func NewAddrKeyPair(t *testing.T) *AddrKeyPair {
 	}
 }
 
-// Dynasties is a slice of dynasties.
-type Dynasties []*AddrKeyPair
+// Address returns address.
+func (pair *AddrKeyPair) Address() string {
+	return pair.Addr.Hex()
+}
 
-// Distributed is a slice of all accounts who got initial token distribution
-type Distributed []*AddrKeyPair
+// PrivateKey returns private key.
+func (pair *AddrKeyPair) PrivateKey() string {
+	d, _ := pair.PrivKey.Encoded()
+	return byteutils.Bytes2Hex(d)
+}
 
-func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
-	for _, dynasty := range d {
+// String describes AddrKeyPair in string format.
+func (pair *AddrKeyPair) String() string {
+	if pair == nil {
+		return ""
+	}
+	return fmt.Sprintf("(%v, %v)", pair.Address(), pair.PrivateKey())
+}
+
+// AddrKeyPairs is a slice of AddrKeyPair structure.
+type AddrKeyPairs []*AddrKeyPair
+
+func (pairs AddrKeyPairs) findPrivKey(addr common.Address) signature.PrivateKey {
+	for _, dynasty := range pairs {
 		if dynasty.Addr.Equals(addr) {
 			return dynasty.PrivKey
 		}
@@ -88,7 +107,7 @@ func (d Dynasties) findPrivKey(addr common.Address) signature.PrivateKey {
 }
 
 // NewTestGenesisConf returns a genesis configuration for tests.
-func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties, distributed Distributed) {
+func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
 			ChainId:     ChainID,
@@ -131,7 +150,7 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties Dynasties
 }
 
 // NewTestGenesisBlock returns a genesis block for tests.
-func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties Dynasties, distributed Distributed) {
+func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
 	conf, dynasties, distributed := NewTestGenesisConf(t)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
@@ -200,7 +219,7 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 }
 
 // SignBlock signs block.
-func SignBlock(t *testing.T, block *core.Block, dynasties Dynasties) {
+func SignBlock(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
 	members, err := block.State().Dynasty()
 	require.NoError(t, err)
 	proposer, err := dpos.FindProposer(block.Timestamp(), members)
@@ -394,7 +413,7 @@ type MockMedlet struct {
 	blockManager       *core.BlockManager
 	transactionManager *core.TransactionManager
 	consensus          core.Consensus
-	dynasties          Dynasties
+	dynasties          AddrKeyPairs
 }
 
 // NewMockMedlet returns MockMedlet.
@@ -471,7 +490,7 @@ func (m *MockMedlet) Consensus() core.Consensus {
 }
 
 // Dynasties returns Dynasties.
-func (m *MockMedlet) Dynasties() Dynasties {
+func (m *MockMedlet) Dynasties() AddrKeyPairs {
 	return m.dynasties
 }
 
@@ -497,4 +516,11 @@ func FindRandomListenPorts(n int) (ports []string) {
 	}
 
 	return ports
+}
+
+// TempDir creates TempDir
+func TempDir(t *testing.T, prefix string) string {
+	name, err := ioutil.TempDir(".", prefix)
+	require.NoError(t, err)
+	return name
 }

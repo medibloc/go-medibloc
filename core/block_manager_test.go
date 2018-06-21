@@ -34,7 +34,7 @@ func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
 	return blockData
 }
 
-func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.Dynasties) *core.BlockData {
+func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.AddrKeyPairs) *core.BlockData {
 	block := testutil.NewTestBlockWithTxs(t, parent, dynasties[0])
 	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 	require.Nil(t, block.ExecuteAll())
@@ -45,7 +45,7 @@ func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.Dynastie
 	return restoreBlockData(t, block)
 }
 
-func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *core.Block, dynasties testutil.Dynasties) []*core.BlockData {
+func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *core.Block, dynasties testutil.AddrKeyPairs) []*core.BlockData {
 	from := dynasties[0]
 	blockMap := make(map[testutil.BlockID]*core.Block)
 	blockMap[testutil.GenesisID] = genesis
