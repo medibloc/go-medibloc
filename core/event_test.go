@@ -114,9 +114,10 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 	eventCh1, eventCh2 := subscriber1.EventChan(), subscriber2.EventChan()
 	eventCount1, eventCount2 := 0, 0
 
+	emitter.Deregister(subscriber2)
 	go func() {
 		defer wg.Done()
-		quit := time.NewTimer(time.Second * 10)
+		quit := time.NewTimer(time.Second * 1)
 		defer quit.Stop()
 
 		for {
@@ -125,14 +126,6 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 				return
 			case <-eventCh1:
 				eventCount1++
-				if eventCount1%10 == 5 {
-					emitter.Deregister(subscriber2)
-				} else if eventCount1%10 == 0 {
-					emitter.Register(subscriber2)
-				}
-				if eventCount1 == totalEventCount {
-					quit = time.NewTimer(time.Millisecond * 100)
-				}
 			case <-eventCh2:
 				eventCount2++
 			}
@@ -142,7 +135,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, eventCount1, eventCountDist[topics[0]])
-	assert.Equal(t, eventCountDist[topics[0]] >= eventCount2, true)
+	assert.Equal(t, eventCountDist[topics[0]] > eventCount2, true)
 
 	emitter.Stop()
 }
