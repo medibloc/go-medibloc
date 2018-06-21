@@ -17,7 +17,6 @@ package core
 
 import (
 	"github.com/gogo/protobuf/proto"
-	"github.com/hashicorp/golang-lru"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
@@ -293,6 +292,12 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, error) {
 		return nil, err
 	}
 	bc.mainTailBlock = newTail
+
+	event := &Event{
+		Topic: TopicNewTailBlock,
+		Data:  newTail.String(),
+	}
+	bc.eventEmitter.Trigger(event)
 
 	return blocks, nil
 }
