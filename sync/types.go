@@ -16,14 +16,23 @@
 package sync
 
 import (
+	"errors"
+
 	"github.com/medibloc/go-medibloc/core"
+)
+
+// ErrAlreadyDownlaodActivated occurred sync is already activated
+var (
+	ErrAlreadyDownlaodActivated = errors.New("download manager is already activated")
 )
 
 //BlockManager is interface of core.blockmanager.
 type BlockManager interface {
+	Start()
 	BlockByHeight(height uint64) (*core.Block, error)
 	BlockByHash(hash []byte) *core.Block
 	LIB() *core.Block
 	TailBlock() *core.Block
 	PushBlockData(block *core.BlockData) error
+	BroadCast(block *core.BlockData)
 }

@@ -133,6 +133,7 @@ func DefaultConfig() *medletpb.Config {
 			MinimumPeers:               1,
 			RequestInterval:            1,
 			FinisherTimeout:            5,
+			SyncActivationHeight:       100,
 		},
 	}
 }

@@ -66,13 +66,14 @@ func (ss *Service) Stop() {
 }
 
 //ActiveDownload start download manager
-func (ss *Service) ActiveDownload() {
+func (ss *Service) ActiveDownload() error {
 	if ss.Download.IsActivated() == true {
-		logging.Console().Error("Sync: download Manager is already activated.")
-		return
+		return ErrAlreadyDownlaodActivated
 	}
-	logging.Info("Sync: Download manager started.")
 	ss.Download.start()
+	logging.Info("Sync: Download manager started.")
+
+	return nil
 }
 
 //IsActiveDownload return download isActivated

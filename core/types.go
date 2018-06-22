@@ -174,3 +174,11 @@ type Event struct {
 	Topic string
 	Data  string
 }
+
+//SyncService interface for sync
+type SyncService interface {
+	Start()
+	Stop()
+	ActiveDownload() error
+	IsActiveDownload() bool
+}

@@ -101,12 +101,6 @@ func (d *download) setup(netService net.Service, bm BlockManager) {
 }
 
 func (d *download) start() {
-	logging.Console().Info("Sync: Download manager is started.")
-
-	d.mu.Lock()
-	d.activated = true
-	d.mu.Unlock()
-
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 
@@ -117,6 +111,11 @@ func (d *download) start() {
 		chunkSize: d.chunkSize,
 	}
 	d.sendMetaQuery()
+
+	d.mu.Lock()
+	d.activated = true
+	d.mu.Unlock()
+
 	go d.subscribeLoop()
 }
 
@@ -126,6 +125,8 @@ func (d *download) stop() {
 
 func (d *download) subscribeLoop() {
 	defer d.deregisterSubscriber()
+
+	logging.Console().Info("Sync: Download manager is started.")
 
 	intervalTicker := time.NewTicker(d.interval)
 	timeoutTimer := time.NewTimer(d.timeout)

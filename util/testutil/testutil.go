@@ -243,6 +243,17 @@ func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	return block
 }
 
+// NewTestBlockWithTimestamp return new block for test with current timestamp
+func NewTestBlockWithTimestamp(t *testing.T, parent *core.Block, ts time.Time) *core.Block {
+	block := getBlock(t, parent, "")
+	nextMintTs := nextMintSlot(ts).Unix()
+	require.NoError(t, block.SetTimestamp(nextMintTs))
+	require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
+	require.NoError(t, block.Seal())
+
+	return block
+}
+
 // NewTestBlockWithTxs return new block containing transactions
 func NewTestBlockWithTxs(t *testing.T, parent *core.Block, from *AddrKeyPair) *core.Block {
 	block := getBlock(t, parent, fromAddress)
@@ -516,6 +527,12 @@ func FindRandomListenPorts(n int) (ports []string) {
 	}
 
 	return ports
+}
+
+func nextMintSlot(ts time.Time) time.Time {
+	now := time.Duration(ts.Unix()) * time.Second
+	next := ((now + dpos.BlockInterval - time.Second) / dpos.BlockInterval) * dpos.BlockInterval
+	return time.Unix(int64(next/time.Second), 0)
 }
 
 // TempDir creates TempDir

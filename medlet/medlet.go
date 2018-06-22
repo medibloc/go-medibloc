@@ -23,6 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/sync"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
@@ -43,6 +44,7 @@ type Medlet struct {
 	transactionManager *core.TransactionManager
 	consensus          *dpos.Dpos
 	eventEmitter       *core.EventEmitter
+	syncService        *sync.Service
 }
 
 // New returns a new medlet.
@@ -92,6 +94,8 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		return nil, err
 	}
 
+	ss := sync.NewService(cfg.Sync)
+
 	return &Medlet{
 		config:             cfg,
 		genesis:            genesis,
@@ -102,6 +106,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		transactionManager: tm,
 		consensus:          consensus,
 		eventEmitter:       core.NewEventEmitter(40960),
+		syncService:        ss,
 	}, nil
 }
 
@@ -131,6 +136,9 @@ func (m *Medlet) Setup() error {
 	m.transactionManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectTransactionManager(m.transactionManager)
+
+	m.blockManager.InjectSyncService(m.syncService)
+	m.syncService.Setup(m.netService, m.blockManager)
 
 	logging.Console().Info("Set up Medlet.")
 	return nil
@@ -162,6 +170,8 @@ func (m *Medlet) Start() error {
 
 	m.consensus.Start()
 
+	m.syncService.Start()
+
 	metricsMedstartGauge.Update(1)
 
 	logging.Console().Info("Started Medlet.")
@@ -181,6 +191,8 @@ func (m *Medlet) Stop() {
 	m.rpc.Stop()
 
 	m.consensus.Stop()
+
+	m.syncService.Stop()
 
 	logging.Console().Info("Stopped Medlet.")
 }
@@ -228,4 +240,9 @@ func (m *Medlet) Consensus() core.Consensus {
 // EventEmitter returns event emitter.
 func (m *Medlet) EventEmitter() *core.EventEmitter {
 	return m.eventEmitter
+}
+
+//SyncService returns sync service
+func (m *Medlet) SyncService() *sync.Service {
+	return m.syncService
 }

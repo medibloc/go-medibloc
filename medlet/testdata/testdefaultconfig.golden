@@ -39,4 +39,5 @@ sync: <
   minimum_peers: 1
   request_interval: 1
   finisher_timeout: 5
+  sync_activation_height: 100
 >

@@ -44,6 +44,9 @@ type BlockManager struct {
 	ns        net.Service
 	consensus Consensus
 
+	syncService          SyncService
+	syncActivationHeight uint64
+
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
@@ -66,8 +69,9 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		return nil, err
 	}
 	return &BlockManager{
-		bc: bc,
-		bp: bp,
+		bc:                    bc,
+		bp:                    bp,
+		syncActivationHeight:  cfg.Sync.SyncActivationHeight,
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		quitCh:                make(chan int, 1),
@@ -82,6 +86,11 @@ func (bm *BlockManager) InjectEmitter(emitter *EventEmitter) {
 // InjectTransactionManager inject transaction manager from medlet to block manager
 func (bm *BlockManager) InjectTransactionManager(tm *TransactionManager) {
 	bm.tm = tm
+}
+
+//InjectSyncService inject sync service generated from medlet to block manager
+func (bm *BlockManager) InjectSyncService(syncService SyncService) {
+	bm.syncService = syncService
 }
 
 // Setup sets up BlockManager.
@@ -163,6 +172,10 @@ func (bm *BlockManager) Relay(bd *BlockData) {
 
 // BroadCast broadcasts BlockData to network.
 func (bm *BlockManager) BroadCast(bd *BlockData) {
+	logging.Console().WithFields(logrus.Fields{
+		"hash":   bd.Hash(),
+		"height": bd.height,
+	}).Info("block is broadcasted")
 	bm.ns.Broadcast(MessageTypeNewBlock, bd, net.MessagePriorityHigh)
 }
 
@@ -194,6 +207,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Filter blocks of same height.
 
+	// TODO @drsleepytiger
 	if err := bd.VerifyIntegrity(); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
@@ -274,6 +288,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	logging.Console().WithFields(logrus.Fields{
 		"block": bd,
+		"ts":    time.Unix(bd.Timestamp(), 0),
 		"tail":  newTail,
 		"lib":   newLIB,
 	}).Info("Block pushed.")
@@ -396,9 +411,10 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 	if msg.MessageType() == MessageTypeNewBlock {
 		ts := time.Unix(bd.Timestamp(), 0)
 		now := time.Now()
-		if ts.After(now) && ts.Sub(now) > newBlockBroadcastTimeLimit || now.After(ts) && now.Sub(ts) > newBlockBroadcastTimeLimit {
+		if (ts.After(now) && (ts.Sub(now) > newBlockBroadcastTimeLimit)) || (now.After(ts) && (now.Sub(ts) > newBlockBroadcastTimeLimit)) {
 			logging.WithFields(logrus.Fields{
 				"block": bd,
+				"ts":    ts,
 				"now":   now,
 			}).Warn("New block broadcast timeout.")
 			return
@@ -410,9 +426,30 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	err = bm.requestMissingBlock(msg.MessageFrom(), bd)
-	if err != nil {
-		return
+	if bd.Height() > bm.bc.MainTailBlock().Height()+bm.syncActivationHeight && bm.syncService != nil {
+		logging.Console().Info("hahaha")
+
+		if err := bm.syncService.ActiveDownload(); err != nil {
+			logging.WithFields(logrus.Fields{
+				"newBlockHeight":       bd.Height(),
+				"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+				"syncActivationHeight": bm.syncActivationHeight,
+				"err": err,
+			}).Debug("Failed to activate sync download manager.")
+		}
+
+		bm.syncService.ActiveDownload()
+
+		logging.Console().WithFields(logrus.Fields{
+			"newBlockHeight":       bd.Height(),
+			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+			"syncActivationHeight": bm.syncActivationHeight,
+		}).Info("Sync download manager is activated.")
+	} else {
+		err = bm.requestMissingBlock(msg.MessageFrom(), bd)
+		if err != nil {
+			return
+		}
 	}
 
 	if msg.MessageType() == MessageTypeNewBlock {

@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru"
 	"github.com/medibloc/go-medibloc/metrics"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -37,7 +37,8 @@ type Dispatcher struct {
 	quitCh             chan bool
 	receivedMessageCh  chan Message
 	dispatchedMessages *lru.Cache
-	filters            map[string]bool
+	filters            *sync.Map
+	//filters            map[string]bool
 }
 
 // NewDispatcher create Dispatcher instance.
@@ -46,7 +47,8 @@ func NewDispatcher() *Dispatcher {
 		subscribersMap:    new(sync.Map),
 		quitCh:            make(chan bool, 10),
 		receivedMessageCh: make(chan Message, 65536),
-		filters:           make(map[string]bool),
+		filters:           new(sync.Map),
+		//filters:           make(map[string]bool),
 	}
 
 	dp.dispatchedMessages, _ = lru.New(51200)
@@ -60,7 +62,8 @@ func (dp *Dispatcher) Register(subscribers ...*Subscriber) {
 		mt := v.MessageType()
 		m, _ := dp.subscribersMap.LoadOrStore(mt, new(sync.Map))
 		m.(*sync.Map).Store(v, true)
-		dp.filters[mt] = v.DoFilter()
+		dp.filters.Store(mt, v.DoFilter())
+		//dp.filters[mt] = v.DoFilter()
 	}
 }
 
@@ -74,7 +77,8 @@ func (dp *Dispatcher) Deregister(subscribers ...*Subscriber) {
 			continue
 		}
 		m.(*sync.Map).Delete(v)
-		delete(dp.filters, mt)
+		dp.filters.Delete(mt)
+		//delete(dp.filters, mt)
 	}
 }
 
@@ -129,7 +133,18 @@ func (dp *Dispatcher) Stop() {
 func (dp *Dispatcher) PutMessage(msg Message) {
 	// it's a optimize strategy for message dispatch, according to https://github.com/nebulasio/go-nebulas/issues/50
 	hash := msg.Hash()
-	if dp.filters[msg.MessageType()] {
+	mt := msg.MessageType()
+	v, ok := dp.filters.Load(mt)
+
+	if !ok {
+		logging.WithFields(logrus.Fields{
+			"from": msg.MessageFrom(),
+			"type": msg.MessageType(),
+		}).Warn("Unregistered message received.")
+		return
+	}
+
+	if v.(bool) {
 		if exist, _ := dp.dispatchedMessages.ContainsOrAdd(hash, hash); exist == true {
 			// duplicated message, ignore.
 			metricsDuplicatedMessage(msg.MessageType())

@@ -164,4 +164,7 @@ message SyncConfig {
     uint32 request_interval = 10;
     // Timeout for finishing download  - second
     uint32 finisher_timeout = 11;
+
+    // Height gap to activate download
+    uint64 sync_activation_height = 20;
 }
