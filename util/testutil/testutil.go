@@ -91,7 +91,7 @@ func (pair *AddrKeyPair) String() string {
 	if pair == nil {
 		return ""
 	}
-	return fmt.Sprintf("(%v, %v)", pair.Address(), pair.PrivateKey())
+	return fmt.Sprintf("Addr:%v, PrivKey:%v\n", pair.Address(), pair.PrivateKey())
 }
 
 // AddrKeyPairs is a slice of AddrKeyPair structure.
