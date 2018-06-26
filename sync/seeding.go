@@ -18,6 +18,8 @@ package sync
 import (
 	"errors"
 
+	"sync"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
@@ -29,9 +31,13 @@ import (
 )
 
 type seeding struct {
-	netService   net.Service
-	bm           BlockManager
-	quitCh       chan bool
+	netService net.Service
+	bm         BlockManager
+	quitCh     chan bool
+
+	mu        sync.Mutex
+	activated bool
+
 	messageCh    chan net.Message
 	minChunkSize uint64
 	maxChunkSize uint64
@@ -43,11 +49,19 @@ func newSeeding(config *medletpb.SyncConfig) *seeding {
 		netService:   nil,
 		bm:           nil,
 		quitCh:       make(chan bool, 2),
+		activated:    false,
 		messageCh:    make(chan net.Message, 128),
 		minChunkSize: config.SeedingMinChunkSize,
 		maxChunkSize: config.SeedingMaxChunkSize,
 		semaphore:    make(chan bool, config.SeedingMaxConcurrentPeers),
 	}
+}
+
+//IsActivated return status of activation
+func (s *seeding) IsActivated() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.activated
 }
 
 func (s *seeding) setup(netService net.Service, bm BlockManager) {
@@ -59,6 +73,11 @@ func (s *seeding) start() {
 	logging.Console().Info("Sync: Seeding manager is started.")
 	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncMetaRequest, net.MessageWeightZero))
 	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncBlockChunkRequest, net.MessageWeightZero))
+
+	s.mu.Lock()
+	s.activated = true
+	s.mu.Unlock()
+
 	go s.startLoop()
 }
 
@@ -73,6 +92,9 @@ func (s *seeding) startLoop() {
 		select {
 		case <-s.quitCh:
 			logging.Console().Info("Sync: Seeding manager is stopped.")
+			s.mu.Lock()
+			s.activated = false
+			s.mu.Unlock()
 			return
 		case message := <-s.messageCh:
 			switch message.MessageType() {
@@ -119,6 +141,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 			"height": q.From,
 			"err":    err,
 		}).Info("Fail to blockByHeight for comparing block hash.")
+		return
 	}
 
 	if !byteutils.Equal(q.Hash, block.Hash()) {
@@ -138,7 +161,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	}
 
 	tailHeight := s.bm.TailBlock().Height()
-	if q.From+q.ChunkSize > tailHeight {
+	if q.From+q.ChunkSize-1 > tailHeight {
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
 			"from":       q.From,
@@ -150,16 +173,17 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	}
 
 	allHashes := make([][]byte, tailHeight-q.From+1)
-	for i := uint64(0); i < tailHeight-q.From+1; i++ {
-		block, err = s.bm.BlockByHeight(i + q.From)
+	for i := q.From; i <= tailHeight; i++ {
+		block, err = s.bm.BlockByHeight(i)
 		if err != nil {
 			logging.WithFields(logrus.Fields{
 				"height": i,
 				"err":    err,
-			}).Info("Fail to blockByHeight for gathering canonical chain hashes")
+			}).Error("Fail to blockByHeight for gathering canonical chain hashes")
+			return
 		}
 
-		allHashes[i] = block.Hash()
+		allHashes[i-q.From] = block.Hash()
 	}
 
 	n := (tailHeight - q.From + 1) / q.ChunkSize
@@ -179,7 +203,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
-		}).Debug("Failed to marshal RootHashMeta")
+		}).Error("Failed to marshal RootHashMeta")
 		return
 	}
 
@@ -227,7 +251,6 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 		}).Info("request tail height is too high")
 		return
 	}
-
 	pbBlockChunk := make([]*corepb.Block, q.ChunkSize)
 
 	for i := uint64(0); i < q.ChunkSize; i++ {
@@ -236,12 +259,14 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 			logging.WithFields(logrus.Fields{
 				"height": i,
 				"err":    err,
-			}).Info("Fail to blockByHeight for make blockChunk")
+			}).Error("Fail to blockByHeight for make blockChunk")
+			return
 		}
 
 		pbBlock, err := block.ToProto()
 		if err != nil {
 			logging.Error("Fail to convert block to pbBlock")
+			return
 		}
 		pbBlockChunk[i] = pbBlock.(*corepb.Block)
 	}
@@ -254,7 +279,7 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
-		}).Debug("Failed to marshal BlockChunk")
+		}).Error("Failed to marshal BlockChunk")
 		return
 	}
 

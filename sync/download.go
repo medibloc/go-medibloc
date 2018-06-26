@@ -56,7 +56,6 @@ type download struct {
 	chunkCacheSize    uint64
 	minimumPeersCount uint32
 	respondingPeers   map[string]struct{}
-	minorPeers        map[string]struct{}
 	interval          time.Duration
 	timeout           time.Duration
 }
@@ -89,7 +88,6 @@ func newDownload(config *medletpb.SyncConfig) *download {
 		chunkCacheSize:    config.DownloadChunkCacheSize,
 		minimumPeersCount: config.MinimumPeers,
 		respondingPeers:   make(map[string]struct{}),
-		minorPeers:        make(map[string]struct{}),
 		interval:          time.Duration(config.RequestInterval) * time.Second,
 		timeout:           time.Duration(config.FinisherTimeout) * time.Second,
 	}
@@ -277,7 +275,6 @@ func (d *download) checkMajorMeta() {
 		for rootHashHex, nPeers := range peerCounter {
 			if d.majorityCheck(nPeers) {
 				logging.Infof("Major RootHash was found from %v", d.from+uint64(i)*d.chunkSize)
-				d.findMinorPeers(i, rootHashHex)
 				//createDownloadTask
 				majorNotFound = false
 				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHashHex], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHashHex, d.taskDoneCh, d.interval)
@@ -294,21 +291,6 @@ func (d *download) checkMajorMeta() {
 	}
 }
 
-func (d *download) findMinorPeers(index int, majorHashHex string) {
-	for pid, rootHashes := range d.pidRootHashesMap {
-		if _, ok := d.minorPeers[pid]; ok {
-			continue
-		}
-		if len(rootHashes) <= index {
-			d.minorPeers[pid] = struct{}{}
-			continue
-		}
-		if majorHashHex != rootHashes[index] {
-			d.minorPeers[pid] = struct{}{}
-		}
-	}
-}
-
 func (d *download) findTaskForBlockChunk(message net.Message) {
 
 	blockChunk := new(syncpb.BlockChunk)
@@ -318,7 +300,7 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 			"err":     err,
 			"msgFrom": message.MessageFrom(),
 		}).Warn("Fail to unmarshal HashMeta message.")
-		//d.netService.ClosePeer(message.MessageFrom(), errors.New("invalid blockChunk message"))
+		d.netService.ClosePeer(message.MessageFrom(), errors.New("invalid blockChunk message"))
 		return
 	}
 
@@ -331,7 +313,7 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 		delete(d.runningTasks, t.from)
 		d.finishedTasks.Add(t)
 		if err := d.pushBlockDataChunk(); err != nil {
-			logging.Console().Infof("PushBlockDataChunk Failed", err)
+			logging.Console().Error("PushBlockDataChunk Failed", err)
 		}
 		if len(d.taskQueue) > 0 {
 			d.runNextTask()
@@ -365,25 +347,6 @@ func (d *download) sendMetaQuery() error {
 	}).Info("Sync Meta Request was sent")
 	return nil
 }
-
-//func (d *download) downloadFinishCheck() {
-//	logging.Console().Debug("finished task:", d.finishedTasks)
-//	lastFinishedTask := d.finishedTasks.tasks[len(d.finishedTasks.tasks)-1]
-//
-//	lastRootHashHex := d.finishedTasks.tasks[len(d.finishedTasks.tasks)-1].rootHash
-//
-//	if len(d.pidRootHashesMap[lastFinishedTask.pid]) > len(d.finishedTasks.tasks) {
-//		return
-//	}
-//
-//	if d.finishedTasks.CacheSize() > 0 {
-//		return
-//	}
-//	logging.WithFields(logrus.Fields{
-//		"height": d.bm.TailBlock().Height(),
-//	}).Info("Sync Service Download complete")
-//	d.stop()
-//}
 
 func (d *download) pushBlockDataChunk() error {
 	for {

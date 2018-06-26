@@ -76,9 +76,14 @@ func (ss *Service) ActiveDownload() error {
 	return nil
 }
 
-//IsActiveDownload return download isActivated
-func (ss *Service) IsActiveDownload() bool {
+//IsDownloadActivated return download isActivated
+func (ss *Service) IsDownloadActivated() bool {
 	return ss.Download.IsActivated()
+}
+
+//IsSeedActivated return download isActivated
+func (ss *Service) IsSeedActivated() bool {
+	return ss.Seeding.IsActivated()
 }
 
 func generateHashTrie(hashes [][]byte) *trie.Trie {
@@ -86,7 +91,7 @@ func generateHashTrie(hashes [][]byte) *trie.Trie {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Debug("Failed to create memory storage")
+		}).Error("Failed to create memory storage")
 		return nil
 	}
 
@@ -94,7 +99,7 @@ func generateHashTrie(hashes [][]byte) *trie.Trie {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Debug("Failed to create merkle tree")
+		}).Error("Failed to create merkle tree")
 		return nil
 	}
 

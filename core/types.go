@@ -180,5 +180,5 @@ type SyncService interface {
 	Start()
 	Stop()
 	ActiveDownload() error
-	IsActiveDownload() bool
+	IsDownloadActivated() bool
 }

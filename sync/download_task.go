@@ -136,7 +136,7 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 		logging.WithFields(logrus.Fields{
 			"err":     err,
 			"msgFrom": message.MessageFrom(),
-		}).Warn("BlockChunks root hash is not matched.")
+		}).Error("BlockChunks root hash is not matched.")
 		return ErrFailVerification
 	}
 
@@ -145,11 +145,6 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 	dt.pid = message.MessageFrom()
 	//dt.doneCh <- dt
 	return nil
-}
-
-func (dt *downloadTask) removePeer(peer string, errMsg string) {
-	delete(dt.peers, peer)
-	dt.netService.ClosePeer(peer, errors.New(errMsg))
 }
 
 func (dt *downloadTask) generateBlockChunkQuery() {
@@ -161,7 +156,7 @@ func (dt *downloadTask) generateBlockChunkQuery() {
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
-		}).Debug("Failed to marshal BlockChunkQuery")
+		}).Error("Failed to marshal BlockChunkQuery")
 		return
 	}
 	dt.query = query
