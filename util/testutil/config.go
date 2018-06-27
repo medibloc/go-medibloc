@@ -23,10 +23,14 @@ import (
 
 	"os"
 
+	"net"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,14 +54,9 @@ func defaultConfig(t *testing.T) *NodeConfig {
 	return cfg.SetRandomPorts().SetRandomDataDir()
 }
 
-// NewSeedConfig returns configuration of seed node.
-func NewSeedConfig(t *testing.T) *NodeConfig {
-	return defaultConfig(t).SetRandomGenesis()
-}
-
 // NewConfig returns configuration of node.
-func NewConfig(t *testing.T, seed *NodeConfig) *NodeConfig {
-	return defaultConfig(t).SetSeed(seed)
+func NewConfig(t *testing.T) *NodeConfig {
+	return defaultConfig(t)
 }
 
 // SetChainID sets chain ID.
@@ -85,18 +84,18 @@ func (cfg *NodeConfig) GetListenAddrs() []string {
 
 // SetPorts sets ports.
 func (cfg *NodeConfig) SetPorts(baseport int) *NodeConfig {
-	cfg.Config.Network.Listen = []string{fmt.Sprintf(":%v", baseport)}
-	cfg.Config.Rpc.RpcListen = []string{fmt.Sprintf(":%v", baseport+1)}
-	cfg.Config.Rpc.HttpListen = []string{fmt.Sprintf(":%v", baseport+2)}
+	cfg.Config.Network.Listen = []string{fmt.Sprintf("127.0.0.1:%v", baseport)}
+	cfg.Config.Rpc.RpcListen = []string{fmt.Sprintf("127.0.0.1:%v", baseport+1)}
+	cfg.Config.Rpc.HttpListen = []string{fmt.Sprintf("127.0.0.1:%v", baseport+2)}
 	return cfg
 }
 
 // SetRandomPorts sets random ports.
 func (cfg *NodeConfig) SetRandomPorts() *NodeConfig {
 	ports := FindRandomListenPorts(3)
-	cfg.Config.Network.Listen = []string{fmt.Sprintf(":%v", ports[0])}
-	cfg.Config.Rpc.RpcListen = []string{fmt.Sprintf(":%v", ports[1])}
-	cfg.Config.Rpc.HttpListen = []string{fmt.Sprintf(":%v", ports[2])}
+	cfg.Config.Network.Listen = []string{fmt.Sprintf("127.0.0.1:%v", ports[0])}
+	cfg.Config.Rpc.RpcListen = []string{fmt.Sprintf("127.0.0.1:%v", ports[1])}
+	cfg.Config.Rpc.HttpListen = []string{fmt.Sprintf("127.0.0.1:%v", ports[2])}
 	return cfg
 }
 
@@ -142,8 +141,8 @@ func (cfg *NodeConfig) SetLog(path string, level string) *NodeConfig {
 	return cfg
 }
 
-// SetGenesis sets genesis configuration.
-func (cfg *NodeConfig) SetGenesis(genesis *corepb.Genesis) *NodeConfig {
+// setGenesis sets genesis configuration.
+func (cfg *NodeConfig) setGenesis(genesis *corepb.Genesis) *NodeConfig {
 	cfg.Genesis = genesis
 	path := cfg.writeGenesisConfig()
 	cfg.Config.Chain.Genesis = path
@@ -153,27 +152,44 @@ func (cfg *NodeConfig) SetGenesis(genesis *corepb.Genesis) *NodeConfig {
 // SetRandomGenesis sets random genesis configuration.
 func (cfg *NodeConfig) SetRandomGenesis() *NodeConfig {
 	genesis, dynasties, tokenDist := NewTestGenesisConf(cfg.t)
-	cfg.SetGenesis(genesis)
+	cfg.setGenesis(genesis)
 	cfg.Dynasties = dynasties
 	cfg.TokenDist = tokenDist
 	return cfg
 }
 
-// SetSeed sets configuration of seed node.
-func (cfg *NodeConfig) SetSeed(seed *NodeConfig) *NodeConfig {
-	seedAddrs := seed.GetListenAddrs()
-	cfg.Config.Network.Seed = seedAddrs
+// SetGenesisFrom sets genesis configruation from other node's config.
+func (cfg *NodeConfig) SetGenesisFrom(c *Node) *NodeConfig {
+	cfg.setGenesis(c.config.Genesis)
+	cfg.Dynasties = c.config.Dynasties
+	cfg.TokenDist = c.config.TokenDist
+	return cfg
+}
 
-	cfg.SetGenesis(seed.Genesis)
-	cfg.Dynasties = seed.Dynasties
-	cfg.TokenDist = seed.TokenDist
+// SetSeed sets a seed node address.
+func (cfg *NodeConfig) SetSeed(seed *Node) *NodeConfig {
+	addrs := seed.config.GetListenAddrs()
+	var seeds []string
+	for _, addr := range addrs {
+		_, port, err := net.SplitHostPort(addr)
+		require.NoError(cfg.t, err)
+
+		id := seed.med.NetService().Node().ID()
+		s := fmt.Sprintf("/ip4/127.0.0.1/tcp/%v/ipfs/%v", port, id)
+		seeds = append(seeds, s)
+	}
+	cfg.Config.Network.Seed = seeds
+	logging.Console().WithFields(logrus.Fields{
+		"seeds": seeds,
+	}).Info("Set Seed")
 	return cfg
 }
 
 // CleanUp cleans up data directories and configuration files.
 func (cfg *NodeConfig) CleanUp() {
-	os.RemoveAll(cfg.Config.Global.Datadir)
-	os.Remove(cfg.Config.Chain.Genesis)
+	require.NoError(cfg.t, os.RemoveAll(cfg.Config.Global.Datadir))
+	require.NoError(cfg.t, os.RemoveAll(cfg.Config.App.LogFile))
+	require.NoError(cfg.t, os.Remove(cfg.Config.Chain.Genesis))
 }
 
 func dumpGenesisConfig(genesis *corepb.Genesis) string {
@@ -181,7 +197,7 @@ func dumpGenesisConfig(genesis *corepb.Genesis) string {
 }
 
 func (cfg *NodeConfig) writeGenesisConfig() (path string) {
-	f, err := ioutil.TempFile(".", "genesis")
+	f, err := ioutil.TempFile("", "genesis")
 	defer f.Close()
 	require.NoError(cfg.t, err)
 	_, err = f.WriteString(dumpGenesisConfig(cfg.Genesis))
@@ -194,6 +210,7 @@ func (cfg *NodeConfig) String() string {
 	format := `
 * ChainID           : %v
 * DataDir           : %v
+* Seed              : %v
 * Net               : %v
 * RPC               : %v
 * HTTP              : %v
@@ -208,6 +225,7 @@ func (cfg *NodeConfig) String() string {
 	return fmt.Sprintf(format,
 		cfg.Config.Global.ChainId,
 		cfg.Config.Global.Datadir,
+		cfg.Config.Network.Seed,
 		cfg.Config.Network.Listen,
 		cfg.Config.Rpc.RpcListen,
 		cfg.Config.Rpc.HttpListen,

@@ -537,7 +537,7 @@ func nextMintSlot(ts time.Time) time.Time {
 
 // TempDir creates TempDir
 func TempDir(t *testing.T, prefix string) string {
-	name, err := ioutil.TempDir(".", prefix)
+	name, err := ioutil.TempDir("", prefix)
 	require.NoError(t, err)
 	return name
 }
