@@ -703,34 +703,7 @@ func (block *Block) Commit() error {
 
 // GetBlockData returns data part of block
 func (block *Block) GetBlockData() *BlockData {
-	bd := &BlockData{
-		header: &BlockHeader{
-			hash:                 block.Hash(),
-			parentHash:           block.ParentHash(),
-			accsRoot:             block.AccountsRoot(),
-			txsRoot:              block.TransactionsRoot(),
-			usageRoot:            block.UsageRoot(),
-			recordsRoot:          block.RecordsRoot(),
-			candidacyRoot:        block.CandidacyRoot(),
-			certificationRoot:    block.CertificationRoot(),
-			consensusRoot:        block.ConsensusRoot(),
-			reservationQueueHash: block.ReservationQueueHash(),
-			coinbase:             block.Coinbase(),
-			timestamp:            block.Timestamp(),
-			chainID:              block.ChainID(),
-			alg:                  block.Alg(),
-			sign:                 block.Signature(),
-		},
-		height: block.Height(),
-	}
-
-	txs := make(Transactions, len(block.transactions))
-	for i, t := range block.transactions {
-		txs[i] = t
-	}
-	bd.transactions = txs
-
-	return bd
+	return block.BlockData
 }
 
 // EmitTxExecutionEvent emits events of txs in the block
@@ -744,7 +717,8 @@ func (block *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 	}
 }
 
-func bytesToBlockData(bytes []byte) (*BlockData, error) {
+// BytesToBlockData unmarshals proto bytes to BlockData.
+func BytesToBlockData(bytes []byte) (*BlockData, error) {
 	pb := new(corepb.Block)
 	if err := proto.Unmarshal(bytes, pb); err != nil {
 		return nil, err

@@ -403,7 +403,7 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	bd, err := bytesToBlockData(msg.Data())
+	bd, err := BytesToBlockData(msg.Data())
 	if err != nil {
 		return
 	}
