@@ -49,24 +49,10 @@ type Dpos struct {
 }
 
 // New returns dpos consensus.
-func New(cfg *medletpb.Config) (*Dpos, error) {
-	dpos := &Dpos{
+func New() *Dpos {
+	return &Dpos{
 		quitCh: make(chan int, 1),
 	}
-
-	if cfg.Chain.StartMine {
-		dpos.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
-		dpos.miner = common.HexToAddress(cfg.Chain.Miner)
-		minerKey, err := secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Invalid miner private key.")
-			return nil, err
-		}
-		dpos.minerKey = minerKey
-	}
-	return dpos, nil
 }
 
 // NewConsensusState generates new consensus state
@@ -80,9 +66,23 @@ func (d *Dpos) LoadConsensusState(rootBytes []byte, storage storage.Storage) (co
 }
 
 // Setup sets up dpos.
-func (d *Dpos) Setup(genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
-	d.genesis = genesis
+func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
+	// Setup miner
+	if cfg.Chain.StartMine {
+		d.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
+		d.miner = common.HexToAddress(cfg.Chain.Miner)
+		minerKey, err := secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Invalid miner private key.")
+			return err
+		}
+		d.minerKey = minerKey
+	}
 
+	// Setup genesis configuration
+	d.genesis = genesis
 	d.dynastySize = int(d.genesis.Meta.DynastySize)
 	if d.dynastySize < 3 || d.dynastySize > 21 || d.dynastySize%3 != 0 {
 		logging.Console().WithFields(logrus.Fields{
@@ -90,8 +90,8 @@ func (d *Dpos) Setup(genesis *corepb.Genesis, bm *core.BlockManager, tm *core.Tr
 		}).Error("Dynasty size should be a multiple of three.")
 		return ErrInvalidDynastySize
 	}
-
 	d.consensusSize = d.dynastySize*2/3 + 1
+
 	d.bm = bm
 	d.tm = tm
 	return nil

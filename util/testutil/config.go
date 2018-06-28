@@ -29,14 +29,13 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 // NodeConfig is configuration for test node.
 type NodeConfig struct {
-	t *testing.T
+	t   *testing.T
+	dir string
 
 	Config *medletpb.Config
 	Miner  *AddrKeyPair
@@ -49,6 +48,7 @@ type NodeConfig struct {
 func defaultConfig(t *testing.T) *NodeConfig {
 	cfg := &NodeConfig{
 		t:      t,
+		dir:    tempDir(t),
 		Config: medlet.DefaultConfig(),
 	}
 	return cfg.SetRandomPorts().SetRandomDataDir()
@@ -73,7 +73,9 @@ func (cfg *NodeConfig) SetDataDir(dir string) *NodeConfig {
 
 // SetRandomDataDir sets random data dir.
 func (cfg *NodeConfig) SetRandomDataDir() *NodeConfig {
-	dir := TempDir(cfg.t, "datadir")
+	dir := fmt.Sprintf("%s/data", cfg.dir)
+	err := os.MkdirAll(dir, 0755)
+	require.NoError(cfg.t, err)
 	return cfg.SetDataDir(dir)
 }
 
@@ -110,11 +112,11 @@ func (cfg *NodeConfig) SetMiner(miner *AddrKeyPair) *NodeConfig {
 	return cfg
 }
 
-// SetMinerFromDynasty chooses miner from dynasties.
-func (cfg *NodeConfig) SetMinerFromDynasty(exclude []*NodeConfig) *NodeConfig {
+// SetMinerFromDynasties chooses miner from dynasties.
+func (cfg *NodeConfig) SetMinerFromDynasties(exclude []*AddrKeyPair) *NodeConfig {
 	excludeMap := make(map[string]bool)
 	for _, e := range exclude {
-		excludeMap[e.Miner.Address()] = true
+		excludeMap[e.Address()] = true
 	}
 
 	for _, d := range cfg.Dynasties {
@@ -150,8 +152,8 @@ func (cfg *NodeConfig) setGenesis(genesis *corepb.Genesis) *NodeConfig {
 }
 
 // SetRandomGenesis sets random genesis configuration.
-func (cfg *NodeConfig) SetRandomGenesis() *NodeConfig {
-	genesis, dynasties, tokenDist := NewTestGenesisConf(cfg.t)
+func (cfg *NodeConfig) SetRandomGenesis(dynastySize int) *NodeConfig {
+	genesis, dynasties, tokenDist := NewTestGenesisConf(cfg.t, dynastySize)
 	cfg.setGenesis(genesis)
 	cfg.Dynasties = dynasties
 	cfg.TokenDist = tokenDist
@@ -179,17 +181,12 @@ func (cfg *NodeConfig) SetSeed(seed *Node) *NodeConfig {
 		seeds = append(seeds, s)
 	}
 	cfg.Config.Network.Seed = seeds
-	logging.Console().WithFields(logrus.Fields{
-		"seeds": seeds,
-	}).Info("Set Seed")
 	return cfg
 }
 
 // CleanUp cleans up data directories and configuration files.
 func (cfg *NodeConfig) CleanUp() {
-	require.NoError(cfg.t, os.RemoveAll(cfg.Config.Global.Datadir))
-	require.NoError(cfg.t, os.RemoveAll(cfg.Config.App.LogFile))
-	require.NoError(cfg.t, os.Remove(cfg.Config.Chain.Genesis))
+	require.NoError(cfg.t, os.RemoveAll("testdata"))
 }
 
 func dumpGenesisConfig(genesis *corepb.Genesis) string {
@@ -197,12 +194,15 @@ func dumpGenesisConfig(genesis *corepb.Genesis) string {
 }
 
 func (cfg *NodeConfig) writeGenesisConfig() (path string) {
-	f, err := ioutil.TempFile("", "genesis")
-	defer f.Close()
+	path = fmt.Sprintf("%s/genesis.conf", cfg.dir)
+	f, err := os.Create(path)
 	require.NoError(cfg.t, err)
+	defer f.Close()
+
 	_, err = f.WriteString(dumpGenesisConfig(cfg.Genesis))
 	require.NoError(cfg.t, err)
-	return f.Name()
+
+	return path
 }
 
 // String returns summary of test config.
@@ -234,4 +234,12 @@ func (cfg *NodeConfig) String() string {
 		cfg.Config.App.LogLevel,
 		cfg.Dynasties,
 		cfg.TokenDist)
+}
+
+func tempDir(t *testing.T) string {
+	err := os.MkdirAll("testdata", 0755)
+	require.NoError(t, err)
+	dir, err := ioutil.TempDir("testdata", "node")
+	require.NoError(t, err)
+	return dir
 }

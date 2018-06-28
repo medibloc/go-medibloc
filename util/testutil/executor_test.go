@@ -19,15 +19,17 @@ import (
 	"reflect"
 	"testing"
 
+	"time"
+
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNetworkUtil(t *testing.T) {
-	nt := NewNetwork(t)
+	nt := NewNetwork(t, 3)
 	nt.NewSeedNode()
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		nt.NewNode()
 	}
 	nt.Start()
@@ -51,4 +53,24 @@ func TestNetworkUtil(t *testing.T) {
 	bd, err := core.BytesToBlockData(msg.Data())
 	require.NoError(t, err)
 	require.True(t, reflect.DeepEqual(block.GetBlockData(), bd))
+}
+
+func TestNetworkMiner(t *testing.T) {
+	nt := NewNetwork(t, 3)
+	seed := nt.NewSeedNode()
+	nt.SetMinerFromDynasties(seed)
+	for i := 0; i < 2; i++ {
+		node := nt.NewNode()
+		nt.SetMinerFromDynasties(node)
+	}
+	nt.Start()
+	defer nt.Cleanup()
+	nt.WaitForEstablished()
+
+	time.Sleep(15 * time.Second)
+
+	for _, node := range nt.Nodes {
+		height := node.med.BlockManager().TailBlock().Height()
+		require.EqualValues(t, height, 2)
+	}
 }

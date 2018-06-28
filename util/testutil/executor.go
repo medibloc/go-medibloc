@@ -96,21 +96,23 @@ func (node *Node) String() string {
 type Network struct {
 	t *testing.T
 
-	Seed  *Node
-	Nodes []*Node
+	dynastySize int
+	Seed        *Node
+	Nodes       []*Node
 }
 
 // NewNetwork creates network.
-func NewNetwork(t *testing.T) *Network {
+func NewNetwork(t *testing.T, dynastySize int) *Network {
 	return &Network{
-		t: t,
+		t:           t,
+		dynastySize: dynastySize,
 	}
 }
 
 // NewSeedNode creates seed node.
 func (n *Network) NewSeedNode() *Node {
 	cfg := NewConfig(n.t).
-		SetRandomGenesis()
+		SetRandomGenesis(n.dynastySize)
 
 	node := NewNode(n.t, cfg)
 	n.Seed = node
@@ -166,4 +168,29 @@ func (n *Network) Cleanup() {
 	for _, node := range n.Nodes {
 		node.config.CleanUp()
 	}
+}
+
+// SetMinerFromDynasties chooses miner from dynasties.
+func (n *Network) SetMinerFromDynasties(node *Node) {
+	require.False(n.t, node.IsStarted())
+
+	exclude := n.assignedMiners()
+	node.config.SetMinerFromDynasties(exclude)
+}
+
+// SetRandomMiner sets random miner.
+func (n *Network) SetRandomMiner(node *Node) {
+	require.False(n.t, node.IsStarted())
+
+	node.config.SetRandomMiner()
+}
+
+func (n *Network) assignedMiners() []*AddrKeyPair {
+	miners := make([]*AddrKeyPair, 0)
+	for _, node := range n.Nodes {
+		if node.config.Miner != nil {
+			miners = append(miners, node.config.Miner)
+		}
+	}
+	return miners
 }

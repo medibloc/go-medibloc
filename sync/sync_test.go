@@ -81,8 +81,7 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 	stor, err := storage.NewMemoryStorage()
 	require.Nil(t, err)
 
-	consensus, err := dpos.New(config)
-	require.NoError(t, err)
+	consensus := dpos.New()
 
 	bm, err := core.NewBlockManager(config)
 	require.Nil(t, err)
@@ -95,7 +94,7 @@ func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Ge
 	bm.InjectEmitter(ee)
 	tm.InjectEmitter(ee)
 
-	consensus.Setup(genesisConf, bm, tm)
+	consensus.Setup(config, genesisConf, bm, tm)
 
 	ss := sync.NewService(config.Sync)
 	ss.Setup(ms, bm)

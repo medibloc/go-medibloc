@@ -86,13 +86,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 
 	tm := core.NewTransactionManager(cfg)
 
-	consensus, err := dpos.New(cfg)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Fatal("Failed to create dpos consensus.")
-		return nil, err
-	}
+	consensus := dpos.New()
 
 	ss := sync.NewService(cfg.Sync)
 
@@ -126,11 +120,12 @@ func (m *Medlet) Setup() error {
 
 	m.transactionManager.Setup(m.netService)
 
-	err = m.consensus.Setup(m.genesis, m.blockManager, m.transactionManager)
+	err = m.consensus.Setup(m.config, m.genesis, m.blockManager, m.transactionManager)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Fatal("Failed to setup consensus.")
+		return err
 	}
 
 	m.transactionManager.InjectEmitter(m.eventEmitter)

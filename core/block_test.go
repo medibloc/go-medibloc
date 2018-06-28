@@ -282,7 +282,7 @@ func TestGetExecutedBlock(t *testing.T) {
 	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 
-	consensus, err := dpos.New(cfg)
+	consensus := dpos.New()
 	assert.NoError(t, err)
 	executedBlock, err := bd.GetExecutedBlock(consensus, newBlock.Storage())
 	assert.NoError(t, err)

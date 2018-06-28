@@ -164,8 +164,7 @@ func NewTestConsensus(t *testing.T) core.Consensus {
 	cfg.Chain.BlockCacheSize = 1
 	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	consensus, err := dpos.New(cfg)
-	require.NoError(t, err)
+	consensus := dpos.New()
 	return consensus
 }
 
@@ -436,8 +435,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus, err := dpos.New(cfg)
-	require.NoError(t, err)
+	consensus := dpos.New()
 	bm, err := core.NewBlockManager(cfg)
 	require.NoError(t, err)
 	bm.InjectEmitter(core.NewEventEmitter(128))
@@ -448,7 +446,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	err = bm.Setup(genesisConf, stor, ns, consensus)
 	require.NoError(t, err)
 	tm.Setup(ns)
-	err = consensus.Setup(genesisConf, bm, tm)
+	err = consensus.Setup(cfg, genesisConf, bm, tm)
 	require.NoError(t, err)
 
 	return &MockMedlet{
