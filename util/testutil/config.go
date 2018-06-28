@@ -162,21 +162,21 @@ func (cfg *NodeConfig) SetRandomGenesis(dynastySize int) *NodeConfig {
 
 // SetGenesisFrom sets genesis configruation from other node's config.
 func (cfg *NodeConfig) SetGenesisFrom(c *Node) *NodeConfig {
-	cfg.setGenesis(c.config.Genesis)
-	cfg.Dynasties = c.config.Dynasties
-	cfg.TokenDist = c.config.TokenDist
+	cfg.setGenesis(c.Config.Genesis)
+	cfg.Dynasties = c.Config.Dynasties
+	cfg.TokenDist = c.Config.TokenDist
 	return cfg
 }
 
 // SetSeed sets a seed node address.
 func (cfg *NodeConfig) SetSeed(seed *Node) *NodeConfig {
-	addrs := seed.config.GetListenAddrs()
+	addrs := seed.Config.GetListenAddrs()
 	var seeds []string
 	for _, addr := range addrs {
 		_, port, err := net.SplitHostPort(addr)
 		require.NoError(cfg.t, err)
 
-		id := seed.med.NetService().Node().ID()
+		id := seed.Med.NetService().Node().ID()
 		s := fmt.Sprintf("/ip4/127.0.0.1/tcp/%v/ipfs/%v", port, id)
 		seeds = append(seeds, s)
 	}

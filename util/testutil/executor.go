@@ -30,8 +30,8 @@ type Node struct {
 	mu sync.RWMutex
 	t  *testing.T
 
-	med    *medlet.Medlet
-	config *NodeConfig
+	Med    *medlet.Medlet
+	Config *NodeConfig
 
 	started bool
 }
@@ -42,8 +42,8 @@ func NewNode(t *testing.T, cfg *NodeConfig) *Node {
 	require.Nil(t, err)
 	return &Node{
 		t:       t,
-		med:     med,
-		config:  cfg,
+		Med:     med,
+		Config:  cfg,
 		started: false,
 	}
 }
@@ -58,10 +58,10 @@ func (node *Node) Start() {
 	}
 	node.started = true
 
-	err := node.med.Setup()
+	err := node.Med.Setup()
 	require.NoError(node.t, err)
 
-	err = node.med.Start()
+	err = node.Med.Start()
 	require.NoError(node.t, err)
 
 }
@@ -76,7 +76,7 @@ func (node *Node) Stop() {
 	}
 	node.started = false
 
-	node.med.Stop()
+	node.Med.Stop()
 }
 
 // IsStarted returns whether it has been started.
@@ -89,7 +89,7 @@ func (node *Node) IsStarted() bool {
 
 // String returns summary of test node.
 func (node *Node) String() string {
-	return node.config.String()
+	return node.Config.String()
 }
 
 // Network is set of nodes.
@@ -149,7 +149,7 @@ func (n *Network) Start() {
 // WaitForEstablished waits until connections between peers are established.
 func (n *Network) WaitForEstablished() {
 	for _, node := range n.Nodes {
-		for int(node.med.NetService().Node().EstablishedPeersCount()) != len(n.Nodes)-1 {
+		for int(node.Med.NetService().Node().EstablishedPeersCount()) != len(n.Nodes)-1 {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
@@ -166,7 +166,7 @@ func (n *Network) Stop() {
 func (n *Network) Cleanup() {
 	n.Stop()
 	for _, node := range n.Nodes {
-		node.config.CleanUp()
+		node.Config.CleanUp()
 	}
 }
 
@@ -175,21 +175,21 @@ func (n *Network) SetMinerFromDynasties(node *Node) {
 	require.False(n.t, node.IsStarted())
 
 	exclude := n.assignedMiners()
-	node.config.SetMinerFromDynasties(exclude)
+	node.Config.SetMinerFromDynasties(exclude)
 }
 
 // SetRandomMiner sets random miner.
 func (n *Network) SetRandomMiner(node *Node) {
 	require.False(n.t, node.IsStarted())
 
-	node.config.SetRandomMiner()
+	node.Config.SetRandomMiner()
 }
 
 func (n *Network) assignedMiners() []*AddrKeyPair {
 	miners := make([]*AddrKeyPair, 0)
 	for _, node := range n.Nodes {
-		if node.config.Miner != nil {
-			miners = append(miners, node.config.Miner)
+		if node.Config.Miner != nil {
+			miners = append(miners, node.Config.Miner)
 		}
 	}
 	return miners
