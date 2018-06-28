@@ -21,6 +21,7 @@ import (
 
 	"time"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/stretchr/testify/require"
@@ -67,10 +68,23 @@ func TestNetworkMiner(t *testing.T) {
 	defer nt.Cleanup()
 	nt.WaitForEstablished()
 
-	time.Sleep(15 * time.Second)
+	waitTime := dpos.BlockInterval + time.Second
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
 
 	for _, node := range nt.Nodes {
-		height := node.med.BlockManager().TailBlock().Height()
-		require.EqualValues(t, height, 2)
+		for {
+			height := node.med.BlockManager().TailBlock().Height()
+			if height >= 2 {
+				break
+			}
+
+			select {
+			case <-timer.C:
+				require.True(t, false, "Block Mining Timeout")
+			default:
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	}
 }
