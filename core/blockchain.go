@@ -259,7 +259,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 }
 
 // SetTailBlock sets tail block.
-func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, error) {
+func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	ancestor, err := bc.FindAncestorOnCanonical(newTail, true)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -267,22 +267,23 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, error) {
 			"newTail": newTail,
 			"tail":    bc.mainTailBlock,
 		}).Error("Failed to find ancestor in canonical chain.")
-		return nil, err
+		return nil, nil, err
 	}
 
 	// revert case
 	blocks, err := bc.loadBetweenBlocks(ancestor, bc.mainTailBlock)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if err = bc.buildIndexByBlockHeight(ancestor, newTail); err != nil {
+	newBlocks, err := bc.buildIndexByBlockHeight(ancestor, newTail)
+	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":  err,
 			"from": ancestor,
 			"to":   newTail,
 		}).Error("Failed to build index by block height.")
-		return nil, err
+		return nil, nil, err
 	}
 
 	if err = bc.storeTailHashToStorage(newTail); err != nil {
@@ -290,7 +291,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, error) {
 			"err":     err,
 			"newTail": newTail,
 		}).Error("Failed to store tail hash to storage.")
-		return nil, err
+		return nil, nil, err
 	}
 	bc.mainTailBlock = newTail
 
@@ -300,7 +301,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, error) {
 	}
 	bc.eventEmitter.Trigger(event)
 
-	return blocks, nil
+	return blocks, newBlocks, nil
 }
 
 // FindAncestorOnCanonical finds most recent ancestor block in canonical chain.
@@ -385,7 +386,8 @@ func (bc *BlockChain) loadBetweenBlocks(from *Block, to *Block) ([]*Block, error
 	return blocks, nil
 }
 
-func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
+func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block, error) {
+	var blocks []*Block
 
 	for !byteutils.Equal(to.Hash(), from.Hash()) {
 		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash())
@@ -395,17 +397,18 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) error {
 				"height": to.height,
 				"hash":   byteutils.Bytes2Hex(to.Hash()),
 			}).Error("Failed to put block index to storage.")
-			return err
+			return nil, err
 		}
+		blocks = append(blocks, to)
 		// TODO @cl9200 Remove tx in block from tx pool.
 		to.EmitTxExecutionEvent(bc.eventEmitter)
 
 		to, err = bc.parentBlock(to)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return blocks, nil
 }
 
 func (bc *BlockChain) initGenesisToStorage() error {

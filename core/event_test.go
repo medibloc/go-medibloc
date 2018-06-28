@@ -13,7 +13,7 @@ import (
 )
 
 func register(emitter *core.EventEmitter, topics ...string) *core.EventSubscriber {
-	eventSubscriber := core.NewEventSubscriber(1024, topics)
+	eventSubscriber, _ := core.NewEventSubscriber(1024, topics)
 	emitter.Register(eventSubscriber)
 	return eventSubscriber
 }
@@ -62,7 +62,6 @@ func TestEventEmitter(t *testing.T) {
 		} else if e.Topic == topics[1] {
 			eventCount2++
 		}
-
 		if e.Data == strconv.Itoa(totalEventCount-1) {
 			receiving = false
 		}

@@ -130,6 +130,7 @@ var (
 	ErrVoteDuplicate                    = errors.New("cannot vote already voted account")
 	ErrDynastyExpired                   = errors.New("dynasty in the consensus state has been expired")
 	ErrPayerSignatureNotExist           = errors.New("payer signature does not exist in the tx")
+	ErrWrongEventTopic                  = errors.New("required event topic doesn't exist in topic list")
 )
 
 // ConsensusState is an interface for a consensus state

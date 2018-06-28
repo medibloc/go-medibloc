@@ -264,7 +264,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	newTail := bm.consensus.ForkChoice(bm.bc)
-	revertBlocks, err := bm.bc.SetTailBlock(newTail)
+	revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
@@ -273,7 +273,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 	// REVERT
 	if len(revertBlocks) != 0 {
-		if err := bm.revertBlocks(revertBlocks); err != nil {
+		if err := bm.revertBlocks(revertBlocks, newBlocks); err != nil {
 			return nil
 		}
 	}
@@ -327,13 +327,23 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 	return all, tails, fails
 }
 
-func (bm *BlockManager) revertBlocks(blocks []*Block) error {
+func (bm *BlockManager) revertBlocks(blocks []*Block, newBlocks []*Block) error {
+	var txs = make(map[*Transaction]bool)
+
+	for _, newBlock := range newBlocks {
+		for _, tx := range newBlock.Transactions() {
+			txs[tx] = true
+		}
+	}
+
 	for _, block := range blocks {
 		for _, tx := range block.Transactions() {
-			// Return transactions
-			err := bm.tm.Push(tx)
-			if err != nil {
-				return err
+			if txs[tx] != true {
+				// Return transactions
+				err := bm.tm.Push(tx)
+				if err != nil {
+					return err
+				}
 			}
 		}
 

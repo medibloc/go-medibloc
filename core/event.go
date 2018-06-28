@@ -6,21 +6,22 @@ import (
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 
+// TODO : check whether event emitter exists
 const (
-	// TopicPendingTransaction Pending transactions in a transaction pool.
-	TopicPendingTransaction = "chain.pendingTransaction"
-
 	// TopicLibBlock latest irreversible block.
 	TopicLibBlock = "chain.latestIrreversibleBlock"
-
-	// TopicTransactionExecutionResult transaction execution result
-	TopicTransactionExecutionResult = "chain.transactionResult"
 
 	// TopicNewTailBlock new tail block set
 	TopicNewTailBlock = "chain.newTailBlock"
 
+	// TopicPendingTransaction Pending transactions in a transaction pool.
+	TopicPendingTransaction = "chain.pendingTransaction"
+
 	// TopicRevertBlock revert block
 	TopicRevertBlock = "chain.revertBlock"
+
+	// TopicTransactionExecutionResult transaction execution result
+	TopicTransactionExecutionResult = "chain.transactionResult"
 )
 
 // EventSubscriber structure
@@ -29,13 +30,31 @@ type EventSubscriber struct {
 	topics  []string
 }
 
+func topicList() map[string]bool {
+	var topicList = make(map[string]bool)
+	topicList[TopicLibBlock] = true
+	topicList[TopicNewTailBlock] = true
+	topicList[TopicPendingTransaction] = true
+	topicList[TopicRevertBlock] = true
+	topicList[TopicTransactionExecutionResult] = true
+	return topicList
+}
+
 // NewEventSubscriber creates new event subscriber
-func NewEventSubscriber(size int, topics []string) *EventSubscriber {
+func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
+	topicList := topicList()
+
+	for _, topic := range topics {
+		if topicList[topic] != true {
+			return nil, ErrWrongEventTopic
+		}
+	}
+
 	eventCh := make(chan *Event, size)
 	return &EventSubscriber{
 		eventCh: eventCh,
 		topics:  topics,
-	}
+	}, nil
 }
 
 // EventChan returns event channel
@@ -60,6 +79,16 @@ func NewEventEmitter(size int) *EventEmitter {
 		size:             size,
 	}
 }
+
+/*
+	NewEventEmitter
+		- eventSubscribers
+			- topic #1
+				- subscriber #1 : true
+				- subscriber #2 : true
+			- topic #2
+				- subscriber #2 : true
+*/
 
 // Start event loop
 func (e *EventEmitter) Start() {

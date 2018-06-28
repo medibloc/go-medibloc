@@ -57,7 +57,7 @@ func TestBlockChain_OnePath(t *testing.T) {
 		blocks := getBlockSlice(blockMap, idx)
 		err = bc.PutVerifiedNewBlocks(blockMap[testutil.BlockID(idx-1)], blocks, blocks)
 		assert.Nil(t, err)
-		_, err = bc.SetTailBlock(blocks[0])
+		_, _, err = bc.SetTailBlock(blocks[0])
 		assert.Nil(t, err)
 		assert.Equal(t, blocks[0].Hash(), bc.MainTailBlock().Hash())
 	}

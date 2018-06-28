@@ -288,7 +288,10 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 // Subscribe to listen event
 func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiService_SubscribeServer) error {
 
-	eventSub := core.NewEventSubscriber(1024, req.Topics)
+	eventSub, err := core.NewEventSubscriber(1024, req.Topics)
+	if err != nil {
+		return err
+	}
 
 	s.ee.Register(eventSub)
 	defer s.ee.Deregister(eventSub)
@@ -302,6 +305,7 @@ func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiServ
 				Topic: event.Topic,
 				Data:  event.Data,
 			})
+			// TODO : Send timeout
 			if err != nil {
 				return err
 			}
