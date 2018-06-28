@@ -6,7 +6,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 
-// TODO : check whether event emitter exists
+// TODO @ggomma check whether event emitter exists
 const (
 	// TopicLibBlock latest irreversible block.
 	TopicLibBlock = "chain.latestIrreversibleBlock"

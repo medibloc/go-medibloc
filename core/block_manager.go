@@ -346,12 +346,13 @@ func (bm *BlockManager) revertBlocks(blocks []*Block, newBlocks []*Block) error 
 				}
 			}
 		}
-
-		event := &Event{
-			Topic: TopicRevertBlock,
-			Data:  block.String(),
+		if bm.bc.eventEmitter != nil {
+			event := &Event{
+				Topic: TopicRevertBlock,
+				Data:  block.String(),
+			}
+			bm.bc.eventEmitter.Trigger(event)
 		}
-		bm.bc.eventEmitter.Trigger(event)
 		logging.Console().Warn("A block is reverted.")
 	}
 	return nil

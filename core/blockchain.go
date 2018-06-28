@@ -237,11 +237,13 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	}
 	bc.lib = newLIB
 
-	event := &Event{
-		Topic: TopicLibBlock,
-		Data:  newLIB.GetBlockData().String(),
+	if bc.eventEmitter != nil {
+		event := &Event{
+			Topic: TopicLibBlock,
+			Data:  newLIB.GetBlockData().String(),
+		}
+		bc.eventEmitter.Trigger(event)
 	}
-	bc.eventEmitter.Trigger(event)
 
 	for _, tail := range bc.TailBlocks() {
 		if !bc.IsForkedBeforeLIB(tail) {
@@ -295,11 +297,13 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	}
 	bc.mainTailBlock = newTail
 
-	event := &Event{
-		Topic: TopicNewTailBlock,
-		Data:  newTail.String(),
+	if bc.eventEmitter != nil {
+		event := &Event{
+			Topic: TopicNewTailBlock,
+			Data:  newTail.String(),
+		}
+		bc.eventEmitter.Trigger(event)
 	}
-	bc.eventEmitter.Trigger(event)
 
 	return blocks, newBlocks, nil
 }
@@ -401,7 +405,10 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 		}
 		blocks = append(blocks, to)
 		// TODO @cl9200 Remove tx in block from tx pool.
-		to.EmitTxExecutionEvent(bc.eventEmitter)
+
+		if bc.eventEmitter != nil {
+			to.EmitTxExecutionEvent(bc.eventEmitter)
+		}
 
 		to, err = bc.parentBlock(to)
 		if err != nil {

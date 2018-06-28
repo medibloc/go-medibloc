@@ -81,11 +81,13 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 
 	pool.evict()
 
-	event := &Event{
-		Topic: TopicPendingTransaction,
-		Data:  tx.String(),
+	if pool.eventEmitter != nil {
+		event := &Event{
+			Topic: TopicPendingTransaction,
+			Data:  tx.String(),
+		}
+		pool.eventEmitter.Trigger(event)
 	}
-	pool.eventEmitter.Trigger(event)
 
 	return nil
 }
