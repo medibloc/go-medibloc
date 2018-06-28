@@ -26,8 +26,6 @@ import (
 
 	"time"
 
-	"io/ioutil"
-
 	"fmt"
 
 	"github.com/medibloc/go-medibloc/common"
@@ -107,11 +105,11 @@ func (pairs AddrKeyPairs) findPrivKey(addr common.Address) signature.PrivateKey 
 }
 
 // NewTestGenesisConf returns a genesis configuration for tests.
-func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
+func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
 			ChainId:     ChainID,
-			DynastySize: dpos.DynastySize,
+			DynastySize: uint32(dynastySize),
 		},
 		Consensus: &corepb.GenesisConsensus{
 			Dpos: &corepb.GenesisConsensusDpos{
@@ -123,7 +121,7 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties AddrKeyPa
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
-	for i := 0; i < dpos.DynastySize; i++ {
+	for i := 0; i < dynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
 		dynasty = append(dynasty, keypair.Addr.Hex())
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
@@ -150,8 +148,8 @@ func NewTestGenesisConf(t *testing.T) (conf *corepb.Genesis, dynasties AddrKeyPa
 }
 
 // NewTestGenesisBlock returns a genesis block for tests.
-func NewTestGenesisBlock(t *testing.T) (genesis *core.Block, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
-	conf, dynasties, distributed := NewTestGenesisConf(t)
+func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
+	conf, dynasties, distributed := NewTestGenesisConf(t, dynastySize)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	genesis, err = core.NewGenesisBlock(conf, NewTestConsensus(t), s)
@@ -434,7 +432,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 
-	genesisConf, dynasties, _ := NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := NewTestGenesisConf(t, 21)
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
@@ -533,11 +531,4 @@ func nextMintSlot(ts time.Time) time.Time {
 	now := time.Duration(ts.Unix()) * time.Second
 	next := ((now + dpos.BlockInterval - time.Second) / dpos.BlockInterval) * dpos.BlockInterval
 	return time.Unix(int64(next/time.Second), 0)
-}
-
-// TempDir creates TempDir
-func TempDir(t *testing.T, prefix string) string {
-	name, err := ioutil.TempDir("", prefix)
-	require.NoError(t, err)
-	return name
 }

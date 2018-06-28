@@ -25,7 +25,7 @@ import (
 )
 
 func TestLoadConsensusState(t *testing.T) {
-	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
 	cs, err := dpos.NewConsensusState(nil, genesis.Storage())
 	assert.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestLoadConsensusState(t *testing.T) {
 }
 
 func TestClone(t *testing.T) {
-	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
 	cs, err := dpos.NewConsensusState(nil, genesis.Storage())
 	assert.NoError(t, err)
 

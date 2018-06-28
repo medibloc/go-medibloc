@@ -96,7 +96,7 @@ func TestTransaction_VerifyIntegrity(t *testing.T) {
 }
 
 func TestAddRecord(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	payload := core.NewAddRecordPayload(recordHash)
@@ -131,7 +131,7 @@ func TestAddRecord(t *testing.T) {
 }
 
 func TestVest(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	from := dynasties[0]
 	tx, err := core.NewTransaction(
@@ -164,7 +164,7 @@ func TestVest(t *testing.T) {
 }
 
 func TestWithdrawVesting(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	from := dynasties[0]
 	vestTx, err := core.NewTransaction(
@@ -214,7 +214,7 @@ func TestWithdrawVesting(t *testing.T) {
 }
 
 func TestBecomeCandidate(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
 
 	tx, err := core.NewTransaction(
 		testutil.ChainID,
@@ -248,7 +248,7 @@ func TestBecomeCandidate(t *testing.T) {
 }
 
 func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
 
 	tx1, err := core.NewTransaction(
 		testutil.ChainID,
@@ -281,7 +281,7 @@ func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
 }
 
 func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
 
 	tx, err := core.NewTransaction(
 		testutil.ChainID,
@@ -304,7 +304,7 @@ func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
 }
 
 func TestQuitCandidacy(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
 	becomeTx, err := core.NewTransaction(
 		testutil.ChainID,
 		distributed[dpos.DynastySize].Addr,
@@ -344,7 +344,7 @@ func TestQuitCandidacy(t *testing.T) {
 }
 
 func TestVote(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t)
+	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
 	becomeTx, err := core.NewTransaction(
 		testutil.ChainID,
 		distributed[dpos.DynastySize+1].Addr,
@@ -388,7 +388,7 @@ func TestVote(t *testing.T) {
 }
 
 func TestAddCertification(t *testing.T) {
-	genesis, _, users := testutil.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t, 21)
 
 	certs := []struct {
 		issuer         common.Address
@@ -456,7 +456,7 @@ func TestAddCertification(t *testing.T) {
 }
 
 func TestRevokeCertification(t *testing.T) {
-	genesis, _, users := testutil.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t, 21)
 
 	certs := []struct {
 		issuer         common.Address
@@ -535,7 +535,7 @@ func TestRevokeCertification(t *testing.T) {
 }
 
 func TestRevokeCertificationByInvalidAccount(t *testing.T) {
-	genesis, _, users := testutil.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t, 21)
 
 	certs := []struct {
 		issuer         common.Address

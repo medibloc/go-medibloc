@@ -32,7 +32,7 @@ import (
 
 func TestUpdateUsage(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
 	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
@@ -99,7 +99,7 @@ func TestUpdateUsage(t *testing.T) {
 
 func TestTooOldTxToAdd(t *testing.T) {
 	coinbase := common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
 	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
 
@@ -164,7 +164,7 @@ func TestTooOldTxToAdd(t *testing.T) {
 }
 
 func TestDynastyState(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	var expected []*common.Address
 	for _, dynasty := range dynasties {
@@ -177,7 +177,7 @@ func TestDynastyState(t *testing.T) {
 }
 
 func TestAddCandidate(t *testing.T) {
-	genesis, dynasty, distributed := testutil.NewTestGenesisBlock(t)
+	genesis, dynasty, distributed := testutil.NewTestGenesisBlock(t, 21)
 
 	genesis.State().BeginBatch()
 	assert.NoError(t, genesis.State().AddCandidate(distributed[len(dynasty)].Addr, util.NewUint128FromUint(1000)))
@@ -187,7 +187,7 @@ func TestAddCandidate(t *testing.T) {
 }
 
 func TestCloneGenesisState(t *testing.T) {
-	genesis, _, _ := testutil.NewTestGenesisBlock(t)
+	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	st := genesis.State()
 	cl, err := st.Clone()
@@ -208,7 +208,7 @@ func TestCloneGenesisState(t *testing.T) {
 }
 
 func TestCloneState(t *testing.T) {
-	genesis, _, users := testutil.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t, 21)
 
 	st := genesis.State()
 
@@ -243,7 +243,7 @@ func TestCloneState(t *testing.T) {
 }
 
 func TestPayerUsageUpdate(t *testing.T) {
-	genesis, _, users := testutil.NewTestGenesisBlock(t)
+	genesis, _, users := testutil.NewTestGenesisBlock(t, 21)
 
 	st := genesis.State()
 

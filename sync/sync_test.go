@@ -130,7 +130,7 @@ func TestService_Start(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	for i := 1; i < nBlocks; i++ {
@@ -193,7 +193,7 @@ func TestForkResistance(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	t.Log("seedTesterID", seedTester.NodeID())
@@ -313,7 +313,7 @@ func TestForAutoActivation(t *testing.T) {
 	)
 
 	//create seed
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 
@@ -449,7 +449,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 	)
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	//seedTester.syncService.Stop()
@@ -553,7 +553,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 func TestForUnmarshalFailedMsg(t *testing.T) {
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t)
+	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
 	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
 	seedTester.Start()
 	seedMultiAddr := convertIpv4ListensToMultiAddrSeeds(seedTester.config.Network.Listen, seedTester.NodeID())

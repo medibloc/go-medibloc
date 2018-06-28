@@ -29,7 +29,7 @@ import (
 )
 
 func TestNewGenesisBlock(t *testing.T) {
-	genesisBlock, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesisBlock, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
@@ -53,7 +53,7 @@ func TestNewGenesisBlock(t *testing.T) {
 
 func TestCheckGenesisBlock(t *testing.T) {
 	//conf, dynasties, distributed := testutil.NewTestGenesisConf(t)
-	conf, _, _ := testutil.NewTestGenesisConf(t)
+	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	consensus := testutil.NewTestConsensus(t)

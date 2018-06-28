@@ -32,7 +32,7 @@ import (
 )
 
 func TestNewBlock(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	coinbase := dynasties[0].Addr
 	_, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
@@ -40,7 +40,7 @@ func TestNewBlock(t *testing.T) {
 }
 
 func TestSendExecution(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	coinbase := dynasties[0].Addr
 	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
@@ -121,7 +121,7 @@ func TestSendExecution(t *testing.T) {
 }
 
 func TestSendMoreThanBalance(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 	coinbase := dynasties[0].Addr
 	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
@@ -148,7 +148,7 @@ func TestSendMoreThanBalance(t *testing.T) {
 }
 
 func TestExecuteOnParentBlock(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 	coinbase := dynasties[0].Addr
 	firstBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
@@ -226,7 +226,7 @@ func TestExecuteOnParentBlock(t *testing.T) {
 }
 
 func TestGetExecutedBlock(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 	coinbase := dynasties[0].Addr
 	newBlock, err := core.NewBlock(testutil.ChainID, coinbase, genesis)
 	assert.NoError(t, err)
@@ -290,7 +290,7 @@ func TestGetExecutedBlock(t *testing.T) {
 }
 
 func TestExecuteReservedTasks(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 	from := dynasties[0].Addr
 	vestTx, err := core.NewTransaction(
 		testutil.ChainID,
@@ -360,8 +360,8 @@ func TestExecuteReservedTasks(t *testing.T) {
 }
 
 func TestBlock_VerifyState(t *testing.T) {
-	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t)
-	wrongGenesis, _, _ := testutil.NewTestGenesisBlock(t)
+	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
+	wrongGenesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
 	from, to := dynasties[0], dynasties[1]
 
 	tx, err := core.NewTransaction(testutil.ChainID, from.Addr, to.Addr, util.NewUint128FromUint(100), 1, core.TxPayloadBinaryType, []byte{})
