@@ -538,12 +538,18 @@ func (st *states) TransitionDynasty(now int64) error {
 		st.consensusState = cs
 		return nil
 	}
+
 	cs, err := st.consensusState.GetNextStateAfter(now - st.consensusState.Timestamp())
 	if err == nil {
 		st.consensusState = cs
 		return nil
 	}
 	if err != nil && err != ErrDynastyExpired {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"now": now,
+			"consensusState.Timestamp": st.consensusState.Timestamp(),
+		}).Error("Failed to get next consensus state.")
 		return err
 	}
 	var miners []*common.Address
