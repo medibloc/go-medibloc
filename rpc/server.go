@@ -68,7 +68,7 @@ func (s *Server) Start() error {
 
 // RunGateway runs rest gateway server.
 func (s *Server) RunGateway() error {
-	httpServer, err := NewHttpServer(s.addrHTTP, s.addrGrpc)
+	httpServer, err := NewHTTPServer(s.addrHTTP, s.addrGrpc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

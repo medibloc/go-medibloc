@@ -35,16 +35,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// HttpServer is a rest gateway wrapping the grpc server.
-type HttpServer struct {
+// HTTPServer is a rest gateway wrapping the grpc server.
+type HTTPServer struct {
 	handler  http.Handler
 	httpAddr string
 	grpcAddr string
 	cancel   context.CancelFunc
 }
 
-// NewHttpServer creates HttpServer.
-func NewHttpServer(httpAddr string, grpcAddr string) (*HttpServer, error) {
+// NewHTTPServer creates HTTPServer.
+func NewHTTPServer(httpAddr string, grpcAddr string) (*HTTPServer, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	mux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard,
@@ -63,7 +63,7 @@ func NewHttpServer(httpAddr string, grpcAddr string) (*HttpServer, error) {
 
 	httpMux.Handle("/", mux)
 
-	return &HttpServer{
+	return &HTTPServer{
 		handler:  cors.Default().Handler(httpMux),
 		httpAddr: httpAddr,
 		grpcAddr: grpcAddr,
@@ -72,7 +72,7 @@ func NewHttpServer(httpAddr string, grpcAddr string) (*HttpServer, error) {
 }
 
 // Run starts the server.
-func (srv *HttpServer) Run() error {
+func (srv *HTTPServer) Run() error {
 	defer srv.cancel()
 	return http.ListenAndServe(srv.httpAddr, srv.handler)
 }
