@@ -29,9 +29,10 @@ import (
 )
 
 func TestNetworkUtil(t *testing.T) {
-	nt := testutil.NewNetwork(t, 3)
+	dynastySize := 3
+	nt := testutil.NewNetwork(t, dynastySize)
 	nt.NewSeedNode()
-	for i := 0; i < 2; i++ {
+	for i := 0; i < dynastySize-1; i++ {
 		nt.NewNode()
 	}
 	nt.Start()
@@ -58,10 +59,11 @@ func TestNetworkUtil(t *testing.T) {
 }
 
 func TestNetworkMiner(t *testing.T) {
-	nt := testutil.NewNetwork(t, 3)
+	dynastySize := 3
+	nt := testutil.NewNetwork(t, dynastySize)
 	seed := nt.NewSeedNode()
 	nt.SetMinerFromDynasties(seed)
-	for i := 0; i < 2; i++ {
+	for i := 0; i < dynastySize-1; i++ {
 		node := nt.NewNode()
 		nt.SetMinerFromDynasties(node)
 	}
