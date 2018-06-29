@@ -62,79 +62,6 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, want, ret, "Decode() = \"%v\", want \"%v\"", ret, want)
 }
 
-func TestHex(t *testing.T) {
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-			args{[]byte{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74}},
-			"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-		},
-		{
-			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
-			args{[]byte{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86}},
-			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
-		},
-		{
-			"blank string",
-			args{[]byte{}},
-			"",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := Bytes2Hex(tt.args.data); got != tt.want {
-				t.Errorf("Hex() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestFromHex(t *testing.T) {
-	type args struct {
-		data string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []byte
-		wantErr bool
-	}{
-		{
-			"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
-			args{"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
-			[]byte{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
-			false,
-		},
-		{
-			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
-			args{"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856"},
-			[]byte{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86},
-			false,
-		},
-		{
-			"blank string",
-			args{""},
-			[]byte{},
-			false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := FromHex(tt.args.data)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromHex() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestUint64(t *testing.T) {
 	type args struct {
 		data []byte
@@ -610,6 +537,236 @@ func TestCopyBytes(t *testing.T) {
 	assert.Equal(t, res1, exp1)
 }
 
+func TestToHex(t *testing.T) {
+	type args struct {
+		data []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"0xa7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+			args{[]byte{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74}},
+			"0xa7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+		},
+		{
+			"blank string",
+			args{[]byte{}},
+			"0x0",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ToHex(tt.args.data); got != tt.want {
+				t.Errorf("Hex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFromHex(t *testing.T) {
+	type args struct {
+		data string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []byte
+	}{
+		{
+			"0xa7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+			args{"0xa7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
+			[]byte{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
+		},
+		{
+			"0X3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
+			args{"0X3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856"},
+			[]byte{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86},
+		},
+		{
+			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
+			args{"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856"},
+			[]byte{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86},
+		},
+		{
+			"odd length string with '0x' prefix",
+			args{"0x1"},
+			[]byte{1},
+		},
+		{
+			"odd length string without prefix",
+			args{"1"},
+			[]byte{1},
+		},
+		{
+			"blank string",
+			args{""},
+			[]byte{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FromHex(tt.args.data)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Hex2Bytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytes2Hex(t *testing.T) {
+	type args struct {
+		data []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+			args{[]byte{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74}},
+			"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+		},
+		{
+			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
+			args{[]byte{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86}},
+			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
+		},
+		{
+			"blank string",
+			args{[]byte{}},
+			"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Bytes2Hex(tt.args.data); got != tt.want {
+				t.Errorf("Hex() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHex2Bytes(t *testing.T) {
+	type args struct {
+		data string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []byte
+	}{
+		{
+			"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a",
+			args{"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
+			[]byte{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
+		},
+		{
+			"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856",
+			args{"3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856"},
+			[]byte{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86},
+		},
+		{
+			"blank string",
+			args{""},
+			[]byte{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Hex2Bytes(tt.args.data)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Hex2Bytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytesSlice2HexSlice(t *testing.T) {
+	type args struct {
+		data [][]byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			"one sting",
+			args{[][]byte{
+				{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
+			},
+			},
+			[]string{"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"},
+		},
+		{
+			"two strings",
+			args{[][]byte{
+				{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
+				{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86},
+			},
+			},
+			[]string{"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a", "3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856"},
+		},
+		{
+			"blank string",
+			args{[][]byte{{}}},
+			[]string{""},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BytesSlice2HexSlice(tt.args.data)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BytesSlice2HexSlice() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHexSlice2BytesSlice(t *testing.T) {
+	type args struct {
+		data []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want [][]byte
+	}{
+		{
+			"one string",
+			args{[]string{"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"}},
+			[][]byte{
+				{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
+			},
+		},
+		{
+			"two strings",
+			args{[]string{"a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a", "3550aba97492de38af3066f0157fc532db6791b37d53262ce7688dcc5d461856"}},
+			[][]byte{
+				{167, 255, 198, 248, 191, 30, 215, 102, 81, 193, 71, 86, 160, 97, 214, 98, 245, 128, 255, 77, 228, 59, 73, 250, 130, 216, 10, 75, 128, 248, 67, 74},
+				{53, 80, 171, 169, 116, 146, 222, 56, 175, 48, 102, 240, 21, 127, 197, 50, 219, 103, 145, 179, 125, 83, 38, 44, 231, 104, 141, 204, 93, 70, 24, 86},
+			},
+		},
+		{
+			"blank string",
+			args{[]string{""}},
+			[][]byte{{}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := HexSlice2BytesSlice(tt.args.data)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("HexSlice2BytesSlice() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestLeftPadBytes(t *testing.T) {
 	val1 := []byte{1, 2, 3, 4}
 	exp1 := []byte{0, 0, 0, 0, 1, 2, 3, 4}
@@ -632,6 +789,25 @@ func TestRightPadBytes(t *testing.T) {
 	assert.Equal(t, resshrt, val)
 }
 
+func TestHasHexPrefix(t *testing.T) {
+	tests := []struct {
+		input string
+		ok    bool
+	}{
+		{"", false},
+		{"0", false},
+		{"0x", true},
+		{"0X", true},
+		{"0x!@#$%", true},
+		{"0XYZ123", true},
+		{"0123456", false},
+	}
+	for _, test := range tests {
+		ok := HasHexPrefix(test.input)
+		assert.Equalf(t, ok, test.ok, "HasHexPrefix(%q) = %v, want %v", test.input, ok, test.ok)
+	}
+}
+
 func TestIsHex(t *testing.T) {
 	tests := []struct {
 		input string
@@ -650,18 +826,4 @@ func TestIsHex(t *testing.T) {
 		ok := IsHex(test.input)
 		assert.Equalf(t, ok, test.ok, "isHex(%q) = %v, want %v", test.input, ok, test.ok)
 	}
-}
-
-func TestFromHexOddLength(t *testing.T) {
-	input := "0x1"
-	expected := []byte{1}
-	result := FromHex(input)
-	assert.Equalf(t, expected, result, "Expected %x got %x", expected, result)
-}
-
-func TestNoPrefixShortHexOddLength(t *testing.T) {
-	input := "1"
-	expected := []byte{1}
-	result := FromHex(input)
-	assert.Equalf(t, expected, result, "Expected %x got %x", expected, result)
 }

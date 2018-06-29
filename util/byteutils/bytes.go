@@ -161,6 +161,24 @@ func Hex2Bytes(str string) []byte {
 	return h
 }
 
+// BytesSlice2HexSlice encodes bytes slice and returns hex string slice without '0x' prefix
+func BytesSlice2HexSlice(d [][]byte) []string {
+	var hs = make([]string, len(d))
+	for i, b := range d {
+		hs[i] = Bytes2Hex(b)
+	}
+	return hs
+}
+
+// HexSlice2BytesSlice decodes hex string slice without '0x' prefix and returns bytes slice
+func HexSlice2BytesSlice(ss []string) [][]byte {
+	var d = make([][]byte, len(ss))
+	for i, h := range ss {
+		d[i] = Hex2Bytes(h)
+	}
+	return d
+}
+
 // RightPadBytes adds padding in right side
 func RightPadBytes(slice []byte, l int) []byte {
 	if l <= len(slice) {
