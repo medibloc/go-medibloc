@@ -34,7 +34,7 @@ build:
 cover:
 	@echo $(COLOR)[COVER] $(TEST_REPORT)$(ENDCOLOR)
 	@-mkdir -p $(REPORT_DIR)
-	@go test ./... -coverprofile=$(COVERAGE_OUT) 2>&1 | tee ${TEST_REPORT}
+	@go test ./... -coverpkg=./... -coverprofile=$(COVERAGE_OUT) 2>&1 | tee ${TEST_REPORT}
 	@go tool cover -html=$(COVERAGE_OUT) -o $(COVERAGE_REPORT)
 	@open $(COVERAGE_REPORT)
 
@@ -46,7 +46,7 @@ test:
 test-slow:
 	@echo $(COLOR)[TEST] $(TEST_REPORT)$(ENDCOLOR)
 	@-mkdir -p $(REPORT_DIR)
-	@go test -race -cover ./... 2>&1 | tee ${TEST_REPORT} | grep -v "^?"
+	@go test -race ./... 2>&1 | tee ${TEST_REPORT} | grep -v "^?"
 
 vet:
 	@echo $(COLOR)[VET] $(VET_REPORT)$(ENDCOLOR)
