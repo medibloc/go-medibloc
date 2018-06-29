@@ -22,6 +22,7 @@ import (
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -67,9 +68,18 @@ func (s *Server) Start() error {
 
 // RunGateway runs rest gateway server.
 func (s *Server) RunGateway() error {
+	httpServer, err := NewHttpServer(s.addrHTTP, s.addrGrpc)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create GRPC HTTP Gateway.")
+	}
 	go func() {
-		if err := httpServerRun(s.addrHTTP, s.addrGrpc); err != nil {
-			logging.Console().Error(err)
+		err = httpServer.Run()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to run GRPC HTTP Gateway.")
 		}
 	}()
 	logging.Console().Info("GRPC HTTP Gateway is running...")

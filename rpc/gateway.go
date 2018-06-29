@@ -35,17 +35,25 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func httpServerRun(addr string, addrGrpc string) error {
+// HttpServer is a rest gateway wrapping the grpc server.
+type HttpServer struct {
+	handler  http.Handler
+	httpAddr string
+	grpcAddr string
+	cancel   context.CancelFunc
+}
+
+// NewHttpServer creates HttpServer.
+func NewHttpServer(httpAddr string, grpcAddr string) (*HttpServer, error) {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	mux := runtime.NewServeMux(runtime.WithMarshalerOption(runtime.MIMEWildcard,
 		&runtime.JSONPb{OrigName: true, EmitDefaults: true}),
 		runtime.WithProtoErrorHandler(errorHandler))
 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	err := rpcpb.RegisterApiServiceHandlerFromEndpoint(ctx, mux, addrGrpc, opts)
+	err := rpcpb.RegisterApiServiceHandlerFromEndpoint(ctx, mux, grpcAddr, opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	httpMux := http.NewServeMux()
@@ -55,8 +63,18 @@ func httpServerRun(addr string, addrGrpc string) error {
 
 	httpMux.Handle("/", mux)
 
-	handler := cors.Default().Handler(httpMux)
-	return http.ListenAndServe(addr, handler)
+	return &HttpServer{
+		handler:  cors.Default().Handler(httpMux),
+		httpAddr: httpAddr,
+		grpcAddr: grpcAddr,
+		cancel:   cancel,
+	}, nil
+}
+
+// Run starts the server.
+func (srv *HttpServer) Run() error {
+	defer srv.cancel()
+	return http.ListenAndServe(srv.httpAddr, srv.handler)
 }
 
 type errorBody struct {
