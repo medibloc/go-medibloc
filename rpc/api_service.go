@@ -157,9 +157,14 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 }
 
 // GetAccountState handles GetAccountState rpc.
+// address
 // balance
+// certs_issued
+// certs_received
 // nonce
-// staking (TODO)
+// records
+// vesting
+// voted
 func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
 	var block *core.Block
 	var err error
@@ -183,13 +188,25 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
 	if err != nil {
 		return &rpcpb.GetAccountStateResponse{
-			Balance: util.Uint128Zero().String(),
-			Nonce:   0,
+			Address:       req.Address,
+			Balance:       util.Uint128Zero().String(),
+			CertsIssued:   []string{},
+			CertsReceived: []string{},
+			Nonce:         0,
+			Records:       []string{},
+			Vesting:       util.Uint128Zero().String(),
+			Voted:         "",
 		}, nil
 	}
 	return &rpcpb.GetAccountStateResponse{
-		Balance: acc.Balance().String(),
-		Nonce:   acc.Nonce(),
+		Address:       byteutils.Bytes2Hex(acc.Address()),
+		Balance:       acc.Balance().String(),
+		CertsIssued:   byteutils.BytesSlice2HexSlice(acc.CertsIssued()),
+		CertsReceived: byteutils.BytesSlice2HexSlice(acc.CertsReceived()),
+		Nonce:         acc.Nonce(),
+		Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
+		Vesting:       acc.Vesting().String(),
+		Voted:         byteutils.Bytes2Hex(acc.Voted()),
 	}, nil
 }
 
@@ -205,7 +222,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	case TAIL:
 		block = s.bm.TailBlock()
 	default:
-		block = s.bm.BlockByHash(byteutils.Hex2Bytes(req.Hash))
+		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
 	}
 	if block == nil || err != nil {
 		return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)

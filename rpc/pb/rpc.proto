@@ -52,12 +52,22 @@ message GetAccountStateRequest {
 }
 
 message GetAccountStateResponse {
-	// Current balance in unit of 1/(10^18) nas.
-	string balance = 1; // uint128, len=16
+	// Hex string of the account address.
+	string address = 1;
+	// Current balance in unit of 1/(10^8) MED.
+	string balance = 2; // uint128, len=16
+	// Account addresses certificated by the account.
+	repeated string certs_issued = 3;
+	// Account addresses that have certificated the account.
+	repeated string certs_received = 4;
 	// Current transaction count.
-	uint64 nonce = 2;
-	// Account type
-	uint32 type = 3;
+	uint64 nonce = 5;
+	// List of record hash.
+	repeated string records = 6;
+	// Current vesting in unit of 1/(10^8) MED.
+	string vesting = 7;
+	// Voted address.
+	string voted = 8;
 }
 
 message GetBlockRequest {

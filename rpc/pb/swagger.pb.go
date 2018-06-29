@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -239,19 +239,47 @@ const (
     "rpcpbGetAccountStateResponse": {
       "type": "object",
       "properties": {
+        "address": {
+          "type": "string",
+          "description": "Hex string of the account address."
+        },
         "balance": {
           "type": "string",
-          "description": "Current balance in unit of 1/(10^18) nas."
+          "description": "Current balance in unit of 1/(10^8) MED."
+        },
+        "certs_issued": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Account addresses certificated by the account."
+        },
+        "certs_received": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Account addresses that have certificated the account."
         },
         "nonce": {
           "type": "string",
           "format": "uint64",
           "description": "Current transaction count."
         },
-        "type": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Account type"
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of record hash."
+        },
+        "vesting": {
+          "type": "string",
+          "description": "Current vesting in unit of 1/(10^8) MED."
+        },
+        "voted": {
+          "type": "string",
+          "description": "Voted address."
         }
       }
     },
