@@ -280,7 +280,7 @@ func TestForkResistance(t *testing.T) {
 		} else {
 			count = 0
 		}
-		if count > 100 {
+		if count > 1000 {
 			t.Logf("Current Height(%v)", curSize)
 			require.True(t, false)
 		}
