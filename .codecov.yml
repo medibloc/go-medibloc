@@ -1,0 +1,4 @@
+ignore:
+  - "**/*.pb.go"
+  - "**/*.pb.gw.go"
+  - "rpc/mock_pb/mock_pb.go"
