@@ -64,7 +64,7 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
 			"cacheSize": cfg.Chain.BlockCacheSize,
-		}).Fatal("Failed to create block cache.")
+		}).Error("Failed to create block cache.")
 		return nil, err
 	}
 
@@ -73,7 +73,7 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
 			"cacheSize": cfg.Chain.TailCacheSize,
-		}).Fatal("Failed to create tail block cache.")
+		}).Error("Failed to create tail block cache.")
 		return nil, err
 	}
 

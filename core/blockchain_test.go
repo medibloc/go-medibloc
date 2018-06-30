@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -106,4 +107,17 @@ func TestBlockChain_Tree(t *testing.T) {
 		err := bc.PutVerifiedNewBlocks(genesis, allBlocks, tailBlocks)
 		assert.Nil(t, err)
 	}
+}
+
+func TestNewBlockChain(t *testing.T) {
+	cfg := medlet.DefaultConfig()
+
+	cfg.Chain.BlockCacheSize = 0
+	_, err := core.NewBlockChain(cfg)
+	require.EqualError(t, err, "Must provide a positive size")
+	cfg.Chain.BlockCacheSize = 1
+
+	cfg.Chain.TailCacheSize = 0
+	_, err = core.NewBlockChain(cfg)
+	require.EqualError(t, err, "Must provide a positive size")
 }
