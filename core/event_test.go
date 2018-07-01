@@ -114,6 +114,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 	eventCount1, eventCount2 := 0, 0
 
 	emitter.Deregister(subscriber2)
+	time.Sleep(100)
 	go func() {
 		defer wg.Done()
 		quit := time.NewTimer(time.Second * 1)
