@@ -40,6 +40,38 @@
         ]
       }
     },
+    "/v1/blocks": {
+      "get": {
+        "operationId": "GetBlocks",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbBlocksResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/node/medstate": {
       "get": {
         "operationId": "GetMedState",
@@ -230,6 +262,17 @@
           "type": "string",
           "format": "uint64",
           "title": "Block height"
+        }
+      }
+    },
+    "rpcpbBlocksResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbBlockResponse"
+          }
         }
       }
     },

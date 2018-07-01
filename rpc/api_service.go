@@ -252,6 +252,43 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 }
 
+// GetBlocks returns blocks
+func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest) (*rpcpb.BlocksResponse, error) {
+	var block *core.Block
+	var rpcPbBlocks []*rpcpb.BlockResponse
+	var err error
+
+	if req.From > req.To {
+		return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+	}
+
+	for i := req.From; i <= req.To; i++ {
+		block, err = s.bm.BlockByHeight(i)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+		}
+
+		pb, err := block.ToProto()
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+		}
+
+		if pbBlock, ok := pb.(*corepb.Block); ok {
+			rpcPbBlock, err := corePbBlock2rpcPbBlock(pbBlock)
+			if err != nil {
+				return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+			}
+			rpcPbBlocks = append(rpcPbBlocks, rpcPbBlock)
+		} else {
+			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+		}
+	}
+
+	return &rpcpb.BlocksResponse{
+		Blocks: rpcPbBlocks,
+	}, nil
+}
+
 // GetTransaction returns transaction
 func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.TransactionResponse, error) {
 	tailBlock := s.bm.TailBlock()

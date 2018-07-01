@@ -17,6 +17,12 @@ service ApiService {
         };
     }
 
+    rpc GetBlocks (GetBlocksRequest) returns (BlocksResponse) {
+    	option (google.api.http) = {
+    		get: "/v1/blocks"
+    	};
+    }
+
 	rpc GetMedState (NonParamsRequest) returns (GetMedStateResponse) {
 		option (google.api.http) = {
 			get: "/v1/node/medstate"
@@ -200,4 +206,13 @@ message SubscribeRequest {
 message SubscribeResponse {
 	string topic = 1;
 	string data = 2;
+}
+
+message GetBlocksRequest {
+	uint64 from = 1;
+	uint64 to = 2;
+}
+
+message BlocksResponse {
+	repeated BlockResponse blocks = 1;
 }
