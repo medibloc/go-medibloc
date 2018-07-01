@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"regexp"
 
 	"strconv"
 
@@ -222,7 +223,18 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	case TAIL:
 		block = s.bm.TailBlock()
 	default:
-		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
+		if number, _ := regexp.MatchString("^[0-9]*$", req.Hash); number {
+			height, err := strconv.ParseUint(req.Hash, 10, 64)
+			if height == 0 || err != nil {
+				return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+			}
+			block, err = s.bm.BlockByHeight(height)
+			if err != nil {
+				return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+			}
+		} else {
+			block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
+		}
 	}
 	if block == nil || err != nil {
 		return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
