@@ -43,14 +43,15 @@ func TestNetworkUtil(t *testing.T) {
 	require.NoError(t, err)
 	block := testutil.NewTestBlock(t, genesis)
 
-	from := nt.Nodes[0].Med.NetService()
-	from.Broadcast(core.MessageTypeNewBlock, block, 1)
-
 	to := nt.Nodes[1]
 	ch := make(chan net.Message)
 	subscriber := net.NewSubscriber(to, ch, false, core.MessageTypeNewBlock, 1)
 	to.Med.NetService().Register(subscriber)
 	defer to.Med.NetService().Deregister(subscriber)
+
+	from := nt.Nodes[0].Med.NetService()
+	from.Broadcast(core.MessageTypeNewBlock, block, 1)
+
 	msg := <-ch
 
 	bd, err := core.BytesToBlockData(msg.Data())
