@@ -388,8 +388,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		return err
 	}
 
-	bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
-	return nil
+	return bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
 }
 
 func (bm *BlockManager) loop() {
@@ -437,28 +436,16 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	if bd.Height() > bm.bc.MainTailBlock().Height()+bm.syncActivationHeight && bm.syncService != nil {
-		logging.Console().Info("hahaha")
-
-		if err := bm.syncService.ActiveDownload(); err != nil {
-			logging.WithFields(logrus.Fields{
-				"newBlockHeight":       bd.Height(),
-				"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
-				"syncActivationHeight": bm.syncActivationHeight,
-				"err": err,
-			}).Debug("Failed to activate sync download manager.")
-		}
-
-		bm.syncService.ActiveDownload()
-
-		logging.Console().WithFields(logrus.Fields{
-			"newBlockHeight":       bd.Height(),
-			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
-			"syncActivationHeight": bm.syncActivationHeight,
-		}).Info("Sync download manager is activated.")
-	} else {
+	ok := bm.activateSync(bd)
+	if !ok {
 		err = bm.requestMissingBlock(msg.MessageFrom(), bd)
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"sender": msg.MessageFrom(),
+				"block":  bd,
+				"err":    err,
+			}).Error("Failed to request missing block.")
+
 			return
 		}
 	}
@@ -466,6 +453,37 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 	if msg.MessageType() == MessageTypeNewBlock {
 		bm.Relay(bd)
 	}
+}
+
+func (bm *BlockManager) activateSync(bd *BlockData) bool {
+	if bm.syncService == nil {
+		return false
+	}
+
+	if bm.syncService.IsDownloadActivated() {
+		return true
+	}
+
+	if bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight {
+		return false
+	}
+
+	if err := bm.syncService.ActiveDownload(); err != nil {
+		logging.WithFields(logrus.Fields{
+			"newBlockHeight":       bd.Height(),
+			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+			"syncActivationHeight": bm.syncActivationHeight,
+			"err": err,
+		}).Debug("Failed to activate sync download manager.")
+		return false
+	}
+
+	logging.Console().WithFields(logrus.Fields{
+		"newBlockHeight":       bd.Height(),
+		"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+		"syncActivationHeight": bm.syncActivationHeight,
+	}).Info("Sync download manager is activated.")
+	return true
 }
 
 func (bm *BlockManager) handleRequestBlock(msg net.Message) {
