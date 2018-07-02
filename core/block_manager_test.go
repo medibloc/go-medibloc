@@ -19,9 +19,15 @@ import (
 	"math/rand"
 	"testing"
 
+	"strings"
+	"time"
+
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -257,5 +263,111 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	for _, test := range tests {
 		bd.SetHeight(test.height)
 		assert.Equal(t, test.err, bm.PushBlockData(bd), "testcase = %v", test)
+	}
+}
+
+func TestBlockManager_Setup(t *testing.T) {
+	cfg := medlet.DefaultConfig()
+	cfg.Chain.BlockPoolSize = 0
+	bm, err := core.NewBlockManager(cfg)
+	require.Nil(t, bm)
+	require.EqualError(t, err, "Must provide a positive size")
+
+	cfg = medlet.DefaultConfig()
+	cfg.Chain.BlockCacheSize = 0
+	bm, err = core.NewBlockManager(cfg)
+	require.Nil(t, bm)
+	require.EqualError(t, err, "Must provide a positive size")
+
+	cfg = medlet.DefaultConfig()
+	cfg.Chain.TailCacheSize = 0
+	bm, err = core.NewBlockManager(cfg)
+	require.Nil(t, bm)
+	require.EqualError(t, err, "Must provide a positive size")
+}
+
+func TestBlockManager_RequestParentBlock(t *testing.T) {
+	nt := testutil.NewNetwork(t, 3)
+	hook := nt.SetLogTestHook()
+	seed := nt.NewSeedNode()
+	node := nt.NewNode()
+
+	nt.Start()
+	defer nt.Cleanup()
+
+	nt.WaitForEstablished()
+
+	dynasties := nt.Seed.Config.Dynasties
+	genesis, err := nt.Seed.Med.BlockManager().BlockByHeight(1)
+	require.NoError(t, err)
+
+	blocks := make([]*core.Block, 0)
+	parent := genesis
+	for i := 0; i < 10; i++ {
+		block := testutil.NewTestBlock(t, parent)
+		testutil.SignBlock(t, block, dynasties)
+		seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+		parent = block
+		blocks = append(blocks, block)
+	}
+
+	seedID := seed.Med.NetService().Node().ID()
+
+	// Invalid Protobuf
+	bytes := []byte("invalid protobuf")
+	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	assert.True(t, foundInLog(hook, "Failed to unmarshal download parent block msg."))
+	hook.Reset()
+
+	// Request Genesis's Parent
+	invalid := &corepb.DownloadParentBlock{
+		Hash: core.GenesisHash,
+		Sign: []byte{},
+	}
+	bytes, err = proto.Marshal(invalid)
+	require.NoError(t, err)
+	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	assert.True(t, foundInLog(hook, "Asked to download genesis's parent, ignore it."))
+	hook.Reset()
+
+	// Hash Not found
+	invalid = &corepb.DownloadParentBlock{
+		Hash: []byte("Not Found Hash"),
+		Sign: []byte{},
+	}
+	bytes, err = proto.Marshal(invalid)
+	require.NoError(t, err)
+	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	assert.True(t, foundInLog(hook, "Failed to find the block asked for."))
+	hook.Reset()
+
+	// Sign mismatch
+	invalid = &corepb.DownloadParentBlock{
+		Hash: blocks[4].Hash(),
+		Sign: []byte("Invalid signature"),
+	}
+	bytes, err = proto.Marshal(invalid)
+	require.NoError(t, err)
+	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	assert.True(t, foundInLog(hook, "Failed to check the block's signature."))
+	hook.Reset()
+}
+
+func foundInLog(hook *test.Hook, s string) bool {
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+	for {
+		for _, entry := range hook.AllEntries() {
+			if strings.Contains(entry.Message, s) {
+				return true
+			}
+		}
+
+		time.Sleep(10 * time.Millisecond)
+		select {
+		case <-timer.C:
+			return false
+		default:
+		}
 	}
 }
