@@ -19,6 +19,8 @@ import (
 	"os"
 	"sync"
 
+	"io/ioutil"
+
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 )
@@ -30,34 +32,66 @@ func (ew emptyWriter) Write(p []byte) (int, error) {
 }
 
 var (
-	mu   sync.Mutex
+	mu   sync.RWMutex
 	clog *logrus.Logger
 	vlog *logrus.Logger
 )
 
-// Console returns console logger.
-func Console() *logrus.Logger {
+// SetConsole sets console logger.
+func SetConsole(logger *logrus.Logger) {
 	mu.Lock()
 	defer mu.Unlock()
+	clog = logger
+}
 
-	if clog == nil {
-		Init("/tmp", "info", 0)
+// SetVerbose sets verbose logger.
+func SetVerbose(logger *logrus.Logger) {
+	mu.Lock()
+	defer mu.Unlock()
+	vlog = logger
+}
+
+// Console returns console logger.
+func Console() *logrus.Logger {
+	mu.RLock()
+	if clog != nil {
+		mu.RUnlock()
+		return clog
+	}
+	mu.RUnlock()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if clog != nil {
+		initLogger("/tmp", "info", 0)
 	}
 	return clog
 }
 
 func vLog() *logrus.Logger {
+	mu.RLock()
+	if vlog != nil {
+		mu.RUnlock()
+		return vlog
+	}
+	mu.RUnlock()
+
 	mu.Lock()
 	defer mu.Unlock()
-
-	if vlog == nil {
-		Init("/tmp", "info", 0)
+	if vlog != nil {
+		initLogger("/tmp", "info", 0)
 	}
 	return vlog
 }
 
 // Init loggers.
 func Init(path string, level string, age uint32) {
+	mu.Lock()
+	defer mu.Unlock()
+	initLogger(path, level, age)
+}
+
+func initLogger(path string, level string, age uint32) {
 	levelNo, err := logrus.ParseLevel(level)
 	if err != nil {
 		panic("Invalid log level:" + level)
@@ -86,14 +120,31 @@ func Init(path string, level string, age uint32) {
 	}).Info("Logger Configuration.")
 }
 
-// TestHook returns hook for testing log entry.
-func TestHook() *test.Hook {
+// SetNullLogger sets null logger.
+func SetNullLogger() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	Init("/tmp", "info", 0)
+	if vlog == nil {
+		initLogger("/tmp", "info", 0)
+	}
 
-	logger, hook := test.NewNullLogger()
+	logger := logrus.New()
+	logger.Out = ioutil.Discard
 	clog = logger
+}
+
+// SetTestHook returns hook for testing log entry.
+func SetTestHook() *test.Hook {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if clog == nil || vlog == nil {
+		initLogger("/tmp", "info", 0)
+	}
+
+	hook := new(test.Hook)
+	clog.Hooks.Add(hook)
+	vlog.Hooks.Add(hook)
 	return hook
 }

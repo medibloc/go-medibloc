@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/medlet"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,6 +105,7 @@ type Network struct {
 
 // NewNetwork creates network.
 func NewNetwork(t *testing.T, dynastySize int) *Network {
+	logging.Init("testdata", "debug", 0)
 	return &Network{
 		t:           t,
 		dynastySize: dynastySize,
@@ -168,6 +171,12 @@ func (n *Network) Cleanup() {
 	for _, node := range n.Nodes {
 		node.Config.CleanUp()
 	}
+}
+
+// SetLogTestHook sets test hook for log messages.
+func (n *Network) SetLogTestHook() *test.Hook {
+	logging.SetNullLogger()
+	return logging.SetTestHook()
 }
 
 // SetMinerFromDynasties chooses miner from dynasties.

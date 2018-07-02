@@ -9,6 +9,6 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	logging.TestHook()
+	logging.SetNullLogger()
 	os.Exit(m.Run())
 }

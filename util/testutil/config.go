@@ -136,13 +136,6 @@ func (cfg *NodeConfig) SetRandomMiner() *NodeConfig {
 	return cfg.SetMiner(keypair)
 }
 
-// SetLog sets logging configuration.
-func (cfg *NodeConfig) SetLog(path string, level string) *NodeConfig {
-	cfg.Config.App.LogFile = path
-	cfg.Config.App.LogLevel = level
-	return cfg
-}
-
 // setGenesis sets genesis configuration.
 func (cfg *NodeConfig) setGenesis(genesis *corepb.Genesis) *NodeConfig {
 	cfg.Genesis = genesis
@@ -215,8 +208,6 @@ func (cfg *NodeConfig) String() string {
 * RPC               : %v
 * HTTP              : %v
 * Miner(addr/key)   : %v
-* LogFile           : %v 
-* LogLevel          : %v
 * Dynasties         :
 %v
 * TokenDistribution :
@@ -230,8 +221,6 @@ func (cfg *NodeConfig) String() string {
 		cfg.Config.Rpc.RpcListen,
 		cfg.Config.Rpc.HttpListen,
 		cfg.Miner,
-		cfg.Config.App.LogFile,
-		cfg.Config.App.LogLevel,
 		cfg.Dynasties,
 		cfg.TokenDist)
 }
