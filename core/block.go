@@ -263,9 +263,17 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		return nil, err
 	}
 	if err = block.state.LoadCandidacyRoot(block.header.candidacyRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load candidacy root.")
 		return nil, err
 	}
 	if err = block.state.LoadCertificationRoot(block.header.certificationRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load certification root.")
 		return nil, err
 	}
 	if err = block.state.LoadConsensusRoot(block.consensus, block.header.consensusRoot); err != nil {
