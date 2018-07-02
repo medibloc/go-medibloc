@@ -36,6 +36,8 @@ type TransactionPool struct {
 	buckets    *hashheap.HashedHeap
 	all        map[string]*Transaction
 
+	sortedTxs sortTransactions
+
 	eventEmitter *EventEmitter
 }
 
@@ -46,6 +48,7 @@ func NewTransactionPool(size int) *TransactionPool {
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
 		all:        make(map[string]*Transaction),
+		sortedTxs:  make(sortTransactions, 0),
 	}
 }
 
@@ -129,6 +132,9 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	bkt.push(tx)
 	pool.buckets.Set(from, bkt)
 
+	// Add tx to srotedTxs
+	pool.sortedTxs.push(tx)
+
 	// replace candidate
 	candidate := bkt.peekFirst()
 	pool.candidates.Del(from)
@@ -165,6 +171,9 @@ func (pool *TransactionPool) del(tx *Transaction) {
 		return
 	}
 	pool.buckets.Set(from, bkt)
+
+	// Remove tx from srotedTxs
+	pool.sortedTxs.del(tx)
 
 	// Replace candidate
 	candidate := bkt.peekFirst()
@@ -248,6 +257,33 @@ func (b *bucket) del(tx *Transaction) {
 	for i, tt := range b.txs {
 		if byteutils.Equal(tt.Transaction.Hash(), tx.Hash()) {
 			b.txs = append(b.txs[:i], b.txs[i+1:]...)
+			return
+		}
+	}
+}
+
+type sortable struct{ *Transaction }
+
+func (tx *sortable) Less(o interface{}) bool { return tx.timestamp < o.(*sortable).timestamp }
+
+type sortTransactions []*sortable
+
+func (t sortTransactions) Len() int { return len(t) }
+
+func (t sortTransactions) Less(i, j int) bool { return t[i].Less(t[j]) }
+
+func (t sortTransactions) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+
+func (t sortTransactions) push(tx *Transaction) {
+	newTx := &sortable{tx}
+	t = append(t, newTx)
+	sort.Sort(t)
+}
+
+func (t sortTransactions) del(tx *Transaction) {
+	for i, tt := range t {
+		if byteutils.Equal(tt.Hash(), tx.Hash()) {
+			t = append(t[:i], t[i+1:]...)
 			return
 		}
 	}
