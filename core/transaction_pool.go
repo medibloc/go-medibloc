@@ -50,7 +50,7 @@ func NewTransactionPool(size int) *TransactionPool {
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
 		all:        make(map[string]*Transaction),
-		sortedTxs:  skiplist.NewStringMap(),
+		sortedTxs:  skiplist.NewCustomMap(lessThan),
 	}
 }
 
@@ -61,19 +61,28 @@ func (pool *TransactionPool) SetEventEmitter(emitter *EventEmitter) {
 
 // GetTxs return pending txs ordered by timestamp
 func (pool *TransactionPool) GetTxs(tx *Transaction, amount int) []*Transaction {
-	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; !ok {
-		return nil
-	}
+	skipOne := false
 	var txs []*Transaction
 
-	fromKey := makeKey(tx)
+	key := makeKey(tx)
+	fromTxKey, _, ok := pool.sortedTxs.GetGreaterOrEqual(key)
+	if !ok {
+		return nil
+	}
+	if fromTxKey != key {
+		skipOne = true
+	}
+
 	lastTx := pool.sortedTxs.SeekToLast()
 
-	count := 0
-	for i := pool.sortedTxs.Range(fromKey, lastTx.Key()); i.Next(); {
+	for i := pool.sortedTxs.Range(fromTxKey, lastTx.Key()); i.Next(); {
+		if skipOne {
+			skipOne = false
+			continue
+		}
 		txs = append(txs, i.Value().(*Transaction))
-		count++
-		if count == amount {
+		amount--
+		if amount == 0 {
 			return txs
 		}
 	}
@@ -288,4 +297,10 @@ func (b *bucket) del(tx *Transaction) {
 
 func makeKey(tx *Transaction) string {
 	return strconv.FormatInt(tx.Timestamp(), 10) + byteutils.Bytes2Hex(tx.Hash())
+}
+
+// make skip list ordered from greater
+// 100 -> 99 -> 98 -> ...
+func lessThan(l, r interface{}) bool {
+	return l.(string) > r.(string)
 }
