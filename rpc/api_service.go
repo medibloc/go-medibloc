@@ -291,12 +291,15 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 
 // GetTransaction returns transaction
 func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.TransactionResponse, error) {
+	if len(req.Hash) != 64 {
+		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
+	}
+
 	tailBlock := s.bm.TailBlock()
 	if tailBlock == nil {
 		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
 
-	// TODO: check req.Hash is nil
 	txHash := byteutils.Hex2Bytes(req.Hash)
 
 	pbTx := new(corepb.Transaction)
