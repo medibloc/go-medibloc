@@ -16,6 +16,7 @@
 package core
 
 import (
+	"strconv"
 	"sync"
 
 	"sort"
@@ -23,6 +24,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/hashheap"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/ryszard/goskiplist/skiplist"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,7 +38,7 @@ type TransactionPool struct {
 	buckets    *hashheap.HashedHeap
 	all        map[string]*Transaction
 
-	sortedTxs sortTransactions
+	sortedTxs *skiplist.SkipList
 
 	eventEmitter *EventEmitter
 }
@@ -48,7 +50,7 @@ func NewTransactionPool(size int) *TransactionPool {
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
 		all:        make(map[string]*Transaction),
-		sortedTxs:  make(sortTransactions, 0),
+		sortedTxs:  skiplist.NewStringMap(),
 	}
 }
 
@@ -132,8 +134,9 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	bkt.push(tx)
 	pool.buckets.Set(from, bkt)
 
-	// Add tx to srotedTxs
-	pool.sortedTxs.push(tx)
+	// Add tx to sortedTxs
+	// key := timestamp + hash (to prevent duplicate)
+	pool.sortedTxs.Set(makeKey(tx), tx)
 
 	// replace candidate
 	candidate := bkt.peekFirst()
@@ -172,8 +175,8 @@ func (pool *TransactionPool) del(tx *Transaction) {
 	}
 	pool.buckets.Set(from, bkt)
 
-	// Remove tx from srotedTxs
-	pool.sortedTxs.del(tx)
+	// Remove tx from sortedTxs
+	pool.sortedTxs.Delete(makeKey(tx))
 
 	// Replace candidate
 	candidate := bkt.peekFirst()
@@ -262,29 +265,6 @@ func (b *bucket) del(tx *Transaction) {
 	}
 }
 
-type sortable struct{ *Transaction }
-
-func (tx *sortable) Less(o interface{}) bool { return tx.timestamp < o.(*sortable).timestamp }
-
-type sortTransactions []*sortable
-
-func (t sortTransactions) Len() int { return len(t) }
-
-func (t sortTransactions) Less(i, j int) bool { return t[i].Less(t[j]) }
-
-func (t sortTransactions) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
-
-func (t sortTransactions) push(tx *Transaction) {
-	newTx := &sortable{tx}
-	t = append(t, newTx)
-	sort.Sort(t)
-}
-
-func (t sortTransactions) del(tx *Transaction) {
-	for i, tt := range t {
-		if byteutils.Equal(tt.Hash(), tx.Hash()) {
-			t = append(t[:i], t[i+1:]...)
-			return
-		}
-	}
+func makeKey(tx *Transaction) string {
+	return strconv.FormatInt(tx.Timestamp(), 10) + byteutils.Bytes2Hex(tx.Hash())
 }
