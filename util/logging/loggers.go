@@ -37,20 +37,6 @@ var (
 	vlog *logrus.Logger
 )
 
-// SetConsole sets console logger.
-func SetConsole(logger *logrus.Logger) {
-	mu.Lock()
-	defer mu.Unlock()
-	clog = logger
-}
-
-// SetVerbose sets verbose logger.
-func SetVerbose(logger *logrus.Logger) {
-	mu.Lock()
-	defer mu.Unlock()
-	vlog = logger
-}
-
 // Console returns console logger.
 func Console() *logrus.Logger {
 	mu.RLock()
