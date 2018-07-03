@@ -295,19 +295,32 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	if tailBlock == nil {
 		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
+
 	// TODO: check req.Hash is nil
-	pb, err := tailBlock.State().GetTx(byteutils.Hex2Bytes(req.Hash))
+	txHash := byteutils.Hex2Bytes(req.Hash)
+
+	pbTx := new(corepb.Transaction)
+	pb, err := tailBlock.State().GetTx(txHash)
 	if err != nil {
-		if err == trie.ErrNotFound {
+		if err != trie.ErrNotFound {
+			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+		}
+		tx := s.tm.Get(txHash)
+		if tx == nil {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 		}
-		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+		prePbTx, err := tx.ToProto()
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+		}
+		pbTx = prePbTx.(*corepb.Transaction)
+	} else {
+		err = proto.Unmarshal(pb, pbTx)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
+		}
 	}
-	pbTx := new(corepb.Transaction)
-	err = proto.Unmarshal(pb, pbTx)
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-	}
+
 	res, err := corePbTx2rpcPbTx(pbTx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)

@@ -94,7 +94,11 @@ func (pool *TransactionPool) Get(hash []byte) *Transaction {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
-	return pool.all[byteutils.Bytes2Hex(hash)]
+	tx, ok := pool.all[byteutils.Bytes2Hex(hash)]
+	if !ok {
+		return nil
+	}
+	return tx
 }
 
 // Del deletes transaction.
