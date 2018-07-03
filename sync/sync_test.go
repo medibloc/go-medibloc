@@ -134,7 +134,7 @@ func TestService_Start(t *testing.T) {
 	seedTester.Start()
 	for i := 1; i < nBlocks; i++ {
 		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlock(t, b, seedTester.dynasties)
+		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 	}
 	require.Equal(t, uint64(nBlocks), seedTester.TailHeight())
@@ -215,7 +215,7 @@ func TestForkResistance(t *testing.T) {
 	//Generate blocks and push to seed tester and major tester
 	for i := 1; i < nBlocks; i++ {
 		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlock(t, b, seedTester.dynasties)
+		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 		for _, st := range majorTesters {
 			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
@@ -244,7 +244,7 @@ func TestForkResistance(t *testing.T) {
 	//Generate diff blocks and push to minor tester
 	for i := 1; i < nBlocks; i++ {
 		b := testutil.NewTestBlock(t, minorTesters[0].blockManager.TailBlock())
-		testutil.SignBlock(t, b, seedTester.dynasties)
+		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
 
 		for _, st := range minorTesters {
 			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
@@ -319,14 +319,14 @@ func TestForAutoActivation(t *testing.T) {
 	// generate and push 2nd block on seedTester
 	secondBlockTime := time.Now().Add(time.Duration(-1*(nBlocks-nBackward)) * dpos.BlockInterval)
 	b := testutil.NewTestBlockWithTimestamp(t, seedTester.blockManager.TailBlock(), secondBlockTime)
-	testutil.SignBlock(t, b, seedTester.dynasties)
+	testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
 	seedTester.blockManager.PushBlockData(b.GetBlockData())
 	require.Equal(t, 2, int(seedTester.TailHeight()))
 
 	// generate blocks (height:3~nBlocks-1) on seedTester
 	for i := 2; i < nBlocks-1; i++ {
 		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlock(t, b, seedTester.dynasties)
+		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 	}
 	require.Equal(t, nBlocks-1, int(seedTester.TailHeight()))
@@ -343,7 +343,7 @@ func TestForAutoActivation(t *testing.T) {
 	t.Logf("Receiver PID: %v", receiveTester.medService.Node().ID())
 
 	tail := testutil.NewTestBlockWithTimestamp(t, seedTester.blockManager.TailBlock(), time.Now())
-	testutil.SignBlock(t, tail, seedTester.dynasties)
+	testutil.SignBlockUsingDynasties(t, tail, seedTester.dynasties)
 	seedTester.blockManager.PushBlockData(tail.GetBlockData())
 
 	t.Logf("tail ts: %v, now: %v, sleep:%v", tail.Timestamp(), time.Now(), time.Unix(tail.Timestamp(), 0).Sub(time.Now()))
@@ -400,7 +400,7 @@ func TestForAutoActivation(t *testing.T) {
 	require.True(t, int(newTail.Height()) > nBlocks-chunkSize, "Receiver height is too low")
 
 	tail = testutil.NewTestBlockWithTimestamp(t, seedTester.blockManager.TailBlock(), time.Now())
-	testutil.SignBlock(t, tail, seedTester.dynasties)
+	testutil.SignBlockUsingDynasties(t, tail, seedTester.dynasties)
 	seedTester.blockManager.PushBlockData(tail.GetBlockData())
 	time.Sleep(time.Unix(tail.Timestamp(), 0).Sub(time.Now()))
 	seedTester.blockManager.BroadCast(seedTester.blockManager.TailBlock().GetBlockData())
@@ -454,7 +454,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 	//seedTester.syncService.Stop()
 	for i := 1; i < nBlocks; i++ {
 		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlock(t, b, seedTester.dynasties)
+		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
 		seedTester.blockManager.PushBlockData(b.GetBlockData())
 	}
 	require.Equal(t, uint64(nBlocks), seedTester.TailHeight())

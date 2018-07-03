@@ -215,8 +215,8 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 	return block
 }
 
-// SignBlock signs block.
-func SignBlock(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
+// SignBlockUsingDynasties signs block with dynasties.
+func SignBlockUsingDynasties(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
 	members, err := block.State().Dynasty()
 	require.NoError(t, err)
 	proposer, err := dpos.FindProposer(block.Timestamp(), members)
@@ -225,9 +225,14 @@ func SignBlock(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
 	privKey := dynasties.findPrivKey(proposer)
 	require.NotNil(t, privKey)
 
+	SignBlock(t, block, privKey)
+}
+
+// SignBlock signs block.
+func SignBlock(t *testing.T, block *core.Block, key signature.PrivateKey) {
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	require.NoError(t, err)
-	sig.InitSign(privKey)
+	sig.InitSign(key)
 	block.SignThis(sig)
 }
 

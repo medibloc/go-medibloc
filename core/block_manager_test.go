@@ -23,8 +23,11 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -45,7 +48,7 @@ func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.AddrKeyP
 	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 	require.Nil(t, block.ExecuteAll())
 	require.Nil(t, block.Seal())
-	testutil.SignBlock(t, block, dynasties)
+	testutil.SignBlockUsingDynasties(t, block, dynasties)
 
 	// restore state for simulate network received message
 	return restoreBlockData(t, block)
@@ -61,7 +64,7 @@ func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *cor
 		require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 		require.Nil(t, block.ExecuteAll())
 		require.Nil(t, block.Seal())
-		testutil.SignBlock(t, block, dynasties)
+		testutil.SignBlockUsingDynasties(t, block, dynasties)
 		blockMap[testutil.BlockID(i)] = block
 
 		// restore state for simulate network received message
@@ -147,7 +150,7 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	dynasties := m.Dynasties()
 
 	block := testutil.NewTestBlock(t, genesis)
-	testutil.SignBlock(t, block, dynasties)
+	testutil.SignBlockUsingDynasties(t, block, dynasties)
 	err := bm.PushBlockData(block.GetBlockData())
 	require.NoError(t, err)
 
@@ -303,7 +306,7 @@ func TestBlockManager_InvalidChainID(t *testing.T) {
 	pb.(*corepb.Block).Header.ChainId = 959123
 	block.FromProto(pb)
 
-	testutil.SignBlock(t, block, dynasties)
+	testutil.SignBlockUsingDynasties(t, block, dynasties)
 	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 }
@@ -326,7 +329,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	parent := genesis
 	for i := 0; i < 10; i++ {
 		block := testutil.NewTestBlock(t, parent)
-		testutil.SignBlock(t, block, dynasties)
+		testutil.SignBlockUsingDynasties(t, block, dynasties)
 		seed.Med.BlockManager().PushBlockData(block.GetBlockData())
 		parent = block
 		blocks = append(blocks, block)
@@ -372,6 +375,63 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
 	assert.True(t, foundInLog(hook, "Failed to check the block's signature."))
 	hook.Reset()
+}
+
+func TestBlockManager_VerifyIntegrity(t *testing.T) {
+	nt := testutil.NewNetwork(t, 3)
+	nt.SetLogTestHook()
+	seed := nt.NewSeedNode()
+
+	nt.Start()
+	defer nt.Cleanup()
+
+	dynasties := nt.Seed.Config.Dynasties
+	genesis := seed.GenesisBlock()
+
+	// Invalid Block Hash
+	block := testutil.NewTestBlock(t, genesis)
+	pb, err := block.ToProto()
+	require.NoError(t, err)
+	pb.(*corepb.Block).Header.Hash = []byte("invalid hash")
+	err = block.FromProto(pb)
+	require.NoError(t, err)
+	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	assert.Equal(t, core.ErrInvalidBlockHash, err)
+
+	// Invalid Block Sign algorithm
+	block = testutil.NewTestBlock(t, genesis)
+	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	assert.Equal(t, crypto.ErrAlgorithmInvalid, err)
+
+	// Invalid Block Signer
+	block = testutil.NewTestBlock(t, genesis)
+	testutil.SignBlock(t, block, testutil.NewPrivateKey(t))
+	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	assert.Equal(t, dpos.ErrInvalidBlockProposer, err)
+
+	// Invalid Transaction Hash
+	block = testutil.NewTestBlockWithTxs(t, genesis, dynasties[0])
+	pb, err = block.ToProto()
+	require.NoError(t, err)
+	pb.(*corepb.Block).Transactions[0].Hash = []byte("invalid hash")
+	err = block.FromProto(pb)
+	require.NoError(t, err)
+	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	assert.Equal(t, core.ErrInvalidTransactionHash, err)
+
+	// Invalid Transaction Signer
+	block = testutil.NewTestBlockWithTxs(t, genesis, dynasties[1])
+	pb, err = block.ToProto()
+	require.NoError(t, err)
+	signer, err := crypto.NewSignature(algorithm.SECP256K1)
+	require.NoError(t, err)
+	signer.InitSign(testutil.NewPrivateKey(t))
+	invalidSig, err := signer.Sign(block.Transactions()[0].Hash())
+	pb.(*corepb.Block).Transactions[0].Sign = invalidSig
+	err = block.FromProto(pb)
+	require.NoError(t, err)
+	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
 
 func foundInLog(hook *test.Hook, s string) bool {
