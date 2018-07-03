@@ -55,7 +55,7 @@ func SetVerbose(logger *logrus.Logger) {
 func Console() *logrus.Logger {
 	mu.RLock()
 	if clog != nil {
-		mu.RUnlock()
+		defer mu.RUnlock()
 		return clog
 	}
 	mu.RUnlock()
@@ -71,7 +71,7 @@ func Console() *logrus.Logger {
 func vLog() *logrus.Logger {
 	mu.RLock()
 	if vlog != nil {
-		mu.RUnlock()
+		defer mu.RUnlock()
 		return vlog
 	}
 	mu.RUnlock()

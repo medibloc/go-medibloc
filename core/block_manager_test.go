@@ -286,6 +286,28 @@ func TestBlockManager_Setup(t *testing.T) {
 	require.EqualError(t, err, "Must provide a positive size")
 }
 
+func TestBlockManager_InvalidChainID(t *testing.T) {
+	nt := testutil.NewNetwork(t, 3)
+	nt.SetLogTestHook()
+	seed := nt.NewSeedNode()
+	nt.Start()
+	defer nt.Cleanup()
+
+	dynasties := nt.Seed.Config.Dynasties
+	genesis := seed.GenesisBlock()
+
+	block := testutil.NewTestBlock(t, genesis)
+
+	pb, err := block.ToProto()
+	require.NoError(t, err)
+	pb.(*corepb.Block).Header.ChainId = 959123
+	block.FromProto(pb)
+
+	testutil.SignBlock(t, block, dynasties)
+	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrInvalidChainID, err)
+}
+
 func TestBlockManager_RequestParentBlock(t *testing.T) {
 	nt := testutil.NewNetwork(t, 3)
 	hook := nt.SetLogTestHook()
@@ -298,8 +320,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	nt.WaitForEstablished()
 
 	dynasties := nt.Seed.Config.Dynasties
-	genesis, err := nt.Seed.Med.BlockManager().BlockByHeight(1)
-	require.NoError(t, err)
+	genesis := seed.GenesisBlock()
 
 	blocks := make([]*core.Block, 0)
 	parent := genesis
@@ -324,7 +345,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 		Hash: core.GenesisHash,
 		Sign: []byte{},
 	}
-	bytes, err = proto.Marshal(invalid)
+	bytes, err := proto.Marshal(invalid)
 	require.NoError(t, err)
 	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
 	assert.True(t, foundInLog(hook, "Asked to download genesis's parent, ignore it."))

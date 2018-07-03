@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -92,6 +93,13 @@ func (node *Node) IsStarted() bool {
 // String returns summary of test node.
 func (node *Node) String() string {
 	return node.Config.String()
+}
+
+// GenesisBlock returns genesis block.
+func (node *Node) GenesisBlock() *core.Block {
+	block, err := node.Med.BlockManager().BlockByHeight(core.GenesisHeight)
+	require.NoError(node.t, err)
+	return block
 }
 
 // Network is set of nodes.
