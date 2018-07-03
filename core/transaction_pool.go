@@ -16,7 +16,6 @@
 package core
 
 import (
-	"strconv"
 	"sync"
 
 	"sort"
@@ -24,7 +23,6 @@ import (
 	"github.com/medibloc/go-medibloc/common/hashheap"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/ryszard/goskiplist/skiplist"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,8 +36,6 @@ type TransactionPool struct {
 	buckets    *hashheap.HashedHeap
 	all        map[string]*Transaction
 
-	sortedTxs *skiplist.SkipList
-
 	eventEmitter *EventEmitter
 }
 
@@ -50,43 +46,12 @@ func NewTransactionPool(size int) *TransactionPool {
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
 		all:        make(map[string]*Transaction),
-		sortedTxs:  skiplist.NewCustomMap(lessThan),
 	}
 }
 
 // SetEventEmitter set emitter to transaction pool
 func (pool *TransactionPool) SetEventEmitter(emitter *EventEmitter) {
 	pool.eventEmitter = emitter
-}
-
-// GetTxs return pending txs ordered by timestamp
-func (pool *TransactionPool) GetTxs(tx *Transaction, amount int) []*Transaction {
-	skipOne := false
-	var txs []*Transaction
-
-	key := makeKey(tx)
-	fromTxKey, _, ok := pool.sortedTxs.GetGreaterOrEqual(key)
-	if !ok {
-		return nil
-	}
-	if fromTxKey != key {
-		skipOne = true
-	}
-
-	lastTx := pool.sortedTxs.SeekToLast()
-
-	for i := pool.sortedTxs.Range(fromTxKey, lastTx.Key()); i.Next(); {
-		if skipOne {
-			skipOne = false
-			continue
-		}
-		txs = append(txs, i.Value().(*Transaction))
-		amount--
-		if amount == 0 {
-			return txs
-		}
-	}
-	return append(txs, lastTx.Value().(*Transaction))
 }
 
 // Get returns transaction by tx hash.
@@ -168,10 +133,6 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	bkt.push(tx)
 	pool.buckets.Set(from, bkt)
 
-	// Add tx to sortedTxs
-	// key := timestamp + hash (to prevent duplicate)
-	pool.sortedTxs.Set(makeKey(tx), tx)
-
 	// replace candidate
 	candidate := bkt.peekFirst()
 	pool.candidates.Del(from)
@@ -208,9 +169,6 @@ func (pool *TransactionPool) del(tx *Transaction) {
 		return
 	}
 	pool.buckets.Set(from, bkt)
-
-	// Remove tx from sortedTxs
-	pool.sortedTxs.Delete(makeKey(tx))
 
 	// Replace candidate
 	candidate := bkt.peekFirst()
@@ -297,14 +255,4 @@ func (b *bucket) del(tx *Transaction) {
 			return
 		}
 	}
-}
-
-func makeKey(tx *Transaction) string {
-	return strconv.FormatInt(tx.Timestamp(), 10) + byteutils.Bytes2Hex(tx.Hash())
-}
-
-// make skip list ordered from greater
-// 100 -> 99 -> 98 -> ...
-func lessThan(l, r interface{}) bool {
-	return l.(string) > r.(string)
 }
