@@ -490,10 +490,10 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 	bm.mu.RLock()
 	defer bm.mu.RUnlock()
 	if msg.MessageType() != MessageTypeRequestBlock {
-		logging.WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"msgType": msg.MessageType(),
 			"msg":     msg,
-		}).Debug("Received unregistered message.")
+		}).Error("Received unregistered message.")
 	}
 
 	pbDownloadParentBlock := new(corepb.DownloadParentBlock)
@@ -532,22 +532,29 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 
 	parent := bm.bc.BlockByHash(block.ParentHash())
 	if parent == nil {
-		logging.WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"block": block,
-		}).Debug("Failed to find the block's parent.")
+		}).Error("Failed to find the block's parent.")
 		return
 	}
 
 	bytes, err := net.SerializableToBytes(parent)
 	if err != nil {
-		logging.WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"parent": parent,
 			"err":    err,
-		}).Debug("Failed to serialize block's parent.")
+		}).Error("Failed to serialize block's parent.")
 		return
 	}
 
-	bm.ns.SendMsg(MessageTypeResponseBlock, bytes, msg.MessageFrom(), net.MessagePriorityNormal)
+	err = bm.ns.SendMsg(MessageTypeResponseBlock, bytes, msg.MessageFrom(), net.MessagePriorityNormal)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"receiver": msg.MessageFrom(),
+			"err":      err,
+		}).Error("Failed to send block response message..")
+		return
+	}
 
 	logging.WithFields(logrus.Fields{
 		"block":  block,
