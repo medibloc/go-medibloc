@@ -59,6 +59,27 @@ func (pool *TransactionPool) SetEventEmitter(emitter *EventEmitter) {
 	pool.eventEmitter = emitter
 }
 
+// GetTxs return pending txs ordered by timestamp
+func (pool *TransactionPool) GetTxs(tx *Transaction, amount int) []*Transaction {
+	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; !ok {
+		return nil
+	}
+	var txs []*Transaction
+
+	fromKey := makeKey(tx)
+	lastTx := pool.sortedTxs.SeekToLast()
+
+	count := 0
+	for i := pool.sortedTxs.Range(fromKey, lastTx.Key()); i.Next(); {
+		txs = append(txs, i.Value().(*Transaction))
+		count++
+		if count == amount {
+			return txs
+		}
+	}
+	return append(txs, lastTx.Value().(*Transaction))
+}
+
 // Get returns transaction by tx hash.
 func (pool *TransactionPool) Get(hash []byte) *Transaction {
 	pool.mu.RLock()
