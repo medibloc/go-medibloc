@@ -494,6 +494,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 			"msgType": msg.MessageType(),
 			"msg":     msg,
 		}).Error("Received unregistered message.")
+		return
 	}
 
 	pbDownloadParentBlock := new(corepb.DownloadParentBlock)
