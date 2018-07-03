@@ -447,21 +447,14 @@ func (block *Block) Seal() error {
 	block.header.consensusRoot = consensusRoot
 	block.header.reservationQueueHash = block.state.ReservationQueueHash()
 
-	hash, err := HashBlockData(block.BlockData)
-	if err != nil {
-		return err
-	}
+	hash := HashBlockData(block.BlockData)
 	block.header.hash = hash
 	block.sealed = true
 	return nil
 }
 
 // HashBlockData returns hash of block
-func HashBlockData(bd *BlockData) ([]byte, error) {
-	if bd == nil {
-		return nil, ErrNilArgument
-	}
-
+func HashBlockData(bd *BlockData) []byte {
 	hasher := sha3.New256()
 
 	hasher.Write(bd.ParentHash())
@@ -481,7 +474,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		hasher.Write(tx.Hash())
 	}
 
-	return hasher.Sum(nil), nil
+	return hasher.Sum(nil)
 }
 
 // ExecuteTransaction on given block state
@@ -683,10 +676,7 @@ func (bd *BlockData) VerifyIntegrity() error {
 		}
 	}
 
-	wantedHash, err := HashBlockData(bd)
-	if err != nil {
-		return err
-	}
+	wantedHash := HashBlockData(bd)
 	if !byteutils.Equal(wantedHash, bd.header.hash) {
 		return ErrInvalidBlockHash
 	}
