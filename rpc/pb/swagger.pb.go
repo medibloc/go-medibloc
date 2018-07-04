@@ -166,6 +166,22 @@ const (
         ]
       }
     },
+    "/v1/transactions/pending": {
+      "get": {
+        "operationId": "GetPendingTransactions",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionsResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/user/accountstate": {
       "get": {
         "operationId": "GetAccountState",
@@ -500,6 +516,17 @@ const (
         "payer_sign": {
           "type": "string",
           "description": "Transaction payer's sign."
+        }
+      }
+    },
+    "rpcpbTransactionsResponse": {
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbTransactionResponse"
+          }
         }
       }
     }

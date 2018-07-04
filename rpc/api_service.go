@@ -331,6 +331,27 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	return res, nil
 }
 
+// GetPendingTransactions sends all transactions in the transaction pool
+func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.EmptyRequest) (*rpcpb.TransactionsResponse, error) {
+	var rpcPbTxs []*rpcpb.TransactionResponse
+
+	txs := s.tm.GetAll()
+	for _, tx := range txs {
+		corePbTx, err := tx.ToProto()
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+		}
+		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction))
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
+		}
+		rpcPbTxs = append(rpcPbTxs, rpcPbTx)
+	}
+	return &rpcpb.TransactionsResponse{
+		Transactions: rpcPbTxs,
+	}, nil
+}
+
 // SendTransaction sends transaction
 func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.SendTransactionResponse, error) {
 	value, err := util.NewUint128FromString(req.Value)

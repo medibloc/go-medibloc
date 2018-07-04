@@ -109,6 +109,24 @@ func (mr *MockApiServiceClientMockRecorder) GetMedState(arg0, arg1 interface{}, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedState", reflect.TypeOf((*MockApiServiceClient)(nil).GetMedState), varargs...)
 }
 
+// GetPendingTransactions mocks base method
+func (m *MockApiServiceClient) GetPendingTransactions(arg0 context.Context, arg1 *pb.EmptyRequest, arg2 ...grpc.CallOption) (*pb.TransactionsResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetPendingTransactions", varargs...)
+	ret0, _ := ret[0].(*pb.TransactionsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingTransactions indicates an expected call of GetPendingTransactions
+func (mr *MockApiServiceClientMockRecorder) GetPendingTransactions(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingTransactions", reflect.TypeOf((*MockApiServiceClient)(nil).GetPendingTransactions), varargs...)
+}
+
 // GetTransaction mocks base method
 func (m *MockApiServiceClient) GetTransaction(arg0 context.Context, arg1 *pb.GetTransactionRequest, arg2 ...grpc.CallOption) (*pb.TransactionResponse, error) {
 	varargs := []interface{}{arg0, arg1}
@@ -345,6 +363,19 @@ func (m *MockApiServiceServer) GetMedState(arg0 context.Context, arg1 *pb.NonPar
 // GetMedState indicates an expected call of GetMedState
 func (mr *MockApiServiceServerMockRecorder) GetMedState(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedState", reflect.TypeOf((*MockApiServiceServer)(nil).GetMedState), arg0, arg1)
+}
+
+// GetPendingTransactions mocks base method
+func (m *MockApiServiceServer) GetPendingTransactions(arg0 context.Context, arg1 *pb.EmptyRequest) (*pb.TransactionsResponse, error) {
+	ret := m.ctrl.Call(m, "GetPendingTransactions", arg0, arg1)
+	ret0, _ := ret[0].(*pb.TransactionsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingTransactions indicates an expected call of GetPendingTransactions
+func (mr *MockApiServiceServerMockRecorder) GetPendingTransactions(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingTransactions", reflect.TypeOf((*MockApiServiceServer)(nil).GetPendingTransactions), arg0, arg1)
 }
 
 // GetTransaction mocks base method
