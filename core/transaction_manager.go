@@ -111,6 +111,11 @@ func (mgr *TransactionManager) Get(hash []byte) *Transaction {
 	return mgr.pool.Get(hash)
 }
 
+// GetAll returns all transactions from transaction pool
+func (mgr *TransactionManager) GetAll() []*Transaction {
+	return mgr.pool.GetAll()
+}
+
 // Relay relays transaction to network.
 func (mgr *TransactionManager) Relay(tx *Transaction) {
 	mgr.ns.Relay(MessageTypeNewTx, tx, net.MessagePriorityNormal)

@@ -66,6 +66,24 @@ func (pool *TransactionPool) Get(hash []byte) *Transaction {
 	return tx
 }
 
+// GetAll returns all transactions in transaction pool
+func (pool *TransactionPool) GetAll() []*Transaction {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+
+	var txs []*Transaction
+
+	if len(pool.all) == 0 {
+		return nil
+	}
+
+	for _, tx := range pool.all {
+		txs = append(txs, tx)
+	}
+
+	return txs
+}
+
 // Del deletes transaction.
 func (pool *TransactionPool) Del(tx *Transaction) {
 	pool.mu.Lock()
