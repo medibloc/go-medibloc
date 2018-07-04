@@ -17,6 +17,7 @@ package core_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -25,12 +26,22 @@ import (
 
 func TestTransactionPool(t *testing.T) {
 	keys := testutil.NewKeySlice(t, 4)
+	tx0 := testutil.NewSignedTransaction(t, keys[0], keys[2], 0)
+	time.Sleep(1 * time.Second)
+	tx1 := testutil.NewSignedTransaction(t, keys[0], keys[2], 1)
+	time.Sleep(1 * time.Second)
+	tx2 := testutil.NewSignedTransaction(t, keys[2], keys[3], 2)
+	time.Sleep(1 * time.Second)
+	tx3 := testutil.NewSignedTransaction(t, keys[2], keys[1], 3)
+	time.Sleep(1 * time.Second)
+	tx4 := testutil.NewSignedTransaction(t, keys[0], keys[3], 0)
+
 	txs := []*core.Transaction{
-		0: testutil.NewSignedTransaction(t, keys[0], keys[2], 0),
-		1: testutil.NewSignedTransaction(t, keys[0], keys[2], 1),
-		2: testutil.NewSignedTransaction(t, keys[2], keys[3], 2),
-		3: testutil.NewSignedTransaction(t, keys[2], keys[1], 3),
-		4: testutil.NewSignedTransaction(t, keys[0], keys[3], 0),
+		0: tx0,
+		1: tx1,
+		2: tx2,
+		3: tx3,
+		4: tx4,
 	}
 
 	pool := core.NewTransactionPool(128)
@@ -40,13 +51,12 @@ func TestTransactionPool(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	tx := pool.Pop()
-	assert.True(t, txs[0] == tx || txs[4] == tx)
-	tx = pool.Pop()
-	assert.True(t, txs[0] == tx || txs[4] == tx)
-	assert.Equal(t, txs[1], pool.Pop())
+	// changed to timestamp order (from nonce order)
+	assert.Equal(t, txs[0], pool.Pop())
 	assert.Equal(t, txs[2], pool.Pop())
 	assert.Equal(t, txs[3], pool.Pop())
+	assert.Equal(t, txs[4], pool.Pop())
+	assert.Equal(t, txs[1], pool.Pop())
 	assert.Nil(t, pool.Pop())
 }
 

@@ -105,7 +105,7 @@ func (pool *TransactionPool) Pop() *Transaction {
 	if cmpTx == nil {
 		return nil
 	}
-	tx := cmpTx.(*comparable).Transaction
+	tx := cmpTx.(*sortable).Transaction
 
 	pool.del(tx)
 
