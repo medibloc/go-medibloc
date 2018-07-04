@@ -136,7 +136,7 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	// replace candidate
 	candidate := bkt.peekFirst()
 	pool.candidates.Del(from)
-	pool.candidates.Set(from, &comparable{candidate})
+	pool.candidates.Set(from, &sortable{candidate})
 
 	return nil
 }
@@ -172,7 +172,7 @@ func (pool *TransactionPool) del(tx *Transaction) {
 
 	// Replace candidate
 	candidate := bkt.peekFirst()
-	pool.candidates.Set(from, &comparable{candidate})
+	pool.candidates.Set(from, &sortable{candidate})
 }
 
 func (pool *TransactionPool) evict() {
@@ -199,6 +199,10 @@ func (pool *TransactionPool) evict() {
 type comparable struct{ *Transaction }
 
 func (tx *comparable) Less(o interface{}) bool { return tx.nonce < o.(*comparable).nonce }
+
+type sortable struct{ *Transaction }
+
+func (tx *sortable) Less(o interface{}) bool { return tx.timestamp < o.(*sortable).timestamp }
 
 // transactions is sortable slice of comparable transactions.
 type transactions []*comparable
