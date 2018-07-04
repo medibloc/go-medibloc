@@ -35,7 +35,7 @@ service ApiService {
 		};
 	}
 
-	rpc GetPendingTransactions (EmptyRequest) returns (TransactionsResponse) {
+	rpc GetPendingTransactions (NonParamsRequest) returns (TransactionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/transactions/pending"
 		};
@@ -222,8 +222,6 @@ message GetBlocksRequest {
 message BlocksResponse {
 	repeated BlockResponse blocks = 1;
 }
-
-message EmptyRequest {}
 
 message TransactionsResponse {
 	repeated TransactionResponse transactions = 1;

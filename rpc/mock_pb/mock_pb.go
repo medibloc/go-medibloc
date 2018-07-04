@@ -110,7 +110,7 @@ func (mr *MockApiServiceClientMockRecorder) GetMedState(arg0, arg1 interface{}, 
 }
 
 // GetPendingTransactions mocks base method
-func (m *MockApiServiceClient) GetPendingTransactions(arg0 context.Context, arg1 *pb.EmptyRequest, arg2 ...grpc.CallOption) (*pb.TransactionsResponse, error) {
+func (m *MockApiServiceClient) GetPendingTransactions(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.TransactionsResponse, error) {
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
@@ -366,7 +366,7 @@ func (mr *MockApiServiceServerMockRecorder) GetMedState(arg0, arg1 interface{}) 
 }
 
 // GetPendingTransactions mocks base method
-func (m *MockApiServiceServer) GetPendingTransactions(arg0 context.Context, arg1 *pb.EmptyRequest) (*pb.TransactionsResponse, error) {
+func (m *MockApiServiceServer) GetPendingTransactions(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.TransactionsResponse, error) {
 	ret := m.ctrl.Call(m, "GetPendingTransactions", arg0, arg1)
 	ret0, _ := ret[0].(*pb.TransactionsResponse)
 	ret1, _ := ret[1].(error)

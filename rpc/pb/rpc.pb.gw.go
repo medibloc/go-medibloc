@@ -106,7 +106,7 @@ func request_ApiService_GetTransaction_0(ctx context.Context, marshaler runtime.
 }
 
 func request_ApiService_GetPendingTransactions_0(ctx context.Context, marshaler runtime.Marshaler, client ApiServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq EmptyRequest
+	var protoReq NonParamsRequest
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetPendingTransactions(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))

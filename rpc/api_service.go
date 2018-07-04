@@ -338,7 +338,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 }
 
 // GetPendingTransactions sends all transactions in the transaction pool
-func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.EmptyRequest) (*rpcpb.TransactionsResponse, error) {
+func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.TransactionsResponse, error) {
 	var rpcPbTxs []*rpcpb.TransactionResponse
 
 	txs := s.tm.GetAll()
