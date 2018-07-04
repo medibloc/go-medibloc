@@ -359,13 +359,14 @@ const (
           "format": "uint64",
           "title": "Current tail block height"
         },
-        "protocol_version": {
+        "LIB": {
           "type": "string",
-          "description": "The current med protocol version."
+          "title": "Current LIB hash"
         },
-        "version": {
-          "type": "string",
-          "title": "Med version"
+        "synchronized": {
+          "type": "boolean",
+          "format": "boolean",
+          "title": "Sync status"
         }
       }
     },

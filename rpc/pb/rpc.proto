@@ -131,11 +131,11 @@ message GetMedStateResponse {
 	// Current tail block height
 	uint64 height = 3;
 
-	// The current med protocol version.
-	string protocol_version = 7;
+	// Current LIB hash
+	string LIB = 4;
 
-	// Med version
-	string version = 8;
+	// Sync status
+	bool synchronized = 5;
 }
 
 message GetTransactionRequest {
