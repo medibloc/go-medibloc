@@ -541,6 +541,11 @@
         "payer_sign": {
           "type": "string",
           "description": "Transaction payer's sign."
+        },
+        "executed": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If transaction is executed and included in the block, it returns true. otherwise, false."
         }
       }
     },

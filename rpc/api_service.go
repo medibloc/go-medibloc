@@ -49,7 +49,7 @@ func coreAcc2rpcAcc(acc core.Account) (*rpcpb.GetAccountStateResponse, error) {
 	}, nil
 }
 
-func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, error) {
+func corePbTx2rpcPbTx(pbTx *corepb.Transaction, executed bool) (*rpcpb.TransactionResponse, error) {
 	value, err := util.NewUint128FromFixedSizeByteSlice(pbTx.Value)
 	if err != nil {
 		return nil, err
@@ -69,13 +69,14 @@ func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, err
 		Alg:       pbTx.Alg,
 		Sign:      byteutils.Bytes2Hex(pbTx.Sign),
 		PayerSign: byteutils.Bytes2Hex(pbTx.PayerSign),
+		Executed:  executed,
 	}, nil
 }
 
 func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error) {
 	var rpcPbTxs []*rpcpb.TransactionResponse
 	for _, pbTx := range pbBlock.GetTransactions() {
-		rpcPbTx, err := corePbTx2rpcPbTx(pbTx)
+		rpcPbTx, err := corePbTx2rpcPbTx(pbTx, true)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +163,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 
 	// If tail block's tail block is delayed more than than bufBlock
 	isSynced := true
-	bufBlock := int64(3)
+	bufBlock := int64(3) // TODO @ggomma conf같은 곳으로 이동
 	if tailBlock.Timestamp() < time.Now().Unix()+int64(dpos.BlockInterval)*bufBlock {
 		isSynced = false
 	}
@@ -328,6 +329,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	if len(req.Hash) != 64 {
 		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
+	executed := true
 
 	tailBlock := s.bm.TailBlock()
 	if tailBlock == nil {
@@ -351,6 +353,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
 		}
 		pbTx = prePbTx.(*corepb.Transaction)
+		executed = false
 	} else {
 		err = proto.Unmarshal(pb, pbTx)
 		if err != nil {
@@ -358,7 +361,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		}
 	}
 
-	res, err := corePbTx2rpcPbTx(pbTx)
+	res, err := corePbTx2rpcPbTx(pbTx, executed)
 	if err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
 	}
@@ -375,7 +378,7 @@ func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonP
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
 		}
-		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction))
+		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction), false)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
 		}

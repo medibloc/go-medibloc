@@ -209,6 +209,8 @@ message TransactionResponse {
 	string sign = 10;
 	// Transaction payer's sign.
 	string payer_sign = 11;
+	// If transaction is executed and included in the block, it returns true. otherwise, false.
+	bool executed = 12;
 }
 
 message SubscribeRequest {
