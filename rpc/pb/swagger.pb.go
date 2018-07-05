@@ -389,11 +389,6 @@ const (
         "LIB": {
           "type": "string",
           "title": "Current LIB hash"
-        },
-        "synchronized": {
-          "type": "boolean",
-          "format": "boolean",
-          "title": "Sync status"
         }
       }
     },

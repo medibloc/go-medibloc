@@ -139,9 +139,6 @@ message GetMedStateResponse {
 
 	// Current LIB hash
 	string LIB = 4;
-
-	// Sync status
-	bool synchronized = 5;
 }
 
 message GetTransactionRequest {

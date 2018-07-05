@@ -18,14 +18,12 @@ package rpc
 import (
 	"encoding/json"
 	"regexp"
-	"time"
 
 	"strconv"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -161,19 +159,11 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 	tailBlock := s.bm.TailBlock()
 	lib := s.bm.LIB()
 
-	// If tail block's tail block is delayed more than than bufBlock
-	isSynced := true
-	bufBlock := int64(3) // TODO @ggomma conf같은 곳으로 이동
-	if tailBlock.Timestamp() < time.Now().Unix()+int64(dpos.BlockInterval)*bufBlock {
-		isSynced = false
-	}
-
 	return &rpcpb.GetMedStateResponse{
-		ChainId:      tailBlock.ChainID(),
-		Tail:         byteutils.Bytes2Hex(tailBlock.Hash()),
-		Height:       tailBlock.Height(),
-		LIB:          byteutils.Bytes2Hex(lib.Hash()),
-		Synchronized: isSynced,
+		ChainId: tailBlock.ChainID(),
+		Tail:    byteutils.Bytes2Hex(tailBlock.Hash()),
+		Height:  tailBlock.Height(),
+		LIB:     byteutils.Bytes2Hex(lib.Hash()),
 	}, nil
 }
 
