@@ -36,6 +36,19 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func coreAcc2rpcAcc(acc core.Account) (*rpcpb.GetAccountStateResponse, error) {
+	return &rpcpb.GetAccountStateResponse{
+		Address:       byteutils.Bytes2Hex(acc.Address()),
+		Balance:       acc.Balance().String(),
+		CertsIssued:   nil, // TODO @ggomma
+		CertsReceived: nil, // TODO @ggomma
+		Nonce:         acc.Nonce(),
+		Records:       nil, // TODO @ggomma
+		Vesting:       acc.Vesting().String(),
+		Voted:         byteutils.Bytes2Hex(acc.Voted()),
+	}, nil
+}
+
 func corePbTx2rpcPbTx(pbTx *corepb.Transaction) (*rpcpb.TransactionResponse, error) {
 	value, err := util.NewUint128FromFixedSizeByteSlice(pbTx.Value)
 	if err != nil {
@@ -164,14 +177,6 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 }
 
 // GetAccountState handles GetAccountState rpc.
-// address
-// balance
-// certs_issued
-// certs_received
-// nonce
-// records
-// vesting
-// voted
 func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
 	var block *core.Block
 	var err error
@@ -214,6 +219,29 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 		Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
 		Vesting:       acc.Vesting().String(),
 		Voted:         byteutils.Bytes2Hex(acc.Voted()),
+	}, nil
+}
+
+// GetAccounts return all account in the blockchain
+func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.AccountsResponse, error) {
+	var rpcAccs []*rpcpb.GetAccountStateResponse
+
+	block := s.bm.TailBlock()
+
+	accs, err := block.State().GetAccounts()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	for _, acc := range accs {
+		rpcAcc, err := coreAcc2rpcAcc(acc)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+		rpcAccs = append(rpcAccs, rpcAcc)
+	}
+
+	return &rpcpb.AccountsResponse{
+		Accounts: rpcAccs,
 	}, nil
 }
 

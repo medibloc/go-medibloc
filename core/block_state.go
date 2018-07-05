@@ -363,6 +363,10 @@ func (st *states) GetAccount(address common.Address) (Account, error) {
 	return st.accState.GetAccount(address.Bytes())
 }
 
+func (st *states) GetAccounts() ([]Account, error) {
+	return st.accState.AccountState().Accounts()
+}
+
 func (st *states) AddBalance(address common.Address, amount *util.Uint128) error {
 	return st.accState.AddBalance(address.Bytes(), amount)
 }

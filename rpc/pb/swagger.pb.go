@@ -182,6 +182,22 @@ const (
         ]
       }
     },
+    "/v1/user/accounts": {
+      "get": {
+        "operationId": "GetAccounts",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbAccountsResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/user/accountstate": {
       "get": {
         "operationId": "GetAccountState",
@@ -216,6 +232,17 @@ const (
     }
   },
   "definitions": {
+    "rpcpbAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbGetAccountStateResponse"
+          }
+        }
+      }
+    },
     "rpcpbBlockResponse": {
       "type": "object",
       "properties": {

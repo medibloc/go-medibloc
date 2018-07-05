@@ -11,6 +11,12 @@ service ApiService {
 		};
 	}
 
+	rpc GetAccounts (NonParamsRequest) returns (AccountsResponse) {
+		option (google.api.http) = {
+			get: "/v1/user/accounts"
+		};
+	}
+
     rpc GetBlock (GetBlockRequest) returns (BlockResponse) {
         option (google.api.http) = {
             get: "/v1/block"
@@ -225,4 +231,8 @@ message BlocksResponse {
 
 message TransactionsResponse {
 	repeated TransactionResponse transactions = 1;
+}
+
+message AccountsResponse {
+	repeated GetAccountStateResponse accounts = 1;
 }

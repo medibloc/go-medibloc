@@ -55,6 +55,24 @@ func (mr *MockApiServiceClientMockRecorder) GetAccountState(arg0, arg1 interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountState", reflect.TypeOf((*MockApiServiceClient)(nil).GetAccountState), varargs...)
 }
 
+// GetAccounts mocks base method
+func (m *MockApiServiceClient) GetAccounts(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.AccountsResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetAccounts", varargs...)
+	ret0, _ := ret[0].(*pb.AccountsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAccounts indicates an expected call of GetAccounts
+func (mr *MockApiServiceClientMockRecorder) GetAccounts(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccounts", reflect.TypeOf((*MockApiServiceClient)(nil).GetAccounts), varargs...)
+}
+
 // GetBlock mocks base method
 func (m *MockApiServiceClient) GetBlock(arg0 context.Context, arg1 *pb.GetBlockRequest, arg2 ...grpc.CallOption) (*pb.BlockResponse, error) {
 	varargs := []interface{}{arg0, arg1}
@@ -324,6 +342,19 @@ func (m *MockApiServiceServer) GetAccountState(arg0 context.Context, arg1 *pb.Ge
 // GetAccountState indicates an expected call of GetAccountState
 func (mr *MockApiServiceServerMockRecorder) GetAccountState(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountState", reflect.TypeOf((*MockApiServiceServer)(nil).GetAccountState), arg0, arg1)
+}
+
+// GetAccounts mocks base method
+func (m *MockApiServiceServer) GetAccounts(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.AccountsResponse, error) {
+	ret := m.ctrl.Call(m, "GetAccounts", arg0, arg1)
+	ret0, _ := ret[0].(*pb.AccountsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAccounts indicates an expected call of GetAccounts
+func (mr *MockApiServiceServerMockRecorder) GetAccounts(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccounts", reflect.TypeOf((*MockApiServiceServer)(nil).GetAccounts), arg0, arg1)
 }
 
 // GetBlock mocks base method

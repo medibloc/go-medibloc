@@ -140,6 +140,7 @@ func (as *accountState) GetAccount(address []byte) (Account, error) {
 	return loadAccount(bytes)
 }
 
+// Accounts returns all accounts in the blockchain
 func (as *accountState) Accounts() ([]Account, error) {
 	var accounts []Account
 	iter, err := as.accounts.Iterator(nil)

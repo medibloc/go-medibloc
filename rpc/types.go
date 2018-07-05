@@ -29,11 +29,13 @@ const (
 const (
 	ErrMsgBlockNotFound              = "block not found"
 	ErrMsgBuildTransactionFail       = "cannot build transaction"
+	ErrMsgConvertAccountFailed       = "cannot convert accout"
 	ErrMsgConvertBlockFailed         = "cannot convert block"
 	ErrMsgConvertBlockHeightFailed   = "cannot convert block height into integer"
 	ErrMsgConvertBlockResponseFailed = "cannot convert block response"
 	ErrMsgConvertTxResponseFailed    = "cannot convert transaction response"
 	ErrMsgGetTransactionFailed       = "cannot get transaction from state"
+	ErrMsgInternalError              = "unverified server error"
 	ErrMsgInvalidBlockHeight         = "invalid block height"
 	ErrMsgInvalidDataType            = "invalid transaction data type"
 	ErrMsgInvalidTransaction         = "invalid transaction"
