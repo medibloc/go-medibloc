@@ -180,7 +180,6 @@ func (tx *Transaction) calcHash() ([]byte, error) {
 	hasher.Write(tx.data.Payload)
 	hasher.Write(byteutils.FromUint64(tx.nonce))
 	hasher.Write(byteutils.FromUint32(tx.chainID))
-	hasher.Write(byteutils.FromUint32(uint32(tx.alg)))
 
 	hash := hasher.Sum(nil)
 	return hash, nil
