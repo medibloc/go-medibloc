@@ -12,4 +12,15 @@ message Account {
     repeated bytes records = 8;
     repeated bytes certs_received = 9;
     repeated bytes certs_issued = 10;
+    // Transactions
+    repeated string tx_add_record = 11;
+    repeated string tx_vest = 12;
+    repeated string tx_withdraw = 13;
+    repeated string tx_become_candidate = 14;
+    repeated string tx_withdraw_candidate = 15;
+    repeated string tx_vote = 16;
+    repeated string tx_add_certificate = 17;
+    repeated string tx_revoke_certificate = 18;
+    repeated string tx_send_value = 19;
+    repeated string tx_get_value = 20;
 }
