@@ -128,7 +128,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	initialTx.SetTimestamp(GenesisTimestamp)
 
-	hash, err := initialTx.calcHash()
+	hash, err := initialTx.CalcHash()
 	if err != nil {
 		return nil, err
 	}
