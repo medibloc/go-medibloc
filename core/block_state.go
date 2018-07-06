@@ -17,6 +17,7 @@ package core
 
 import (
 	"sort"
+	"strconv"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -373,6 +374,24 @@ func (st *states) AddBalance(address common.Address, amount *util.Uint128) error
 
 func (st *states) SubBalance(address common.Address, amount *util.Uint128) error {
 	return st.accState.SubBalance(address.Bytes(), amount)
+}
+
+func (st *states) AddTransaction(tx *Transaction) error {
+	var err error
+
+	err = st.accState.AddTransaction(tx.From().Bytes(), tx.Hash(), true)
+	if err != nil && err != ErrTransactionHashAlreadyAdded {
+		return err
+	}
+
+	if addrCheck, err := strconv.ParseUint(tx.To().Hex(), 10, 64); addrCheck != 0 && err != nil {
+		err = st.accState.AddTransaction(tx.To().Bytes(), tx.Hash(), false)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (st *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) error {
@@ -883,7 +902,11 @@ func (bs *BlockState) Commit() error {
 
 // ExecuteTx and update internal states
 func (bs *BlockState) ExecuteTx(tx *Transaction) error {
-	return tx.ExecuteOnState(bs)
+	err := tx.ExecuteOnState(bs)
+	if err != nil {
+		return err
+	}
+	return bs.AddTransaction(tx)
 }
 
 // AcceptTransaction and update internal txsStates

@@ -43,6 +43,10 @@ type account struct {
 	certsReceived [][]byte
 	// certs issued as a certifier
 	certsIssued [][]byte
+	// transaction sent from account
+	txSend [][]byte
+	// transaction sent to account
+	txGet [][]byte
 }
 
 func (acc *account) Address() []byte {

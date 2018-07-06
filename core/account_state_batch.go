@@ -147,6 +147,34 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 	return nil
 }
 
+// AddTransaction add transaction in account
+func (as *AccountStateBatch) AddTransaction(address []byte, txHash []byte, sendTx bool) error {
+	if !as.batching {
+		return ErrNotBatching
+	}
+	acc, err := as.getAccount(address)
+	if err != nil {
+		return err
+	}
+
+	if sendTx {
+		for _, tx := range acc.txSend {
+			if byteutils.Equal(txHash, tx) {
+				return ErrTransactionHashAlreadyAdded
+			}
+		}
+		acc.txSend = append(acc.txSend, txHash)
+	} else {
+		for _, tx := range acc.txGet {
+			if byteutils.Equal(txHash, tx) {
+				return ErrTransactionHashAlreadyAdded
+			}
+		}
+		acc.txGet = append(acc.txGet, txHash)
+	}
+	return nil
+}
+
 // AddRecord adds a record hash in account's records list
 func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	if !as.batching {
