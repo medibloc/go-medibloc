@@ -408,7 +408,8 @@ func (tx *Transaction) transfer(bs *BlockState) error {
 }
 
 func (tx *Transaction) addRecord(bs *BlockState) error {
-	payload, err := BytesToAddRecordPayload(tx.Data())
+	var payload AddRecordPayload
+	err := payload.FromBytes(tx.Data())
 	if err != nil {
 		return err
 	}
@@ -436,7 +437,8 @@ func (tx *Transaction) vote(bs *BlockState) error {
 }
 
 func (tx *Transaction) addCertification(bs *BlockState) error {
-	payload, err := BytesToAddCertificationPayload(tx.Data())
+	var payload AddCertificationPayload
+	err := payload.FromBytes(tx.Data())
 	if err != nil {
 		return err
 	}
@@ -445,7 +447,8 @@ func (tx *Transaction) addCertification(bs *BlockState) error {
 }
 
 func (tx *Transaction) revokeCertification(bs *BlockState) error {
-	payload, err := BytesToRevokeCertificationPayload(tx.Data())
+	var payload RevokeCertificationPayload
+	err := payload.FromBytes(tx.Data())
 	if err != nil {
 		return err
 	}

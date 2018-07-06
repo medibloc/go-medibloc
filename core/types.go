@@ -184,3 +184,9 @@ type SyncService interface {
 	ActiveDownload() error
 	IsDownloadActivated() bool
 }
+
+// TransactionPayload is an interface of transaction payload.
+type TransactionPayload interface {
+	FromBytes(b []byte) error
+	ToBytes() ([]byte, error)
+}
