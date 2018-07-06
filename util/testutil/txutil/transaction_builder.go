@@ -129,7 +129,55 @@ func (tb *TransactionBuilder) SetTimestamp(ts int64) *TransactionBuilder {
 	return tb
 }
 
-//TODO data
+// Type returns tx's operation type.
+func (tb *TransactionBuilder) Type() string {
+	return tb.pb.Data.Type
+}
+
+// SetType sets tx's operation type.
+func (tb *TransactionBuilder) SetType(opType string) *TransactionBuilder {
+	tb.pb.Data.Type = opType
+	return tb
+}
+
+// PayloadAddRecord returns tx's AddRecordPayload.
+func (tb *TransactionBuilder) PayloadAddRecord() *core.AddRecordPayload {
+	require.Equal(tb.t, core.TxOperationAddRecord, tb.pb.Data.Type)
+
+	var payload core.AddRecordPayload
+	err := payload.FromBytes(tb.pb.Data.Payload)
+	require.NoError(tb.t, err)
+	return &payload
+}
+
+// PayloadAddCertification returns tx's AddCertificationPayload.
+func (tb *TransactionBuilder) PayloadAddCertification() *core.AddCertificationPayload {
+	require.Equal(tb.t, core.TxOperationAddCertification, tb.pb.Data.Type)
+
+	var payload core.AddCertificationPayload
+	err := payload.FromBytes(tb.pb.Data.Payload)
+	require.NoError(tb.t, err)
+	return &payload
+}
+
+// PayloadRevokeCertification returns tx's RevokeCertificationPayload.
+func (tb *TransactionBuilder) PayloadRevokeCertification() *core.RevokeCertificationPayload {
+	require.Equal(tb.t, core.TxOperationRevokeCertification, tb.pb.Data.Type)
+
+	var payload core.RevokeCertificationPayload
+	err := payload.FromBytes(tb.pb.Data.Payload)
+	require.NoError(tb.t, err)
+	return &payload
+}
+
+// SetPayload sets tx's operation type and payload.
+func (tb *TransactionBuilder) SetPayload(payload core.TransactionPayload) *TransactionBuilder {
+	b, err := payload.ToBytes()
+	require.NoError(tb.t, err)
+
+	tb.pb.Data.Payload = b
+	return tb
+}
 
 // Nonce returns tx's nonce.
 func (tb *TransactionBuilder) Nonce() uint64 {
