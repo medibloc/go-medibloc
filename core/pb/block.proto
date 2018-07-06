@@ -49,3 +49,13 @@ message Transaction {
   bytes sign = 10;
   bytes payerSign = 11;
 }
+
+message TransactionHashTarget {
+  bytes from = 1;
+  bytes to = 2;
+  bytes value = 3;
+  int64 timestamp = 4;
+  Data data = 5;
+  uint64 nonce = 6;
+  uint32 chain_id = 7;
+}

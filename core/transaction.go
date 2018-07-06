@@ -172,14 +172,23 @@ func (tx *Transaction) calcHash() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	hasher.Write(tx.from.Bytes())
-	hasher.Write(tx.to.Bytes())
-	hasher.Write(value)
-	hasher.Write(byteutils.FromInt64(tx.timestamp))
-	hasher.Write([]byte(tx.data.Type))
-	hasher.Write(tx.data.Payload)
-	hasher.Write(byteutils.FromUint64(tx.nonce))
-	hasher.Write(byteutils.FromUint32(tx.chainID))
+	txHashTarget := &corepb.TransactionHashTarget{
+		From:      tx.from.Bytes(),
+		To:        tx.to.Bytes(),
+		Value:     value,
+		Timestamp: tx.timestamp,
+		Data: &corepb.Data{
+			Type:    tx.data.Type,
+			Payload: tx.data.Payload,
+		},
+		Nonce:   tx.nonce,
+		ChainId: tx.chainID,
+	}
+	data, err := proto.Marshal(txHashTarget)
+	if err != nil {
+		return nil, err
+	}
+	hasher.Write(data)
 
 	hash := hasher.Sum(nil)
 	return hash, nil
