@@ -5,22 +5,13 @@ message Account {
     bytes address = 1;
     bytes balance = 2;
     uint64 nonce = 3;
-    bytes observations_hash = 4;
-    bytes vesting = 5;
-    bytes voted = 6;
-    repeated bytes writers = 7;
-    repeated bytes records = 8;
-    repeated bytes certs_received = 9;
-    repeated bytes certs_issued = 10;
+    bytes vesting = 4;
+    bytes voted = 5;
+
+    repeated bytes records = 6;
+    repeated bytes certs_received = 7;
+    repeated bytes certs_issued = 8;
     // Transactions
-    repeated string tx_add_record = 11;
-    repeated string tx_vest = 12;
-    repeated string tx_withdraw = 13;
-    repeated string tx_become_candidate = 14;
-    repeated string tx_withdraw_candidate = 15;
-    repeated string tx_vote = 16;
-    repeated string tx_add_certificate = 17;
-    repeated string tx_revoke_certificate = 18;
-    repeated string tx_send_value = 19;
-    repeated string tx_get_value = 20;
+    repeated bytes tx_send = 9;
+    repeated bytes tx_get = 10;
 }
