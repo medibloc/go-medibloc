@@ -70,12 +70,8 @@ func (as *AccountStateBatch) Commit() error {
 		return ErrNotBatching
 	}
 
-	for k, acc := range as.stageAccounts {
-		bytes, err := hex.DecodeString(k)
-		if err != nil {
-			return err
-		}
-		bytes, err = acc.toBytes()
+	for _, acc := range as.stageAccounts {
+		bytes, err := acc.toBytes()
 		if err != nil {
 			return err
 		}
