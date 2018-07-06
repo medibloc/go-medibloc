@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	peer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
@@ -39,11 +39,18 @@ var (
 // SerializableToBytes converts serializable to bytes.
 func SerializableToBytes(obj Serializable) ([]byte, error) {
 	pb, err := obj.ToProto()
-	data, err := proto.Marshal(pb)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to convert to proto message.")
 		return nil, err
 	}
+	data, err := proto.Marshal(pb)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"pb":  pb,
+		}).Error("Failed to marshal protobuf.")
 		return nil, err
 	}
 	return data, nil
