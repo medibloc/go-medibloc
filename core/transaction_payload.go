@@ -45,12 +45,6 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
 
-// AddCertificationPayload is payload type for TxOperationAddCertification
-type AddCertificationPayload struct {
-	IssueTime       int64
-	ExpirationTime  int64
-	CertificateHash []byte
-}
 
 // NewAddCertificationPayload generates a AddCertificationPayload
 func NewAddCertificationPayload(issueTime int64, expirationTime int64, certHash []byte) *AddCertificationPayload {
@@ -73,11 +67,6 @@ func BytesToAddCertificationPayload(b []byte) (*AddCertificationPayload, error) 
 // ToBytes returns marshalled AddCertificationPayload
 func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
-}
-
-// RevokeCertificationPayload is payload type for TxOperationRevokeCertification
-type RevokeCertificationPayload struct {
-	CertificateHash []byte
 }
 
 // NewRevokeCertificationPayload generates a RevokeCertificationPayload

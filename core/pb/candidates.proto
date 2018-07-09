@@ -1,7 +1,0 @@
-syntax = "proto3";
-package corepb;
-
-message Candidate {
-  bytes address = 1;
-  bytes collateral = 2;
-}

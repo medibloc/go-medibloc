@@ -109,7 +109,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
 			ChainId:     ChainID,
-			DynastySize: uint32(dynastySize),
+			//DynastySize: dpos.DynastySize,
 		},
 		Consensus: &corepb.GenesisConsensus{
 			Dpos: &corepb.GenesisConsensusDpos{
@@ -121,7 +121,9 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
-	for i := 0; i < dynastySize; i++ {
+
+	//TODO @drsleepytiger: DynastySize for test configuration is hard coded.
+	for i := 0; i < DynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
 		dynasty = append(dynasty, keypair.Addr.Hex())
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
@@ -239,7 +241,7 @@ func SignBlock(t *testing.T, block *core.Block, key signature.PrivateKey) {
 // NewTestBlock return new block for test
 func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	block := getBlock(t, parent, "")
-	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
+	//require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 	err := block.Seal()
 	require.Nil(t, err)
 	return block
@@ -250,7 +252,7 @@ func NewTestBlockWithTimestamp(t *testing.T, parent *core.Block, ts time.Time) *
 	block := getBlock(t, parent, "")
 	nextMintTs := nextMintSlot(ts).Unix()
 	require.NoError(t, block.SetTimestamp(nextMintTs))
-	require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
+	//require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
 	require.NoError(t, block.Seal())
 
 	return block
