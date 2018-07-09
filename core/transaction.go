@@ -29,7 +29,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/crypto/sha3"
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
-	"encoding/json"
 )
 
 // Transaction struct represents transaction
@@ -412,7 +411,8 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 func (tx *AddRecordTx) Execute(b *Block) error {
 	rs := b.state.recordsState
 
-	payload, err := BytesToAddRecordPayload(tx.payload)
+	var payload AddRecordPayload
+	err := payload.FromBytes(tx.payload)
 	if err != nil {
 		return err
 	}
@@ -610,7 +610,8 @@ type AddCertificationPayload struct {
 //NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(AddCertificationPayload)
-	if err := json.Unmarshal(tx.Data(), payload); err != nil {
+	err := payload.FromBytes(tx.Data())
+	if err != nil {
 		return nil, ErrInvalidTxPayload
 	}
 	//TODO: certification payload Verify: drsleepytiger
@@ -662,7 +663,7 @@ type RevokeCertificationPayload struct {
 //NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(RevokeCertificationPayload)
-	if err := json.Unmarshal(tx.Data(), payload); err != nil {
+	if err := payload.FromBytes(tx.Data()); err != nil {
 		return nil, ErrInvalidTxPayload
 	}
 	//TODO: certification payload Verify: drsleepytiger
