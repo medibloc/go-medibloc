@@ -19,7 +19,6 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 )
 
-
 // Action represents operation types in BatchTrie
 type Action int
 

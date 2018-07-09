@@ -267,7 +267,7 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		return nil, err
 	}
 
-	ds, err := consensus.LoadConsensusState(block.header.dposRoot, storage);
+	ds, err := consensus.LoadConsensusState(block.header.dposRoot, storage)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,

@@ -44,7 +44,6 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
 
-
 // NewAddCertificationPayload generates a AddCertificationPayload
 func NewAddCertificationPayload(issueTime int64, expirationTime int64, certHash []byte) *AddCertificationPayload {
 	return &AddCertificationPayload{

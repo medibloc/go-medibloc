@@ -34,8 +34,6 @@ const (
 	Delete
 )
 
-
-
 // Entry entry for not committed changes
 type Entry struct {
 	action Action

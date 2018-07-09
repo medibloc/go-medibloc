@@ -1,11 +1,11 @@
 package dpos
 
 import (
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
@@ -14,7 +14,6 @@ type BecomeCandidateTx struct {
 	candidateAddr common.Address
 	collateral    *util.Uint128
 }
-
 
 //NewBecomeCandidateTx returns BecomeCandidateTx
 func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {

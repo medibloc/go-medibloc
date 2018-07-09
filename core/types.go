@@ -18,8 +18,8 @@ package core
 import (
 	"errors"
 
-	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.

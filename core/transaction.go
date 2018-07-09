@@ -21,6 +21,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -28,7 +29,6 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/crypto/sha3"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 )
 
 // Transaction struct represents transaction
@@ -509,6 +509,7 @@ func NewWithdrawalVestTx(tx *Transaction) (ExecutableTx, error) {
 		amount: tx.Value(),
 	}, nil
 }
+
 //Todo Naming
 //Execute WithdrawalVestTx
 func (tx *WithdrawalVestTx) Execute(b *Block) error {
@@ -650,14 +651,14 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 
 //RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
-	Revoker    common.Address
-	Payload   *RevokeCertificationPayload
+	Revoker common.Address
+	Payload *RevokeCertificationPayload
 }
 
 // RevokeCertificationPayload is payload type for RevokeCertificationTx
 type RevokeCertificationPayload struct {
 	CertificateHash []byte
-	RevocationTime int64
+	RevocationTime  int64
 }
 
 //NewRevokeCertificationTx returns RevokeCertificationTx
@@ -668,8 +669,8 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	}
 	//TODO: certification payload Verify: drsleepytiger
 	return &RevokeCertificationTx{
-		Revoker:    tx.From(),
-		Payload:   payload,
+		Revoker: tx.From(),
+		Payload: payload,
 	}, nil
 }
 

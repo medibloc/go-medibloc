@@ -3,10 +3,11 @@ package core_test
 import (
 	"encoding/hex"
 	"testing"
-	"github.com/medibloc/go-medibloc/util/testutil"
+
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/stretchr/testify/assert"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func testBatch(t *testing.T, batch core.Batch) {

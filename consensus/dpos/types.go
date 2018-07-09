@@ -51,5 +51,4 @@ var (
 	ErrOutOfDynastyTimestamp        = errors.New("out of dynasty timestamp")
 	ErrVoteDuplicate                = errors.New("cannot vote already voted account")
 	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
-
 )

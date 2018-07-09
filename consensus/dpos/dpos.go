@@ -18,20 +18,20 @@ package dpos
 import (
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 )
 
 // Dpos returns dpos consensus model.
@@ -229,7 +229,7 @@ func (d *Dpos) VerifyInterval(bd *core.BlockData, parent *core.Block) error {
 
 // VerifyProposer verifies block proposer.
 func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
-	proposer,err  := d.FindMintProposer(bd.Timestamp(), parent)
+	proposer, err := d.FindMintProposer(bd.Timestamp(), parent)
 	if err != nil {
 		return err
 	}

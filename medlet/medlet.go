@@ -133,16 +133,16 @@ func (m *Medlet) Setup() error {
 	m.blockManager.InjectTransactionManager(m.transactionManager)
 
 	txMap := core.TxFactory{
-		core.TxOperationSend: core.NewSendTx,
-		core.TxOperationAddRecord: core.NewAddRecordTx,
-		core.TxOperationVest: core.NewVestTx,
-		core.TxOperationWithdrawVesting: core.NewWithdrawalVestTx,
-		core.TxOperationAddCertification: core.NewAddCertificationTx,
+		core.TxOperationSend:                core.NewSendTx,
+		core.TxOperationAddRecord:           core.NewAddRecordTx,
+		core.TxOperationVest:                core.NewVestTx,
+		core.TxOperationWithdrawVesting:     core.NewWithdrawalVestTx,
+		core.TxOperationAddCertification:    core.NewAddCertificationTx,
 		core.TxOperationRevokeCertification: core.NewRevokeCertificationTx,
 
 		dpos.TxOperationBecomeCandidate: dpos.NewBecomeCandidateTx,
-		dpos.TxOperationQuitCandidacy: dpos.NewQuitCandidateTx,
-		dpos.TxOperationVote: dpos.NewVoteTx,
+		dpos.TxOperationQuitCandidacy:   dpos.NewQuitCandidateTx,
+		dpos.TxOperationVote:            dpos.NewVoteTx,
 	}
 
 	m.blockManager.SetTxMap(txMap)

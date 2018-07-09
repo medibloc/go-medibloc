@@ -21,12 +21,12 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"github.com/medibloc/go-medibloc/common/trie"
 )
 
 type states struct {
@@ -247,7 +247,6 @@ func (st *states) LoadRecordsRoot(rootHash []byte) error {
 	return nil
 }
 
-
 func (st *states) LoadCertificationRoot(rootHash []byte) error {
 	certificationState, err := trie.NewBatch(rootHash, st.storage)
 	if err != nil {
@@ -265,7 +264,6 @@ func (st *states) LoadReservationQueue(hash []byte) error {
 	st.reservationQueue = rq
 	return nil
 }
-
 
 func (st *states) GetAccount(address common.Address) (Account, error) {
 	return st.accState.GetAccount(address.Bytes())

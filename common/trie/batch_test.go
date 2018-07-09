@@ -19,10 +19,10 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/medibloc/go-medibloc/common/trie"
 )
 
 func testBatch(t *testing.T, batch *trie.Batch) {

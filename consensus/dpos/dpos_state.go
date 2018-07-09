@@ -1,18 +1,19 @@
 package dpos
 
 import (
-	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
-	"github.com/gogo/protobuf/proto"
 	"sort"
+	"time"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/common"
-	"time"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 type State struct {
@@ -159,7 +160,7 @@ func findProposer(s core.DposState, timestamp int64) (common.Address, error) {
 	return addr, nil
 }
 
-func setDynastyState(ds *trie.Batch, dynasty []*common.Address) (error) {
+func setDynastyState(ds *trie.Batch, dynasty []*common.Address) error {
 	for i, addr := range dynasty {
 		if err := ds.Put(byteutils.FromInt32(int32(i)), addr.Bytes()); err != nil {
 			return err
