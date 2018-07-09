@@ -26,6 +26,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
@@ -282,7 +283,9 @@ func (tb *TransactionBuilder) Build() *core.Transaction {
 
 // BuildProto builds transaction in protobuf format.
 func (tb *TransactionBuilder) BuildProto() *corepb.Transaction {
-	return tb.pb
+	pb, err := copystructure.Copy(tb.pb)
+	require.NoError(tb.t, err)
+	return pb.(*corepb.Transaction)
 }
 
 // BuildBytes builds transaction in bytes.
