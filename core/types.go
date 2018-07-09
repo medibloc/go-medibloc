@@ -184,3 +184,9 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 type ExecutableTx interface {
 	Execute(b *Block) error
 }
+
+// TransactionPayload is an interface of transaction payload.
+type TransactionPayload interface {
+	FromBytes(b []byte) error
+	ToBytes() ([]byte, error)
+}

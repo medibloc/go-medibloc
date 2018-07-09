@@ -31,16 +31,15 @@ func NewAddRecordPayload(hash []byte) *AddRecordPayload {
 	}
 }
 
-// BytesToAddRecordPayload converts bytes to AddRecordPayload struct
-func BytesToAddRecordPayload(b []byte) (*AddRecordPayload, error) {
-	payload := new(AddRecordPayload)
+// FromBytes converts bytes to payload.
+func (payload *AddRecordPayload) FromBytes(b []byte) error {
 	if err := json.Unmarshal(b, payload); err != nil {
-		return nil, ErrInvalidTxPayload
+		return ErrInvalidTxPayload
 	}
-	return payload, nil
+	return nil
 }
 
-// ToBytes returns marshalled AddRecordPayload
+// ToBytes returns marshaled AddRecordPayload
 func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
@@ -55,16 +54,15 @@ func NewAddCertificationPayload(issueTime int64, expirationTime int64, certHash 
 	}
 }
 
-// BytesToAddCertificationPayload converts bytes to AddCertificationPayload struct
-func BytesToAddCertificationPayload(b []byte) (*AddCertificationPayload, error) {
-	payload := new(AddCertificationPayload)
+// FromBytes converts bytes to payload.
+func (payload *AddCertificationPayload) FromBytes(b []byte) error {
 	if err := json.Unmarshal(b, payload); err != nil {
-		return nil, ErrInvalidTxPayload
+		return ErrInvalidTxPayload
 	}
-	return payload, nil
+	return nil
 }
 
-// ToBytes returns marshalled AddCertificationPayload
+// ToBytes returns marshaled AddCertificationPayload
 func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
@@ -76,16 +74,15 @@ func NewRevokeCertificationPayload(hash []byte) *RevokeCertificationPayload {
 	}
 }
 
-// BytesToRevokeCertificationPayload converts bytes to RevokeCertificationPayload struct
-func BytesToRevokeCertificationPayload(b []byte) (*RevokeCertificationPayload, error) {
-	payload := new(RevokeCertificationPayload)
+// FromBytes converts bytes to payload.
+func (payload *RevokeCertificationPayload) FromBytes(b []byte) error {
 	if err := json.Unmarshal(b, payload); err != nil {
-		return nil, ErrInvalidTxPayload
+		return ErrInvalidTxPayload
 	}
-	return payload, nil
+	return nil
 }
 
-// ToBytes returns marshalled RevokeCertificationPayload
+// ToBytes returns marshaled RevokeCertificationPayload
 func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }

@@ -229,3 +229,9 @@ func (u *Uint128) Cmp(x *Uint128) int {
 func (u *Uint128) Bytes() []byte {
 	return u.value.Bytes()
 }
+
+// Uint64 returns the uint64 representation of x.
+// If x cannot be represented in a uint64, the result is undefined.
+func (u *Uint128) Uint64() uint64 {
+	return u.value.Uint64()
+}

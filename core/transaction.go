@@ -167,7 +167,8 @@ func NewTransactionWithSign(
 	}, nil
 }
 
-func (tx *Transaction) calcHash() ([]byte, error) {
+// CalcHash calculates transaction's hash.
+func (tx *Transaction) CalcHash() ([]byte, error) {
 	hasher := sha3.New256()
 
 	value, err := tx.value.ToFixedSizeByteSlice()
@@ -199,7 +200,7 @@ func (tx *Transaction) calcHash() ([]byte, error) {
 // SignThis signs tx with given signature interface
 func (tx *Transaction) SignThis(signer signature.Signature) error {
 	tx.alg = signer.Algorithm()
-	hash, err := tx.calcHash()
+	hash, err := tx.CalcHash()
 	if err != nil {
 		return err
 	}
@@ -262,7 +263,7 @@ func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
 	}
 
 	// check Hash.
-	wantedHash, err := tx.calcHash()
+	wantedHash, err := tx.CalcHash()
 	if err != nil {
 		return err
 	}
