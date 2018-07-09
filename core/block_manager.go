@@ -43,6 +43,7 @@ type BlockManager struct {
 	tm        *TransactionManager
 	ns        net.Service
 	consensus Consensus
+	txMap     TxFactory
 
 	syncService          SyncService
 	syncActivationHeight uint64
@@ -50,6 +51,15 @@ type BlockManager struct {
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
+}
+
+func (b *BlockManager) TxMap() TxFactory {
+	return b.txMap
+}
+
+//SetTxMap inject txMap
+func (b *BlockManager) SetTxMap(txMap TxFactory) {
+	b.txMap = txMap
 }
 
 // NewBlockManager returns BlockManager.
@@ -207,7 +217,6 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Filter blocks of same height.
 
-	// TODO @drsleepytiger
 	if err := bd.VerifyIntegrity(); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
@@ -215,13 +224,14 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	if err := bm.consensus.VerifyProposer(bm.bc, bd); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":       err,
-			"blockData": bd,
-		}).Debug("Failed to verify blockData.")
-		return err
-	}
+	//// TODO @drsleepytiger
+	//if err := bm.consensus.VerifyProposer(bm.bc, bd); err != nil {
+	//	logging.WithFields(logrus.Fields{
+	//		"err":       err,
+	//		"blockData": bd,
+	//	}).Debug("Failed to verify blockData.")
+	//	return err
+	//}
 
 	if err := bm.bp.Push(bd); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -300,7 +310,19 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 	children := bm.bp.FindChildren(parent)
 	for _, v := range children {
 		childData := v.(*BlockData)
-		block, err := childData.ExecuteOnParentBlock(parent)
+
+		err := bm.consensus.VerifyProposer(childData, parent)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":       err,
+				"blockData": childData,
+				"parent":    parent,
+			}).Warn("Failed to verifyProposer")
+			fails = append(fails, childData)
+			continue
+		}
+
+		block, err := childData.ExecuteOnParentBlock(parent, bm.txMap)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":    err,
@@ -426,25 +448,21 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	if bd.Height() > bm.bc.MainTailBlock().Height()+bm.syncActivationHeight && bm.syncService != nil {
-		logging.Console().Info("hahaha")
-
+	if bm.syncService != nil && bd.Height() > bm.bc.MainTailBlock().Height()+bm.syncActivationHeight {
 		if err := bm.syncService.ActiveDownload(); err != nil {
 			logging.WithFields(logrus.Fields{
 				"newBlockHeight":       bd.Height(),
 				"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
 				"syncActivationHeight": bm.syncActivationHeight,
-				"err": err,
+				"err":                  err,
 			}).Debug("Failed to activate sync download manager.")
+		} else {
+			logging.Console().WithFields(logrus.Fields{
+				"newBlockHeight":       bd.Height(),
+				"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+				"syncActivationHeight": bm.syncActivationHeight,
+			}).Info("Sync download manager is activated.")
 		}
-
-		bm.syncService.ActiveDownload()
-
-		logging.Console().WithFields(logrus.Fields{
-			"newBlockHeight":       bd.Height(),
-			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
-			"syncActivationHeight": bm.syncActivationHeight,
-		}).Info("Sync download manager is activated.")
 	} else {
 		err = bm.requestMissingBlock(msg.MessageFrom(), bd)
 		if err != nil {

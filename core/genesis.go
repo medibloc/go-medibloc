@@ -27,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 )
 
 var (
@@ -84,16 +85,24 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
-	dynastySize := int(conf.GetMeta().DynastySize)
-	var members []*common.Address
-	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
+	for i, v := range conf.GetConsensus().GetDpos().GetDynasty() {
 		member := common.HexToAddress(v)
-		if err := genesisBlock.State().AddCandidate(member, util.Uint128Zero()); err != nil {
+
+		candidatePb := &dpospb.Candidate{
+			Address:   member.Bytes(),
+			Collatral: make([]byte, 0),
+			VotePower: make([]byte, 0),
+		}
+
+		candidate, err := proto.Marshal(candidatePb)
+		if err != nil {
 			return nil, err
 		}
-		members = append(members, &member)
+
+		genesisBlock.State().dposState.CandidateState().Put(member.Bytes(), candidate)
+		genesisBlock.State().dposState.DynastyState().Put(byteutils.FromInt32(int32(i)), member.Bytes())
+
 	}
-	genesisBlock.State().SetDynasty(members, dynastySize, int64(0))
 
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
@@ -156,9 +165,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 	genesisBlock.header.accsRoot = genesisBlock.state.AccountsRoot()
 	genesisBlock.header.txsRoot = genesisBlock.state.TransactionsRoot()
-	genesisBlock.header.candidacyRoot = genesisBlock.state.CandidacyRoot()
 	genesisBlock.header.certificationRoot = genesisBlock.state.CertificationRoot()
-	genesisBlock.header.consensusRoot, err = genesisBlock.state.ConsensusRoot()
+	genesisBlock.header.dposRoot, err = genesisBlock.state.DposState().RootBytes()
 	if err != nil {
 		return nil, err
 	}
@@ -187,47 +195,6 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 			"genesis": genesis,
 		}).Error("Genesis ChainID does not match.")
 		return false
-	}
-
-	if block.State().DynastySize() != int(genesis.Meta.DynastySize) {
-		logging.Console().WithFields(logrus.Fields{
-			"sizeInBlock":  block.State().DynastySize(),
-			"sizeInConfig": genesis.Meta.DynastySize,
-		}).Error("Genesis's dynasty size does not match.")
-		return false
-	}
-
-	members, err := block.State().Dynasty()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"block":   block,
-			"genesis": genesis,
-			"err":     err,
-		}).Error("Failed to get dynasties.")
-		return false
-	}
-	if len(members) != len(genesis.GetConsensus().GetDpos().GetDynasty()) {
-		logging.Console().WithFields(logrus.Fields{
-			"block":   block,
-			"genesis": genesis,
-			"members": members,
-		}).Error("Size of genesis dynasties does not match.")
-		return false
-	}
-	for _, member := range members {
-		contains := false
-		for _, mm := range genesis.GetConsensus().GetDpos().GetDynasty() {
-			if member.Equals(common.HexToAddress(mm)) {
-				contains = true
-				break
-			}
-		}
-		if !contains {
-			logging.Console().WithFields(logrus.Fields{
-				"member": member,
-			}).Error("Members of genesis don't match.")
-			return false
-		}
 	}
 
 	accounts, err := block.State().accState.AccountState().Accounts()

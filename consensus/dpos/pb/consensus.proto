@@ -1,5 +1,5 @@
 syntax = "proto3";
-package consensuspb;
+package dpospb;
 
 message ConsensusState {
   bytes dynasty_root = 1;

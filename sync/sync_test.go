@@ -362,7 +362,7 @@ func TestForAutoActivation(t *testing.T) {
 		if count > 100 {
 			require.NotEqual(t, 0, seedTester.medService.Node().EstablishedPeersCount(), "Handshake failed")
 			require.True(t, receiveTester.syncService.IsDownloadActivated(), "Failed to activate sync automatically")
-			require.False(t, count <= 100, "Unexpected timeout")
+			require.False(t, true, "Unexpected timeout")
 		}
 
 		count++

@@ -20,11 +20,17 @@ import (
 	"time"
 )
 
+// Transaction's related to dpos
+const (
+	TxOperationBecomeCandidate = "become_candidate"
+	TxOperationQuitCandidacy   = "quit_candidacy"
+	TxOperationVote            = "vote"
+)
+
 // Consensus properties.
 const (
 	BlockInterval   = 15 * time.Second
 	DynastyInterval = 210 * BlockInterval
-	DynastySize     = 21
 	MinMintDuration = 2 * time.Second
 
 	miningTickInterval = time.Second
@@ -32,12 +38,18 @@ const (
 
 // Error types of dpos package.
 var (
+	ErrNotFound           = errors.New("not found")
+	ErrAlreadyInCandidacy = errors.New("account is already a candidate")
+
+	ErrBlockMintedInNextSlot        = errors.New("cannot mint block now, there is a block minted in current slot")
+	ErrFoundNilProposer             = errors.New("found a nil proposer")
+	ErrInvalidBlockForgeTime        = errors.New("invalid time to forge block")
 	ErrInvalidBlockInterval         = errors.New("invalid block interval")
 	ErrInvalidBlockProposer         = errors.New("invalid block proposer")
-	ErrInvalidBlockForgeTime        = errors.New("invalid time to forge block")
-	ErrFoundNilProposer             = errors.New("found a nil proposer")
-	ErrInvalidProtoToConsensusState = errors.New("protobuf message cannot be converted into ConsensusState")
-	ErrBlockMintedInNextSlot        = errors.New("cannot mint block now, there is a block minted in current slot")
-	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
 	ErrInvalidDynastySize           = errors.New("invalid dynasty size")
+	ErrInvalidProtoToConsensusState = errors.New("protobuf message cannot be converted into ConsensusState")
+	ErrOutOfDynastyTimestamp        = errors.New("out of dynasty timestamp")
+	ErrVoteDuplicate                = errors.New("cannot vote already voted account")
+	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
+
 )

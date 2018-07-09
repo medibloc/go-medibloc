@@ -132,8 +132,8 @@ func (t *ReservedTask) ExecuteOnState(bs *BlockState) error {
 
 func (t *ReservedTask) withdraw(bs *BlockState) error {
 	amount := t.payload.(*RtWithdraw).Amount
-	if err := bs.SubVesting(t.from, amount); err != nil {
-		return err
-	}
+	//if err := bs.SubVesting(t.from, amount); err != nil {
+	//	return err
+	//}
 	return bs.AddBalance(t.from, amount)
 }

@@ -78,7 +78,7 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 		TxsRoot:       byteutils.Bytes2Hex(pbBlock.Header.TxsRoot),
 		UsageRoot:     byteutils.Bytes2Hex(pbBlock.Header.UsageRoot),
 		RecordsRoot:   byteutils.Bytes2Hex(pbBlock.Header.RecordsRoot),
-		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.ConsensusRoot),
+		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.DposRoot),
 		Transactions:  rpcPbTxs,
 		Height:        pbBlock.Height,
 	}, nil

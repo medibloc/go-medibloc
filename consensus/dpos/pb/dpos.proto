@@ -1,0 +1,17 @@
+syntax = "proto3";
+package dpospb;
+
+message State {
+  bytes candidate_root_hash = 1;
+  bytes dynasty_root_hash = 2;
+}
+
+message Candidate {
+  bytes address = 1;
+  bytes collatral = 2;
+  bytes vote_power = 3;
+}
+
+message Dynasty{
+  repeated bytes block_producers = 1;
+}

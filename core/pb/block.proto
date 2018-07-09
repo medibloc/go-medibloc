@@ -13,9 +13,9 @@ message BlockHeader {
   bytes txs_root = 9;
   bytes usage_root = 10;
   bytes records_root = 11;
-  bytes candidacy_root = 12;
-  bytes certification_root = 13;
-  bytes consensus_root = 14;
+  bytes certification_root = 12;
+  bytes dpos_root = 13;
+
   bytes reservation_queue_hash = 15;
 }
 
