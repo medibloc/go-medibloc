@@ -154,19 +154,19 @@ func (as *AccountStateBatch) AddTransaction(address []byte, txHash []byte, sendT
 	}
 
 	if sendTx {
-		for _, tx := range acc.txSend {
+		for _, tx := range acc.txsSend {
 			if byteutils.Equal(txHash, tx) {
 				return ErrTransactionHashAlreadyAdded
 			}
 		}
-		acc.txSend = append(acc.txSend, txHash)
+		acc.txsSend = append(acc.txsSend, txHash)
 	} else {
-		for _, tx := range acc.txGet {
+		for _, tx := range acc.txsGet {
 			if byteutils.Equal(txHash, tx) {
 				return ErrTransactionHashAlreadyAdded
 			}
 		}
-		acc.txGet = append(acc.txGet, txHash)
+		acc.txsGet = append(acc.txsGet, txHash)
 	}
 	return nil
 }

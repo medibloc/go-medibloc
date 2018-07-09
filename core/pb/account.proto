@@ -12,6 +12,6 @@ message Account {
     repeated bytes certs_received = 7;
     repeated bytes certs_issued = 8;
     // Transactions
-    repeated bytes tx_send = 9;
-    repeated bytes tx_get = 10;
+    repeated bytes txs_send = 9;
+    repeated bytes txs_get = 10;
 }

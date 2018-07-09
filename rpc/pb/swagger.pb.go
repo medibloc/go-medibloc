@@ -366,6 +366,20 @@ const (
         "voted": {
           "type": "string",
           "description": "Voted address."
+        },
+        "txs_send": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Transactions sent from account"
+        },
+        "txs_get": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Transactions sent to account"
         }
       }
     },

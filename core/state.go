@@ -44,9 +44,9 @@ type account struct {
 	// certs issued as a certifier
 	certsIssued [][]byte
 	// transaction sent from account
-	txSend [][]byte
+	txsSend [][]byte
 	// transaction sent to account
-	txGet [][]byte
+	txsGet [][]byte
 }
 
 func (acc *account) Address() []byte {
@@ -79,6 +79,14 @@ func (acc *account) CertsReceived() [][]byte {
 
 func (acc *account) CertsIssued() [][]byte {
 	return acc.certsIssued
+}
+
+func (acc *account) TxsSend() [][]byte {
+	return acc.txsSend
+}
+
+func (acc *account) TxsGet() [][]byte {
+	return acc.txsGet
 }
 
 func (acc *account) toBytes() ([]byte, error) {
@@ -208,6 +216,9 @@ type Account interface {
 	CertsReceived() [][]byte
 
 	CertsIssued() [][]byte
+
+	TxsSend() [][]byte
+	TxsGet() [][]byte
 }
 
 // AccountState account state interface

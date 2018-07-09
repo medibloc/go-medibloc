@@ -86,6 +86,10 @@ message GetAccountStateResponse {
 	string vesting = 7;
 	// Voted address.
 	string voted = 8;
+	// Transactions sent from account
+	repeated string txs_send = 9;
+	// Transactions sent to account
+	repeated string txs_get = 10;
 }
 
 message GetBlockRequest {
