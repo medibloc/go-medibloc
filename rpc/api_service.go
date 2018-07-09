@@ -199,6 +199,8 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 			Records:       []string{},
 			Vesting:       util.Uint128Zero().String(),
 			Voted:         "",
+			TxsSend:       []string{},
+			TxsGet:        []string{},
 		}, nil
 	}
 	return &rpcpb.GetAccountStateResponse{
@@ -210,6 +212,8 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 		Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
 		Vesting:       acc.Vesting().String(),
 		Voted:         byteutils.Bytes2Hex(acc.Voted()),
+		TxsSend:       byteutils.BytesSlice2HexSlice(acc.TxsSend()),
+		TxsGet:        byteutils.BytesSlice2HexSlice(acc.TxsGet()),
 	}, nil
 }
 
