@@ -116,6 +116,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 		err = genesisBlock.state.AddBalance(addr, balance)
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Info("add balance failed at newGenesis")
 			if err := genesisBlock.RollBack(); err != nil {
 				return nil, err
 			}

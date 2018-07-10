@@ -18,7 +18,9 @@ package core
 import (
 	"errors"
 
+	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 )
 
@@ -153,6 +155,7 @@ type Consensus interface {
 	VerifyInterval(bd *BlockData, parent *Block) error
 	VerifyProposer(bd *BlockData, parent *Block) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
+	FindMintProposer(ts int64, parent *Block) (common.Address, error)
 }
 
 type DposState interface {
@@ -175,6 +178,7 @@ type Event struct {
 //SyncService interface for sync
 type SyncService interface {
 	ActiveDownload() error
+	IsDownloadActivated() bool
 }
 
 //TxFactory is a map for tx.Type() to NewTxFunc

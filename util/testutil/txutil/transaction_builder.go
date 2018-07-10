@@ -43,9 +43,26 @@ type TransactionBuilder struct {
 
 // NewTransactionBuilder creates TransactionBuilder.
 func NewTransactionBuilder(t *testing.T) *TransactionBuilder {
+	zeroBytes, err := util.Uint128Zero().ToFixedSizeByteSlice()
+	require.NoError(t, err)
 	return &TransactionBuilder{
-		t:  t,
-		pb: &corepb.Transaction{},
+		t: t,
+		pb: &corepb.Transaction{
+			Hash:      nil,
+			From:      nil,
+			To:        nil,
+			Value:     zeroBytes,
+			Timestamp: 0,
+			Data: &corepb.Data{
+				Type:    "",
+				Payload: nil,
+			},
+			Nonce:     0,
+			ChainId:   0,
+			Alg:       uint32(defaultSignAlg),
+			Sign:      nil,
+			PayerSign: nil,
+		},
 	}
 }
 

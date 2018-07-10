@@ -102,6 +102,12 @@ func (node *Node) GenesisBlock() *core.Block {
 	return block
 }
 
+// Tail returns tail block.
+func (node *Node) Tail() *core.Block {
+	block := node.Med.BlockManager().TailBlock()
+	return block
+}
+
 // Network is set of nodes.
 type Network struct {
 	t *testing.T
@@ -210,4 +216,18 @@ func (n *Network) assignedMiners() []*AddrKeyPair {
 		}
 	}
 	return miners
+}
+
+func (n *Network) FindProposer(ts int64, parent *core.Block) *AddrKeyPair {
+	dynasties := n.Seed.Config.Dynasties
+	d := n.Seed.Med.Consensus()
+	proposer, err := d.FindMintProposer(ts, parent)
+	require.Nil(n.t, err)
+	for _, v := range dynasties{
+		if v.Addr.Equals(proposer){
+			return v
+		}
+	}
+	require.False(n.t,true,"Failed to find proposer's privateKey")
+	return nil
 }

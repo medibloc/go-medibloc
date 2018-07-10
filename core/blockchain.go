@@ -121,7 +121,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		logging.Console().WithFields(logrus.Fields{
 			"block":   bc.genesisBlock,
 			"genesis": bc.genesis,
-		}).Fatal("Failed to match genesis block and genesis configuration.")
+		}).Error("Failed to match genesis block and genesis configuration.")
 		return ErrGenesisNotMatch
 	}
 

@@ -51,6 +51,10 @@ type Dpos struct {
 	quitCh chan int
 }
 
+func (d *Dpos) SetDynastySize(dynastySize int) {
+	d.dynastySize = dynastySize
+}
+
 func (d *Dpos) DynastySize() int {
 	return d.dynastySize
 }
@@ -392,24 +396,31 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 	}
 	block.SetTimestamp(deadline.Unix())
 
-	dynasty, err := d.makeMintBlockDynasty(deadline.Unix(), tail)
+	dynasty, err := d.MakeMintBlockDynasty(deadline.Unix(), tail)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+		   "err":err,
+		}).Error("Failed to make MintBlockDynasty")
 		return nil, err
 	}
 
-	if err := setDynastyState(block.State().DposState().DynastyState(), dynasty); err != nil {
+	err = block.BeginBatch()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to begin batch of new block.")
+		return nil, err
+	}
+
+	if err := SetDynastyState(block.State().DposState().DynastyState(), dynasty); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":err,
+		}).Error("Failed to set dynasty")
 		return nil, err
 	}
 
 	for deadline.Sub(time.Now()) > 0 {
-		err = block.BeginBatch()
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":   err,
-				"block": block,
-			}).Error("Failed to begin batch of new block.")
-			return nil, err
-		}
 
 		transaction := d.tm.Pop()
 		if transaction == nil {

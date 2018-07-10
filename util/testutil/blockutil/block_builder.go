@@ -27,23 +27,28 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/require"
+	"time"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 )
 
 const (
 	defaultSignAlg = algorithm.SECP256K1
+	dynastySize    = 3
 )
 
 // BlockBuilder builds block.
 type BlockBuilder struct {
-	t  *testing.T
-	pb *corepb.Block
+	t      *testing.T
+	pb     *corepb.Block
+	parent *core.Block
 }
 
 // NewBlockBuilder creates BlockBuilder.
 func NewBlockBuilder(t *testing.T) *BlockBuilder {
 	return &BlockBuilder{
-		t:  t,
-		pb: &corepb.Block{},
+		t:      t,
+		pb:     &corepb.Block{},
+		parent: nil,
 	}
 }
 
@@ -52,9 +57,32 @@ func NewBlockBuilderFrom(t *testing.T, bd *core.BlockData) *BlockBuilder {
 	pb, err := bd.ToProto()
 	require.NoError(t, err)
 	return &BlockBuilder{
-		t:  t,
-		pb: pb.(*corepb.Block),
+		t:      t,
+		pb:     pb.(*corepb.Block),
+		parent: nil,
 	}
+}
+
+//NewBlockBuliderWithParent create BlockBuilder with parent block.
+func NewBlockBuliderWithParent(t *testing.T, parent *core.Block) *BlockBuilder {
+	bb := NewBlockBuilderFrom(t, parent.BlockData)
+	bb.SetTransactions(make([]*corepb.Transaction,0))
+	curTime := time.Unix(parent.Timestamp(), 0).Add(dpos.BlockInterval)
+	bb.SetParentHash(parent.Hash())
+	bb.SetTimestamp(curTime.Unix())
+	bb.SetHeight(bb.Height() + 1)
+	bb.parent = parent
+	return bb
+}
+
+//Parent returns parent.
+func (b *BlockBuilder) Parent() *core.Block {
+	return b.parent
+}
+
+//SetParent set parent.
+func (b *BlockBuilder) SetParent(parent *core.Block) {
+	b.parent = parent
 }
 
 // Hash returns hash.
@@ -135,17 +163,6 @@ func (bb *BlockBuilder) SetRecordRoot(root []byte) *BlockBuilder {
 	return bb
 }
 
-// CandidateRoot returns candidate root.
-func (bb *BlockBuilder) CandidateRoot() []byte {
-	return bb.pb.Header.CandidacyRoot
-}
-
-// SetCandidateRoot sets candidate root.
-func (bb *BlockBuilder) SetCandidateRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.CandidacyRoot = root
-	return bb
-}
-
 // CertificateRoot returns certificate root.
 func (bb *BlockBuilder) CertificateRoot() []byte {
 	return bb.pb.Header.CertificationRoot
@@ -157,14 +174,14 @@ func (bb *BlockBuilder) SetCertificateRoot(root []byte) *BlockBuilder {
 	return bb
 }
 
-// ConsensusRoot returns consensus root.
-func (bb *BlockBuilder) ConsensusRoot() []byte {
-	return bb.pb.Header.ConsensusRoot
+// ConsensusRoot returns dpos root.
+func (bb *BlockBuilder) DposRoot() []byte {
+	return bb.pb.Header.DposRoot
 }
 
-// SetConsensusRoot sets consensus root.
-func (bb *BlockBuilder) SetConsensusRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.ConsensusRoot = root
+// SetConsensusRoot sets dpos root.
+func (bb *BlockBuilder) SetDposRoot(root []byte) *BlockBuilder {
+	bb.pb.Header.DposRoot = root
 	return bb
 }
 
@@ -294,3 +311,21 @@ func (bb *BlockBuilder) BuildBytes() []byte {
 	require.NoError(bb.t, err)
 	return data
 }
+
+func (bb *BlockBuilder) TransitionDynasty() *BlockBuilder{
+	dposState, err := bb.parent.State().DposState().Clone()
+	require.Nil(bb.t, err)
+
+	d := dpos.New()
+	d.SetDynastySize(dynastySize)
+	dynasty, err := d.MakeMintBlockDynasty(bb.Timestamp(), bb.parent)
+	require.NoError(bb.t, err)
+	dpos.SetDynastyState(dposState.DynastyState(), dynasty)
+	require.NoError(bb.t, err)
+	dposRoot, err := dposState.RootBytes()
+	require.NoError(bb.t,err)
+	bb.SetDposRoot(dposRoot)
+
+	return bb
+}
+

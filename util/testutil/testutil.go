@@ -108,8 +108,8 @@ func (pairs AddrKeyPairs) findPrivKey(addr common.Address) signature.PrivateKey 
 func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
-			ChainId: ChainID,
-			//DynastySize: dpos.DynastySize,
+			ChainId:     ChainID,
+			DynastySize: uint32(dynastySize),
 		},
 		Consensus: &corepb.GenesisConsensus{
 			Dpos: &corepb.GenesisConsensusDpos{
@@ -122,8 +122,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
 
-	//TODO @drsleepytiger: DynastySize for test configuration is hard coded.
-	for i := 0; i < DynastySize; i++ {
+	for i := 0; i < dynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
 		dynasty = append(dynasty, keypair.Addr.Hex())
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
@@ -219,9 +218,9 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 
 // SignBlockUsingDynasties signs block with dynasties.
 func SignBlockUsingDynasties(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
-	members, err := block.State().Dynasty()
-	require.NoError(t, err)
-	proposer, err := dpos.FindProposer(block.Timestamp(), members)
+	d := dpos.New()
+	d.SetDynastySize(len(dynasties))
+	proposer, err := d.FindMintProposer(block.Timestamp(), block)
 	require.NoError(t, err)
 
 	privKey := dynasties.findPrivKey(proposer)

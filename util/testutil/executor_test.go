@@ -91,4 +91,7 @@ func TestNetworkMiner(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
+
+	t.Log(seed.Tail().Signature())
+	t.Log(len(seed.Tail().Signature()))
 }

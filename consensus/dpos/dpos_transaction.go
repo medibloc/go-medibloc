@@ -7,6 +7,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/common/trie"
 )
 
 // BecomeCandidateTx is a structure for quiting cadidate
@@ -29,7 +30,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	as := b.State().AccState()
 
 	_, err := cs.Get(tx.candidateAddr.Bytes())
-	if err != nil && err != ErrNotFound {
+	if err != nil && err != trie.ErrNotFound {
 		return err
 	}
 	if err == nil {
@@ -46,10 +47,11 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		return err
 	}
 
+	zeroBytes, err := util.Uint128Zero().ToFixedSizeByteSlice()
 	pbCandidate := &dpospb.Candidate{
 		Address:   tx.candidateAddr.Bytes(),
 		Collatral: collateralBytes,
-		VotePower: make([]byte, 0),
+		VotePower: zeroBytes,
 	}
 	candidateBytes, err := proto.Marshal(pbCandidate)
 	if err != nil {
@@ -122,7 +124,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		return err
 	}
 
-	voter, err := as.AccountState().GetAccount(tx.voter.Bytes())
+	voter, err := as.GetAccount(tx.voter.Bytes())
 	if err != nil {
 		return err
 	}

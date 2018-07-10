@@ -22,6 +22,8 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 // AccountStateBatch batch for AccountState
@@ -75,7 +77,12 @@ func (as *AccountStateBatch) Commit() error {
 		if err != nil {
 			return err
 		}
-		as.as.accounts.Put(acc.address, bytes)
+		err = as.as.accounts.Put(acc.address, bytes)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+			   "err":err,
+			}).Info("account put error")
+		}
 	}
 
 	as.resetBatch()

@@ -31,6 +31,11 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/medibloc/go-medibloc/util/testutil/txutil"
+	"github.com/stretchr/testify/require"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common/trie"
 )
 
 func TestTransaction_VerifyIntegrity(t *testing.T) {
@@ -100,32 +105,21 @@ func TestAddRecord(t *testing.T) {
 
 	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	payload := core.NewAddRecordPayload(recordHash)
-	payloadBuf, err := payload.ToBytes()
-	assert.NoError(t, err)
 	owner := dynasties[0]
-	txAddRecord, err := core.NewTransaction(testutil.ChainID,
-		owner.Addr,
-		common.Address{},
-		util.Uint128Zero(), 1,
-		core.TxOperationAddRecord, payloadBuf)
-	assert.NoError(t, err)
 
-	privKey := owner.PrivKey
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(privKey)
-	assert.NoError(t, txAddRecord.SignThis(sig))
+	transaction := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(owner.Addr).SetNonce(1).
+		SetType(core.TxOperationAddRecord).SetPayload(payload).CalcHash().Sign(owner.PrivKey).Build()
 
-	genesisState, err := genesis.State().Clone()
-	assert.NoError(t, err)
+	newTxFunc := testutil.TxMap[transaction.Type()]
+	tx, err := newTxFunc(transaction)
+	require.NoError(t, err)
 
-	genesisState.BeginBatch()
-	assert.NoError(t, txAddRecord.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(txAddRecord, genesis.Timestamp()))
-	genesisState.Commit()
+	genesis.BeginBatch()
+	require.NoError(t, tx.Execute(genesis))
+	require.NoError(t, genesis.State().AcceptTransaction(transaction, genesis.Timestamp()))
+	genesis.Commit()
 
-	record, err := genesisState.GetRecord(recordHash)
+	record, err := genesis.State().GetRecord(recordHash)
 	assert.NoError(t, err)
 	assert.Equal(t, record.Hash, recordHash)
 }
@@ -134,34 +128,26 @@ func TestVest(t *testing.T) {
 	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
 
 	from := dynasties[0]
-	tx, err := core.NewTransaction(
-		testutil.ChainID,
-		from.Addr,
-		common.Address{},
-		util.NewUint128FromUint(333), 1,
-		core.TxOperationVest, []byte{},
-	)
-	assert.NoError(t, err)
-	privKey := from.PrivKey
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(privKey)
-	assert.NoError(t, tx.SignThis(sig))
 
-	genesisState, err := genesis.State().Clone()
-	assert.NoError(t, err)
+	transaction := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(from.Addr).SetNonce(1).
+		SetValue(333).SetNonce(1).SetType(core.TxOperationVest).CalcHash().Sign(from.PrivKey).Build()
 
-	genesisState.BeginBatch()
-	assert.NoError(t, tx.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(tx, genesis.Timestamp()))
-	genesisState.Commit()
+	newTxFunc := testutil.TxMap[transaction.Type()]
+	tx, err := newTxFunc(transaction)
+	require.NoError(t, err)
 
-	acc, err := genesisState.GetAccount(from.Addr)
+
+	genesis.BeginBatch()
+	require.NoError(t, tx.Execute(genesis))
+	require.NoError(t, genesis.State().AcceptTransaction(transaction, genesis.Timestamp()))
+	genesis.Commit()
+
+	acc, err := genesis.State().GetAccount(from.Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
 }
+
 
 func TestWithdrawVesting(t *testing.T) {
 	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
@@ -213,178 +199,128 @@ func TestWithdrawVesting(t *testing.T) {
 	}
 }
 
-func TestBecomeCandidate(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
+func TestBecomeAndQuitCandidate(t *testing.T) {
+	genesis, _, distributed := testutil.NewTestGenesisBlock(t, testutil.DynastySize)
+	candidate := distributed[testutil.DynastySize]
 
-	tx, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		common.Address{},
-		util.NewUint128FromUint(10), 1,
-		core.TxOperationBecomeCandidate, []byte{},
-	)
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
-	assert.NoError(t, tx.SignThis(sig))
 
-	genesisState, err := genesisBlock.State().Clone()
-	assert.NoError(t, err)
+	tb := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(candidate.Addr).SetNonce(1).
+		SetType(dpos.TxOperationBecomeCandidate).CalcHash().Sign(candidate.PrivKey)
 
-	genesisState.BeginBatch()
-	assert.NoError(t, tx.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(tx, genesisBlock.Timestamp()))
-	genesisState.Commit()
+	tb.SetValue(1000000001)
+	transaction1 := tb.Build()
 
-	acc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
+	tb.SetValue(10)
+	transaction2 := tb.Build()
+
+	tb.SetNonce(2)
+	transaction3 := tb.Build()
+
+
+	newTxFunc := testutil.TxMap[transaction1.Type()]
+	tx1, err := newTxFunc(transaction1)
+	require.NoError(t, err)
+	tx2, err := newTxFunc(transaction2)
+	require.NoError(t, err)
+	tx3, err := newTxFunc(transaction3)
+	require.NoError(t, err)
+
+	genesis.State().BeginBatch()
+	assert.Equal(t,core.ErrBalanceNotEnough, tx1.Execute(genesis))
+	assert.NoError(t, tx2.Execute(genesis))
+	assert.Equal(t,dpos.ErrAlreadyInCandidacy, tx3.Execute(genesis))
+	assert.NoError(t, genesis.State().AcceptTransaction(transaction2, genesis.Timestamp()))
+	genesis.State().Commit()
+
+	acc, err := genesis.State().GetAccount(candidate.Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-10)))
-	candidate, err := genesisState.GetCandidate(distributed[dpos.DynastySize].Addr)
+	candidateBytes, err := genesis.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
 	assert.NoError(t, err)
+
+	candidatePb := new(dpospb.Candidate)
+	proto.Unmarshal(candidateBytes,candidatePb)
+
 	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
 	assert.NoError(t, err)
-	assert.Equal(t, candidate.Collateral, tenBytes)
-}
+	assert.Equal(t, candidatePb.Collatral, tenBytes)
 
-func TestBecomeCandidateAlreadyCandidate(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
 
-	tx1, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		common.Address{},
-		util.NewUint128FromUint(10), 1,
-		core.TxOperationBecomeCandidate, []byte{},
-	)
-	tx2, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		common.Address{},
-		util.NewUint128FromUint(10), 2,
-		core.TxOperationBecomeCandidate, []byte{},
-	)
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
-	assert.NoError(t, tx1.SignThis(sig))
-	assert.NoError(t, tx2.SignThis(sig))
+	tbQuit := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(candidate.Addr).SetNonce(2).
+		SetType(dpos.TxOperationQuitCandidacy)
 
-	genesisState, err := genesisBlock.State().Clone()
-	assert.NoError(t, err)
+	transactionQuit := tbQuit.CalcHash().Sign(candidate.PrivKey).Build()
 
-	genesisState.BeginBatch()
-	assert.NoError(t, tx1.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(tx1, genesisBlock.Timestamp()))
-	assert.Equal(t, core.ErrAlreadyInCandidacy, tx2.ExecuteOnState(genesisState))
-}
+	newTxFuncQuit := testutil.TxMap[transactionQuit.Type()]
+	txQuit, err := newTxFuncQuit(transactionQuit)
+	require.NoError(t,err)
 
-func TestBecomeCandidateTooMuchCollateral(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
+	genesis.State().BeginBatch()
+	assert.NoError(t, txQuit.Execute(genesis))
+	assert.NoError(t, genesis.State().AcceptTransaction(transaction2, genesis.Timestamp()))
+	genesis.State().Commit()
 
-	tx, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		common.Address{},
-		util.NewUint128FromUint(1000000001), 1,
-		core.TxOperationBecomeCandidate, []byte{},
-	)
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
-	assert.NoError(t, tx.SignThis(sig))
-
-	genesisState, err := genesisBlock.State().Clone()
-	assert.NoError(t, err)
-
-	genesisState.BeginBatch()
-	assert.Equal(t, core.ErrBalanceNotEnough, tx.ExecuteOnState(genesisState))
-}
-
-func TestQuitCandidacy(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
-	becomeTx, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		common.Address{},
-		util.NewUint128FromUint(10), 1,
-		core.TxOperationBecomeCandidate, []byte{},
-	)
-	quitTx, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		common.Address{},
-		util.NewUint128FromUint(0), 2,
-		core.TxOperationQuitCandidacy, []byte{},
-	)
-	assert.NoError(t, err)
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	sig.InitSign(distributed[dpos.DynastySize].PrivKey)
-	assert.NoError(t, becomeTx.SignThis(sig))
-	assert.NoError(t, quitTx.SignThis(sig))
-
-	genesisState, err := genesisBlock.State().Clone()
-	assert.NoError(t, err)
-
-	genesisState.BeginBatch()
-	assert.NoError(t, becomeTx.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(becomeTx, genesisBlock.Timestamp()))
-	assert.NoError(t, quitTx.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(quitTx, genesisBlock.Timestamp()))
-	genesisState.Commit()
-
-	acc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
+	acc, err = genesis.State().GetAccount(candidate.Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000)))
-	_, err = genesisState.GetCandidate(distributed[dpos.DynastySize].Addr)
-	assert.Equal(t, core.ErrNotFound, err)
+	_, err = genesis.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
+	assert.Equal(t,trie.ErrNotFound, err)
+
+
 }
 
 func TestVote(t *testing.T) {
-	genesisBlock, _, distributed := testutil.NewTestGenesisBlock(t, 21)
-	becomeTx, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize+1].Addr,
-		common.Address{},
-		util.NewUint128FromUint(10), 1,
-		core.TxOperationBecomeCandidate, []byte{},
-	)
+	genesis, _, distributed := testutil.NewTestGenesisBlock(t, testutil.DynastySize)
+	candidate := distributed[testutil.DynastySize]
+	voter := distributed[testutil.DynastySize+1]
+
+	transactionVest := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(voter.Addr).SetNonce(1).
+		SetValue(333).SetNonce(1).SetType(core.TxOperationVest).CalcHash().Sign(voter.PrivKey).Build()
+
+	newTxFunc := testutil.TxMap[transactionVest.Type()]
+	txVest, err := newTxFunc(transactionVest)
+	require.NoError(t, err)
+
+	transactionBecome := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(candidate.Addr).SetNonce(1).
+		SetType(dpos.TxOperationBecomeCandidate).SetValue(10).CalcHash().Sign(candidate.PrivKey).Build()
+
+	newTxFunc = testutil.TxMap[transactionBecome.Type()]
+	txBecome, err := newTxFunc(transactionBecome)
+	require.NoError(t, err)
+
+	transactionVote := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(voter.Addr).
+		SetNonce(2).SetTo(candidate.Addr).SetType(dpos.TxOperationVote).CalcHash().Sign(voter.PrivKey).Build()
+
+	newTxFunc = testutil.TxMap[transactionVote.Type()]
+	txVote, err := newTxFunc(transactionVote)
+	require.NoError(t, err)
+
+	genesis.State().BeginBatch()
+	assert.NoError(t, txBecome.Execute(genesis))
+	assert.NoError(t, genesis.State().AcceptTransaction(transactionBecome, genesis.Timestamp()))
+
+	assert.NoError(t, txVest.Execute(genesis))
+	assert.NoError(t, genesis.State().AcceptTransaction(transactionVest, genesis.Timestamp()))
+
+	assert.NoError(t, txVote.Execute(genesis))
+	assert.NoError(t, genesis.State().AcceptTransaction(transactionVote, genesis.Timestamp()))
+
+	genesis.State().Commit()
+
+	acc, err := genesis.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
-	voteTx, err := core.NewTransaction(
-		testutil.ChainID,
-		distributed[dpos.DynastySize].Addr,
-		distributed[dpos.DynastySize+1].Addr,
-		util.NewUint128FromUint(0), 1,
-		core.TxOperationVote, []byte{},
-	)
+	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
+
+	candidateBytes, err := genesis.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
 	assert.NoError(t, err)
 
-	votedSig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	votedSig.InitSign(distributed[dpos.DynastySize+1].PrivKey)
-	assert.NoError(t, becomeTx.SignThis(votedSig))
+	candidatePb := new(dpospb.Candidate)
+	proto.Unmarshal(candidateBytes, candidatePb)
 
-	voterSig, err := crypto.NewSignature(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	voterSig.InitSign(distributed[dpos.DynastySize].PrivKey)
-	assert.NoError(t, voteTx.SignThis(voterSig))
+	expectedVotePower, err := util.NewUint128FromUint(333).ToFixedSizeByteSlice()
+	require.NoError(t, err)
+	assert.Equal(t, candidatePb.VotePower, expectedVotePower)
 
-	genesisState, err := genesisBlock.State().Clone()
-	assert.NoError(t, err)
-
-	genesisState.BeginBatch()
-	assert.NoError(t, becomeTx.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(becomeTx, genesisBlock.Timestamp()))
-	assert.NoError(t, voteTx.ExecuteOnState(genesisState))
-	assert.NoError(t, genesisState.AcceptTransaction(voteTx, genesisBlock.Timestamp()))
-	genesisState.Commit()
-
-	voterAcc, err := genesisState.GetAccount(distributed[dpos.DynastySize].Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, distributed[dpos.DynastySize+1].Addr.Bytes(), voterAcc.Voted())
 }
 
 func TestAddCertification(t *testing.T) {

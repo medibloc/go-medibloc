@@ -38,7 +38,6 @@ const (
 
 // Error types of dpos package.
 var (
-	ErrNotFound           = errors.New("not found")
 	ErrAlreadyInCandidacy = errors.New("account is already a candidate")
 
 	ErrBlockMintedInNextSlot        = errors.New("cannot mint block now, there is a block minted in current slot")

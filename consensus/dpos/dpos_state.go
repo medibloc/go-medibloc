@@ -160,7 +160,8 @@ func findProposer(s core.DposState, timestamp int64) (common.Address, error) {
 	return addr, nil
 }
 
-func setDynastyState(ds *trie.Batch, dynasty []*common.Address) error {
+//SetDynastyState set dynasty state using dynasty slice
+func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) (error) {
 	for i, addr := range dynasty {
 		if err := ds.Put(byteutils.FromInt32(int32(i)), addr.Bytes()); err != nil {
 			return err
@@ -195,7 +196,8 @@ func checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
 	return curDynastyIndex > parentDynastyIndex
 }
 
-func (d *Dpos) makeMintBlockDynasty(ts int64, parent *core.Block) ([]*common.Address, error) {
+//MakeMintBlockDynasty returns dynasty slice for mint block
+func (d *Dpos) MakeMintBlockDynasty(ts int64, parent *core.Block) ([]*common.Address, error) {
 	if checkTransitionDynasty(parent.Timestamp(), ts) {
 		cs := parent.State().DposState().CandidateState()
 		sortedCandidates, err := SortByVotePower(cs)
@@ -210,7 +212,7 @@ func (d *Dpos) makeMintBlockDynasty(ts int64, parent *core.Block) ([]*common.Add
 
 func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
 	mintTs := nextMintSlot2(ts)
-	dynasty, err := d.makeMintBlockDynasty(mintTs, parent)
+	dynasty, err := d.MakeMintBlockDynasty(mintTs, parent)
 	if err != nil {
 		return common.Address{}, err
 	}
