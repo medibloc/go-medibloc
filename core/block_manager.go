@@ -399,7 +399,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 
 	downloadMsg := &corepb.DownloadParentBlock{
 		Hash: unlinkedBlock.Hash(),
-		Sign: unlinkedBlock.Signature(),
+		Sign: unlinkedBlock.Sign(),
 	}
 	bytes, err := proto.Marshal(downloadMsg)
 	if err != nil {
@@ -544,11 +544,11 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	if !byteutils.Equal(block.Signature(), pbDownloadParentBlock.Sign) {
+	if !byteutils.Equal(block.Sign(), pbDownloadParentBlock.Sign) {
 		logging.WithFields(logrus.Fields{
 			"download.hash": byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),
 			"download.sign": byteutils.Bytes2Hex(pbDownloadParentBlock.Sign),
-			"expect.sign":   byteutils.Bytes2Hex(block.Signature()),
+			"expect.sign":   byteutils.Bytes2Hex(block.Sign()),
 		}).Debug("Failed to check the block's signature.")
 		return
 	}

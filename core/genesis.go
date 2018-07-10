@@ -67,7 +67,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	genesisBlock := &Block{
 		BlockData: &BlockData{
-			header: &BlockHeader{
+			BlockHeader: &BlockHeader{
 				hash:       GenesisHash,
 				parentHash: GenesisHash,
 				chainID:    conf.Meta.ChainId,
@@ -163,10 +163,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		return nil, err
 	}
 
-	genesisBlock.header.accsRoot = genesisBlock.state.AccountsRoot()
-	genesisBlock.header.txsRoot = genesisBlock.state.TransactionsRoot()
-	genesisBlock.header.certificationRoot = genesisBlock.state.CertificationRoot()
-	genesisBlock.header.dposRoot, err = genesisBlock.state.DposState().RootBytes()
+	genesisBlock.accsRoot = genesisBlock.state.AccountsRoot()
+	genesisBlock.txsRoot = genesisBlock.state.TransactionsRoot()
+	genesisBlock.certificationRoot = genesisBlock.state.CertificationRoot()
+	genesisBlock.dposRoot, err = genesisBlock.state.DposState().RootBytes()
 	if err != nil {
 		return nil, err
 	}
