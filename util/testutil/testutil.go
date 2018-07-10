@@ -210,7 +210,7 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 	require.EqualValues(t, block.ParentHash(), parent.Hash())
 
 	parentBlockTime := time.Unix(parent.Timestamp(), 0)
-	err = block.SetTimestamp(parentBlockTime.Add(dpos.BlockInterval).Unix())
+	block.SetTimestamp(parentBlockTime.Add(dpos.BlockInterval).Unix())
 	require.NoError(t, err)
 
 	return block
@@ -250,7 +250,7 @@ func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 func NewTestBlockWithTimestamp(t *testing.T, parent *core.Block, ts time.Time) *core.Block {
 	block := getBlock(t, parent, "")
 	nextMintTs := nextMintSlot(ts).Unix()
-	require.NoError(t, block.SetTimestamp(nextMintTs))
+	block.SetTimestamp(nextMintTs)
 	//require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
 	require.NoError(t, block.Seal())
 
