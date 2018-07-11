@@ -303,3 +303,7 @@ func (bb *BlockBuilder) SetDynastyState() *BlockBuilder {
 
 	return n
 }
+
+func (bb *BlockBuilder) Expect() *Expect {
+	return NewExpect(bb.t, bb.Build())
+}
