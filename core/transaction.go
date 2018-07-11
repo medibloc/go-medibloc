@@ -99,44 +99,52 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 	return ErrCannotConvertTransaction
 }
 
-func (t *Transaction) Hash() []byte {
-	return t.hash
+func (tx *Transaction) Hash() []byte {
+	return tx.hash
 }
 
-func (t *Transaction) SetHash(hash []byte) {
-	t.hash = hash
+func (tx *Transaction) SetHash(hash []byte) {
+	tx.hash = hash
 }
 
-func (t *Transaction) From() common.Address {
-	return t.from
+func (tx *Transaction) From() common.Address {
+	return tx.from
 }
 
-func (t *Transaction) SetFrom(from common.Address) {
-	t.from = from
+func (tx *Transaction) SetFrom(from common.Address) {
+	tx.from = from
 }
 
-func (t *Transaction) To() common.Address {
-	return t.to
+func (tx *Transaction) To() common.Address {
+	return tx.to
 }
 
-func (t *Transaction) SetTo(to common.Address) {
-	t.to = to
+func (tx *Transaction) SetTo(to common.Address) {
+	tx.to = to
 }
 
-func (t *Transaction) Value() *util.Uint128 {
-	return t.value
+func (tx *Transaction) Value() *util.Uint128 {
+	return tx.value
 }
 
-func (t *Transaction) SetValue(value *util.Uint128) {
-	t.value = value
+func (tx *Transaction) SetValue(value *util.Uint128) {
+	tx.value = value
 }
 
-func (t *Transaction) Timestamp() int64 {
-	return t.timestamp
+func (tx *Transaction) Timestamp() int64 {
+	return tx.timestamp
 }
 
-func (t *Transaction) SetTimestamp(timestamp int64) {
-	t.timestamp = timestamp
+func (tx *Transaction) SetTimestamp(timestamp int64) {
+	tx.timestamp = timestamp
+}
+
+func (t *Transaction) Data() *corepb.Data {
+	return t.data
+}
+
+func (t *Transaction) SetData(data *corepb.Data) {
+	t.data = data
 }
 
 func (tx *Transaction) Type() string {
@@ -147,52 +155,52 @@ func (tx *Transaction) SetType(ttype string) {
 	tx.data.Type = ttype
 }
 
-func (t *Transaction) Payload() []byte {
-	return t.data.Payload
+func (tx *Transaction) Payload() []byte {
+	return tx.data.Payload
 }
 
-func (t *Transaction) SetPayload(payload []byte) {
-	t.data.Payload = payload
+func (tx *Transaction) SetPayload(payload []byte) {
+	tx.data.Payload = payload
 }
 
-func (t *Transaction) Nonce() uint64 {
-	return t.nonce
+func (tx *Transaction) Nonce() uint64 {
+	return tx.nonce
 }
 
-func (t *Transaction) SetNonce(nonce uint64) {
-	t.nonce = nonce
+func (tx *Transaction) SetNonce(nonce uint64) {
+	tx.nonce = nonce
 }
 
-func (t *Transaction) ChainID() uint32 {
-	return t.chainID
+func (tx *Transaction) ChainID() uint32 {
+	return tx.chainID
 }
 
-func (t *Transaction) SetChainID(chainID uint32) {
-	t.chainID = chainID
+func (tx *Transaction) SetChainID(chainID uint32) {
+	tx.chainID = chainID
 }
 
-func (t *Transaction) Alg() algorithm.Algorithm {
-	return t.alg
+func (tx *Transaction) Alg() algorithm.Algorithm {
+	return tx.alg
 }
 
-func (t *Transaction) SetAlg(alg algorithm.Algorithm) {
-	t.alg = alg
+func (tx *Transaction) SetAlg(alg algorithm.Algorithm) {
+	tx.alg = alg
 }
 
-func (t *Transaction) Sign() []byte {
-	return t.sign
+func (tx *Transaction) Sign() []byte {
+	return tx.sign
 }
 
-func (t *Transaction) SetSign(sign []byte) {
-	t.sign = sign
+func (tx *Transaction) SetSign(sign []byte) {
+	tx.sign = sign
 }
 
-func (t *Transaction) PayerSign() []byte {
-	return t.payerSign
+func (tx *Transaction) PayerSign() []byte {
+	return tx.payerSign
 }
 
-func (t *Transaction) SetPayerSign(payerSign []byte) {
-	t.payerSign = payerSign
+func (tx *Transaction) SetPayerSign(payerSign []byte) {
+	tx.payerSign = payerSign
 }
 
 // Transactions is just multiple txs
