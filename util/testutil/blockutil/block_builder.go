@@ -18,7 +18,6 @@ package blockutil
 import (
 	"testing"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/require"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/common"
@@ -26,31 +25,46 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"time"
 )
 
 type BlockBuilder struct {
 	t *testing.T
 	B *core.Block
 
-	Dynasties testutil.AddrKeyPairs
-	TokenDist testutil.AddrKeyPairs
+	dynastySize int
+	Dynasties   testutil.AddrKeyPairs
+	TokenDist   testutil.AddrKeyPairs
 }
 
-func New(t *testing.T) *BlockBuilder {
+func New(t *testing.T, dynastySize int) *BlockBuilder {
 	return &BlockBuilder{
-		t: t,
+		t:           t,
+		dynastySize: dynastySize,
 	}
 }
 
 func (bb *BlockBuilder) copy() *BlockBuilder {
-	v, err := copystructure.Copy(bb)
-	require.NoError(bb.t, err)
-	return v.(*BlockBuilder)
+	var b *core.Block
+	var err error
+
+	if bb.B != nil{
+		b, err = bb.B.Clone()
+		require.NoError(bb.t, err)
+	}
+	return &BlockBuilder{
+		t:           bb.t,
+		B:           b,
+		dynastySize: bb.dynastySize,
+		Dynasties:   bb.Dynasties,
+		TokenDist:   bb.TokenDist,
+	}
 }
 
-func (bb *BlockBuilder) Genesis(size int) *BlockBuilder {
+func (bb *BlockBuilder) Genesis() *BlockBuilder {
 	n := bb.copy()
-	genesis, dynasties, tokenDist := testutil.NewTestGenesisBlock(bb.t, size)
+	genesis, dynasties, tokenDist := testutil.NewTestGenesisBlock(bb.t, bb.dynastySize)
 	n.B = genesis
 	n.Dynasties = dynasties
 	n.TokenDist = tokenDist
@@ -89,14 +103,14 @@ func (bb *BlockBuilder) AccountRoot(root []byte) *BlockBuilder {
 }
 
 // TransactionRoot sets transaction root.
-func (bb *BlockBuilder) TransactionRoot(root []byte) *BlockBuilder{
+func (bb *BlockBuilder) TransactionRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetTxsRoot(root)
 	return n
 }
 
 // UsageRoot sets usage root.
-func (bb *BlockBuilder) UsageRoot(root []byte) *BlockBuilder{
+func (bb *BlockBuilder) UsageRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetUsageRoot(root)
 	return n
@@ -117,7 +131,7 @@ func (bb *BlockBuilder) CertificateRoot(root []byte) *BlockBuilder {
 }
 
 // DposRoot sets dpos root.
-func (bb *BlockBuilder) DposRoot(root []byte) *BlockBuilder{
+func (bb *BlockBuilder) DposRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetDposRoot(root)
 	return n
@@ -131,7 +145,7 @@ func (bb *BlockBuilder) ReservationQueueRoot(root []byte) *BlockBuilder {
 }
 
 // Coinbase sets coinbase.
-func (bb *BlockBuilder) Coinbase(addr common.Address) *BlockBuilder{
+func (bb *BlockBuilder) Coinbase(addr common.Address) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetCoinbase(addr)
 	return n
@@ -145,30 +159,36 @@ func (bb *BlockBuilder) Timestamp(ts int64) *BlockBuilder {
 }
 
 // ChainID sets chain ID.
-func (bb *BlockBuilder) ChainID(chainID uint32) *BlockBuilder{
+func (bb *BlockBuilder) ChainID(chainID uint32) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetChainID(chainID)
 	return n
 }
 
 // Alg sets crypto algorithm.
-func (bb *BlockBuilder) Alg(alg algorithm.Algorithm) *BlockBuilder{
+func (bb *BlockBuilder) Alg(alg algorithm.Algorithm) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetAlg(alg)
 	return n
 }
 
 // Sign sets signature.
-func (bb *BlockBuilder) Sign(sign []byte) *BlockBuilder{
+func (bb *BlockBuilder) Sign(sign []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetSign(sign)
 	return n
 }
 
 // Height sets block height.
-func (bb *BlockBuilder) Height(height uint64) *BlockBuilder{
+func (bb *BlockBuilder) Height(height uint64) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetHeight(height)
+	return n
+}
+
+func (bb *BlockBuilder) Sealed(sealed bool) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetSealed(sealed)
 	return n
 }
 
@@ -206,9 +226,30 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	err := n.B.Execute(tx, defaultTxMap)
-	require.NoError(bb.t, err)
+	require.NoError(n.t, err)
 	err = n.B.AcceptTransaction(tx)
-	require.NoError(bb.t, err)
+	require.NoError(n.t, err)
+	return n
+}
+
+func (bb *BlockBuilder) ExecuteErr(tx *core.Transaction, expected error) *BlockBuilder {
+	n := bb.copy()
+	err := n.B.Execute(tx, defaultTxMap)
+	if err != nil {
+		require.Equal(n.t, expected, err)
+		return n
+	}
+
+	err = n.B.AcceptTransaction(tx)
+	require.Equal(n.t, expected, err)
+	return n
+}
+
+func (bb *BlockBuilder) Seal() *BlockBuilder {
+	n := bb.copy()
+	t := bb.t
+	err := n.B.Seal()
+	require.NoError(t, err)
 	return n
 }
 
@@ -240,36 +281,25 @@ func (bb *BlockBuilder) BuildBytes() []byte {
 	return data
 }
 
-//func (bb *BlockBuilderOld) TransitionDynasty() *BlockBuilderOld {
-//	dposState, err := bb.parent.State().DposState().Clone()
-//	require.Nil(bb.t, err)
-//
-//	d := dpos.New()
-//	d.SetDynastySize(dynastySize)
-//	dynasty, err := d.MakeMintBlockDynasty(bb.Timestamp(), bb.parent)
-//	require.NoError(bb.t, err)
-//	dpos.SetDynastyState(dposState.DynastyState(), dynasty)
-//	require.NoError(bb.t, err)
-//	dposRoot, err := dposState.RootBytes()
-//	require.NoError(bb.t,err)
-//	bb.SetDposRoot(dposRoot)
-//
-//	return bb
-//}
-//// Sign generates and sets block's signature.
-//func (bb *BlockBuilderOld) SignKey(key signature.PrivateKey) *BlockBuilderOld {
-//	require.NotNil(bb.t, bb.pb.Header.Hash)
-//
-//	signer, err := crypto.NewSignature(defaultSignAlg)
-//	require.NoError(bb.t, err)
-//	signer.InitSign(key)
-//
-//	bb.pb.Header.Alg = uint32(signer.Algorithm())
-//
-//	sig, err := signer.Sign(bb.pb.Header.Hash)
-//	require.NoError(bb.t, err)
-//	bb.pb.Header.Sign = sig
-//
-//	return bb
-//}
+func (bb *BlockBuilder) Child() *BlockBuilder {
+	n := bb.copy()
+	n.B.SetTransactions(make([]*core.Transaction,0))
+	return n.ParentHash(bb.B.Hash()).
+	  Timestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix()).
+	  Height(bb.B.Height() + 1).
+		Sealed(false)
+}
 
+func (bb *BlockBuilder) SetDynastyState() *BlockBuilder {
+	n := bb.copy()
+	dposState := n.B.State().DposState()
+
+	d := dpos.New()
+	d.SetDynastySize(n.dynastySize)
+	dynasty, err := d.MakeMintDynasty(n.B.Timestamp(), n.B)
+	require.NoError(n.t, err)
+	dpos.SetDynastyState(dposState.DynastyState(), dynasty)
+	require.NoError(n.t, err)
+
+	return n
+}

@@ -211,6 +211,11 @@ func (tb *TxBuilder) Execute() *BlockBuilder {
 	return n.bb.ExecuteTx(n.tx)
 }
 
+func (tb *TxBuilder) ExecuteErr(err error) *BlockBuilder {
+	n := tb.copy()
+	return n.bb.ExecuteErr(n.tx, err)
+}
+
 func (tb *TxBuilder) Add() *BlockBuilder {
 	n := tb.copy()
 	return n.bb.AddTx(n.tx)

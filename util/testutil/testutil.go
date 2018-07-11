@@ -153,20 +153,10 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	conf, dynasties, distributed := NewTestGenesisConf(t, dynastySize)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesis, err = core.NewGenesisBlock(conf, NewTestConsensus(t), s)
+	genesis, err = core.NewGenesisBlock(conf, dpos.New(), s)
 	require.NoError(t, err)
 
 	return genesis, dynasties, distributed
-}
-
-// NewTestConsensus returns a consensus for tests.
-func NewTestConsensus(t *testing.T) core.Consensus {
-	cfg := medlet.DefaultConfig()
-	cfg.Chain.BlockCacheSize = 1
-	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	consensus := dpos.New()
-	return consensus
 }
 
 // NewBlockTestSet generates test block set from BlockID to parentBlockID index

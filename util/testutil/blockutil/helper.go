@@ -27,6 +27,7 @@ import (
 
 const (
 	defaultSignAlg = algorithm.SECP256K1
+	dynastySize = 3
 )
 
 var defaultTxMap = core.TxFactory{
