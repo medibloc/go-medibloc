@@ -264,6 +264,20 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlock
 }
 
+func (bd *BlockData) Clone() (*BlockData, error) {
+	protoBd, err := bd.ToProto()
+	if err != nil {
+		return nil, err
+	}
+
+	newBd := new(BlockData)
+	err = newBd.FromProto(protoBd)
+	if err != nil  {
+		return nil, err
+	}
+	return newBd, nil
+}
+
 // Height returns height
 func (bd *BlockData) Height() uint64 {
 	return bd.height
@@ -325,6 +339,11 @@ func (bd *BlockData) VerifyIntegrity() error {
 
 // ExecuteOnParentBlock returns Block object with state after block execution
 func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
+
+	if parent.Height()+1 != bd.Height() {
+		return nil, ErrInvalidBlockHeight
+	}
+
 	block, err := prepareExecution(bd, parent)
 	if err != nil {
 		return nil, err
@@ -408,19 +427,29 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 
 // prepareExecution by setting states and storage as those of parents
 func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
-	if parent.Height()+1 != bd.Height() {
-		return nil, ErrInvalidBlockHeight
-	}
-
-	block := &Block{
-		BlockData: bd,
-	}
-
-	var err error
-	if block.state, err = parent.state.Clone(); err != nil {
+	block, err := NewBlock(parent.ChainID(), bd.Coinbase(), parent)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("failed to make new block for prepareExcution")
 		return nil, err
 	}
-	block.storage = parent.storage
+
+	block.BlockData = bd
+
+	if err := block.BeginBatch(); err != nil {
+		return nil, err
+	}
+
+	if err := block.SetMintDposState(parent); err != nil {
+		block.RollBack()
+		return nil, err
+	}
+
+	if err := block.Commit(); err != nil {
+		return nil, err
+	}
+
 	return block, nil
 }
 
@@ -431,6 +460,10 @@ type Block struct {
 	state     *BlockState
 	consensus Consensus
 	sealed    bool
+}
+
+func (block *Block) Consensus() Consensus {
+	return block.consensus
 }
 
 // NewBlock initialize new block data
@@ -451,12 +484,33 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 			transactions: make(Transactions, 0),
 			height:       parent.height + 1,
 		},
-		storage: parent.storage,
-		state:   state,
-		sealed:  false,
+		storage:   parent.storage,
+		state:     state,
+		consensus: parent.consensus,
+		sealed:    false,
+	}
+	return block, nil
+}
+
+func (block *Block) Clone() (*Block,error) {
+
+	bd, err := block.BlockData.Clone()
+	if err != nil {
+		return nil , err
 	}
 
-	return block, nil
+	state, err := block.state.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Block{
+		BlockData: bd,
+		storage:   block.storage,
+		state:     state,
+		consensus: block.consensus,
+		sealed:    block.sealed,
+	}, nil
 }
 
 // State returns block state
@@ -470,8 +524,12 @@ func (block *Block) Storage() storage.Storage {
 }
 
 // Sealed returns sealed
-func (block *Block) Sealed() bool {
-	return block.sealed
+func (b *Block) Sealed() bool {
+	return b.sealed
+}
+
+func (b *Block) SetSealed(sealed bool) {
+	b.sealed = sealed
 }
 
 // Seal writes state root hashes and block hash in block header
@@ -639,7 +697,7 @@ func (block *Block) AcceptTransaction(tx *Transaction) error {
 // VerifyState verifies block states comparing with root hashes in header
 func (block *Block) VerifyState() error {
 	if !byteutils.Equal(block.state.AccountsRoot(), block.AccsRoot()) {
-		logging.WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"state":  byteutils.Bytes2Hex(block.state.AccountsRoot()),
 			"header": byteutils.Bytes2Hex(block.AccsRoot()),
 		}).Warn("Failed to verify accounts root.")
@@ -700,6 +758,11 @@ func (block *Block) SignThis(signer signature.Signature) error {
 	}
 
 	return block.BlockData.SignThis(signer)
+}
+
+func (block *Block) SetMintDposState(parent *Block) error {
+	d := block.consensus
+	return d.SetMintDynastyState(block.timestamp, parent, block)
 }
 
 // BeginBatch makes block state update possible

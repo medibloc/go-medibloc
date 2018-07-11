@@ -16,21 +16,13 @@
 package sync_test
 
 import (
-	"fmt"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/medlet"
-	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/sync"
 	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -42,85 +34,12 @@ var (
 	DOMAIN = "127.0.0.1"
 )
 
-type SyncTester struct {
-	config       *medletpb.Config
-	medService   net.Service
-	storage      storage.Storage
-	dynasties    testutil.AddrKeyPairs
-	blockManager sync.BlockManager
-	syncService  *sync.Service
-	eventEmitter *core.EventEmitter
-}
-
-func (st *SyncTester) TailHash() []byte {
-	return st.blockManager.TailBlock().Hash()
-}
-
-func (st *SyncTester) TailHeight() uint64 {
-	return st.blockManager.TailBlock().Height()
-}
-
 func removeRouteTableCache(t *testing.T) {
 	_, err := os.Stat("./data.db/routetable.cache")
 	if err == nil {
 		t.Log("remove routetable.cache")
 		os.Remove("./data.db/routetable.cache")
 	}
-}
-
-func NewSyncTester(t *testing.T, config *medletpb.Config, genesisConf *corepb.Genesis, dynasties testutil.AddrKeyPairs) *SyncTester {
-	removeRouteTableCache(t)
-	if len(config.Network.Listen) < 1 {
-		port := testutil.FindRandomListenPorts(1)
-		addr := fmt.Sprintf("%s:%s", DOMAIN, port[0])
-		config.Network.Listen = append(config.Network.Listen, addr)
-	}
-
-	ms, err := net.NewMedService(config)
-	require.Nil(t, err)
-
-	stor, err := storage.NewMemoryStorage()
-	require.Nil(t, err)
-
-	consensus := dpos.New()
-
-	bm, err := core.NewBlockManager(config)
-	require.Nil(t, err)
-	bm.Setup(genesisConf, stor, ms, consensus)
-
-	tm := core.NewTransactionManager(config)
-	require.NoError(t, err)
-
-	ee := core.NewEventEmitter(128)
-	bm.InjectEmitter(ee)
-	tm.InjectEmitter(ee)
-
-	consensus.Setup(config, genesisConf, bm, tm)
-
-	ss := sync.NewService(config.Sync)
-	ss.Setup(ms, bm)
-	bm.InjectSyncService(ss)
-
-	return &SyncTester{
-		config:       config,
-		medService:   ms,
-		storage:      stor,
-		dynasties:    dynasties,
-		blockManager: bm,
-		syncService:  ss,
-		eventEmitter: ee,
-	}
-}
-
-func (st *SyncTester) Start() {
-	st.medService.Start()
-	st.syncService.Start()
-	st.eventEmitter.Start()
-	st.blockManager.Start()
-}
-
-func (st *SyncTester) NodeID() string {
-	return st.medService.Node().ID()
 }
 
 func TestService_Start(t *testing.T) {
@@ -130,17 +49,15 @@ func TestService_Start(t *testing.T) {
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
-	//create First Tester(Seed Node)
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.NewBlockBuliderWithParent(t, tail)
-		minerKeyPair := testNetwork.FindProposer(bb.Timestamp(), tail)
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
 
-		bb.TransitionDynasty().SetCoinbase(minerKeyPair.Addr).CalcHash().Sign(minerKeyPair.PrivKey)
-		bd := bb.Build()
-		require.NoError(t,seed.Med.BlockManager().PushBlockData(bd))
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
 
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
@@ -173,6 +90,7 @@ func TestService_Start(t *testing.T) {
 
 		time.Sleep(100 * time.Millisecond)
 	}
+	t.Logf("reciever Tail: %v floor, %v", receiver.Tail().Height(), receiver.Tail().Hash())
 	require.True(t, int(receiver.Tail().Height()) > nBlocks-chunkSize)
 	for i := uint64(1); i <= receiver.Tail().Height(); i++ {
 		seedTesterBlock, seedErr := seed.Med.BlockManager().BlockByHeight(i)
@@ -193,90 +111,92 @@ func TestForkResistance(t *testing.T) {
 		chunkSize = 20
 	)
 
-	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
-	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
-	seedTester.Start()
-	t.Log("seedTesterID", seedTester.NodeID())
+	testNetwork := testutil.NewNetwork(t, 3)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
 
-	//Generate config include seed addresses
-	seedMultiAddr := convertIpv4ListensToMultiAddrSeeds(seedTester.config.Network.Listen, seedTester.NodeID())
-
-	//create testers has correct blockchain(Synced with first Tester)
-	majorTesters := make([]*SyncTester, nMajors-1)
+	majorNodes := make([]*testutil.Node, nMajors-1)
 	for i := 0; i < nMajors-1; i++ {
-		conf := DefaultSyncTesterConfig()
-		conf.Network.Seed = seedMultiAddr
-		conf.Sync.DownloadChunkSize = uint64(chunkSize)
-
-		majorTesters[i] = NewSyncTester(t, conf, genesisConf, dynasties)
-		t.Logf("major #%v listen:%v", i, majorTesters[i].config.Network.Listen)
-		majorTesters[i].Start()
+		majorNodes[i] = testNetwork.NewNode()
+		majorNodes[i].Start()
 	}
 
 	//Generate blocks and push to seed tester and major tester
+
 	for i := 1; i < nBlocks; i++ {
-		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
-		seedTester.blockManager.PushBlockData(b.GetBlockData())
-		for _, st := range majorTesters {
-			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
+		tail := seed.Tail()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
+
+		for _, n := range majorNodes {
+			require.NoError(t, n.Med.BlockManager().PushBlockData(mint.BlockData))
 		}
 	}
 
-	t.Logf("SeedTester Tail: %v floor, %v", seedTester.TailHeight(), seedTester.TailHash())
-	for i, st := range majorTesters {
-		t.Logf("MajorTester #%v Tail: %v floor, %v", i, st.TailHeight(), st.TailHash())
-		require.Equal(t, seedTester.TailHeight(), st.TailHeight())
-		require.Equal(t, seedTester.TailHash(), st.TailHash())
+	t.Logf("SeedTester Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash(), )
+	for i, n := range majorNodes {
+		t.Logf("MajorNode #%v Tail: %v floor, %v", i, n.Tail().Height(), n.Tail().Hash())
+		require.Equal(t, seed.Tail().Height(), n.Tail().Height())
+		require.Equal(t, seed.Tail().Hash(), n.Tail().Hash())
 	}
 
 	// create testers has forked blockchain
 	nMinors := nMajors - 1
-	minorTesters := make([]*SyncTester, nMinors)
+	minorNodes := make([]*testutil.Node, nMinors)
 	for i := 0; i < nMinors; i++ {
-		conf := DefaultSyncTesterConfig()
-		conf.Network.Seed = seedMultiAddr
-		conf.Sync.DownloadChunkSize = uint64(chunkSize)
-		minorTesters[i] = NewSyncTester(t, conf, genesisConf, dynasties)
-		t.Logf("minor #%v listen:%v", i, minorTesters[i].config.Network.Listen)
-		minorTesters[i].Start()
+		minorNodes[i] = testNetwork.NewNode()
+		minorNodes[i].Start()
+	}
+
+	bb := blockutil.New(t, testNetwork.DynastySize).Block(minorNodes[0].Tail()).Child()
+	bb = bb.Timestamp(bb.B.Timestamp() + int64(dpos.BlockInterval.Seconds())).SetDynastyState()
+	minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), minorNodes[0].Tail())
+	mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+
+	for _, n := range minorNodes {
+		require.NoError(t, n.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
 
 	//Generate diff blocks and push to minor tester
-	for i := 1; i < nBlocks; i++ {
-		b := testutil.NewTestBlock(t, minorTesters[0].blockManager.TailBlock())
-		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
+	for i := 2; i < nBlocks; i++ {
+		tail := minorNodes[0].Tail()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
 
-		for _, st := range minorTesters {
-			st.blockManager.PushBlockData(copyBlockData(t, b.BlockData))
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+
+		for _, n := range minorNodes {
+			require.NoError(t, n.Med.BlockManager().PushBlockData(mint.BlockData))
 		}
 	}
 
-	for i, st := range minorTesters {
-		t.Logf("MinorTester #%v Tail: %v floor, %v", i, st.TailHeight(), st.TailHash())
-		require.Equal(t, minorTesters[0].TailHeight(), st.TailHeight())
-		require.Equal(t, minorTesters[0].TailHash(), st.TailHash())
+	for i, n := range minorNodes {
+		t.Logf("MinorNode #%v Tail: %v floor, %v", i, n.Tail().Height(), n.Tail().Hash())
+		require.Equal(t, minorNodes[0].Tail().Height(), n.Tail().Height())
+		require.Equal(t, minorNodes[0].Tail().Hash(), n.Tail().Hash())
 	}
 
-	conf := DefaultSyncTesterConfig()
-	conf.Network.Seed = seedMultiAddr
-	conf.Sync.DownloadChunkSize = uint64(chunkSize)
-	conf.Sync.MinimumPeers = uint32(nMajors)
+	cfg := testutil.NewConfig(t)
+	cfg.Config.Sync.DownloadChunkCacheSize = uint64(chunkSize)
+	newbie := testNetwork.NewNodeWithConfig(cfg)
 
-	newbieTester := NewSyncTester(t, conf, genesisConf, dynasties)
-	newbieTester.Start()
+	newbie.Start()
 
-	newbieTester.syncService.ActiveDownload()
+	testNetwork.WaitForEstablished()
+
+	newbie.Med.SyncService().ActiveDownload()
 
 	count := 0
 	prevSize := uint64(0)
 	for {
-		if !newbieTester.syncService.IsDownloadActivated() {
+		if !newbie.Med.SyncService().IsDownloadActivated() {
 			break
 		}
 
-		curSize := newbieTester.TailHeight()
+		curSize := newbie.Tail().Height()
 		if curSize == prevSize {
 			count++
 		} else {
@@ -291,13 +211,13 @@ func TestForkResistance(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	newTail := newbieTester.blockManager.TailBlock()
+	newTail := newbie.Tail()
 	t.Logf("Height(%v) block of newbie tester	: %v", newTail.Height(), newTail.Hash())
-	t.Logf("Height(%v) block of seed tester	  : %v", newTail.Height(), seedTester.TailHash())
+	t.Logf("Height(%v) block of seed tester	  : %v", newTail.Height(), seed.Tail().Hash())
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		seedTesterBlock, seedErr := seedTester.blockManager.BlockByHeight(i)
+		seedTesterBlock, seedErr := seed.Med.BlockManager().BlockByHeight(i)
 		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
-		newbieTesterBlock, receiveErr := newbieTester.blockManager.BlockByHeight(i)
+		newbieTesterBlock, receiveErr := newbie.Med.BlockManager().BlockByHeight(i)
 		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
 
 		require.Equal(t, seedTesterBlock.Hash(), newbieTesterBlock.Hash())
@@ -310,59 +230,49 @@ func TestForAutoActivation(t *testing.T) {
 		nBlocks              = 119
 		chunkSize            = 20
 		syncActivationHeight = uint64(40)
-		nBackward            = 2
+		//nBackward            = 2
 	)
 
-	//create seed
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
-	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
-	seedTester.Start()
+	testNetwork := testutil.NewNetwork(t, 3)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
 
-	// generate and push 2nd block on seedTester
-	secondBlockTime := time.Now().Add(time.Duration(-1*(nBlocks-nBackward)) * dpos.BlockInterval)
-	b := testutil.NewTestBlockWithTimestamp(t, seedTester.blockManager.TailBlock(), secondBlockTime)
-	testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
-	seedTester.blockManager.PushBlockData(b.GetBlockData())
-	require.Equal(t, 2, int(seedTester.TailHeight()))
+	// generate blocks (height:2~nBlocks-1) on seedTester
+	for i := 1; i < nBlocks-1; i++ {
+		tail := seed.Tail()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
 
-	// generate blocks (height:3~nBlocks-1) on seedTester
-	for i := 2; i < nBlocks-1; i++ {
-		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
-		seedTester.blockManager.PushBlockData(b.GetBlockData())
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
-	require.Equal(t, nBlocks-1, int(seedTester.TailHeight()))
+	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
 
-	//create receiver
-	conf := DefaultSyncTesterConfig()
-	seedMultiAddr := convertIpv4ListensToMultiAddrSeeds(seedTester.config.Network.Listen, seedTester.NodeID())
-	conf.Network.Seed = seedMultiAddr
-	conf.Sync.DownloadChunkSize = uint64(chunkSize)
-	conf.Sync.SyncActivationHeight = syncActivationHeight
-	receiveTester := NewSyncTester(t, conf, genesisConf, dynasties)
-	receiveTester.Start()
+	cfg := testutil.NewConfig(t)
+	cfg.Config.Sync.SyncActivationHeight = syncActivationHeight
+	receiver := testNetwork.NewNodeWithConfig(cfg)
+	receiver.Start()
 
-	t.Logf("Receiver PID: %v", receiveTester.medService.Node().ID())
+	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
+	bb := blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).Child().Timestamp(nextMintTs).SetDynastyState()
+	minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), seed.Tail())
+	mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 
-	tail := testutil.NewTestBlockWithTimestamp(t, seedTester.blockManager.TailBlock(), time.Now())
-	testutil.SignBlockUsingDynasties(t, tail, seedTester.dynasties)
-	seedTester.blockManager.PushBlockData(tail.GetBlockData())
-
-	t.Logf("tail ts: %v, now: %v, sleep:%v", tail.Timestamp(), time.Now(), time.Unix(tail.Timestamp(), 0).Sub(time.Now()))
-	time.Sleep(time.Unix(tail.Timestamp(), 0).Sub(time.Now()))
+	time.Sleep(time.Unix(mint.Timestamp(), 0).Sub(time.Now()))
 
 	count := 0
 	for {
-		seedTester.blockManager.BroadCast(seedTester.blockManager.TailBlock().GetBlockData())
-		if receiveTester.syncService.IsDownloadActivated() {
+		seed.Med.BlockManager().BroadCast(seed.Tail().BlockData)
+		if receiver.Med.SyncService().IsDownloadActivated() {
 			t.Logf("Broadcast try count: %v", count+1)
 			t.Log("Success to activate sync automatically")
 			break
 		}
 
 		if count > 100 {
-			require.NotEqual(t, 0, seedTester.medService.Node().EstablishedPeersCount(), "Handshake failed")
-			require.True(t, receiveTester.syncService.IsDownloadActivated(), "Failed to activate sync automatically")
+			require.NotEqual(t, 0, seed.Med.NetService().Node().EstablishedPeersCount(), "Handshake failed")
+			require.True(t, receiver.Med.SyncService().IsDownloadActivated(), "Failed to activate sync automatically")
 			require.False(t, true, "Unexpected timeout")
 		}
 
@@ -373,12 +283,11 @@ func TestForAutoActivation(t *testing.T) {
 	count = 0
 	prevSize := uint64(0)
 	for {
-		if !receiveTester.syncService.IsDownloadActivated() {
-			t.Log("Sync service is unactivated")
+		curSize := receiver.Tail().Height()
+		if !receiver.Med.SyncService().IsDownloadActivated() {
+			t.Logf("Sync service is unactivated (height:%v)", curSize)
 			break
 		}
-
-		curSize := receiveTester.TailHeight()
 		if curSize == prevSize {
 			count++
 		} else {
@@ -393,28 +302,30 @@ func TestForAutoActivation(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	newTail := receiveTester.blockManager.TailBlock()
+	newTail := receiver.Tail()
 
-	t.Logf("Height(%v) block of Seed Node	    (after sync): %v", seedTester.TailHeight(), byteutils.Bytes2Hex(seedTester.TailHash()))
+	t.Logf("Height(%v) block of Seed Node	    (after sync): %v", seed.Tail().Height(), byteutils.Bytes2Hex(seed.Tail().Hash()))
 	t.Logf("Height(%v) block of Reciever Node	(after sync): %v", newTail.Height(), byteutils.Bytes2Hex(newTail.Hash()))
 
-	require.True(t, newTail.Height() <= tail.Height(), "Receiver height is too high")
+	require.True(t, newTail.Height() <= seed.Tail().Height(), "Receiver height is too high")
 	require.True(t, int(newTail.Height()) > nBlocks-chunkSize, "Receiver height is too low")
 
-	tail = testutil.NewTestBlockWithTimestamp(t, seedTester.blockManager.TailBlock(), time.Now())
-	testutil.SignBlockUsingDynasties(t, tail, seedTester.dynasties)
-	seedTester.blockManager.PushBlockData(tail.GetBlockData())
-	time.Sleep(time.Unix(tail.Timestamp(), 0).Sub(time.Now()))
-	seedTester.blockManager.BroadCast(seedTester.blockManager.TailBlock().GetBlockData())
+	nextMintTs = dpos.NextMintSlot2(time.Now().Unix())
+	bb = blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).Child().Timestamp(nextMintTs).SetDynastyState()
+	minerKeyPair = testNetwork.FindProposer(bb.B.Timestamp(), seed.Tail())
+	mint = bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
+	time.Sleep(time.Unix(mint.Timestamp(), 0).Sub(time.Now()))
+	seed.Med.BlockManager().BroadCast(mint.BlockData)
 
 	count = 0
-	prevSize = receiveTester.TailHeight()
+	prevSize = receiver.Tail().Height()
 	for {
-		if receiveTester.TailHeight() == seedTester.TailHeight() {
+		if receiver.Tail().Height() == seed.Tail().Height() {
 			break
 		}
 
-		curSize := receiveTester.TailHeight()
+		curSize := receiver.Tail().Height()
 		if curSize == prevSize {
 			count++
 		} else {
@@ -429,17 +340,17 @@ func TestForAutoActivation(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	newTail = receiveTester.blockManager.TailBlock()
-	t.Logf("Height(%v) block of Seed Node	    (after next mintblock): %v", seedTester.TailHeight(), byteutils.Bytes2Hex(seedTester.TailHash()))
+	newTail = receiver.Tail()
+	t.Logf("Height(%v) block of Seed Node	    (after next mintblock): %v", seed.Tail().Height(), byteutils.Bytes2Hex(seed.Tail().Hash()))
 	t.Logf("Height(%v) block of Reciever Node	(after next mintblock): %v", newTail.Height(), byteutils.Bytes2Hex(newTail.Hash()))
 
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		seedTesterBlock, seedErr := seedTester.blockManager.BlockByHeight(i)
+		seedNodeBlock, seedErr := seed.Med.BlockManager().BlockByHeight(i)
 		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
-		receiveTesterBlock, receiveErr := receiveTester.blockManager.BlockByHeight(i)
+		receiveNodeBlock, receiveErr := receiver.Med.BlockManager().BlockByHeight(i)
 		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
 
-		require.Equal(t, seedTesterBlock.Hash(), receiveTesterBlock.Hash())
+		require.Equal(t, seedNodeBlock.Hash(), receiveNodeBlock.Hash())
 	}
 }
 
@@ -449,31 +360,35 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 		chunkSize = 2
 	)
 
-	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
-	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
-	seedTester.Start()
-	//seedTester.syncService.Stop()
+	testNetwork := testutil.NewNetwork(t, 3)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	seedingMinChunkSize := seed.Config.Config.Sync.SeedingMinChunkSize
+	seedingMaxChunkSize := seed.Config.Config.Sync.SeedingMaxChunkSize
+
 	for i := 1; i < nBlocks; i++ {
-		b := testutil.NewTestBlock(t, seedTester.blockManager.TailBlock())
-		testutil.SignBlockUsingDynasties(t, b, seedTester.dynasties)
-		seedTester.blockManager.PushBlockData(b.GetBlockData())
+		tail := seed.Tail()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
-	require.Equal(t, uint64(nBlocks), seedTester.TailHeight())
-	t.Logf("Seed Tail: %v floor, %v", seedTester.TailHeight(), seedTester.TailHash())
+
+	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
+	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
 
 	//create First Receiver
-	conf := DefaultSyncTesterConfig()
-	seedMultiAddr := convertIpv4ListensToMultiAddrSeeds(seedTester.config.Network.Listen, seedTester.NodeID())
-	conf.Network.Seed = seedMultiAddr
-	conf.Sync.DownloadChunkSize = uint64(chunkSize)
-	receiveTester := NewSyncTester(t, conf, genesisConf, dynasties)
-	receiveTester.Start()
+
+	cfg := testutil.NewConfig(t)
+	cfg.Config.Sync.DownloadChunkSize = uint64(chunkSize)
+	receiver := testNetwork.NewNode()
+	receiver.Start()
 
 	count := 0
 	for {
-		//if !seedTester.syncService.IsSeedActivated() && receiveTester.medService.Node().EstablishedPeersCount() > 0 {
-		if receiveTester.medService.Node().EstablishedPeersCount() > 0 {
+		if receiver.Med.NetService().Node().EstablishedPeersCount() > 0 {
 			t.Logf("Connection complete")
 			break
 		}
@@ -485,158 +400,123 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 	// Error on wrong height
 	mq := new(syncpb.MetaQuery)
 	mq.From = uint64(nBlocks + 1)
-	mq.Hash = receiveTester.TailHash()
+	mq.Hash = receiver.Tail().Hash()
 	mq.ChunkSize = 10
 
 	sendData, err := proto.Marshal(mq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	// Error on wrong hash
 	mq = new(syncpb.MetaQuery)
 	mq.From = uint64(nBlocks)
-	mq.Hash = receiveTester.TailHash()
+	mq.Hash = receiver.Tail().Hash()
 	mq.ChunkSize = 10
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	// Error on chunksize check
 	mq = new(syncpb.MetaQuery)
-	mq.From = receiveTester.TailHeight()
-	mq.Hash = receiveTester.TailHash()
-	mq.ChunkSize = DefaultSyncTesterConfig().Sync.SeedingMaxChunkSize + 1
+	mq.From = receiver.Tail().Height()
+	mq.Hash = receiver.Tail().Hash()
+	mq.ChunkSize = seedingMaxChunkSize + 1
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	mq = new(syncpb.MetaQuery)
-	mq.From = receiveTester.TailHeight()
-	mq.Hash = receiveTester.TailHash()
-	mq.ChunkSize = DefaultSyncTesterConfig().Sync.SeedingMinChunkSize - 1
+	mq.From = receiver.Tail().Height()
+	mq.Hash = receiver.Tail().Hash()
+	mq.ChunkSize = seedingMinChunkSize - 1
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	// Too close to make one chunk
 	mq = new(syncpb.MetaQuery)
 	mq.From = uint64(1)
-	mq.Hash = receiveTester.TailHash()
-	mq.ChunkSize = uint64(seedTester.TailHeight() + 1)
+	mq.Hash = receiver.Tail().Hash()
+	mq.ChunkSize = uint64(seed.Tail().Height() + 1)
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	cq := new(syncpb.BlockChunkQuery)
-	cq.From = receiveTester.TailHeight()
-	cq.ChunkSize = uint64(DefaultSyncTesterConfig().Sync.SeedingMaxChunkSize + 1)
+	cq.From = receiver.Tail().Height()
+	cq.ChunkSize = seedingMaxChunkSize + 1
 
 	sendData, err = proto.Marshal(cq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeer(net.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seedTester.NodeID())
+	receiver.Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID())
 
 	// From + chunk size > tail height
 	cq = new(syncpb.BlockChunkQuery)
 	cq.From = uint64(1)
-	cq.ChunkSize = uint64(seedTester.TailHeight() + 1)
+	cq.ChunkSize = uint64(seed.Tail().Height() + 1)
 
 	sendData, err = proto.Marshal(cq)
 	require.NoError(t, err)
-	receiveTester.medService.SendMessageToPeer(net.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seedTester.NodeID())
+	receiver.Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID())
 
 	time.Sleep(3 * time.Second)
-	require.True(t, seedTester.syncService.IsSeedActivated(), "SeedTester is shutdown")
+	require.True(t, seed.Med.SyncService().IsSeedActivated(), "SeedTester is shutdown")
 }
 func TestForUnmarshalFailedMsg(t *testing.T) {
 
 	//create First Tester(Seed Node)
-	genesisConf, dynasties, _ := testutil.NewTestGenesisConf(t, 21)
-	seedTester := NewSyncTester(t, DefaultSyncTesterConfig(), genesisConf, dynasties)
-	seedTester.Start()
-	seedMultiAddr := convertIpv4ListensToMultiAddrSeeds(seedTester.config.Network.Listen, seedTester.NodeID())
-	//seedTester.syncService.Stop()
+	testNetwork := testutil.NewNetwork(t, 3)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
 
 	//create Abuse Tester
 	nTesters := 4
-	abuseTesters := make([]*SyncTester, nTesters)
+	abuseNodes := make([]*testutil.Node, nTesters)
 	for i := 0; i < nTesters; i++ {
-		conf := DefaultSyncTesterConfig()
-		conf.Network.Seed = seedMultiAddr
-		abuseTesters[i] = NewSyncTester(t, conf, genesisConf, dynasties)
-		t.Logf("Tester #%v listen:%v", i, abuseTesters[i].config.Network.Listen)
-		abuseTesters[i].Start()
+		abuseNodes[i] = testNetwork.NewNode()
+		t.Logf("Tester #%v listen:%v", i, abuseNodes[i].Config.Config.Network.Listen)
+		abuseNodes[i].Start()
 	}
 
-	count := 0
-	for {
-		nPeers := seedTester.medService.Node().EstablishedPeersCount()
-		if nPeers == int32(nTesters) {
-			t.Logf("Connection complete.(Connected Node: %v)", nPeers)
-			break
-		}
-		require.True(t, count < 100, "Timeout to connect nodes")
-		count++
-		time.Sleep(100 * time.Millisecond)
-	}
+	testNetwork.WaitForEstablished()
+
+	seedID := seed.Med.NetService().Node().ID()
 
 	// Error on unmarshal
 	dummyData := []byte{72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100}
-	abuseTesters[0].medService.SendMessageToPeer(net.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedTester.NodeID())
-	abuseTesters[1].medService.SendMessageToPeer(net.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedTester.NodeID())
+	abuseNodes[0].Med.NetService().SendMessageToPeer(net.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedID)
+	abuseNodes[1].Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedID)
 
-	seedTester.syncService.ActiveDownload()
-	abuseTesters[2].medService.SendMessageToPeer(net.SyncMeta, dummyData, net.MessagePriorityLow, seedTester.NodeID())
-	abuseTesters[3].medService.SendMessageToPeer(net.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedTester.NodeID())
+	seed.Med.SyncService().ActiveDownload()
+	abuseNodes[2].Med.NetService().SendMessageToPeer(net.SyncMeta, dummyData, net.MessagePriorityLow, seedID)
+	abuseNodes[3].Med.NetService().SendMessageToPeer(net.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedID)
 
-	count = 0
+	count := 0
 	for {
-		nPeers := seedTester.medService.Node().EstablishedPeersCount()
-		if seedTester.medService.Node().EstablishedPeersCount() == int32(0) {
+		nPeers := seed.Med.NetService().Node().EstablishedPeersCount()
+		if nPeers == int32(0) {
 			t.Logf("Disconnection complete.(Connected Node: %v)", nPeers)
 			break
 		}
-		require.Truef(t, count < 100, "Timeout(Connected nNode: %v)", seedTester.medService.Node().EstablishedPeersCount())
+		require.Truef(t, count < 100, "Timeout(Connected nNode: %v)", nPeers)
 		count++
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func DefaultSyncTesterConfig() *medletpb.Config {
-	cfg := medlet.DefaultConfig()
-	cfg.Network.Listen = nil
-	cfg.Network.RouteTableSyncLoopInterval = 2000
-	cfg.Chain.BlockCacheSize = 1
-	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	cfg.Sync.SeedingMinChunkSize = 2
-	cfg.Sync.SeedingMaxChunkSize = 100
-	cfg.Sync.DownloadChunkCacheSize = 2
-	return cfg
-}
-
-func convertIpv4ListensToMultiAddrSeeds(ipv4s []string, nodeID string) (multiAddrs []string) {
-	for _, ipv4 := range ipv4s {
-		splitIpv4 := strings.Split(ipv4, ":")
-		mAddr := fmt.Sprintf(fmt.Sprintf(
-			"/ip4/%v/tcp/%v/ipfs/%s",
-			splitIpv4[0],
-			splitIpv4[1],
-			nodeID,
-		))
-		multiAddrs = append(multiAddrs, mAddr)
-	}
-
-	return multiAddrs
-}
-
-func copyBlockData(t *testing.T, origin *core.BlockData) *core.BlockData {
-	pbBlock, err := origin.ToProto()
-	require.Nil(t, err)
-	copiedBlockData := new(core.BlockData)
-	copiedBlockData.FromProto(pbBlock)
-	return copiedBlockData
-}
+//func DefaultSyncTesterConfig() *medletpb.Config {
+//	cfg := medlet.DefaultConfig()
+//	cfg.Network.Listen = nil
+//	cfg.Network.RouteTableSyncLoopInterval = 2000
+//	cfg.Chain.BlockCacheSize = 1
+//	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+//	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
+//	cfg.Sync.SeedingMinChunkSize = 2
+//	cfg.Sync.SeedingMaxChunkSize = 100
+//	cfg.Sync.DownloadChunkCacheSize = 2
+//	return cfg
+//}

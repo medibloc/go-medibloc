@@ -41,13 +41,10 @@ var (
 	ErrAlreadyInCandidacy = errors.New("account is already a candidate")
 
 	ErrBlockMintedInNextSlot        = errors.New("cannot mint block now, there is a block minted in current slot")
-	ErrFoundNilProposer             = errors.New("found a nil proposer")
 	ErrInvalidBlockForgeTime        = errors.New("invalid time to forge block")
 	ErrInvalidBlockInterval         = errors.New("invalid block interval")
 	ErrInvalidBlockProposer         = errors.New("invalid block proposer")
 	ErrInvalidDynastySize           = errors.New("invalid dynasty size")
-	ErrInvalidProtoToConsensusState = errors.New("protobuf message cannot be converted into ConsensusState")
-	ErrOutOfDynastyTimestamp        = errors.New("out of dynasty timestamp")
 	ErrVoteDuplicate                = errors.New("cannot vote already voted account")
 	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
 )

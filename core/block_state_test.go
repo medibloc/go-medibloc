@@ -28,6 +28,9 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/stretchr/testify/require"
+	"github.com/medibloc/go-medibloc/util/testutil/txutil"
 )
 
 func TestUpdateUsage(t *testing.T) {
@@ -53,19 +56,19 @@ func TestUpdateUsage(t *testing.T) {
 		from    common.Address
 		privKey signature.PrivateKey
 		to      common.Address
-		amount  *util.Uint128
+		amount  uint64
 	}{
 		{
 			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
 			privKeys[0],
 			common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
-			util.NewUint128FromUint(10),
+			10,
 		},
 		{
 			common.HexToAddress("03528fa3684218f32c9fd7726a2839cff3ddef49d89bf4904af11bc12335f7c939"),
 			privKeys[0],
 			common.HexToAddress("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e21"),
-			util.NewUint128FromUint(10),
+			10,
 		},
 	}
 
@@ -76,6 +79,9 @@ func TestUpdateUsage(t *testing.T) {
 	blockState.BeginBatch()
 
 	for i, c := range cases {
+		transaction := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(c.from).SetTo(c.to).SetValue(c.amount).
+			SetType(core.TxOperationSend).SetNonce(1)
+
 		txs[i], err = core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)
 
@@ -85,6 +91,9 @@ func TestUpdateUsage(t *testing.T) {
 		assert.NoError(t, txs[i].SignThis(signers[i]))
 
 		blockState.ExecuteTx(txs[i])
+
+
+
 		blockState.AcceptTransaction(txs[i], newBlock.Timestamp())
 	}
 	blockState.Commit()
@@ -171,19 +180,9 @@ func TestDynastyState(t *testing.T) {
 		expected = append(expected, &dynasty.Addr)
 	}
 
-	actual, err := genesis.State().Dynasty()
+	actual, err := dpos.DynastyStateToDynasty(genesis.State().DposState().DynastyState())
 	assert.NoError(t, err)
 	assert.True(t, equalSlice(expected, actual))
-}
-
-func TestAddCandidate(t *testing.T) {
-	genesis, dynasty, distributed := testutil.NewTestGenesisBlock(t, 21)
-
-	genesis.State().BeginBatch()
-	assert.NoError(t, genesis.State().AddCandidate(distributed[len(dynasty)].Addr, util.NewUint128FromUint(1000)))
-	_, err := genesis.State().GetCandidate(distributed[len(dynasty)].Addr)
-	assert.NoError(t, err)
-	genesis.State().Commit()
 }
 
 func TestCloneGenesisState(t *testing.T) {
@@ -197,13 +196,12 @@ func TestCloneGenesisState(t *testing.T) {
 	assert.Equal(t, st.UsageRoot(), cl.UsageRoot())
 	assert.Equal(t, st.RecordsRoot(), cl.RecordsRoot())
 
-	stCs, err := st.ConsensusRoot()
+	stDs, err := st.DposState().RootBytes()
 	assert.NoError(t, err)
-	clCs, err := cl.ConsensusRoot()
+	clDs, err := cl.DposState().RootBytes()
 	assert.NoError(t, err)
-	assert.Equal(t, stCs, clCs)
+	assert.Equal(t, stDs, clDs)
 
-	assert.Equal(t, st.CandidacyRoot(), cl.CandidacyRoot())
 	assert.Equal(t, st.ReservationQueueHash(), cl.ReservationQueueHash())
 }
 

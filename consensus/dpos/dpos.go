@@ -155,7 +155,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	cur := tail
 	confirmed := make(map[string]bool)
 	ds := tail.State().DposState().DynastyState()
-	members, err := dynastyStateToDynasty(ds)
+	members, err := DynastyStateToDynasty(ds)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":  err,
@@ -171,7 +171,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			dynastyGen = gen
 			confirmed = make(map[string]bool)
 			ds := cur.State().DposState().DynastyState()
-			members, err = dynastyStateToDynasty(ds)
+			members, err = DynastyStateToDynasty(ds)
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"block": cur,
@@ -307,7 +307,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"lastSlot": lastMintSlot(now),
-			"nextSlot": nextMintSlot2(now.Unix()),
+			"nextSlot": NextMintSlot2(now.Unix()),
 			"now":      now,
 			"err":      err,
 		}).Debug("It's not time to mint.")
@@ -387,7 +387,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 }
 
 func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, error) {
-	block, err := core.NewBlock(d.bm.ChainID(), d.miner, tail)
+	block, err := core.NewBlock(tail.ChainID(), d.miner, tail)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -396,16 +396,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 	}
 	block.SetTimestamp(deadline.Unix())
 
-	dynasty, err := d.MakeMintBlockDynasty(deadline.Unix(), tail)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-		   "err":err,
-		}).Error("Failed to make MintBlockDynasty")
-		return nil, err
-	}
-
-	err = block.BeginBatch()
-	if err != nil {
+	if err := block.BeginBatch(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -413,7 +404,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 
-	if err := SetDynastyState(block.State().DposState().DynastyState(), dynasty); err != nil {
+	if err := block.SetMintDposState(tail); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":err,
 		}).Error("Failed to set dynasty")
@@ -511,7 +502,7 @@ func nextMintSlot(ts time.Time) time.Time {
 	return time.Unix(int64(next/time.Second), 0)
 }
 
-func nextMintSlot2(ts int64) int64 {
+func NextMintSlot2(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval
 	return int64(next / time.Second)

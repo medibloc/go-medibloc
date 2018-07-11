@@ -26,6 +26,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 )
 
 func TestNewGenesisBlock(t *testing.T) {
@@ -56,7 +57,7 @@ func TestCheckGenesisBlock(t *testing.T) {
 	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus := testutil.NewTestConsensus(t)
+	consensus := dpos.New()
 	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 

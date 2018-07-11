@@ -170,7 +170,8 @@ func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) (error) {
 	return nil
 }
 
-func dynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) {
+//DynastyStateToDynasty convert dynasty trie to address slice
+func DynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) {
 	dynasty := make([]*common.Address, 0)
 	iter, err := dynastyState.Iterator(nil)
 	if err != nil {
@@ -196,8 +197,8 @@ func checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
 	return curDynastyIndex > parentDynastyIndex
 }
 
-//MakeMintBlockDynasty returns dynasty slice for mint block
-func (d *Dpos) MakeMintBlockDynasty(ts int64, parent *core.Block) ([]*common.Address, error) {
+//MakeMintDynasty returns dynasty slice for mint block
+func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]*common.Address, error) {
 	if checkTransitionDynasty(parent.Timestamp(), ts) {
 		cs := parent.State().DposState().CandidateState()
 		sortedCandidates, err := SortByVotePower(cs)
@@ -207,15 +208,31 @@ func (d *Dpos) MakeMintBlockDynasty(ts int64, parent *core.Block) ([]*common.Add
 		newDynasty := MakeNewDynasty(sortedCandidates, d.dynastySize)
 		return newDynasty, nil
 	}
-	return dynastyStateToDynasty(parent.State().DposState().DynastyState())
+	return DynastyStateToDynasty(parent.State().DposState().DynastyState())
 }
 
 func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
-	mintTs := nextMintSlot2(ts)
-	dynasty, err := d.MakeMintBlockDynasty(mintTs, parent)
+	mintTs := NextMintSlot2(ts)
+	dynasty, err := d.MakeMintDynasty(mintTs, parent)
 	if err != nil {
 		return common.Address{}, err
 	}
 	proposerIndex := (time.Duration(ts) % DynastyInterval) / BlockInterval
 	return *dynasty[proposerIndex], nil
+}
+
+func (d *Dpos) SetMintDynastyState(ts int64, parent *core.Block, block *core.Block) error {
+	ds := block.State().DposState().DynastyState()
+
+	dynasty, err := d.MakeMintDynasty(ts, parent)
+	if err != nil {
+		return err
+	}
+
+	err = SetDynastyState(ds, dynasty)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

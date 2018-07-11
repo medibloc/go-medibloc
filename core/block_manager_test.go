@@ -33,6 +33,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 )
 
 func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
@@ -43,17 +44,6 @@ func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
 	return blockData
 }
 
-func nextBlockData(t *testing.T, parent *core.Block, dynasties testutil.AddrKeyPairs) *core.BlockData {
-	block := testutil.NewTestBlockWithTxs(t, parent, dynasties[0])
-	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
-	require.Nil(t, block.ExecuteAll())
-	require.Nil(t, block.Seal())
-	testutil.SignBlockUsingDynasties(t, block, dynasties)
-
-	// restore state for simulate network received message
-	return restoreBlockData(t, block)
-}
-
 func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *core.Block, dynasties testutil.AddrKeyPairs) []*core.BlockData {
 	from := dynasties[0]
 	blockMap := make(map[testutil.BlockID]*core.Block)
@@ -61,8 +51,8 @@ func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *cor
 	blockDatas := make([]*core.BlockData, len(idxToParent))
 	for i, parentID := range idxToParent {
 		block := testutil.NewTestBlockWithTxs(t, blockMap[parentID], from)
-		require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
-		require.Nil(t, block.ExecuteAll())
+		//require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
+		require.Nil(t, block.ExecuteAll(testutil.TxMap))
 		require.Nil(t, block.Seal())
 		testutil.SignBlockUsingDynasties(t, block, dynasties)
 		blockMap[testutil.BlockID(i)] = block
@@ -75,44 +65,51 @@ func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *cor
 }
 
 func TestBlockManager_Sequential(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
+	var nBlocks = 5
 
-	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := make(map[testutil.BlockID]*core.Block)
-	blockMap[testutil.GenesisID] = genesis
-	for idx, parentID := range idxToParent {
-		blockData := nextBlockData(t, blockMap[parentID], dynasties)
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
 
-		err := bm.PushBlockData(blockData)
-		assert.Nil(t, err)
-		assert.Equal(t, bm.TailBlock().Hash(), blockData.Hash())
-		blockMap[testutil.BlockID(idx)] = bm.TailBlock()
+	for i := 1; i < nBlocks; i++ {
+		tail := seed.Tail()
+		bb := blockutil.New(t,testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		require.NoError(t, bm.PushBlockData(mint.BlockData))
+		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
 }
+
 
 func TestBlockManager_Reverse(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
+	var nBlocks = 5
 
-	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
 
-	for i := len(idxToParent) - 1; i >= 0; i-- {
-		blockData := blockDatas[i]
-		err := bm.PushBlockData(blockData)
-		require.Nil(t, err)
-		if i > 0 {
-			require.Equal(t, genesis.Hash(), bm.TailBlock().Hash())
-		} else {
-			assert.Equal(t, blockDatas[len(idxToParent)-1].Hash(), bm.TailBlock().Hash())
-		}
+	tail := seed.Tail()
+
+	var blocks []*core.Block
+	for i := 1; i < nBlocks; i++ {
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+
+		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		blocks = append(blocks, mint)
+		tail = mint
 	}
+
+	for i := len(blocks) - 1; i >= 0; i-- {
+		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
+	}
+	assert.Equal(t,nBlocks,int(bm.TailBlock().Height()))
 }
+
 
 func TestBlockManager_Tree(t *testing.T) {
 	m := testutil.NewMockMedlet(t)

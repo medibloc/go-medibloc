@@ -155,6 +155,8 @@ type Consensus interface {
 	VerifyProposer(bd *BlockData, parent *Block) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
+	SetMintDynastyState(ts int64, parent *Block, block *Block) error
+
 }
 
 type DposState interface {
