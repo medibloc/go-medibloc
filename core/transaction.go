@@ -46,9 +46,6 @@ type Transaction struct {
 	payerSign []byte
 }
 
-// Transactions is just multiple txs
-type Transactions []*Transaction
-
 // ToProto converts Transaction to corepb.Transaction
 func (tx *Transaction) ToProto() (proto.Message, error) {
 	value, err := tx.value.ToFixedSizeByteSlice()
@@ -101,6 +98,105 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 
 	return ErrCannotConvertTransaction
 }
+
+func (t *Transaction) Hash() []byte {
+	return t.hash
+}
+
+func (t *Transaction) SetHash(hash []byte) {
+	t.hash = hash
+}
+
+func (t *Transaction) From() common.Address {
+	return t.from
+}
+
+func (t *Transaction) SetFrom(from common.Address) {
+	t.from = from
+}
+
+func (t *Transaction) To() common.Address {
+	return t.to
+}
+
+func (t *Transaction) SetTo(to common.Address) {
+	t.to = to
+}
+
+func (t *Transaction) Value() *util.Uint128 {
+	return t.value
+}
+
+func (t *Transaction) SetValue(value *util.Uint128) {
+	t.value = value
+}
+
+func (t *Transaction) Timestamp() int64 {
+	return t.timestamp
+}
+
+func (t *Transaction) SetTimestamp(timestamp int64) {
+	t.timestamp = timestamp
+}
+
+func (tx *Transaction) Type() string {
+	return tx.data.Type
+}
+
+func (tx *Transaction) SetType(ttype string) {
+	tx.data.Type = ttype
+}
+
+func (t *Transaction) Payload() []byte {
+	return t.data.Payload
+}
+
+func (t *Transaction) SetPayload(payload []byte) {
+	t.data.Payload = payload
+}
+
+func (t *Transaction) Nonce() uint64 {
+	return t.nonce
+}
+
+func (t *Transaction) SetNonce(nonce uint64) {
+	t.nonce = nonce
+}
+
+func (t *Transaction) ChainID() uint32 {
+	return t.chainID
+}
+
+func (t *Transaction) SetChainID(chainID uint32) {
+	t.chainID = chainID
+}
+
+func (t *Transaction) Alg() algorithm.Algorithm {
+	return t.alg
+}
+
+func (t *Transaction) SetAlg(alg algorithm.Algorithm) {
+	t.alg = alg
+}
+
+func (t *Transaction) Sign() []byte {
+	return t.sign
+}
+
+func (t *Transaction) SetSign(sign []byte) {
+	t.sign = sign
+}
+
+func (t *Transaction) PayerSign() []byte {
+	return t.payerSign
+}
+
+func (t *Transaction) SetPayerSign(payerSign []byte) {
+	t.payerSign = payerSign
+}
+
+// Transactions is just multiple txs
+type Transactions []*Transaction
 
 // BuildTransaction generates a Transaction instance with entire fields
 func BuildTransaction(
@@ -299,61 +395,6 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 	return common.PublicKeyToAddress(pubKey)
 }
 
-// From returns from
-func (tx *Transaction) From() common.Address {
-	return tx.from
-}
-
-// To returns to
-func (tx *Transaction) To() common.Address {
-	return tx.to
-}
-
-// Value returns value
-func (tx *Transaction) Value() *util.Uint128 {
-	return tx.value
-}
-
-// Timestamp returns tx timestamp
-func (tx *Transaction) Timestamp() int64 {
-	return tx.timestamp
-}
-
-// SetTimestamp sets tx timestamp
-func (tx *Transaction) SetTimestamp(t int64) {
-	tx.timestamp = t
-}
-
-// Type returns tx type
-func (tx *Transaction) Type() string {
-	return tx.data.Type
-}
-
-// Data returns tx payload
-func (tx *Transaction) Data() []byte {
-	return tx.data.Payload
-}
-
-// Nonce returns tx nonce
-func (tx *Transaction) Nonce() uint64 {
-	return tx.nonce
-}
-
-// Hash returns hash
-func (tx *Transaction) Hash() []byte {
-	return tx.hash
-}
-
-// Signature returns tx signature
-func (tx *Transaction) Signature() []byte {
-	return tx.sign
-}
-
-// PayerSignature returns tx payer signature
-func (tx *Transaction) PayerSignature() []byte {
-	return tx.payerSign
-}
-
 // String returns string representation of tx
 func (tx *Transaction) String() string {
 	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v'}`,
@@ -403,7 +444,7 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 	return &AddRecordTx{
 		owner:     tx.From(),
 		timestamp: tx.Timestamp(),
-		payload:   tx.Data(),
+		payload:   tx.Payload(),
 	}, nil
 }
 
@@ -611,7 +652,7 @@ type AddCertificationPayload struct {
 //NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(AddCertificationPayload)
-	err := payload.FromBytes(tx.Data())
+	err := payload.FromBytes(tx.Payload())
 	if err != nil {
 		return nil, ErrInvalidTxPayload
 	}
@@ -664,7 +705,7 @@ type RevokeCertificationPayload struct {
 //NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(RevokeCertificationPayload)
-	if err := payload.FromBytes(tx.Data()); err != nil {
+	if err := payload.FromBytes(tx.Payload()); err != nil {
 		return nil, ErrInvalidTxPayload
 	}
 	//TODO: certification payload Verify: drsleepytiger

@@ -250,7 +250,7 @@ func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
 }
 
 func verifyBlockSign(proposer common.Address, bd *core.BlockData) error {
-	signer, err := recoverSignerFromSignature(bd.Alg(), bd.Hash(), bd.Signature())
+	signer, err := recoverSignerFromSignature(bd.Alg(), bd.Hash(), bd.Sign())
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":      err,

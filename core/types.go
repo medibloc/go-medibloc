@@ -21,7 +21,6 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.
