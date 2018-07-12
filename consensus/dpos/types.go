@@ -22,9 +22,9 @@ import (
 
 // Transaction's related to dpos
 const (
-	TxOperationBecomeCandidate = "become_candidate"
-	TxOperationQuitCandidacy   = "quit_candidacy"
-	TxOperationVote            = "vote"
+	TxOpBecomeCandidate = "become_candidate"
+	TxOpQuitCandidacy   = "quit_candidacy"
+	TxOpVote            = "vote"
 )
 
 // Consensus properties.

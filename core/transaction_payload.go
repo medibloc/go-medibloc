@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 )
 
-// AddRecordPayload is payload type for TxOperationAddRecord
+// AddRecordPayload is payload type for TxOpAddRecord
 type AddRecordPayload struct {
 	Hash []byte
 }

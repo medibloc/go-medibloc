@@ -25,12 +25,12 @@ import (
 
 // Transaction's string representation.
 const (
-	TxOperationSend                = ""
-	TxOperationAddRecord           = "add_record"
-	TxOperationVest                = "vest"
-	TxOperationWithdrawVesting     = "withdraw_vesting"
-	TxOperationAddCertification    = "add_certification"
-	TxOperationRevokeCertification = "revoke_certification"
+	TxOpSend                = ""
+	TxOpAddRecord           = "add_record"
+	TxOpVest                = "vest"
+	TxOpWithdrawVesting     = "withdraw_vesting"
+	TxOpAddCertification    = "add_certification"
+	TxOpRevokeCertification = "revoke_certification"
 )
 
 // Transaction payload type.
@@ -110,6 +110,7 @@ var (
 	ErrCertReceivedAlreadyAdded         = errors.New("hash of received cert already added")
 	ErrCertIssuedAlreadyAdded           = errors.New("hash of issued cert already added")
 	ErrCertAlreadyRevoked               = errors.New("cert to revoke has already been revoked")
+	ErrCertAlreadyExpired               = errors.New("cert to revoke has already been expired")
 	ErrInvalidCertificationRevoker      = errors.New("only issuer of the cert can revoke it")
 	ErrTxIsNotFromRecordOwner           = errors.New("adding record reader should be done by record owner")
 	ErrCannotConvertResevedTask         = errors.New("proto message cannot be converted into ResevedTask")

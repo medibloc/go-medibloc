@@ -237,7 +237,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	return n
 }
 
-func (bb *BlockBuilder) ExecuteErr(tx *core.Transaction, expected error) *BlockBuilder {
+func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 
 	require.NoError(n.t, n.B.BeginBatch())

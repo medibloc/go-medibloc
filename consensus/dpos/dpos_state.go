@@ -31,6 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//State is a structure for dpos state
 type State struct {
 	candidateState *trie.Batch // key: addr, value: {addr, collateral, votePower}
 	dynastyState   *trie.Batch // key: order, value: bpAddr
@@ -96,6 +97,8 @@ func (s *State) RootBytes() ([]byte, error) {
 	}
 	return proto.Marshal(pbState)
 }
+
+//func (s *State) Candidate([]byte, error)
 
 //SortByVotePower returns Descending ordered candidate slice
 func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
@@ -250,4 +253,27 @@ func (d *Dpos) SetMintDynastyState(ts int64, parent *core.Block, block *core.Blo
 	}
 
 	return nil
+}
+
+//Candidate returns candidate data in cadidateState
+func (s *State) Candidate(addr common.Address) (*dpospb.Candidate, error){
+	cs := s.candidateState
+
+	candidateBytes, err := cs.Get(addr.Bytes())
+	if err != nil {
+		return nil, ErrNotCandidate
+	}
+
+	pbCandidate := new(dpospb.Candidate)
+	err = proto.Unmarshal(candidateBytes, pbCandidate)
+	if err != nil {
+		return nil, err
+	}
+
+	return pbCandidate, nil
+}
+
+//Dynasty returns slice of addresses in dynasty
+func (s *State) Dynasty() ([]*common.Address, error){
+	return DynastyStateToDynasty(s.dynastyState)
 }

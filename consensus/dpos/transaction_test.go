@@ -16,103 +16,77 @@
 package dpos_test
 
 import (
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/assert"
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"testing"
+
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBecomeAndQuitCandidate(t *testing.T) {
-	nt := testutil.NewNetwork(t, testutil.DynastySize)
-	defer nt.Cleanup()
-	seed := nt.NewSeedNode()
-	seed.Start()
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
-	candidate := seed.Config.TokenDist[testutil.DynastySize]
+	candidate := bb.TokenDist[testutil.DynastySize]
 
-	tb := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(candidate.Addr).Nonce(1).
-		Type(dpos.TxOperationBecomeCandidate)
+	addr := candidate.Addr
+	key := candidate.PrivKey
+	txType := dpos.TxOpBecomeCandidate
+	bb = bb.
+		Tx().From(addr).Nonce(1).Type(txType).Value(1000000001).CalcHash().SignKey(key).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().From(addr).Nonce(1).Type(txType).Value(10).CalcHash().SignKey(key).Execute().
+		Tx().From(addr).Nonce(2).Type(txType).Value(10).CalcHash().SignKey(key).ExecuteErr(dpos.ErrAlreadyCandidate)
 
-	transaction1 := tb.Value(1000000001).CalcHash().SignKey(candidate.PrivKey).Build()
-	transaction2 := tb.Value(10).CalcHash().SignKey(candidate.PrivKey).Build()
-	transaction3 := tb.Value(10).Nonce(2).CalcHash().SignKey(candidate.PrivKey).Build()
-
-	bb := blockutil.New(t,testutil.DynastySize).Block(seed.Tail()).
-		ExecuteErr(transaction1,core.ErrBalanceNotEnough).
-		ExecuteTx(transaction2).
-		ExecuteErr(transaction3,dpos.ErrAlreadyCandidate)
-	bb.Expect().Balance(candidate.Addr,uint64(1000000000-10))
+	bb.Expect().Balance(addr, uint64(1000000000-10))
 	block := bb.Build()
 
-	candidateBytes, err := block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
+	pbCandidate, err := block.State().DposState().(*dpos.State).Candidate(addr)
 	assert.NoError(t, err)
-
-	candidatePb := new(dpospb.Candidate)
-	proto.Unmarshal(candidateBytes, candidatePb)
 
 	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
-	assert.NoError(t, err)
-	assert.Equal(t, candidatePb.Collatral, tenBytes)
+	assert.Equal(t, pbCandidate.Collatral, tenBytes)
 
-	tbQuit := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(candidate.Addr).Nonce(2).
-		Type(dpos.TxOperationQuitCandidacy)
+	tbQuit := blockutil.New(t, testutil.DynastySize).Tx().From(addr).Nonce(2).
+		Type(dpos.TxOpQuitCandidacy)
 
-	transactionQuit1 := tbQuit.CalcHash().SignKey(candidate.PrivKey).Build()
-	transactionQuit2 := tbQuit.Nonce(3).CalcHash().SignKey(candidate.PrivKey).Build()
+	transactionQuit1 := tbQuit.CalcHash().SignKey(key).Build()
+	transactionQuit2 := tbQuit.Nonce(3).CalcHash().SignKey(key).Build()
 
 	bb = bb.ExecuteTx(transactionQuit1).
-		ExecuteErr(transactionQuit2, dpos.ErrNotCandidate)
-	bb.Expect().Balance(candidate.Addr,uint64(1000000000))
+		ExecuteTxErr(transactionQuit2, dpos.ErrNotCandidate)
+	bb.Expect().Balance(addr, uint64(1000000000))
 	block = bb.Build()
 
-	_, err = block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
-	assert.Equal(t, trie.ErrNotFound, err)
+	_, err = block.State().DposState().(*dpos.State).Candidate(addr)
+	assert.Equal(t, dpos.ErrNotCandidate, err)
 }
 
 func TestVote(t *testing.T) {
-	nt := testutil.NewNetwork(t, testutil.DynastySize)
-	defer nt.Cleanup()
-	seed := nt.NewSeedNode()
-	seed.Start()
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
-	candidate := seed.Config.TokenDist[testutil.DynastySize]
-	voter := seed.Config.TokenDist[testutil.DynastySize+1]
+	candidate := bb.TokenDist[testutil.DynastySize]
+	voter := bb.TokenDist[testutil.DynastySize+1]
 
-	transactionVest := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(voter.Addr).
-		Value(333).Nonce(1).Type(core.TxOperationVest).CalcHash().SignKey(voter.PrivKey).Build()
+	bb = bb.
+		Tx().From(voter.Addr).Nonce(1).Value(333).Type(core.TxOpVest).CalcHash().SignKey(voter.PrivKey).Execute().
+		Tx().From(candidate.Addr).Nonce(1).Value(10).Type(dpos.TxOpBecomeCandidate).CalcHash().SignKey(candidate.PrivKey).Execute().
+		Tx().From(voter.Addr).Nonce(2).To(candidate.Addr).Type(dpos.TxOpVote).CalcHash().SignKey(voter.PrivKey).Execute()
 
-	transactionBecome := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(candidate.Addr).
-		Value(10).Nonce(1).Type(dpos.TxOperationBecomeCandidate).CalcHash().SignKey(candidate.PrivKey).Build()
-
-	transactionVote := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(voter.Addr).
-		To(candidate.Addr).Nonce(2).Type(dpos.TxOperationVote).CalcHash().SignKey(voter.PrivKey).Build()
-
-	bb := blockutil.New(t,testutil.DynastySize).Block(seed.Tail()).
-		ExecuteTx(transactionVest).
-		ExecuteTx(transactionBecome).
-		ExecuteTx(transactionVote)
-	bb.Expect().Balance(candidate.Addr,uint64(1000000000-10))
+	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
 
 	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
 	assert.Equal(t, voterAcc.Voted(), candidate.Addr.Bytes())
 
-	candidateBytes, err := block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
+	pbCandidate, err := block.State().DposState().(*dpos.State).Candidate(candidate.Addr)
 	assert.NoError(t, err)
-
-	candidatePb := new(dpospb.Candidate)
-	proto.Unmarshal(candidateBytes, candidatePb)
 
 	expectedVotePower, err := util.NewUint128FromUint(333).ToFixedSizeByteSlice()
 	require.NoError(t, err)
-	assert.Equal(t, candidatePb.VotePower, expectedVotePower)
+	assert.Equal(t, pbCandidate.VotePower, expectedVotePower)
 
 }

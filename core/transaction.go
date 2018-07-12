@@ -471,6 +471,10 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 //Execute AddRecordTx
 func (tx *AddRecordTx) Execute(b *Block) error {
 	rs := b.state.recordsState
+	//as := b.state.accState
+
+	// Account state 변경 로직 추가
+	//as.AddRecord()
 
 	var payload AddRecordPayload
 	err := payload.FromBytes(tx.payload)
@@ -557,23 +561,21 @@ func (tx *VestTx) Execute(b *Block) error {
 	return cs.Put(candidate, newCandidateBytes)
 }
 
-//WithdrawalVestTx is a structure for withdrawing vesting
-type WithdrawalVestTx struct {
+//WithdrawVestingTx is a structure for withdrawing vesting
+type WithdrawVestingTx struct {
 	user   common.Address
 	amount *util.Uint128
 }
 
-//NewWithdrawalVestTx returns WithdrawalVestTx
-func NewWithdrawalVestTx(tx *Transaction) (ExecutableTx, error) {
-	return &WithdrawalVestTx{
+//NewWithdrawVestingTx returns WithdrawVestingTx
+func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
+	return &WithdrawVestingTx{
 		user:   tx.From(),
 		amount: tx.Value(),
 	}, nil
 }
 
-//Todo Naming
-//Execute WithdrawalVestTx
-func (tx *WithdrawalVestTx) Execute(b *Block) error {
+func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	as := b.state.AccState()
 	cs := b.state.DposState().CandidateState()
 
@@ -712,14 +714,14 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 
 //RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
-	Revoker common.Address
-	Payload *RevokeCertificationPayload
+	Revoker        common.Address
+	Hash           []byte
+	RevocationTime int64
 }
 
 // RevokeCertificationPayload is payload type for RevokeCertificationTx
 type RevokeCertificationPayload struct {
 	CertificateHash []byte
-	RevocationTime  int64
 }
 
 //NewRevokeCertificationTx returns RevokeCertificationTx
@@ -730,40 +732,48 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	}
 	//TODO: certification payload Verify: drsleepytiger
 	return &RevokeCertificationTx{
-		Revoker: tx.From(),
-		Payload: payload,
+		Revoker:        tx.From(),
+		Hash:           payload.CertificateHash,
+		RevocationTime: tx.timestamp,
 	}, nil
 }
 
 //Execute RevokeCertificationTx
 func (tx *RevokeCertificationTx) Execute(b *Block) error {
+	s := b.state
 	//as := b.state.AccState()
 	cs := b.state.certificationState
 
-	certificationBytes, err := cs.Get(tx.Payload.CertificateHash)
+	//revokerAcc, err := s.GetAccount(tx.Revoker)
+	//if err != nil {
+	//	return nil
+	//}
+	pbCert, err := s.Certification(tx.Hash)
 	if err != nil {
 		return nil
 	}
+	//certifiedAcc, err := s.GetAccount(common.BytesToAddress(pbCert.Certified))
+	//if err != nil {
+	//	return nil
+	//}
 
-	pbCertification := new(corepb.Certification)
-	if err := proto.Unmarshal(certificationBytes, pbCertification); err != nil {
-		return err
-	}
-	if common.BytesToAddress(pbCertification.Issuer) != tx.Revoker {
+	if common.BytesToAddress(pbCert.Issuer) != tx.Revoker {
 		return ErrInvalidCertificationRevoker
 	}
-	if pbCertification.RevocationTime > int64(0) {
+	if pbCert.RevocationTime > int64(0) {
 		return ErrCertAlreadyRevoked
 	}
+	if pbCert.ExpirationTime < tx.RevocationTime {
+		return ErrCertAlreadyExpired
+	}
 
-	pbCertification.RevocationTime = tx.Payload.RevocationTime
-	newBytesCertification, err := proto.Marshal(pbCertification)
+	pbCert.RevocationTime = tx.RevocationTime
+
+	newBytesCertification, err := proto.Marshal(pbCert)
 	if err != nil {
 		return err
 	}
 
-	//Todo: Remove certificate from AccountState(both issuer and certified)
-	return cs.Put(tx.Payload.CertificateHash, newBytesCertification)
+	//Todo: Remove certificate from AccountState(both issuer and certified)??
+	return cs.Put(tx.Hash, newBytesCertification)
 }
-
-//Todo : move to another file

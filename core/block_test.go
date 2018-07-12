@@ -297,14 +297,14 @@ func TestExecuteReservedTasks(t *testing.T) {
 		from,
 		common.Address{},
 		util.NewUint128FromUint(333), 1,
-		core.TxOperationVest, []byte{},
+		core.TxOpVest, []byte{},
 	)
 	withdrawTx, err := core.NewTransaction(
 		testutil.ChainID,
 		from,
 		common.Address{},
 		util.NewUint128FromUint(333), 2,
-		core.TxOperationWithdrawVesting, []byte{})
+		core.TxOpWithdrawVesting, []byte{})
 	assert.NoError(t, err)
 	withdrawTx.SetTimestamp(int64(1000))
 

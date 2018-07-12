@@ -455,6 +455,20 @@ func (st *states) PeekHeadReservedTask() *ReservedTask {
 	return st.reservationQueue.Peek()
 }
 
+//Certification returns certification for hash
+func (st *states) Certification(hash []byte) (*corepb.Certification, error) {
+	certBytes, err := st.certificationState.Get(hash)
+	if err != nil {
+		return nil, err
+	}
+	pbCert := new(corepb.Certification)
+	err = proto.Unmarshal(certBytes,pbCert)
+	if err != nil {
+		return nil, err
+	}
+	return pbCert, nil
+}
+
 // BlockState possesses every states a block should have
 type BlockState struct {
 	*states
@@ -568,3 +582,4 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	}
 	return nil
 }
+

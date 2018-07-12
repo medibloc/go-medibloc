@@ -27,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
+	"github.com/medibloc/go-medibloc/util/testutil"
 )
 
 type TxBuilder struct {
@@ -37,16 +38,19 @@ type TxBuilder struct {
 
 func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
+	tx := defaultTransaction()
+	tx.SetTimestamp(bb.B.Timestamp())
 
 	return &TxBuilder{
 		t:  bb.t,
 		bb: n,
-		tx: defaultTransaction(),
+		tx: tx,
 	}
 }
 
 func defaultTransaction() *core.Transaction {
 	tx := &core.Transaction{}
+	tx.SetChainID(testutil.ChainID)
 	tx.SetValue(util.Uint128Zero())
 	tx.SetData(&corepb.Data{})
 	tx.SetAlg(defaultSignAlg)
@@ -188,6 +192,11 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
+func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
+	n := tb.copy()
+	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
+}
+
 func (tb *TxBuilder) Build() *core.Transaction {
 	n := tb.copy()
 	return n.tx
@@ -220,7 +229,7 @@ func (tb *TxBuilder) Execute() *BlockBuilder {
 
 func (tb *TxBuilder) ExecuteErr(err error) *BlockBuilder {
 	n := tb.copy()
-	return n.bb.ExecuteErr(n.tx, err)
+	return n.bb.ExecuteTxErr(n.tx, err)
 }
 
 func (tb *TxBuilder) Add() *BlockBuilder {

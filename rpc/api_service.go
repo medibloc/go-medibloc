@@ -105,8 +105,8 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var revokeCertification *core.RevokeCertificationPayload
 
 	switch txData.Type {
-	case core.TxOperationSend:
-	case core.TxOperationAddRecord:
+	case core.TxOpSend:
+	case core.TxOpAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
 		payload := core.NewAddRecordPayload(addRecord.Hash)
 		payloadBuf, err := payload.ToBytes()
@@ -114,11 +114,11 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case core.TxOperationVest:
-	case core.TxOperationWithdrawVesting:
+	case core.TxOpVest:
+	case core.TxOpWithdrawVesting:
 	case core.TxPayloadBinaryType:
 		return nil, nil
-	case core.TxOperationAddCertification:
+	case core.TxOpAddCertification:
 		json.Unmarshal([]byte(txData.Payload), &addCertification)
 		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
 			addCertification.ExpirationTime, addCertification.CertificateHash)
@@ -127,7 +127,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case core.TxOperationRevokeCertification:
+	case core.TxOpRevokeCertification:
 		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
 		payload := core.NewRevokeCertificationPayload(revokeCertification.CertificateHash)
 		payloadBuf, err := payload.ToBytes()
