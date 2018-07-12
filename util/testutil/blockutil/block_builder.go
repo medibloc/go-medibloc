@@ -226,23 +226,30 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
 	err := n.B.Execute(tx, defaultTxMap)
 	require.NoError(n.t, err)
 	err = n.B.AcceptTransaction(tx)
 	require.NoError(n.t, err)
+	require.NoError(bb.t, n.B.Commit())
+
 	return n
 }
 
 func (bb *BlockBuilder) ExecuteErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
 	err := n.B.Execute(tx, defaultTxMap)
 	if err != nil {
 		require.Equal(n.t, expected, err)
 		return n
 	}
-
 	err = n.B.AcceptTransaction(tx)
 	require.Equal(n.t, expected, err)
+	require.NoError(bb.t, n.B.Commit())
+
 	return n
 }
 

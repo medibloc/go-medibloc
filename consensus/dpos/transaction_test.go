@@ -41,31 +41,16 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 		Type(dpos.TxOperationBecomeCandidate)
 
 	transaction1 := tb.Value(1000000001).CalcHash().SignKey(candidate.PrivKey).Build()
-
 	transaction2 := tb.Value(10).CalcHash().SignKey(candidate.PrivKey).Build()
-
 	transaction3 := tb.Value(10).Nonce(2).CalcHash().SignKey(candidate.PrivKey).Build()
 
-	newTxFunc := testutil.TxMap[transaction1.Type()]
-	tx1, err := newTxFunc(transaction1)
-	require.NoError(t, err)
-	tx2, err := newTxFunc(transaction2)
-	require.NoError(t, err)
-	tx3, err := newTxFunc(transaction3)
-	require.NoError(t, err)
+	bb := blockutil.New(t,testutil.DynastySize).Block(seed.Tail()).
+		ExecuteErr(transaction1,core.ErrBalanceNotEnough).
+		ExecuteTx(transaction2).
+		ExecuteErr(transaction3,dpos.ErrAlreadyCandidate)
+	bb.Expect().Balance(candidate.Addr,uint64(1000000000-10))
+	block := bb.Build()
 
-	block := seed.Tail()
-
-	block.State().BeginBatch()
-	assert.Equal(t, core.ErrBalanceNotEnough, tx1.Execute(block))
-	assert.NoError(t, tx2.Execute(block))
-	assert.Equal(t, dpos.ErrAlreadyCandidate, tx3.Execute(block))
-	assert.NoError(t, block.State().AcceptTransaction(transaction2, block.Timestamp()))
-	block.State().Commit()
-
-	acc, err := block.State().GetAccount(candidate.Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-10)))
 	candidateBytes, err := block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
 	assert.NoError(t, err)
 
@@ -82,20 +67,11 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	transactionQuit1 := tbQuit.CalcHash().SignKey(candidate.PrivKey).Build()
 	transactionQuit2 := tbQuit.Nonce(3).CalcHash().SignKey(candidate.PrivKey).Build()
 
-	newTxFuncQuit := testutil.TxMap[transactionQuit1.Type()]
-	txQuit1, err := newTxFuncQuit(transactionQuit1)
-	txQuit2, err := newTxFuncQuit(transactionQuit2)
-	require.NoError(t, err)
+	bb = bb.ExecuteTx(transactionQuit1).
+		ExecuteErr(transactionQuit2, dpos.ErrNotCandidate)
+	bb.Expect().Balance(candidate.Addr,uint64(1000000000))
+	block = bb.Build()
 
-	block.State().BeginBatch()
-	assert.NoError(t, txQuit1.Execute(block))
-	assert.Equal(t, dpos.ErrNotCandidate,txQuit2.Execute(block))
-	assert.NoError(t, block.State().AcceptTransaction(transaction2, block.Timestamp()))
-	block.State().Commit()
-
-	acc, err = block.State().GetAccount(candidate.Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000)))
 	_, err = block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
 	assert.Equal(t, trie.ErrNotFound, err)
 }
@@ -112,41 +88,22 @@ func TestVote(t *testing.T) {
 	transactionVest := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(voter.Addr).
 		Value(333).Nonce(1).Type(core.TxOperationVest).CalcHash().SignKey(voter.PrivKey).Build()
 
-	newTxFunc := testutil.TxMap[transactionVest.Type()]
-	txVest, err := newTxFunc(transactionVest)
-	require.NoError(t, err)
-
 	transactionBecome := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(candidate.Addr).
 		Value(10).Nonce(1).Type(dpos.TxOperationBecomeCandidate).CalcHash().SignKey(candidate.PrivKey).Build()
-
-	newTxFunc = testutil.TxMap[transactionBecome.Type()]
-	txBecome, err := newTxFunc(transactionBecome)
-	require.NoError(t, err)
 
 	transactionVote := blockutil.New(t,testutil.DynastySize).Tx().ChainID(testutil.ChainID).From(voter.Addr).
 		To(candidate.Addr).Nonce(2).Type(dpos.TxOperationVote).CalcHash().SignKey(voter.PrivKey).Build()
 
-	newTxFunc = testutil.TxMap[transactionVote.Type()]
-	txVote, err := newTxFunc(transactionVote)
-	require.NoError(t, err)
+	bb := blockutil.New(t,testutil.DynastySize).Block(seed.Tail()).
+		ExecuteTx(transactionVest).
+		ExecuteTx(transactionBecome).
+		ExecuteTx(transactionVote)
+	bb.Expect().Balance(candidate.Addr,uint64(1000000000-10))
+	block := bb.Build()
 
-	block := seed.Tail()
-
-	block.State().BeginBatch()
-	assert.NoError(t, txBecome.Execute(block))
-	assert.NoError(t, block.State().AcceptTransaction(transactionBecome, block.Timestamp()))
-
-	assert.NoError(t, txVest.Execute(block))
-	assert.NoError(t, block.State().AcceptTransaction(transactionVest, block.Timestamp()))
-
-	assert.NoError(t, txVote.Execute(block))
-	assert.NoError(t, block.State().AcceptTransaction(transactionVote, block.Timestamp()))
-
-	block.State().Commit()
-
-	acc, err := block.State().GetAccount(voter.Addr)
+	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
-	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
+	assert.Equal(t, voterAcc.Voted(), candidate.Addr.Bytes())
 
 	candidateBytes, err := block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
 	assert.NoError(t, err)
