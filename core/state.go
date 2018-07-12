@@ -107,6 +107,8 @@ func (acc *account) toBytes() ([]byte, error) {
 		Records:       acc.records,
 		CertsReceived: acc.certsReceived,
 		CertsIssued:   acc.certsIssued,
+		TxsSend:       acc.txsSend,
+		TxsGet:        acc.txsGet,
 	}
 	bytes, err := proto.Marshal(pbAcc)
 	if err != nil {
@@ -133,6 +135,8 @@ func loadAccount(bytes []byte) (*account, error) {
 		records:       pbAcc.Records,
 		certsReceived: pbAcc.CertsReceived,
 		certsIssued:   pbAcc.CertsIssued,
+		txsSend:       pbAcc.TxsSend,
+		txsGet:        pbAcc.TxsGet,
 	}
 	return acc, nil
 }

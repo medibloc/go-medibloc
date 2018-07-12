@@ -17,7 +17,6 @@ package core
 
 import (
 	"sort"
-	"strconv"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -384,11 +383,9 @@ func (st *states) AddTransaction(tx *Transaction) error {
 		return err
 	}
 
-	if addrCheck, err := strconv.ParseUint(tx.To().Hex(), 10, 64); addrCheck != 0 && err != nil {
-		err = st.accState.AddTransaction(tx.To().Bytes(), tx.Hash(), false)
-		if err != nil {
-			return err
-		}
+	err = st.accState.AddTransaction(tx.To().Bytes(), tx.Hash(), false)
+	if err != nil && err != ErrTransactionHashAlreadyAdded {
+		return err
 	}
 
 	return nil
