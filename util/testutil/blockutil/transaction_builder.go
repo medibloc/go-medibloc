@@ -25,7 +25,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
@@ -55,9 +54,17 @@ func defaultTransaction() *core.Transaction {
 }
 
 func (tb *TxBuilder) copy() *TxBuilder {
-	v, err := copystructure.Copy(tb)
-	require.NoError(tb.t, err)
-	return v.(*TxBuilder)
+	var tx *core.Transaction
+	var err error
+	if tb.tx != nil {
+		tx , err = tb.tx.Clone()
+		require.NoError(tb.t, err)
+	}
+	return &TxBuilder{
+		t:  tb.t,
+		bb: tb.bb,
+		tx: tx,
+	}
 }
 
 /* Setters and Getters */

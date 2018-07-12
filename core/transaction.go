@@ -416,6 +416,18 @@ func (tx *Transaction) String() string {
 		tx.nonce,
 	)
 }
+func (tx *Transaction) Clone() (*Transaction, error) {
+	protoTx, err := tx.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	newTx := new(Transaction)
+	err = newTx.FromProto(protoTx)
+	if err != nil {
+		return nil, err
+	}
+	return newTx, nil
+}
 
 //SendTx is a structure for sending MED
 type SendTx struct {

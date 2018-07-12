@@ -38,8 +38,8 @@ const (
 
 // Error types of dpos package.
 var (
-	ErrAlreadyInCandidacy = errors.New("account is already a candidate")
-
+	ErrAlreadyCandidate = errors.New("account is already a candidate")
+	ErrNotCandidate     = errors.New("account is not a candidate")
 	ErrBlockMintedInNextSlot  = errors.New("cannot mint block now, there is a block minted in current slot")
 	ErrInvalidBlockForgeTime  = errors.New("invalid time to forge block")
 	ErrInvalidBlockInterval   = errors.New("invalid block interval")

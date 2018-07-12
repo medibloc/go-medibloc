@@ -1,3 +1,18 @@
+// Copyright (C) 2018  MediBloc
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 package dpos
 
 import (
@@ -34,7 +49,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		return err
 	}
 	if err == nil {
-		return ErrAlreadyInCandidacy
+		return ErrAlreadyCandidate
 	}
 
 	err = as.SubBalance(tx.candidateAddr.Bytes(), tx.collateral)
@@ -80,7 +95,7 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 
 	candidateBytes, err := cs.Get(tx.candidateAddr.Bytes())
 	if err != nil {
-		return err
+		return ErrNotCandidate
 	}
 
 	// Refund collateral
@@ -121,7 +136,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 
 	candidateBytes, err := cs.Get(tx.candidateAddr.Bytes())
 	if err != nil {
-		return err
+		return ErrNotCandidate
 	}
 
 	voter, err := as.GetAccount(tx.voter.Bytes())
