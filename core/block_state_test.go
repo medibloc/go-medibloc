@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -27,10 +28,8 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/stretchr/testify/require"
 	"github.com/medibloc/go-medibloc/util/testutil/txutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateUsage(t *testing.T) {
@@ -91,8 +90,6 @@ func TestUpdateUsage(t *testing.T) {
 		assert.NoError(t, txs[i].SignThis(signers[i]))
 
 		blockState.ExecuteTx(txs[i])
-
-
 
 		blockState.AcceptTransaction(txs[i], newBlock.Timestamp())
 	}

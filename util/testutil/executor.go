@@ -226,11 +226,11 @@ func (n *Network) FindProposer(ts int64, parent *core.Block) *AddrKeyPair {
 	d := n.Seed.Med.Consensus()
 	proposer, err := d.FindMintProposer(ts, parent)
 	require.Nil(n.t, err)
-	for _, v := range dynasties{
-		if v.Addr.Equals(proposer){
+	for _, v := range dynasties {
+		if v.Addr.Equals(proposer) {
 			return v
 		}
 	}
-	require.False(n.t,true,"Failed to find proposer's privateKey")
+	require.False(n.t, true, "Failed to find proposer's privateKey")
 	return nil
 }

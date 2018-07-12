@@ -17,16 +17,17 @@ package blockutil
 
 import (
 	"testing"
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/stretchr/testify/require"
-	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/crypto/signature"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"time"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 type BlockBuilder struct {
@@ -49,7 +50,7 @@ func (bb *BlockBuilder) copy() *BlockBuilder {
 	var b *core.Block
 	var err error
 
-	if bb.B != nil{
+	if bb.B != nil {
 		b, err = bb.B.Clone()
 		require.NoError(bb.t, err)
 	}
@@ -283,10 +284,10 @@ func (bb *BlockBuilder) BuildBytes() []byte {
 
 func (bb *BlockBuilder) Child() *BlockBuilder {
 	n := bb.copy()
-	n.B.SetTransactions(make([]*core.Transaction,0))
+	n.B.SetTransactions(make([]*core.Transaction, 0))
 	return n.ParentHash(bb.B.Hash()).
-	  Timestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix()).
-	  Height(bb.B.Height() + 1).
+		Timestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix()).
+		Height(bb.B.Height() + 1).
 		Sealed(false)
 }
 

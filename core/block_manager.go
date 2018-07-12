@@ -411,7 +411,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 	}
 
 	logging.Console().WithFields(logrus.Fields{
-	   "bm":	bm,
+		"bm": bm,
 	}).Info("request missing parent block")
 
 	return bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
@@ -487,7 +487,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 
 	if bm.syncService.IsDownloadActivated() {
 		logging.Console().WithFields(logrus.Fields{
-		   "bm":bm,
+			"bm": bm,
 		}).Info("sync download is in progress")
 		return true
 	}

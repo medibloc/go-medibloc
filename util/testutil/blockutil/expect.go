@@ -17,19 +17,20 @@ package blockutil
 
 import (
 	"testing"
-	"github.com/medibloc/go-medibloc/core"
+
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/stretchr/testify/require"
 )
 
 type Expect struct {
-	t *testing.T
+	t     *testing.T
 	block *core.Block
 }
 
 func NewExpect(t *testing.T, block *core.Block) *Expect {
 	return &Expect{
-		t: t,
+		t:     t,
 		block: block,
 	}
 }

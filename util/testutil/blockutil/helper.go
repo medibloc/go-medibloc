@@ -16,18 +16,19 @@
 package blockutil
 
 import (
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"testing"
-	"github.com/medibloc/go-medibloc/crypto/signature"
+
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/stretchr/testify/require"
 )
 
 const (
 	defaultSignAlg = algorithm.SECP256K1
-	dynastySize = 3
+	dynastySize    = 3
 )
 
 var defaultTxMap = core.TxFactory{
@@ -49,4 +50,3 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	signer.InitSign(key)
 	return signer
 }
-

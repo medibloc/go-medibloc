@@ -80,7 +80,7 @@ func (as *AccountStateBatch) Commit() error {
 		err = as.as.accounts.Put(acc.address, bytes)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
-			   "err":err,
+				"err": err,
 			}).Info("account put error")
 		}
 	}

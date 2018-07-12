@@ -3,11 +3,11 @@ package dpos
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/common/trie"
 )
 
 // BecomeCandidateTx is a structure for quiting cadidate

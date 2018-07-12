@@ -406,7 +406,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 
 	if err := block.SetMintDposState(tail); err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"err":err,
+			"err": err,
 		}).Error("Failed to set dynasty")
 		return nil, err
 	}

@@ -18,9 +18,9 @@ package core
 import (
 	"errors"
 
-	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.
@@ -156,7 +156,6 @@ type Consensus interface {
 	FindLIB(bc *BlockChain) (newLIB *Block)
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
 	SetMintDynastyState(ts int64, parent *Block, block *Block) error
-
 }
 
 type DposState interface {

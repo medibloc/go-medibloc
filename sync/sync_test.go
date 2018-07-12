@@ -26,8 +26,8 @@ import (
 	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/stretchr/testify/require"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -136,7 +136,7 @@ func TestForkResistance(t *testing.T) {
 		}
 	}
 
-	t.Logf("SeedTester Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash(), )
+	t.Logf("SeedTester Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
 	for i, n := range majorNodes {
 		t.Logf("MajorNode #%v Tail: %v floor, %v", i, n.Tail().Height(), n.Tail().Hash())
 		require.Equal(t, seed.Tail().Height(), n.Tail().Height())

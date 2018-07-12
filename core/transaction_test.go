@@ -19,8 +19,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -30,12 +33,9 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/stretchr/testify/assert"
 	"github.com/medibloc/go-medibloc/util/testutil/txutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common/trie"
 )
 
 func TestTransaction_VerifyIntegrity(t *testing.T) {
@@ -136,7 +136,6 @@ func TestVest(t *testing.T) {
 	tx, err := newTxFunc(transaction)
 	require.NoError(t, err)
 
-
 	genesis.BeginBatch()
 	require.NoError(t, tx.Execute(genesis))
 	require.NoError(t, genesis.State().AcceptTransaction(transaction, genesis.Timestamp()))
@@ -147,7 +146,6 @@ func TestVest(t *testing.T) {
 	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
 }
-
 
 func TestWithdrawVesting(t *testing.T) {
 	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
@@ -203,7 +201,6 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	genesis, _, distributed := testutil.NewTestGenesisBlock(t, testutil.DynastySize)
 	candidate := distributed[testutil.DynastySize]
 
-
 	tb := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(candidate.Addr).SetNonce(1).
 		SetType(dpos.TxOperationBecomeCandidate).CalcHash().Sign(candidate.PrivKey)
 
@@ -216,7 +213,6 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	tb.SetNonce(2)
 	transaction3 := tb.Build()
 
-
 	newTxFunc := testutil.TxMap[transaction1.Type()]
 	tx1, err := newTxFunc(transaction1)
 	require.NoError(t, err)
@@ -226,9 +222,9 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	require.NoError(t, err)
 
 	genesis.State().BeginBatch()
-	assert.Equal(t,core.ErrBalanceNotEnough, tx1.Execute(genesis))
+	assert.Equal(t, core.ErrBalanceNotEnough, tx1.Execute(genesis))
 	assert.NoError(t, tx2.Execute(genesis))
-	assert.Equal(t,dpos.ErrAlreadyInCandidacy, tx3.Execute(genesis))
+	assert.Equal(t, dpos.ErrAlreadyInCandidacy, tx3.Execute(genesis))
 	assert.NoError(t, genesis.State().AcceptTransaction(transaction2, genesis.Timestamp()))
 	genesis.State().Commit()
 
@@ -239,12 +235,11 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	assert.NoError(t, err)
 
 	candidatePb := new(dpospb.Candidate)
-	proto.Unmarshal(candidateBytes,candidatePb)
+	proto.Unmarshal(candidateBytes, candidatePb)
 
 	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
 	assert.NoError(t, err)
 	assert.Equal(t, candidatePb.Collatral, tenBytes)
-
 
 	tbQuit := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(candidate.Addr).SetNonce(2).
 		SetType(dpos.TxOperationQuitCandidacy)
@@ -253,7 +248,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	newTxFuncQuit := testutil.TxMap[transactionQuit.Type()]
 	txQuit, err := newTxFuncQuit(transactionQuit)
-	require.NoError(t,err)
+	require.NoError(t, err)
 
 	genesis.State().BeginBatch()
 	assert.NoError(t, txQuit.Execute(genesis))
@@ -264,8 +259,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000)))
 	_, err = genesis.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
-	assert.Equal(t,trie.ErrNotFound, err)
-
+	assert.Equal(t, trie.ErrNotFound, err)
 
 }
 

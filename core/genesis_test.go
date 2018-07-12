@@ -18,6 +18,7 @@ package core_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
@@ -26,7 +27,6 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 )
 
 func TestNewGenesisBlock(t *testing.T) {

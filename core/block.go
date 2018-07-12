@@ -272,7 +272,7 @@ func (bd *BlockData) Clone() (*BlockData, error) {
 
 	newBd := new(BlockData)
 	err = newBd.FromProto(protoBd)
-	if err != nil  {
+	if err != nil {
 		return nil, err
 	}
 	return newBd, nil
@@ -492,11 +492,11 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 	return block, nil
 }
 
-func (block *Block) Clone() (*Block,error) {
+func (block *Block) Clone() (*Block, error) {
 
 	bd, err := block.BlockData.Clone()
 	if err != nil {
-		return nil , err
+		return nil, err
 	}
 
 	state, err := block.state.Clone()

@@ -30,10 +30,10 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 )
 
 func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
@@ -74,7 +74,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t,testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
 		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
 
 		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
@@ -82,7 +82,6 @@ func TestBlockManager_Sequential(t *testing.T) {
 		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
 }
-
 
 func TestBlockManager_Reverse(t *testing.T) {
 	var nBlocks = 5
@@ -107,9 +106,8 @@ func TestBlockManager_Reverse(t *testing.T) {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
 	}
-	assert.Equal(t,nBlocks,int(bm.TailBlock().Height()))
+	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
-
 
 func TestBlockManager_Tree(t *testing.T) {
 	m := testutil.NewMockMedlet(t)

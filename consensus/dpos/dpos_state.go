@@ -161,7 +161,7 @@ func findProposer(s core.DposState, timestamp int64) (common.Address, error) {
 }
 
 //SetDynastyState set dynasty state using dynasty slice
-func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) (error) {
+func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) error {
 	for i, addr := range dynasty {
 		if err := ds.Put(byteutils.FromInt32(int32(i)), addr.Bytes()); err != nil {
 			return err
