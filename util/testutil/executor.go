@@ -130,7 +130,11 @@ func NewNetwork(t *testing.T, dynastySize int) *Network {
 func (n *Network) NewSeedNode() *Node {
 	cfg := NewConfig(n.t).
 		SetRandomGenesis(n.DynastySize)
+	return n.NewSeedNodeWithConfig(cfg)
+}
 
+// NewSeedNode creates seed node.
+func (n *Network) NewSeedNodeWithConfig(cfg *NodeConfig) *Node {
 	node := NewNode(n.t, cfg)
 	n.Seed = node
 	n.Nodes = append(n.Nodes, node)

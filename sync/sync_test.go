@@ -16,7 +16,6 @@
 package sync_test
 
 import (
-	"os"
 	"testing"
 	"time"
 
@@ -30,18 +29,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	DOMAIN = "127.0.0.1"
-)
-
-func removeRouteTableCache(t *testing.T) {
-	_, err := os.Stat("./data.db/routetable.cache")
-	if err == nil {
-		t.Log("remove routetable.cache")
-		os.Remove("./data.db/routetable.cache")
-	}
-}
-
 func TestService_Start(t *testing.T) {
 	var (
 		nBlocks   = 100
@@ -49,6 +36,8 @@ func TestService_Start(t *testing.T) {
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
+	defer testNetwork.Cleanup()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	for i := 1; i < nBlocks; i++ {
@@ -103,8 +92,6 @@ func TestService_Start(t *testing.T) {
 }
 
 func TestForkResistance(t *testing.T) {
-	removeRouteTableCache(t)
-
 	var (
 		nMajors   = 6
 		nBlocks   = 50
@@ -112,6 +99,8 @@ func TestForkResistance(t *testing.T) {
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
+	defer testNetwork.Cleanup()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -225,7 +214,6 @@ func TestForkResistance(t *testing.T) {
 }
 
 func TestForAutoActivation(t *testing.T) {
-	removeRouteTableCache(t)
 	var (
 		nBlocks              = 119
 		chunkSize            = 20
@@ -234,6 +222,8 @@ func TestForAutoActivation(t *testing.T) {
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
+	defer testNetwork.Cleanup()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -252,6 +242,8 @@ func TestForAutoActivation(t *testing.T) {
 	cfg.Config.Sync.SyncActivationHeight = syncActivationHeight
 	receiver := testNetwork.NewNodeWithConfig(cfg)
 	receiver.Start()
+
+	testNetwork.WaitForEstablished()
 
 	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
 	bb := blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).Child().Timestamp(nextMintTs).SetDynastyState()
@@ -361,6 +353,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
+	defer testNetwork.Cleanup()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -470,6 +463,7 @@ func TestForUnmarshalFailedMsg(t *testing.T) {
 
 	//create First Tester(Seed Node)
 	testNetwork := testutil.NewNetwork(t, 3)
+	defer testNetwork.Cleanup()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -510,11 +504,8 @@ func TestForUnmarshalFailedMsg(t *testing.T) {
 
 //func DefaultSyncTesterConfig() *medletpb.Config {
 //	cfg := medlet.DefaultConfig()
-//	cfg.Network.Listen = nil
 //	cfg.Network.RouteTableSyncLoopInterval = 2000
 //	cfg.Chain.BlockCacheSize = 1
-//	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-//	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
 //	cfg.Sync.SeedingMinChunkSize = 2
 //	cfg.Sync.SeedingMaxChunkSize = 100
 //	cfg.Sync.DownloadChunkCacheSize = 2
