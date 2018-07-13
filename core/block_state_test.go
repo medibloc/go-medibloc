@@ -79,7 +79,7 @@ func TestUpdateUsage(t *testing.T) {
 
 	for i, c := range cases {
 		transaction := txutil.NewTransactionBuilder(t).SetChainID(testutil.ChainID).SetFrom(c.from).SetTo(c.to).SetValue(c.amount).
-			SetType(core.TxOperationSend).SetNonce(1)
+			SetType(core.TxOpSend).SetNonce(1)
 
 		txs[i], err = core.NewTransaction(testutil.ChainID, c.from, c.to, c.amount, 1, core.TxPayloadBinaryType, []byte{})
 		assert.NoError(t, err)

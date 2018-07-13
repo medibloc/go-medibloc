@@ -42,10 +42,9 @@ func TestService_Start(t *testing.T) {
 	seed.Start()
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child()
+		miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+		mint := bb.SignPair(miner).Build()
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
 
@@ -114,10 +113,9 @@ func TestForkResistance(t *testing.T) {
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child()
+		miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+		mint := bb.SignPair(miner).Build()
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 
 		for _, n := range majorNodes {
@@ -140,10 +138,10 @@ func TestForkResistance(t *testing.T) {
 		minorNodes[i].Start()
 	}
 
-	bb := blockutil.New(t, testNetwork.DynastySize).Block(minorNodes[0].Tail()).Child()
-	bb = bb.Timestamp(bb.B.Timestamp() + int64(dpos.BlockInterval.Seconds())).SetDynastyState()
-	minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), minorNodes[0].Tail())
-	mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+	bb := blockutil.New(t, testNetwork.DynastySize).Block(minorNodes[0].Tail()).
+		ChildWithTimestamp(minorNodes[0].Tail().Timestamp() + int64(dpos.BlockInterval.Seconds()))
+	miner := testNetwork.FindProposer(bb.B.Timestamp(), minorNodes[0].Tail())
+	mint := bb.SignPair(miner).Build()
 
 	for _, n := range minorNodes {
 		require.NoError(t, n.Med.BlockManager().PushBlockData(mint.BlockData))
@@ -152,10 +150,9 @@ func TestForkResistance(t *testing.T) {
 	//Generate diff blocks and push to minor tester
 	for i := 2; i < nBlocks; i++ {
 		tail := minorNodes[0].Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child()
+		miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+		mint := bb.SignPair(miner).Build()
 
 		for _, n := range minorNodes {
 			require.NoError(t, n.Med.BlockManager().PushBlockData(mint.BlockData))
@@ -230,10 +227,9 @@ func TestForAutoActivation(t *testing.T) {
 	// generate blocks (height:2~nBlocks-1) on seedTester
 	for i := 1; i < nBlocks-1; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child()
+		miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+		mint := bb.SignPair(miner).Build()
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
 	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
@@ -246,9 +242,9 @@ func TestForAutoActivation(t *testing.T) {
 	testNetwork.WaitForEstablished()
 
 	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
-	bb := blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).Child().Timestamp(nextMintTs).SetDynastyState()
-	minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), seed.Tail())
-	mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+	bb := blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).ChildWithTimestamp(nextMintTs)
+	miner := testNetwork.FindProposer(bb.B.Timestamp(), seed.Tail())
+	mint := bb.SignPair(miner).Build()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 
 	time.Sleep(time.Unix(mint.Timestamp(), 0).Sub(time.Now()))
@@ -303,9 +299,9 @@ func TestForAutoActivation(t *testing.T) {
 	require.True(t, int(newTail.Height()) > nBlocks-chunkSize, "Receiver height is too low")
 
 	nextMintTs = dpos.NextMintSlot2(time.Now().Unix())
-	bb = blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).Child().Timestamp(nextMintTs).SetDynastyState()
-	minerKeyPair = testNetwork.FindProposer(bb.B.Timestamp(), seed.Tail())
-	mint = bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+	bb = blockutil.New(t, testNetwork.DynastySize).Block(seed.Tail()).ChildWithTimestamp(nextMintTs)
+	miner = testNetwork.FindProposer(bb.B.Timestamp(), seed.Tail())
+	mint = bb.SignPair(miner).Build()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	time.Sleep(time.Unix(mint.Timestamp(), 0).Sub(time.Now()))
 	seed.Med.BlockManager().BroadCast(mint.BlockData)
@@ -362,10 +358,9 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child()
+		miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+		mint := bb.SignPair(miner).Build()
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(mint.BlockData))
 	}
 

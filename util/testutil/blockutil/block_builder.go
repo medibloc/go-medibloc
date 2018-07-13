@@ -216,6 +216,12 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 	return n
 }
 
+func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
+	n := bb.copy()
+
+	return n.Coinbase(pair.Addr).Seal().CalcHash().SignKey(pair.PrivKey)
+}
+
 func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	txs := n.B.Transactions()
@@ -291,14 +297,16 @@ func (bb *BlockBuilder) BuildBytes() []byte {
 
 func (bb *BlockBuilder) Child() *BlockBuilder {
 	n := bb.copy()
-	n.B.SetTransactions(make([]*core.Transaction, 0))
-	return n.ParentHash(bb.B.Hash()).
-		Timestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix()).
-		Height(bb.B.Height() + 1).
-		Sealed(false)
+	return n.ChildWithTimestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix())
 }
 
-func (bb *BlockBuilder) SetDynastyState() *BlockBuilder {
+func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetTransactions(make([]*core.Transaction, 0))
+	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState()
+}
+
+func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
 	n := bb.copy()
 	dposState := n.B.State().DposState()
 

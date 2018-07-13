@@ -68,13 +68,14 @@ func TestBlockManager_Sequential(t *testing.T) {
 	var nBlocks = 5
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().UpdateDynastyState()
 		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
 
 		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
@@ -87,6 +88,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 	var nBlocks = 5
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
@@ -95,7 +97,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 
 	var blocks []*core.Block
 	for i := 1; i < nBlocks; i++ {
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().UpdateDynastyState()
 		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
 
 		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
