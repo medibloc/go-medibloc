@@ -579,20 +579,13 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	as := b.state.AccState()
 	cs := b.state.DposState().CandidateState()
 
-	//if err := as.AddBalance(tx.user.Bytes(), tx.amount); err != nil {
-	//	return err
-	//}
-	//if err := as.SubBalance(tx.user.Bytes(), tx.amount); err != nil {
-	//	return err
-	//}
-
 	account, err := as.getAccount(tx.user.Bytes())
 	if err != nil {
 		return err
 	}
 
-	if tx.amount.Cmp(account.Vesting()) > 0 {
-		return ErrVestingNotEnough
+	if err := as.SubVesting(tx.user.Bytes(), tx.amount); err != nil {
+		return err
 	}
 
 	splitAmount, err := tx.amount.Div(util.NewUint128FromUint(RtWithdrawNum))
@@ -628,7 +621,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		return nil
 	}
 
-	// Add user's vesting to cadidate's votePower
+	// Subtract user's vesting to cadidate's votePower
 	candidateBytes, err := cs.Get(candidate)
 	if err != nil {
 		return nil
@@ -703,7 +696,7 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 		Certified:       tx.Certified.Bytes(),
 		IssueTime:       tx.Payload.IssueTime,
 		ExpirationTime:  tx.Payload.ExpirationTime,
-		RevocationTime:  int64(0),
+		RevocationTime:  int64(-1),
 	}
 	certificationBytes, err := proto.Marshal(pbCertification)
 	if err != nil {
@@ -744,23 +737,15 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	//as := b.state.AccState()
 	cs := b.state.certificationState
 
-	//revokerAcc, err := s.GetAccount(tx.Revoker)
-	//if err != nil {
-	//	return nil
-	//}
 	pbCert, err := s.Certification(tx.Hash)
 	if err != nil {
 		return nil
 	}
-	//certifiedAcc, err := s.GetAccount(common.BytesToAddress(pbCert.Certified))
-	//if err != nil {
-	//	return nil
-	//}
 
 	if common.BytesToAddress(pbCert.Issuer) != tx.Revoker {
 		return ErrInvalidCertificationRevoker
 	}
-	if pbCert.RevocationTime > int64(0) {
+	if pbCert.RevocationTime > int64(-1) {
 		return ErrCertAlreadyRevoked
 	}
 	if pbCert.ExpirationTime < tx.RevocationTime {
@@ -774,6 +759,5 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 		return err
 	}
 
-	//Todo: Remove certificate from AccountState(both issuer and certified)??
 	return cs.Put(tx.Hash, newBytesCertification)
 }

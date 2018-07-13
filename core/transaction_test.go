@@ -27,59 +27,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 )
 
-//func TestTransaction_VerifyIntegrity(t *testing.T) {
-//	testCount := 3
-//	type keyPair struct {
-//		pubKey []byte
-//		priKey string
-//	}
-//
-//	var keyPairs testutil.AddrKeyPairs
-//
-//	for i :=0; i<testCount; i++ {
-//		keyPairs = append(keyPairs, testutil.NewAddrKeyPair(t))
-//	}
-//
-//	type testTx struct {
-//		name    string
-//		tx      *core.Transaction
-//		privKey signature.PrivateKey
-//		count   int
-//	}
-//
-//	var tests []testTx
-//	for index := 0; index < testCount; index++ {
-//
-//		from := keyPairs[index].Addr
-//		to := testutil.NewAddrKeyPair(t).Addr
-//
-//		tb := blockutil.New(t, testutil.DynastySize).
-//			Tx().ChainID(testutil.ChainID).From(from).To(to).Value(0).
-//			Nonce(1).Type(core.TxPayloadBinaryType)
-//
-//
-//		sig, err := crypto.NewSignature(algorithm.SECP256K1)
-//		assert.NoError(t, err)
-//		key := keyPairs[index].PrivKey
-//		sig.InitSign(key)
-//		assert.NoError(t, tx.SignThis(sig))
-//		tests = append(tests, testTx{string(index), tx, key, 1})
-//	}
-//	for _, tt := range tests {
-//		for index := 0; index < tt.count; index++ {
-//			t.Run(tt.name, func(t *testing.T) {
-//				signature, err := crypto.NewSignature(algorithm.SECP256K1)
-//				assert.NoError(t, err)
-//				signature.InitSign(tt.privKey)
-//				err = tt.tx.SignThis(signature)
-//				assert.NoErrorf(t, err, "Sign() error = %v", err)
-//				err = tt.tx.VerifyIntegrity(testutil.ChainID)
-//				assert.NoErrorf(t, err, "verify failed:%s", err)
-//			})
-//		}
-//	}
-//}
-
 func TestAddRecord(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
@@ -96,7 +43,7 @@ func TestAddRecord(t *testing.T) {
 	assert.Equal(t, record.Hash, recordHash)
 }
 
-func TestVest(t *testing.T) {
+func TestVestAndWithdraw(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
 	from := bb.TokenDist[0]
@@ -107,57 +54,21 @@ func TestVest(t *testing.T) {
 	bb.Expect().
 		Balance(from.Addr, uint64(1000000000-333)).
 		Vesting(from.Addr, uint64(333))
-}
 
-//func TestWithdrawVesting(t *testing.T) {
-//	genesis, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
-//
-//	from := dynasties[0]
-//	vestTx, err := core.NewTransaction(
-//		testutil.ChainID,
-//		from.Addr,
-//		common.Address{},
-//		util.NewUint128FromUint(333), 1,
-//		core.TxOpVest, []byte{},
-//	)
-//	withdrawTx, err := core.NewTransaction(
-//		testutil.ChainID,
-//		from.Addr,
-//		common.Address{},
-//		util.NewUint128FromUint(333), 2,
-//		core.TxOpWithdrawVesting, []byte{})
-//	withdrawTx.SetTimestamp(int64(0))
-//	assert.NoError(t, err)
-//	privKey := from.PrivKey
-//	assert.NoError(t, err)
-//	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-//	assert.NoError(t, err)
-//	sig.InitSign(privKey)
-//	assert.NoError(t, vestTx.SignThis(sig))
-//	assert.NoError(t, withdrawTx.SignThis(sig))
-//
-//	genesisState, err := genesis.State().Clone()
-//	assert.NoError(t, err)
-//
-//	genesisState.BeginBatch()
-//	assert.NoError(t, vestTx.ExecuteOnState(genesisState))
-//	assert.NoError(t, genesisState.AcceptTransaction(vestTx, genesis.Timestamp()))
-//	assert.NoError(t, withdrawTx.ExecuteOnState(genesisState))
-//	assert.NoError(t, genesisState.AcceptTransaction(withdrawTx, genesis.Timestamp()))
-//	genesisState.Commit()
-//
-//	acc, err := genesisState.GetAccount(from.Addr)
-//	assert.NoError(t, err)
-//	assert.Equal(t, acc.Vesting(), util.NewUint128FromUint(uint64(333)))
-//	assert.Equal(t, acc.Balance(), util.NewUint128FromUint(uint64(1000000000-333)))
-//	tasks := genesisState.GetReservedTasks()
-//	assert.Equal(t, 3, len(tasks))
-//	for i := 0; i < len(tasks); i++ {
-//		assert.Equal(t, core.RtWithdrawType, tasks[i].TaskType())
-//		assert.Equal(t, from.Addr, tasks[i].From())
-//		assert.Equal(t, withdrawTx.Timestamp()+int64(i+1)*core.RtWithdrawInterval, tasks[i].Timestamp())
-//	}
-//}
+	bb = bb.
+		Tx().Type(core.TxOpWithdrawVesting).Value(133).Nonce(1).SignPair(from).Execute()
+
+	bb.Expect().Vesting(from.Addr,uint64(333-133))
+
+	block := bb.Build()
+	reservedTask := block.State().GetReservedTasks()
+	assert.Equal(t, 3, len(reservedTask))
+	for i := 0; i < len(reservedTask); i++ {
+		assert.Equal(t, core.RtWithdrawType, reservedTask[i].TaskType())
+		assert.Equal(t, from.Addr, reservedTask[i].From())
+		assert.Equal(t, bb.B.Timestamp()+int64(i+1)*core.RtWithdrawInterval, reservedTask[i].Timestamp())
+	}
+}
 
 func TestAddAndRevokeCertification(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
