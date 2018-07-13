@@ -106,6 +106,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 
 	switch txData.Type {
 	case core.TxOperationSend:
+		return nil, nil
 	case core.TxOperationAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
 		payload := core.NewAddRecordPayload(addRecord.Hash)
@@ -115,7 +116,11 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 		}
 		return payloadBuf, nil
 	case core.TxOperationVest:
+		return nil, nil
 	case core.TxOperationWithdrawVesting:
+		return nil, nil
+	case core.TxOperationVote:
+		return nil, nil
 	case core.TxPayloadBinaryType:
 		return nil, nil
 	case core.TxOperationAddCertification:
