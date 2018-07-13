@@ -27,11 +27,12 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
 	// GenesisHash is hash of genesis block
-	GenesisHash = []byte("genesisHash")
+	GenesisHash = genesisHash("genesisHash")
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
@@ -39,6 +40,12 @@ var (
 	// GenesisHeight is height of genesis block
 	GenesisHeight = uint64(1)
 )
+
+func genesisHash(quote string) []byte {
+	hasher := sha3.New256()
+	hasher.Write([]byte(quote))
+	return hasher.Sum(nil)
+}
 
 // LoadGenesisConf loads genesis conf file
 func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
