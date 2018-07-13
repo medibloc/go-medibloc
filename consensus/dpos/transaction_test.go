@@ -32,35 +32,28 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	candidate := bb.TokenDist[testutil.DynastySize]
 
-	addr := candidate.Addr
-	key := candidate.PrivKey
 	txType := dpos.TxOpBecomeCandidate
 	bb = bb.
-		Tx().From(addr).Nonce(1).Type(txType).Value(1000000001).CalcHash().SignKey(key).ExecuteErr(core.ErrBalanceNotEnough).
-		Tx().From(addr).Nonce(1).Type(txType).Value(10).CalcHash().SignKey(key).Execute().
-		Tx().From(addr).Nonce(2).Type(txType).Value(10).CalcHash().SignKey(key).ExecuteErr(dpos.ErrAlreadyCandidate)
+		Tx().Type(txType).Value(1000000001).Nonce(1).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().Type(txType).Value(10).Nonce(1).SignPair(candidate).Execute().
+		Tx().Type(txType).Value(10).Nonce(2).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
 
-	bb.Expect().Balance(addr, uint64(1000000000-10))
+	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
 
-	pbCandidate, err := block.State().DposState().(*dpos.State).Candidate(addr)
+	pbCandidate, err := block.State().DposState().(*dpos.State).Candidate(candidate.Addr)
 	assert.NoError(t, err)
 
 	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
 	assert.Equal(t, pbCandidate.Collatral, tenBytes)
 
-	tbQuit := blockutil.New(t, testutil.DynastySize).Tx().From(addr).Nonce(2).
-		Type(dpos.TxOpQuitCandidacy)
+	bb = bb.
+		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(2).SignPair(candidate).Execute().
+		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(3).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
 
-	transactionQuit1 := tbQuit.CalcHash().SignKey(key).Build()
-	transactionQuit2 := tbQuit.Nonce(3).CalcHash().SignKey(key).Build()
-
-	bb = bb.ExecuteTx(transactionQuit1).
-		ExecuteTxErr(transactionQuit2, dpos.ErrNotCandidate)
-	bb.Expect().Balance(addr, uint64(1000000000))
 	block = bb.Build()
 
-	_, err = block.State().DposState().(*dpos.State).Candidate(addr)
+	_, err = block.State().DposState().(*dpos.State).Candidate(candidate.Addr)
 	assert.Equal(t, dpos.ErrNotCandidate, err)
 }
 
@@ -71,9 +64,9 @@ func TestVote(t *testing.T) {
 	voter := bb.TokenDist[testutil.DynastySize+1]
 
 	bb = bb.
-		Tx().From(voter.Addr).Nonce(1).Value(333).Type(core.TxOpVest).CalcHash().SignKey(voter.PrivKey).Execute().
-		Tx().From(candidate.Addr).Nonce(1).Value(10).Type(dpos.TxOpBecomeCandidate).CalcHash().SignKey(candidate.PrivKey).Execute().
-		Tx().From(voter.Addr).Nonce(2).To(candidate.Addr).Type(dpos.TxOpVote).CalcHash().SignKey(voter.PrivKey).Execute()
+		Tx().Type(core.TxOpVest).Value(333).Nonce(1).SignPair(voter).Execute().
+		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).Nonce(1).SignPair(candidate).Execute().
+		Tx().Type(dpos.TxOpVote).To(candidate.Addr).Nonce(2).SignPair(voter).Execute()
 
 	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
