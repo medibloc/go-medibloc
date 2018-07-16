@@ -16,7 +16,6 @@
 package core_test
 
 import (
-	"math/rand"
 	"testing"
 
 	"strings"
@@ -27,58 +26,31 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/crypto/sha3"
 )
-
-func restoreBlockData(t *testing.T, block *core.Block) *core.BlockData {
-	msg, err := block.ToProto()
-	require.Nil(t, err)
-	blockData := new(core.BlockData)
-	blockData.FromProto(msg)
-	return blockData
-}
-
-func getBlockDataList(t *testing.T, idxToParent []testutil.BlockID, genesis *core.Block, dynasties testutil.AddrKeyPairs) []*core.BlockData {
-	from := dynasties[0]
-	blockMap := make(map[testutil.BlockID]*core.Block)
-	blockMap[testutil.GenesisID] = genesis
-	blockDatas := make([]*core.BlockData, len(idxToParent))
-	for i, parentID := range idxToParent {
-		block := testutil.NewTestBlockWithTxs(t, blockMap[parentID], from)
-		//require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
-		require.Nil(t, block.ExecuteAll(testutil.TxMap))
-		require.Nil(t, block.Seal())
-		testutil.SignBlockUsingDynasties(t, block, dynasties)
-		blockMap[testutil.BlockID(i)] = block
-
-		// restore state for simulate network received message
-		blockDatas[i] = restoreBlockData(t, block)
-	}
-
-	return blockDatas
-}
 
 func TestBlockManager_Sequential(t *testing.T) {
 	var nBlocks = 5
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
 
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().UpdateDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		mint := bb.Block(tail).Child().SignMiner().Build()
 		require.NoError(t, bm.PushBlockData(mint.BlockData))
 		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
@@ -89,18 +61,18 @@ func TestBlockManager_Reverse(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
 
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
 
 	var blocks []*core.Block
 	for i := 1; i < nBlocks; i++ {
-		bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().UpdateDynastyState()
-		minerKeyPair := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-
-		mint := bb.Coinbase(minerKeyPair.Addr).Seal().CalcHash().SignKey(minerKeyPair.PrivKey).Build()
+		mint := bb.Block(tail).Child().SignMiner().Build()
 		blocks = append(blocks, mint)
 		tail = mint
 	}
@@ -111,142 +83,183 @@ func TestBlockManager_Reverse(t *testing.T) {
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
-func TestBlockManager_Tree(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	tm := m.TransactionManager()
-	bm.InjectTransactionManager(tm)
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
-
-	tests := []struct {
-		idxToParent []testutil.BlockID
-	}{
-		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
-		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
-		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
-	}
-
-	for _, test := range tests {
-		blockDatas := getBlockDataList(t, test.idxToParent, genesis, dynasties)
-		for i := range blockDatas {
-			j := rand.Intn(i + 1)
-			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
-		}
-		for _, blockData := range blockDatas {
-			err := bm.PushBlockData(blockData)
-			require.Nil(t, err)
-		}
-	}
-}
+//func TestBlockManager_Tree(t *testing.T) {
+//	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+//	defer testNetwork.Cleanup()
+//	seed := testNetwork.NewSeedNode()
+//	seed.Start()
+//	bm := seed.Med.BlockManager()
+//
+//	tail := seed.Tail()
+//
+//	bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
+//	miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
+//	mint := bb.Coinbase(miner.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
+//
+//	miner = testNetwork.FindProposer(bb.B.Timestamp(), mint)
+//	bb.Block(mint).Coinbase(miner.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
+//
+//
+//	tests := []struct {
+//		idxToParent []testutil.BlockID
+//	}{
+//		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
+//		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
+//		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
+//	}
+//
+//	for _, test := range tests {
+//		blockDatas := getBlockDataList(t, test.idxToParent, genesis, dynasties)
+//		for i := range blockDatas {
+//			j := rand.Intn(i + 1)
+//			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
+//		}
+//		for _, blockData := range blockDatas {
+//			err := bm.PushBlockData(blockData)
+//			require.Nil(t, err)
+//		}
+//	}
+//}
 
 func TestBlockManager_CircularParentLink(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	block := testutil.NewTestBlock(t, genesis)
-	testutil.SignBlockUsingDynasties(t, block, dynasties)
-	err := bm.PushBlockData(block.GetBlockData())
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+	tail := seed.Tail()
+
+	block1 := bb.Block(tail).Child().SignMiner().Build()
+	block2 := bb.Block(block1).Child().SignMiner().Build()
+
+	err := bm.PushBlockData(block1.GetBlockData())
 	require.NoError(t, err)
 
-	parent := block.ParentHash()
-	hash := block.Hash()
-	pb := &corepb.Block{
-		Header: &corepb.BlockHeader{
-			Hash:       parent,
-			ParentHash: hash,
-			ChainId:    1,
-		},
-	}
-	var bd core.BlockData
-	err = bd.FromProto(pb)
-	require.NoError(t, err)
-	err = bm.PushBlockData(&bd)
+	bb = bb.Block(block2).Child().Hash(block2.ParentHash()).ParentHash(block2.Hash())
+	miner := testNetwork.FindProposer(bb.B.Timestamp(), block1)
+	block3 := bb.Coinbase(miner.Addr).SignKey(miner.PrivKey).Build()
+
+	err = bm.PushBlockData(block3.GetBlockData())
 	require.Error(t, core.ErrInvalidBlockHash)
 }
 
 func TestBlockManager_FilterByLIB(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
-	dynastySize := int(m.Genesis().GetMeta().GetDynastySize())
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	idxToParent := []testutil.BlockID{testutil.GenesisID}
-	for i := 0; i < dynastySize; i++ {
-		idxToParent = append(idxToParent, testutil.BlockID(i))
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+	tail := seed.Tail()
+
+	blocks := make([]*core.Block, 0)
+	for i := 0; i < dynastySize+1; i++ {
+		block := bb.Block(tail).Child().SignMiner().Build()
+		blocks = append(blocks, block)
+		tail = block
 	}
-	idxToParent = append(idxToParent, testutil.BlockID(0))
-	idxToParent = append(idxToParent, testutil.BlockID(1))
-	idxToParent = append(idxToParent, testutil.BlockID(dynastySize*2/3))
-	idxToParent = append(idxToParent, testutil.BlockID(dynastySize*2/3+1))
+	blocks = append(blocks, bb.Block(blocks[0]).Child().
+		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		SignMiner().Build())
+	blocks = append(blocks, bb.Block(blocks[1]).Child().
+		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		SignMiner().Build())
+	blocks = append(blocks, bb.Block(blocks[dynastySize*2/3]).Child().
+		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		SignMiner().Build())
+	blocks = append(blocks, bb.Block(blocks[dynastySize*2/3+1]).Child().
+		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		SignMiner().Build())
 
-	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
 	for i := 0; i < dynastySize; i++ {
-		err := bm.PushBlockData(blockDatas[i])
+		err := bm.PushBlockData(blocks[i].GetBlockData())
 		assert.NoError(t, err)
 	}
-
-	assert.Len(t, blockDatas, dynastySize+5)
-	err := bm.PushBlockData(blockDatas[dynastySize+1])
+	assert.Len(t, blocks, dynastySize+5)
+	err := bm.PushBlockData(blocks[dynastySize+1].GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
-	err = bm.PushBlockData(blockDatas[dynastySize+2])
+	err = bm.PushBlockData(blocks[dynastySize+2].GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
-	err = bm.PushBlockData(blockDatas[dynastySize+3])
+	err = bm.PushBlockData(blocks[dynastySize+3].GetBlockData())
 	assert.NoError(t, err)
-	err = bm.PushBlockData(blockDatas[dynastySize+4])
+	err = bm.PushBlockData(blocks[dynastySize+4].GetBlockData())
 	assert.NoError(t, err)
 
 	parent, err := bm.BlockByHeight(3)
 	require.Nil(t, err)
-	bd := nextBlockData(t, parent, dynasties)
-	bd.SetHeight(20)
-	err = bm.PushBlockData(bd)
+	b := bb.Block(parent).Child().Height(20).SignMiner().Build()
+	err = bm.PushBlockData(b.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 }
 
 func TestBlockManager_PruneByLIB(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	tm := m.TransactionManager()
-	bm.InjectTransactionManager(tm)
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
-	dynastySize := int(m.Genesis().GetMeta().GetDynastySize())
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 0}
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+	tail := seed.Tail()
+
+	blocks := make([]*core.Block, 0)
+
+	b1 := bb.Block(tail).Child().SignMiner().Build()
+	blocks = append(blocks, b1)
+
+	b2 := bb.Block(b1).Child().SignMiner().Build()
+	blocks = append(blocks, b2)
+
+	b3 := bb.Block(b1).Child().SignMiner().Build()
+	blocks = append(blocks, b3)
+
 	for i := 1; i < dynastySize; i++ {
-		idxToParent = append(idxToParent, testutil.BlockID(i+1))
+		block := bb.Block(blocks[i+1]).Child().SignMiner().Build()
+		blocks = append(blocks, block)
 	}
 
-	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
-	for _, blockData := range blockDatas {
-		err := bm.PushBlockData(blockData)
+	for _, block := range blocks {
+		err := bm.PushBlockData(block.GetBlockData())
 		assert.NoError(t, err)
 	}
 
-	assert.Nil(t, bm.BlockByHash(blockDatas[1].Hash()))
-	assert.NotNil(t, bm.BlockByHash(blockDatas[2].Hash()))
+	assert.Nil(t, bm.BlockByHash(blocks[1].Hash()))
+	assert.NotNil(t, bm.BlockByHash(blocks[2].Hash()))
 }
 
 func TestBlockManager_InvalidHeight(t *testing.T) {
-	m := testutil.NewMockMedlet(t)
-	bm := m.BlockManager()
-	genesis := bm.TailBlock()
-	dynasties := m.Dynasties()
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockDatas := getBlockDataList(t, idxToParent, genesis, dynasties)
-	for _, blockData := range blockDatas {
-		err := bm.PushBlockData(blockData)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	tail := seed.Tail()
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
+	for i := 0; i < 6; i++ {
+		block := bb.Block(tail).Child().SignMiner().Build()
+		err := bm.PushBlockData(block.GetBlockData())
 		assert.NoError(t, err)
 	}
 
 	parent, err := bm.BlockByHeight(3)
 	require.Nil(t, err)
-	bd := nextBlockData(t, parent, dynasties)
+
 	tests := []struct {
 		height uint64
 		err    error
@@ -261,8 +274,8 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		{4, nil},
 	}
 	for _, test := range tests {
-		bd.SetHeight(test.height)
-		assert.Equal(t, test.err, bm.PushBlockData(bd), "testcase = %v", test)
+		block := bb.Block(parent).Child().Height(test.height).SignMiner().Build()
+		assert.Equal(t, test.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", test)
 	}
 }
 
@@ -287,49 +300,49 @@ func TestBlockManager_Setup(t *testing.T) {
 }
 
 func TestBlockManager_InvalidChainID(t *testing.T) {
-	nt := testutil.NewNetwork(t, 3)
-	nt.SetLogTestHook()
-	seed := nt.NewSeedNode()
-	nt.Start()
-	defer nt.Cleanup()
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	dynasties := nt.Seed.Config.Dynasties
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
 	genesis := seed.GenesisBlock()
 
-	block := testutil.NewTestBlock(t, genesis)
-
-	pb, err := block.ToProto()
-	require.NoError(t, err)
-	pb.(*corepb.Block).Header.ChainId = 959123
-	block.FromProto(pb)
-
-	testutil.SignBlockUsingDynasties(t, block, dynasties)
-	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	block := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist).
+		Block(genesis).Child().ChainID(959123).SignMiner().Build()
+	err := bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 }
 
 func TestBlockManager_RequestParentBlock(t *testing.T) {
-	nt := testutil.NewNetwork(t, 3)
-	hook := nt.SetLogTestHook()
-	seed := nt.NewSeedNode()
-	node := nt.NewNode()
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	hook := testNetwork.SetLogTestHook()
 
-	nt.Start()
-	defer nt.Cleanup()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+	node := testNetwork.NewNode()
 
-	nt.WaitForEstablished()
+	testNetwork.Start()
 
-	dynasties := nt.Seed.Config.Dynasties
+	testNetwork.WaitForEstablished()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	genesis := seed.GenesisBlock()
 
 	blocks := make([]*core.Block, 0)
 	parent := genesis
 	for i := 0; i < 10; i++ {
-		block := testutil.NewTestBlock(t, parent)
-		testutil.SignBlockUsingDynasties(t, block, dynasties)
-		seed.Med.BlockManager().PushBlockData(block.GetBlockData())
-		parent = block
+		block := bb.Block(parent).Child().SignMiner().Build()
+		err := bm.PushBlockData(block.GetBlockData())
+		require.NoError(t, err)
 		blocks = append(blocks, block)
+		parent = block
 	}
 
 	seedID := seed.Med.NetService().Node().ID()
@@ -375,59 +388,46 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 }
 
 func TestBlockManager_VerifyIntegrity(t *testing.T) {
-	nt := testutil.NewNetwork(t, 3)
-	nt.SetLogTestHook()
-	seed := nt.NewSeedNode()
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
 
-	nt.Start()
-	defer nt.Cleanup()
-
-	dynasties := nt.Seed.Config.Dynasties
+	//dynasties := nt.Seed.Config.Dynasties
 	genesis := seed.GenesisBlock()
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.TokenDist).AddKeyPairs(seed.Config.Dynasties)
 
 	// Invalid Block Hash
-	block := testutil.NewTestBlock(t, genesis)
-	pb, err := block.ToProto()
-	require.NoError(t, err)
-	pb.(*corepb.Block).Header.Hash = []byte("invalid hash")
-	err = block.FromProto(pb)
-	require.NoError(t, err)
-	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	bb = bb.Block(genesis).Child()
+	pair := testNetwork.FindProposer(bb.B.Timestamp(), genesis)
+	block := bb.Coinbase(pair.Addr).Seal().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Build()
+	err := bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidBlockHash, err)
 
 	// Invalid Block Sign algorithm
-	block = testutil.NewTestBlock(t, genesis)
-	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	block = bb.Block(genesis).Child().SignMiner().Alg(11).Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, crypto.ErrAlgorithmInvalid, err)
 
 	// Invalid Block Signer
-	block = testutil.NewTestBlock(t, genesis)
-	testutil.SignBlock(t, block, testutil.NewPrivateKey(t))
-	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	invalidPair := testutil.NewAddrKeyPair(t)
+	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, dpos.ErrInvalidBlockProposer, err)
 
 	// Invalid Transaction Hash
-	block = testutil.NewTestBlockWithTxs(t, genesis, dynasties[0])
-	pb, err = block.ToProto()
-	require.NoError(t, err)
-	pb.(*corepb.Block).Transactions[0].Hash = []byte("invalid hash")
-	err = block.FromProto(pb)
-	require.NoError(t, err)
-	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	pair = testutil.NewAddrKeyPair(t)
+	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).From(pair.Addr).SignKey(pair.PrivKey).Add().SignMiner().Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidTransactionHash, err)
 
 	// Invalid Transaction Signer
-	block = testutil.NewTestBlockWithTxs(t, genesis, dynasties[1])
-	pb, err = block.ToProto()
-	require.NoError(t, err)
-	signer, err := crypto.NewSignature(algorithm.SECP256K1)
-	require.NoError(t, err)
-	signer.InitSign(testutil.NewPrivateKey(t))
-	invalidSig, err := signer.Sign(block.Transactions()[0].Hash())
-	pb.(*corepb.Block).Transactions[0].Sign = invalidSig
-	err = block.FromProto(pb)
-	require.NoError(t, err)
-	err = seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+	pair1 := testutil.NewAddrKeyPair(t)
+	pair2 := testutil.NewAddrKeyPair(t)
+	block = bb.Block(genesis).Child().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignMiner().Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
 
@@ -448,4 +448,10 @@ func foundInLog(hook *test.Hook, s string) bool {
 		default:
 		}
 	}
+}
+
+func hash(data []byte) []byte {
+	hasher := sha3.New256()
+	hasher.Write(data)
+	return hasher.Sum(nil)
 }
