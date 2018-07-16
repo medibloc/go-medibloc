@@ -409,7 +409,13 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 }
 
 func (bd *BlockData) String() string {
-	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v>", bd.Height(), byteutils.Bytes2Hex(bd.Hash()), byteutils.Bytes2Hex(bd.ParentHash()))
+	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v, Coinbase:%v, Timestamp:%v, Sign:%v>",
+		bd.Height(),
+		byteutils.Bytes2Hex(bd.Hash()),
+		byteutils.Bytes2Hex(bd.ParentHash()),
+		byteutils.Bytes2Hex(bd.Coinbase().Bytes()),
+		bd.Timestamp(),
+		byteutils.Bytes2Hex(bd.Signature()))
 }
 
 // Storage returns storage used by block
