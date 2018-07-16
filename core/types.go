@@ -63,6 +63,7 @@ const (
 
 // Error types of core package.
 var (
+	ErrNotFound = storage.ErrKeyNotFound
 	ErrBalanceNotEnough                 = errors.New("balance is not enough")
 	ErrBeginAgainInBatch                = errors.New("cannot begin with a batch task unfinished")
 	ErrCannotCloneOnBatching            = errors.New("cannot clone on batching")

@@ -37,14 +37,9 @@ func TestNewGenesisBlock(t *testing.T) {
 	initialMessage := "Genesis block of MediBloc"
 	assert.Equalf(t, string(txs[0].Payload()), initialMessage, "Initial tx payload should equal '%s'", initialMessage)
 
-	sto := genesisBlock.Storage()
-
-	accStateBatch, err := core.NewAccountStateBatch(genesisBlock.AccountsRoot(), sto)
-	assert.NoError(t, err)
-	accState := accStateBatch.AccountState()
+	accState := genesisBlock.State().AccState()
 
 	addr := dynasties[0].Addr
-	assert.NoError(t, err)
 	acc, err := accState.GetAccount(addr.Bytes())
 	assert.NoError(t, err)
 

@@ -98,7 +98,8 @@ func (as *AccountStateBatch) RollBack() error {
 	return nil
 }
 
-func (as *AccountStateBatch) getAccount(address []byte) (*account, error) {
+// GetAccount get account in stage(batching) or in original accountState
+func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
 	s := hex.EncodeToString(address)
 	if acc, ok := as.stageAccounts[s]; ok {
 		return acc, nil
@@ -138,7 +139,7 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -155,7 +156,7 @@ func (as *AccountStateBatch) AddTransaction(address []byte, txHash []byte, sendT
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -183,7 +184,7 @@ func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -196,22 +197,6 @@ func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	return nil
 }
 
-// GetAccount get account in stage(batching) or in original accountState
-func (as *AccountStateBatch) GetAccount(address []byte) (Account, error) {
-	s := hex.EncodeToString(address)
-	if acc, ok := as.stageAccounts[s]; ok {
-		return acc, nil
-	}
-	accBytes, err := as.as.accounts.Get(address)
-	if err == nil {
-		acc, err := loadAccount(accBytes)
-		if err != nil {
-			return nil, err
-		}
-		return acc, nil
-	}
-	return nil, ErrNotFound
-}
 
 // AccountState getter for accountState
 func (as *AccountStateBatch) AccountState() AccountState {
@@ -223,7 +208,7 @@ func (as *AccountStateBatch) SubBalance(address []byte, amount *util.Uint128) er
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -243,7 +228,7 @@ func (as *AccountStateBatch) IncrementNonce(address []byte) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -256,7 +241,7 @@ func (as *AccountStateBatch) AddVesting(address []byte, amount *util.Uint128) er
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -273,7 +258,7 @@ func (as *AccountStateBatch) SubVesting(address []byte, amount *util.Uint128) er
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -293,7 +278,7 @@ func (as *AccountStateBatch) SetVoted(address []byte, voted []byte) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -306,7 +291,7 @@ func (as *AccountStateBatch) SetVoted(address []byte, voted []byte) error {
 
 // GetVoted returned voted address of account
 func (as *AccountStateBatch) GetVoted(address []byte) ([]byte, error) {
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +306,7 @@ func (as *AccountStateBatch) AddCertReceived(address []byte, certHash []byte) er
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}
@@ -339,7 +324,7 @@ func (as *AccountStateBatch) AddCertIssued(address []byte, certHash []byte) erro
 	if !as.batching {
 		return ErrNotBatching
 	}
-	acc, err := as.getAccount(address)
+	acc, err := as.GetAccount(address)
 	if err != nil {
 		return err
 	}

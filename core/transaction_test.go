@@ -27,6 +27,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestSend(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+
+	from := bb.TokenDist[0]
+	to := testutil.NewAddrKeyPair(t)
+
+	bb.
+		Tx().Type(core.TxOpSend).To(to.Addr).Value(1000000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().Type(core.TxOpSend).To(to.Addr).Value(10).SignPair(from).Execute().
+		Expect().
+		Balance(to.Addr, 10).
+		Balance(from.Addr, 1000000000-10)
+
+}
+
 func TestAddRecord(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
@@ -44,30 +59,50 @@ func TestAddRecord(t *testing.T) {
 }
 
 func TestVestAndWithdraw(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	from := bb.TokenDist[0]
+	vestingAmount := uint64(1000)
+	withdrawAmount := uint64(301)
 
 	bb = bb.
-		Tx().Type(core.TxOpVest).Value(333).Nonce(1).SignPair(from).Execute()
+		Tx().Type(core.TxOpVest).Value(vestingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000-333)).
-		Vesting(from.Addr, uint64(333))
+		Balance(from.Addr, uint64(1000000000-vestingAmount)).
+		Vesting(from.Addr, uint64(vestingAmount))
 
 	bb = bb.
-		Tx().Type(core.TxOpWithdrawVesting).Value(133).Nonce(1).SignPair(from).Execute()
+		Tx().Type(core.TxOpWithdrawVesting).Value(withdrawAmount).SignPair(from).Execute()
 
-	bb.Expect().Vesting(from.Addr, uint64(333-133))
+	bb.Expect().Vesting(from.Addr, vestingAmount-withdrawAmount)
 
 	block := bb.Build()
-	reservedTask := block.State().GetReservedTasks()
-	assert.Equal(t, 3, len(reservedTask))
-	for i := 0; i < len(reservedTask); i++ {
-		assert.Equal(t, core.RtWithdrawType, reservedTask[i].TaskType())
-		assert.Equal(t, from.Addr, reservedTask[i].From())
-		assert.Equal(t, bb.B.Timestamp()+int64(i+1)*core.RtWithdrawInterval, reservedTask[i].Timestamp())
+	reservedTasks := block.State().GetReservedTasks()
+	assert.Equal(t, core.RtWithdrawNum, len(reservedTasks))
+	for i := 0; i < len(reservedTasks); i++ {
+		t.Logf("No.%v ts:%v, payload:%v",i, reservedTasks[i].Timestamp(), reservedTasks[i].Payload())
+		assert.Equal(t, core.RtWithdrawType, reservedTasks[i].TaskType())
+		assert.Equal(t, from.Addr, reservedTasks[i].From())
+		assert.Equal(t, bb.B.Timestamp()+int64(i+1)*core.RtWithdrawInterval, reservedTasks[i].Timestamp())
 	}
+
+	acc,err := bb.B.State().GetAccount(from.Addr)
+	require.NoError(t, err)
+	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(),acc.Balance())
+
+	for i := 0; i < len(reservedTasks)+5; i++ {
+		bb = bb.SignMiner().
+			ChildWithTimestamp(bb.B.Timestamp()+core.RtWithdrawInterval)
+
+		acc,err := bb.B.State().GetAccount(from.Addr)
+		require.NoError(t, err)
+		reservedTasks = bb.B.State().GetReservedTasks()
+		t.Logf("ts:%v, balance: %v, remain tasks: %v", bb.B.Timestamp(),acc.Balance(), len(reservedTasks))
+	}
+
+	bb.Expect().Balance(from.Addr, 1000000000-vestingAmount + withdrawAmount)
+	assert.Equal(t,0,len(reservedTasks))
 }
 
 func TestAddAndRevokeCertification(t *testing.T) {

@@ -27,7 +27,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/require"
 )
 
@@ -63,20 +62,20 @@ func (bb *BlockBuilder) copy() *BlockBuilder {
 		require.NoError(bb.t, err)
 	}
 
-	dynasties, err := copystructure.Copy(bb.Dynasties)
-	require.NoError(bb.t, err)
-	tokenDist, err := copystructure.Copy(bb.TokenDist)
-	require.NoError(bb.t, err)
-	keyPairs, err := copystructure.Copy(bb.KeyPairs)
-	require.NoError(bb.t, err)
+	//dynasties, err := copystructure.Copy(bb.Dynasties)
+	//require.NoError(bb.t, err)
+	//tokenDist, err := copystructure.Copy(bb.TokenDist)
+	//require.NoError(bb.t, err)
+	//keyPairs, err := copystructure.Copy(bb.KeyPairs)
+	//require.NoError(bb.t, err)
 
 	return &BlockBuilder{
 		t:           bb.t,
 		B:           b,
 		dynastySize: bb.dynastySize,
-		Dynasties:   dynasties.(testutil.AddrKeyPairs),
-		TokenDist:   tokenDist.(testutil.AddrKeyPairs),
-		KeyPairs:    keyPairs.(testutil.AddrKeyPairs),
+		Dynasties:   bb.Dynasties,
+		TokenDist:   bb.TokenDist,
+		KeyPairs:    bb.KeyPairs,
 	}
 }
 
@@ -263,10 +262,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 
 	require.NoError(n.t, n.B.BeginBatch())
-	err := n.B.Execute(tx, defaultTxMap)
-	require.NoError(n.t, err)
-	err = n.B.AcceptTransaction(tx)
-	require.NoError(n.t, err)
+	require.NoError(n.t, n.B.Execute(tx, defaultTxMap))
 	require.NoError(bb.t, n.B.Commit())
 
 	return n
@@ -332,7 +328,8 @@ func (bb *BlockBuilder) Child() *BlockBuilder {
 func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetTransactions(make([]*core.Transaction, 0))
-	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState()
+	//return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState()
+	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState().ExecuteReservedTasks()
 }
 
 func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
@@ -351,4 +348,14 @@ func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
 
 func (bb *BlockBuilder) Expect() *Expect {
 	return NewExpect(bb.t, bb.Build())
+}
+
+func (bb *BlockBuilder) ExecuteReservedTasks() *BlockBuilder {
+	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
+	require.NoError(n.t, n.B.ExecuteReservedTasks())
+	require.NoError(bb.t, n.B.Commit())
+
+	return n
 }

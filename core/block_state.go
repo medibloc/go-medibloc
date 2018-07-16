@@ -446,7 +446,7 @@ func (st *states) AddReservedTask(task *ReservedTask) error {
 	return st.reservationQueue.AddTask(task)
 }
 
-// PopReservedTask pops reserved tasks which should be processed before 'before'
+// PopReservedTasks pops reserved tasks which should be processed before 'before'
 func (st *states) PopReservedTasks(before int64) []*ReservedTask {
 	return st.reservationQueue.PopTasksBefore(before)
 }
@@ -569,12 +569,12 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 }
 
 func (bs *BlockState) checkNonce(tx *Transaction) error {
-	fromAcc, err := bs.GetAccount(tx.from)
+	fromAcc, err := bs.AccState().GetAccount(tx.from.Bytes())
 	if err != nil {
 		return err
 	}
 
-	expectedNonce := fromAcc.Nonce() + 1
+	expectedNonce := fromAcc.nonce + 1
 	if tx.nonce > expectedNonce {
 		return ErrLargeTransactionNonce
 	} else if tx.nonce < expectedNonce {

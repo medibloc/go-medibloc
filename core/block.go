@@ -603,6 +603,15 @@ func (block *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory
 func (block *Block) VerifyExecution(txMap TxFactory) error {
 	block.BeginBatch()
 
+	if err := block.ExecuteReservedTasks(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Warn("Failed to execute reserved tasks.")
+		block.RollBack()
+		return err
+	}
+
 	if err := block.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -638,15 +647,6 @@ func (block *Block) ExecuteAll(txMap TxFactory) error {
 		}
 	}
 
-	if err := block.ExecuteReservedTasks(); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Warn("Failed to execute reserved tasks.")
-		block.RollBack()
-		return err
-	}
-
 	block.Commit()
 
 	return nil
@@ -654,6 +654,11 @@ func (block *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (block *Block) Execute(tx *Transaction, txMap TxFactory) error {
+	err := block.state.checkNonce(tx)
+	if err != nil {
+		return err
+	}
+
 	if err := block.ExecuteTransaction(tx, txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,

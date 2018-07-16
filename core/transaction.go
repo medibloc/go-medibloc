@@ -521,7 +521,7 @@ func (tx *VestTx) Execute(b *Block) error {
 		return err
 	}
 
-	account, err := as.getAccount(tx.user.Bytes())
+	account, err := as.GetAccount(tx.user.Bytes())
 	if err != nil {
 		return err
 	}
@@ -579,7 +579,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	as := b.state.AccState()
 	cs := b.state.DposState().CandidateState()
 
-	account, err := as.getAccount(tx.user.Bytes())
+	account, err := as.GetAccount(tx.user.Bytes())
 	if err != nil {
 		return err
 	}
@@ -597,7 +597,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 
 	payload := new(RtWithdraw)
 	for i := 0; i < RtWithdrawNum; i++ {
-		if amountLeft.Cmp(splitAmount) <= 0 {
+		if i == RtWithdrawNum-1 {
 			payload, err = NewRtWithdraw(amountLeft)
 			if err != nil {
 				return err
@@ -621,7 +621,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		return nil
 	}
 
-	// Subtract user's vesting to cadidate's votePower
+	// Subtract user's vesting to candidate's votePower
 	candidateBytes, err := cs.Get(candidate)
 	if err != nil {
 		return nil

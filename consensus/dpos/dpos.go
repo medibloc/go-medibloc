@@ -411,6 +411,12 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 
+	if err := block.ExecuteReservedTasks(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to execute reserved task")
+	}
+
 	for deadline.Sub(time.Now()) > 0 {
 
 		transaction := d.tm.Pop()

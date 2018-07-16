@@ -194,6 +194,11 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 
 func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 	n := tb.copy()
+	if n.tx.Nonce() == 0 {
+		acc, err := n.bb.B.State().GetAccount(pair.Addr)
+		require.NoError(n.t, err)
+		n = n.Nonce(acc.Nonce()+1)
+	}
 	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 

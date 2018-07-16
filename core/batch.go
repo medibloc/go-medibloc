@@ -15,15 +15,6 @@
 
 package core
 
-import (
-	"github.com/medibloc/go-medibloc/storage"
-)
-
-// Errors
-var (
-	ErrNotFound = storage.ErrKeyNotFound
-)
-
 // Action represents operation types in BatchTrie
 type Action int
 
