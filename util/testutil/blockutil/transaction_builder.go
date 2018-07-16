@@ -25,9 +25,9 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
-	"github.com/medibloc/go-medibloc/util/testutil"
 )
 
 type TxBuilder struct {
@@ -61,7 +61,7 @@ func (tb *TxBuilder) copy() *TxBuilder {
 	var tx *core.Transaction
 	var err error
 	if tb.tx != nil {
-		tx , err = tb.tx.Clone()
+		tx, err = tb.tx.Clone()
 		require.NoError(tb.t, err)
 	}
 	return &TxBuilder{

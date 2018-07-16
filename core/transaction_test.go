@@ -22,9 +22,9 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 )
 
 func TestAddRecord(t *testing.T) {
@@ -58,7 +58,7 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb = bb.
 		Tx().Type(core.TxOpWithdrawVesting).Value(133).Nonce(1).SignPair(from).Execute()
 
-	bb.Expect().Vesting(from.Addr,uint64(333-133))
+	bb.Expect().Vesting(from.Addr, uint64(333-133))
 
 	block := bb.Build()
 	reservedTask := block.State().GetReservedTasks()

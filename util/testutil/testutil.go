@@ -95,10 +95,21 @@ func (pair *AddrKeyPair) String() string {
 // AddrKeyPairs is a slice of AddrKeyPair structure.
 type AddrKeyPairs []*AddrKeyPair
 
-func (pairs AddrKeyPairs) findPrivKey(addr common.Address) signature.PrivateKey {
+// FindPrivKey finds private key of given address.
+func (pairs AddrKeyPairs) FindPrivKey(addr common.Address) signature.PrivateKey {
 	for _, dynasty := range pairs {
 		if dynasty.Addr.Equals(addr) {
 			return dynasty.PrivKey
+		}
+	}
+	return nil
+}
+
+// FindPair finds AddrKeyPair of given address.
+func (pairs AddrKeyPairs) FindPair(addr common.Address) *AddrKeyPair {
+	for _, dynasty := range pairs {
+		if dynasty.Addr.Equals(addr) {
+			return dynasty
 		}
 	}
 	return nil
@@ -213,7 +224,7 @@ func SignBlockUsingDynasties(t *testing.T, block *core.Block, dynasties AddrKeyP
 	proposer, err := d.FindMintProposer(block.Timestamp(), block)
 	require.NoError(t, err)
 
-	privKey := dynasties.findPrivKey(proposer)
+	privKey := dynasties.FindPrivKey(proposer)
 	require.NotNil(t, privKey)
 
 	SignBlock(t, block, privKey)

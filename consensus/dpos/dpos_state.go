@@ -256,7 +256,7 @@ func (d *Dpos) SetMintDynastyState(ts int64, parent *core.Block, block *core.Blo
 }
 
 //Candidate returns candidate data in cadidateState
-func (s *State) Candidate(addr common.Address) (*dpospb.Candidate, error){
+func (s *State) Candidate(addr common.Address) (*dpospb.Candidate, error) {
 	cs := s.candidateState
 
 	candidateBytes, err := cs.Get(addr.Bytes())
@@ -274,6 +274,6 @@ func (s *State) Candidate(addr common.Address) (*dpospb.Candidate, error){
 }
 
 //Dynasty returns slice of addresses in dynasty
-func (s *State) Dynasty() ([]*common.Address, error){
+func (s *State) Dynasty() ([]*common.Address, error) {
 	return DynastyStateToDynasty(s.dynastyState)
 }

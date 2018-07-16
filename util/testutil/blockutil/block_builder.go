@@ -27,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,6 +38,7 @@ type BlockBuilder struct {
 	dynastySize int
 	Dynasties   testutil.AddrKeyPairs
 	TokenDist   testutil.AddrKeyPairs
+	KeyPairs    testutil.AddrKeyPairs
 }
 
 func New(t *testing.T, dynastySize int) *BlockBuilder {
@@ -44,6 +46,12 @@ func New(t *testing.T, dynastySize int) *BlockBuilder {
 		t:           t,
 		dynastySize: dynastySize,
 	}
+}
+
+func (bb *BlockBuilder) AddKeyPairs(keyPairs testutil.AddrKeyPairs) *BlockBuilder {
+	n := bb.copy()
+	n.KeyPairs = append(n.KeyPairs, keyPairs...)
+	return n
 }
 
 func (bb *BlockBuilder) copy() *BlockBuilder {
@@ -54,12 +62,21 @@ func (bb *BlockBuilder) copy() *BlockBuilder {
 		b, err = bb.B.Clone()
 		require.NoError(bb.t, err)
 	}
+
+	dynasties, err := copystructure.Copy(bb.Dynasties)
+	require.NoError(bb.t, err)
+	tokenDist, err := copystructure.Copy(bb.TokenDist)
+	require.NoError(bb.t, err)
+	keyPairs, err := copystructure.Copy(bb.KeyPairs)
+	require.NoError(bb.t, err)
+
 	return &BlockBuilder{
 		t:           bb.t,
 		B:           b,
 		dynastySize: bb.dynastySize,
-		Dynasties:   bb.Dynasties,
-		TokenDist:   bb.TokenDist,
+		Dynasties:   dynasties.(testutil.AddrKeyPairs),
+		TokenDist:   tokenDist.(testutil.AddrKeyPairs),
+		KeyPairs:    keyPairs.(testutil.AddrKeyPairs),
 	}
 }
 
@@ -69,6 +86,7 @@ func (bb *BlockBuilder) Genesis() *BlockBuilder {
 	n.B = genesis
 	n.Dynasties = dynasties
 	n.TokenDist = tokenDist
+	n.KeyPairs = append(n.Dynasties, n.TokenDist...)
 	return n
 }
 
@@ -220,6 +238,17 @@ func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	n := bb.copy()
 
 	return n.Coinbase(pair.Addr).Seal().CalcHash().SignKey(pair.PrivKey)
+}
+
+func (bb *BlockBuilder) SignMiner() *BlockBuilder {
+	n := bb.copy()
+
+	proposer, err := n.B.Consensus().FindMintProposer(n.B.Timestamp(), n.B)
+	require.NoError(n.t, err)
+	pair := n.KeyPairs.FindPair(proposer)
+	require.NotNil(n.t, pair)
+
+	return n.SignPair(pair)
 }
 
 func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {

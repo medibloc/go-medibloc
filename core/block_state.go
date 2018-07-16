@@ -462,7 +462,7 @@ func (st *states) Certification(hash []byte) (*corepb.Certification, error) {
 		return nil, err
 	}
 	pbCert := new(corepb.Certification)
-	err = proto.Unmarshal(certBytes,pbCert)
+	err = proto.Unmarshal(certBytes, pbCert)
 	if err != nil {
 		return nil, err
 	}
@@ -582,4 +582,3 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	}
 	return nil
 }
-
