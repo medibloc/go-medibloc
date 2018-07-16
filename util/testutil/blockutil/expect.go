@@ -55,6 +55,6 @@ func (e *Expect) Vesting(addr common.Address, vest uint64) *Expect {
 
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Vesting().Uint64(), nonce)
+	require.Equal(e.t, acc.Nonce(), nonce)
 	return e
 }
