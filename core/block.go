@@ -409,7 +409,7 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 }
 
 func (bd *BlockData) String() string {
-	return fmt.Sprintf("<Height:%v, Hash:%v, ParentHash:%v, Coinbase:%v, Timestamp:%v, Sign:%v>",
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, sign:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
