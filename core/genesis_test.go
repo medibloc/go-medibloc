@@ -48,7 +48,6 @@ func TestNewGenesisBlock(t *testing.T) {
 }
 
 func TestCheckGenesisBlock(t *testing.T) {
-	//conf, dynasties, distributed := testutil.NewTestGenesisConf(t)
 	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
@@ -65,6 +64,7 @@ func TestCheckGenesisBlock(t *testing.T) {
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
 	modified.Meta.DynastySize = 22
+	t.Log(modified)
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)

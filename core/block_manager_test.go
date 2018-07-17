@@ -167,16 +167,16 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		tail = block
 	}
 	blocks = append(blocks, bb.Block(blocks[0]).Child().
-		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
 		SignMiner().Build())
 	blocks = append(blocks, bb.Block(blocks[1]).Child().
-		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
 		SignMiner().Build())
 	blocks = append(blocks, bb.Block(blocks[dynastySize*2/3]).Child().
-		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
 		SignMiner().Build())
 	blocks = append(blocks, bb.Block(blocks[dynastySize*2/3+1]).Child().
-		Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
+		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
 		SignMiner().Build())
 
 	for i := 0; i < dynastySize; i++ {
