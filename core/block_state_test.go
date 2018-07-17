@@ -21,11 +21,11 @@ import (
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
-	"github.com/stretchr/testify/require"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCloneState(t *testing.T) {
@@ -49,7 +49,6 @@ func TestCloneState(t *testing.T) {
 	assert.Equal(t, state.ReservationQueueHash(), newState.ReservationQueueHash())
 
 }
-
 
 func TestDynastyState(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()

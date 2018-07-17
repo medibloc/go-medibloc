@@ -197,7 +197,6 @@ func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 	return nil
 }
 
-
 // AccountState getter for accountState
 func (as *AccountStateBatch) AccountState() AccountState {
 	return as.as

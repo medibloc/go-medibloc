@@ -81,28 +81,28 @@ func TestVestAndWithdraw(t *testing.T) {
 	reservedTasks := block.State().GetReservedTasks()
 	assert.Equal(t, core.RtWithdrawNum, len(reservedTasks))
 	for i := 0; i < len(reservedTasks); i++ {
-		t.Logf("No.%v ts:%v, payload:%v",i, reservedTasks[i].Timestamp(), reservedTasks[i].Payload())
+		t.Logf("No.%v ts:%v, payload:%v", i, reservedTasks[i].Timestamp(), reservedTasks[i].Payload())
 		assert.Equal(t, core.RtWithdrawType, reservedTasks[i].TaskType())
 		assert.Equal(t, from.Addr, reservedTasks[i].From())
 		assert.Equal(t, bb.B.Timestamp()+int64(i+1)*core.RtWithdrawInterval, reservedTasks[i].Timestamp())
 	}
 
-	acc,err := bb.B.State().GetAccount(from.Addr)
+	acc, err := bb.B.State().GetAccount(from.Addr)
 	require.NoError(t, err)
-	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(),acc.Balance())
+	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance())
 
 	for i := 0; i < len(reservedTasks)+5; i++ {
 		bb = bb.SignMiner().
-			ChildWithTimestamp(bb.B.Timestamp()+core.RtWithdrawInterval)
+			ChildWithTimestamp(bb.B.Timestamp() + core.RtWithdrawInterval)
 
-		acc,err := bb.B.State().GetAccount(from.Addr)
+		acc, err := bb.B.State().GetAccount(from.Addr)
 		require.NoError(t, err)
 		reservedTasks = bb.B.State().GetReservedTasks()
-		t.Logf("ts:%v, balance: %v, remain tasks: %v", bb.B.Timestamp(),acc.Balance(), len(reservedTasks))
+		t.Logf("ts:%v, balance: %v, remain tasks: %v", bb.B.Timestamp(), acc.Balance(), len(reservedTasks))
 	}
 
-	bb.Expect().Balance(from.Addr, 1000000000-vestingAmount + withdrawAmount)
-	assert.Equal(t,0,len(reservedTasks))
+	bb.Expect().Balance(from.Addr, 1000000000-vestingAmount+withdrawAmount)
+	assert.Equal(t, 0, len(reservedTasks))
 }
 
 func TestAddAndRevokeCertification(t *testing.T) {

@@ -92,6 +92,6 @@ func TestNetworkMiner(t *testing.T) {
 		}
 	}
 
-	t.Log(seed.Tail().Signature())
-	t.Log(len(seed.Tail().Signature()))
+	t.Log(seed.Tail().Sign())
+	t.Log(len(seed.Tail().Sign()))
 }
