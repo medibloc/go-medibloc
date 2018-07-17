@@ -185,7 +185,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			return lib
 		}
 
-		proposer, err := findProposer(cur.State().DposState(), cur.Timestamp())
+		proposer, err := d.findProposer(cur.State().DposState(), cur.Timestamp())
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"block":     cur,
@@ -211,6 +211,23 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		}
 	}
 	return lib
+}
+
+func (d *Dpos) findProposer(s core.DposState, timestamp int64) (common.Address, error) {
+	ds := s.DynastyState()
+
+	t := time.Duration(timestamp) * time.Second
+	if t%BlockInterval != 0 {
+		return common.Address{}, ErrInvalidBlockForgeTime
+	}
+
+	slotIndex := int32((t % DynastyInterval) / BlockInterval)
+	addrBytes, err := ds.Get(byteutils.FromInt32(slotIndex % int32(d.dynastySize)))
+	if err != nil {
+		return common.Address{}, err
+	}
+	addr := common.BytesToAddress(addrBytes)
+	return addr, nil
 }
 
 func dynastyGenByTime(ts int64) int64 {

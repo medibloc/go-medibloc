@@ -224,10 +224,10 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 			return false
 		}
 
-		dynastyCount ++
+		dynastyCount++
 		exist, err = iter.Next()
 	}
-	if uint32(dynastyCount) != genesis.Meta.DynastySize{
+	if uint32(dynastyCount) != genesis.Meta.DynastySize {
 		return false
 	}
 

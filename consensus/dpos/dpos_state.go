@@ -161,23 +161,6 @@ func MakeNewDynasty(sortedCandidates []*dpospb.Candidate, dynastySize int) []*co
 	return dynasty
 }
 
-func findProposer(s core.DposState, timestamp int64) (common.Address, error) {
-	ds := s.DynastyState()
-
-	t := time.Duration(timestamp) * time.Second
-	if t%BlockInterval != 0 {
-		return common.Address{}, ErrInvalidBlockForgeTime
-	}
-
-	slotIndex := int32((t % DynastyInterval) / BlockInterval)
-	addrBytes, err := ds.Get(byteutils.FromInt32(slotIndex))
-	if err != nil {
-		return common.Address{}, err
-	}
-	addr := common.BytesToAddress(addrBytes)
-	return addr, nil
-}
-
 //SetDynastyState set dynasty state using dynasty slice
 func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) error {
 	for i, addr := range dynasty {
@@ -236,7 +219,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 		return common.Address{}, err
 	}
 	proposerIndex := (time.Duration(ts) % DynastyInterval) / BlockInterval
-	return *dynasty[proposerIndex], nil
+	return *dynasty[int(proposerIndex)%d.dynastySize], nil
 }
 
 func (d *Dpos) SetMintDynastyState(ts int64, parent *core.Block, block *core.Block) error {

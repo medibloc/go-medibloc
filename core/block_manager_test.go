@@ -151,7 +151,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+	//testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -161,41 +161,42 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	tail := seed.Tail()
 
 	blocks := make([]*core.Block, 0)
-	for i := 0; i < dynastySize+1; i++ {
-		block := bb.Block(tail).Child().SignMiner().Build()
+	for i := 0; i < dynastySize+2; i++ {
+		block := bb.Block(tail).Child().
+			SignMiner().Build()
 		blocks = append(blocks, block)
+		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
 		tail = block
 	}
-	blocks = append(blocks, bb.Block(blocks[0]).Child().
-		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
-		SignMiner().Build())
-	blocks = append(blocks, bb.Block(blocks[1]).Child().
-		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
-		SignMiner().Build())
-	blocks = append(blocks, bb.Block(blocks[dynastySize*2/3]).Child().
-		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
-		SignMiner().Build())
-	blocks = append(blocks, bb.Block(blocks[dynastySize*2/3+1]).Child().
-		//Timestamp(bb.B.Timestamp()+int64(dpos.BlockInterval/time.Second)).
-		SignMiner().Build())
+	block := bb.Block(blocks[0]).Child().
+		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		SignMiner().Build()
+	err := bm.PushBlockData(block.GetBlockData())
+	assert.Equal(t, core.ErrCannotRevertLIB, err)
 
-	for i := 0; i < dynastySize; i++ {
-		err := bm.PushBlockData(blocks[i].GetBlockData())
-		assert.NoError(t, err)
-	}
-	assert.Len(t, blocks, dynastySize+5)
-	err := bm.PushBlockData(blocks[dynastySize+1].GetBlockData())
+	block = bb.Block(blocks[1]).Child().
+		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		SignMiner().Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
-	err = bm.PushBlockData(blocks[dynastySize+2].GetBlockData())
-	assert.Equal(t, core.ErrCannotRevertLIB, err)
-	err = bm.PushBlockData(blocks[dynastySize+3].GetBlockData())
+
+	block = bb.Block(blocks[dynastySize*2/3]).Child().
+		Tx().Type(core.TxOpSend).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+		SignMiner().Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	err = bm.PushBlockData(blocks[dynastySize+4].GetBlockData())
+
+	block = bb.Block(blocks[dynastySize*2/3+1]).Child().
+		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		SignMiner().Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
 
 	parent, err := bm.BlockByHeight(3)
-	require.Nil(t, err)
-	b := bb.Block(parent).Child().Height(20).SignMiner().Build()
+	require.NoError(t, err)
+	b := bb.Block(parent).Child().Height(20).
+		Tx().Type(core.TxOpSend).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+		SignMiner().Build()
 	err = bm.PushBlockData(b.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 }

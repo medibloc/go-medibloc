@@ -164,7 +164,9 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	conf, dynasties, distributed := NewTestGenesisConf(t, dynastySize)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesis, err = core.NewGenesisBlock(conf, dpos.New(), s)
+	d := dpos.New()
+	d.SetDynastySize(dynastySize)
+	genesis, err = core.NewGenesisBlock(conf, d, s)
 	require.NoError(t, err)
 
 	return genesis, dynasties, distributed
