@@ -209,6 +209,28 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		return false
 	}
 
+	ds := block.state.dposState.DynastyState()
+	iter, err := ds.Iterator(nil)
+	if err != nil {
+		return false
+	}
+	exist, err := iter.Next()
+	dynastyCount := 0
+	for exist {
+		if err != nil {
+			return false
+		}
+		if byteutils.Bytes2Hex(iter.Value()) != genesis.Consensus.Dpos.Dynasty[dynastyCount] {
+			return false
+		}
+
+		dynastyCount ++
+		exist, err = iter.Next()
+	}
+	if uint32(dynastyCount) != genesis.Meta.DynastySize{
+		return false
+	}
+
 	tokenDist := genesis.GetTokenDistribution()
 	if len(accounts) != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{

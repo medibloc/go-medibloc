@@ -64,7 +64,6 @@ func TestCheckGenesisBlock(t *testing.T) {
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
 	modified.Meta.DynastySize = 22
-	t.Log(modified)
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
