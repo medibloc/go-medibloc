@@ -22,10 +22,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -151,7 +149,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	//testNetwork.SetLogTestHook()
+	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -219,14 +217,18 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	b1 := bb.Block(tail).Child().SignMiner().Build()
 	blocks = append(blocks, b1)
 
-	b2 := bb.Block(b1).Child().SignMiner().Build()
+	b2 := bb.Block(b1).Child().
+		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		SignMiner().Build()
 	blocks = append(blocks, b2)
 
 	b3 := bb.Block(b1).Child().SignMiner().Build()
 	blocks = append(blocks, b3)
 
 	for i := 1; i < dynastySize; i++ {
-		block := bb.Block(blocks[i+1]).Child().SignMiner().Build()
+		block := bb.Block(blocks[i+1]).Child().
+			Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+			SignMiner().Build()
 		blocks = append(blocks, block)
 	}
 
@@ -240,7 +242,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 }
 
 func TestBlockManager_InvalidHeight(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := 21
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 	testNetwork.SetLogTestHook()
@@ -253,8 +255,11 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
 	for i := 0; i < 6; i++ {
-		block := bb.Block(tail).Child().SignMiner().Build()
+		block := bb.Block(tail).Child().
+			Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+			SignMiner().Build()
 		err := bm.PushBlockData(block.GetBlockData())
+		tail = block
 		assert.NoError(t, err)
 	}
 
@@ -275,7 +280,9 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		{4, nil},
 	}
 	for _, test := range tests {
-		block := bb.Block(parent).Child().Height(test.height).SignMiner().Build()
+		block := bb.Block(parent).Child().
+			Tx().Type(core.TxOpSend).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+			Height(test.height).SignMiner().Build()
 		assert.Equal(t, test.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", test)
 	}
 }
@@ -392,6 +399,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
@@ -410,13 +418,13 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	// Invalid Block Sign algorithm
 	block = bb.Block(genesis).Child().SignMiner().Alg(11).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, crypto.ErrAlgorithmInvalid, err)
+	assert.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
 	// Invalid Block Signer
 	invalidPair := testutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, dpos.ErrInvalidBlockProposer, err)
+	assert.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
 	// Invalid Transaction Hash
 	pair = testutil.NewAddrKeyPair(t)
