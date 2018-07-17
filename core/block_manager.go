@@ -224,15 +224,6 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	//// TODO @drsleepytiger
-	//if err := bm.consensus.VerifyProposer(bm.bc, bd); err != nil {
-	//	logging.WithFields(logrus.Fields{
-	//		"err":       err,
-	//		"blockData": bd,
-	//	}).Debug("Failed to verify blockData.")
-	//	return err
-	//}
-
 	if err := bm.bp.Push(bd); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,

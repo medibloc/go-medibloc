@@ -142,7 +142,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	assert.Equal(t, cert.Certified, certified.Addr.Bytes())
 	assert.Equal(t, cert.IssueTime, issueTime)
 	assert.Equal(t, cert.ExpirationTime, expirationTime)
-	assert.Equal(t, cert.RevocationTime, int64(0))
+	assert.Equal(t, cert.RevocationTime, int64(-1))
 	t.Logf("Add certification test complete")
 
 	// Revoke certification Test
