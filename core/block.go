@@ -587,6 +587,11 @@ func HashBlockData(bd *BlockData) []byte {
 
 // ExecuteTransaction on given block state
 func (block *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
+	err := block.state.checkNonce(transaction)
+	if err != nil {
+		return err
+	}
+
 	newTxFunc, ok := txMap[transaction.Type()]
 	if !ok {
 		return ErrInvalidTransactionType
@@ -654,10 +659,6 @@ func (block *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (block *Block) Execute(tx *Transaction, txMap TxFactory) error {
-	err := block.state.checkNonce(tx)
-	if err != nil {
-		return err
-	}
 
 	if err := block.ExecuteTransaction(tx, txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
