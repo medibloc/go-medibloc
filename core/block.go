@@ -301,7 +301,7 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
-		return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, sign:%v>",
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, sign:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
