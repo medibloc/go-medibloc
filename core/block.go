@@ -95,114 +95,142 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlockHeader
 }
 
+//Hash returns block header's hash
 func (b *BlockHeader) Hash() []byte {
 	return b.hash
 }
 
+//SetHash set block header's hash
 func (b *BlockHeader) SetHash(hash []byte) {
 	b.hash = hash
 }
 
+//ParentHash returns block header's parent hash
 func (b *BlockHeader) ParentHash() []byte {
 	return b.parentHash
 }
 
+//SetParentHash set block header's parent hash
 func (b *BlockHeader) SetParentHash(parentHash []byte) {
 	b.parentHash = parentHash
 }
 
+//AccsRoot returns block header's accsRoot
 func (b *BlockHeader) AccsRoot() []byte {
 	return b.accsRoot
 }
 
+//SetAccsRoot set block header's accsRoot
 func (b *BlockHeader) SetAccsRoot(accsRoot []byte) {
 	b.accsRoot = accsRoot
 }
 
+//TxsRoot returns block header's txsRoot
 func (b *BlockHeader) TxsRoot() []byte {
 	return b.txsRoot
 }
 
+//SetTxsRoot set block header's txsRoot
 func (b *BlockHeader) SetTxsRoot(txsRoot []byte) {
 	b.txsRoot = txsRoot
 }
 
+//UsageRoot returns block header's usageRoot
 func (b *BlockHeader) UsageRoot() []byte {
 	return b.usageRoot
 }
 
+//SetUsageRoot set block header's usageRoot
 func (b *BlockHeader) SetUsageRoot(usageRoot []byte) {
 	b.usageRoot = usageRoot
 }
 
+//RecordsRoot returns block header's recordRoot
 func (b *BlockHeader) RecordsRoot() []byte {
 	return b.recordsRoot
 }
 
+//SetRecordsRoot set block header's recordRoot
 func (b *BlockHeader) SetRecordsRoot(recordsRoot []byte) {
 	b.recordsRoot = recordsRoot
 }
 
+//CertificationRoot returns block header's CertificationRoot
 func (b *BlockHeader) CertificationRoot() []byte {
 	return b.certificationRoot
 }
 
+//SetCertificationRoot set block header's CertificationRoot
 func (b *BlockHeader) SetCertificationRoot(certificationRoot []byte) {
 	b.certificationRoot = certificationRoot
 }
 
+//DposRoot returns block header's dposRoot
 func (b *BlockHeader) DposRoot() []byte {
 	return b.dposRoot
 }
 
+//SetDposRoot set block header's dposRoot
 func (b *BlockHeader) SetDposRoot(dposRoot []byte) {
 	b.dposRoot = dposRoot
 }
 
+//ReservationQueueHash returns block header's reservationQueHash
 func (b *BlockHeader) ReservationQueueHash() []byte {
 	return b.reservationQueueHash
 }
 
+//SetReservationQueueHash set block header's reservationQueHash
 func (b *BlockHeader) SetReservationQueueHash(reservationQueueHash []byte) {
 	b.reservationQueueHash = reservationQueueHash
 }
 
+//Coinbase returns coinbase
 func (b *BlockHeader) Coinbase() common.Address {
 	return b.coinbase
 }
 
+//SetCoinbase set coinbase
 func (b *BlockHeader) SetCoinbase(coinbase common.Address) {
 	b.coinbase = coinbase
 }
 
+//Timestamp returns timestamp of block
 func (b *BlockHeader) Timestamp() int64 {
 	return b.timestamp
 }
 
+//SetTimestamp set timestamp of block
 func (b *BlockHeader) SetTimestamp(timestamp int64) {
 	b.timestamp = timestamp
 }
 
+//ChainID returns chainID
 func (b *BlockHeader) ChainID() uint32 {
 	return b.chainID
 }
 
+//SetChainID set chainID
 func (b *BlockHeader) SetChainID(chainID uint32) {
 	b.chainID = chainID
 }
 
+//Alg returns signing algorithm
 func (b *BlockHeader) Alg() algorithm.Algorithm {
 	return b.alg
 }
 
+//SetAlg set signing algorithm
 func (b *BlockHeader) SetAlg(alg algorithm.Algorithm) {
 	b.alg = alg
 }
 
+//Sign returns sign
 func (b *BlockHeader) Sign() []byte {
 	return b.sign
 }
 
+//SetSign set sign
 func (b *BlockHeader) SetSign(sign []byte) {
 	b.sign = sign
 }
@@ -264,6 +292,7 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlock
 }
 
+//Clone copy block data
 func (bd *BlockData) Clone() (*BlockData, error) {
 	protoBd, err := bd.ToProto()
 	if err != nil {
@@ -468,8 +497,9 @@ type Block struct {
 	sealed    bool
 }
 
-func (block *Block) Consensus() Consensus {
-	return block.consensus
+//Consensus returns block's consensus
+func (b *Block) Consensus() Consensus {
+	return b.consensus
 }
 
 // NewBlock initialize new block data
@@ -498,35 +528,36 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 	return block, nil
 }
 
-func (block *Block) Clone() (*Block, error) {
+//Clone clone block
+func (b *Block) Clone() (*Block, error) {
 
-	bd, err := block.BlockData.Clone()
+	bd, err := b.BlockData.Clone()
 	if err != nil {
 		return nil, err
 	}
 
-	state, err := block.state.Clone()
+	state, err := b.state.Clone()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Block{
 		BlockData: bd,
-		storage:   block.storage,
+		storage:   b.storage,
 		state:     state,
-		consensus: block.consensus,
-		sealed:    block.sealed,
+		consensus: b.consensus,
+		sealed:    b.sealed,
 	}, nil
 }
 
 // State returns block state
-func (block *Block) State() *BlockState {
-	return block.state
+func (b *Block) State() *BlockState {
+	return b.state
 }
 
 // Storage returns storage used by block
-func (block *Block) Storage() storage.Storage {
-	return block.storage
+func (b *Block) Storage() storage.Storage {
+	return b.storage
 }
 
 // Sealed returns sealed
@@ -534,37 +565,38 @@ func (b *Block) Sealed() bool {
 	return b.sealed
 }
 
+//SetSealed set sealed
 func (b *Block) SetSealed(sealed bool) {
 	b.sealed = sealed
 }
 
 // Seal writes state root hashes and block hash in block header
-func (block *Block) Seal() error {
-	if block.sealed {
+func (b *Block) Seal() error {
+	if b.sealed {
 		return ErrBlockAlreadySealed
 	}
 
 	// all reserved tasks should have timestamps greater than block's timestamp
-	head := block.state.PeekHeadReservedTask()
-	if head != nil && head.Timestamp() < block.Timestamp() {
+	head := b.state.PeekHeadReservedTask()
+	if head != nil && head.Timestamp() < b.Timestamp() {
 		return ErrReservedTaskNotProcessed
 	}
 
-	block.accsRoot = block.state.AccountsRoot()
-	block.txsRoot = block.state.TransactionsRoot()
-	block.usageRoot = block.state.UsageRoot()
-	block.recordsRoot = block.state.RecordsRoot()
-	block.certificationRoot = block.state.CertificationRoot()
-	dposRoot, err := block.state.dposState.RootBytes()
+	b.accsRoot = b.state.AccountsRoot()
+	b.txsRoot = b.state.TransactionsRoot()
+	b.usageRoot = b.state.UsageRoot()
+	b.recordsRoot = b.state.RecordsRoot()
+	b.certificationRoot = b.state.CertificationRoot()
+	dposRoot, err := b.state.dposState.RootBytes()
 	if err != nil {
 		return err
 	}
-	block.dposRoot = dposRoot
-	block.reservationQueueHash = block.state.ReservationQueueHash()
+	b.dposRoot = dposRoot
+	b.reservationQueueHash = b.state.ReservationQueueHash()
 
-	hash := HashBlockData(block.BlockData)
-	block.hash = hash
-	block.sealed = true
+	hash := HashBlockData(b.BlockData)
+	b.hash = hash
+	b.sealed = true
 	return nil
 }
 
@@ -592,8 +624,8 @@ func HashBlockData(bd *BlockData) []byte {
 }
 
 // ExecuteTransaction on given block state
-func (block *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
-	err := block.state.checkNonce(transaction)
+func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
+	err := b.state.checkNonce(transaction)
 	if err != nil {
 		return err
 	}
@@ -607,79 +639,79 @@ func (block *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory
 	if err != nil {
 		return err
 	}
-	return tx.Execute(block)
+	return tx.Execute(b)
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (block *Block) VerifyExecution(txMap TxFactory) error {
-	block.BeginBatch()
+func (b *Block) VerifyExecution(txMap TxFactory) error {
+	b.BeginBatch()
 
-	if err := block.ExecuteReservedTasks(); err != nil {
+	if err := b.ExecuteReservedTasks(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
-			"block": block,
+			"block": b,
 		}).Warn("Failed to execute reserved tasks.")
-		block.RollBack()
+		b.RollBack()
 		return err
 	}
 
-	if err := block.ExecuteAll(txMap); err != nil {
+	if err := b.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
-			"block": block,
+			"block": b,
 		}).Error("Failed to execute block transactions.")
-		block.RollBack()
+		b.RollBack()
 		return err
 	}
 
-	if err := block.VerifyState(); err != nil {
+	if err := b.VerifyState(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
-			"block": block,
+			"block": b,
 		}).Error("Failed to verify block state.")
-		block.RollBack()
+		b.RollBack()
 		return err
 	}
 
-	block.Commit()
+	b.Commit()
 
 	return nil
 }
 
 // ExecuteAll executes all txs in block
-func (block *Block) ExecuteAll(txMap TxFactory) error {
-	block.BeginBatch()
+func (b *Block) ExecuteAll(txMap TxFactory) error {
+	b.BeginBatch()
 
-	for _, transaction := range block.transactions {
-		err := block.Execute(transaction, txMap)
+	for _, transaction := range b.transactions {
+		err := b.Execute(transaction, txMap)
 		if err != nil {
-			block.RollBack()
+			b.RollBack()
 			return err
 		}
 	}
 
-	block.Commit()
+	b.Commit()
 
 	return nil
 }
 
 // Execute executes a transaction.
-func (block *Block) Execute(tx *Transaction, txMap TxFactory) error {
+func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 
-	if err := block.ExecuteTransaction(tx, txMap); err != nil {
+	if err := b.ExecuteTransaction(tx, txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
-			"block":       block,
+			"block":       b,
 		}).Warn("Failed to execute a transaction.")
 		return err
 	}
 
-	if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
+	if err := b.state.AcceptTransaction(tx, b.Timestamp()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
-			"block":       block,
+			"block":       b,
 		}).Warn("Failed to accept a transaction.")
 		return err
 	}
@@ -687,10 +719,10 @@ func (block *Block) Execute(tx *Transaction, txMap TxFactory) error {
 }
 
 // ExecuteReservedTasks processes reserved tasks with timestamp before block's timestamp
-func (block *Block) ExecuteReservedTasks() error {
-	tasks := block.state.PopReservedTasks(block.Timestamp())
+func (b *Block) ExecuteReservedTasks() error {
+	tasks := b.state.PopReservedTasks(b.Timestamp())
 	for _, t := range tasks {
-		if err := t.ExecuteOnState(block.state); err != nil {
+		if err := t.ExecuteOnState(b.state); err != nil {
 			return err
 		}
 	}
@@ -698,65 +730,65 @@ func (block *Block) ExecuteReservedTasks() error {
 }
 
 // AcceptTransaction adds tx in block state
-func (block *Block) AcceptTransaction(tx *Transaction) error {
-	if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
+func (b *Block) AcceptTransaction(tx *Transaction) error {
+	if err := b.state.AcceptTransaction(tx, b.Timestamp()); err != nil {
 		return err
 	}
-	block.transactions = append(block.transactions, tx)
+	b.transactions = append(b.transactions, tx)
 	return nil
 }
 
 // VerifyState verifies block states comparing with root hashes in header
-func (block *Block) VerifyState() error {
-	if !byteutils.Equal(block.state.AccountsRoot(), block.AccsRoot()) {
+func (b *Block) VerifyState() error {
+	if !byteutils.Equal(b.state.AccountsRoot(), b.AccsRoot()) {
 		logging.Console().WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.AccountsRoot()),
-			"header": byteutils.Bytes2Hex(block.AccsRoot()),
+			"state":  byteutils.Bytes2Hex(b.state.AccountsRoot()),
+			"header": byteutils.Bytes2Hex(b.AccsRoot()),
 		}).Warn("Failed to verify accounts root.")
 		return ErrInvalidBlockAccountsRoot
 	}
-	if !byteutils.Equal(block.state.TransactionsRoot(), block.TxsRoot()) {
+	if !byteutils.Equal(b.state.TransactionsRoot(), b.TxsRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.TransactionsRoot()),
-			"header": byteutils.Bytes2Hex(block.TxsRoot()),
+			"state":  byteutils.Bytes2Hex(b.state.TransactionsRoot()),
+			"header": byteutils.Bytes2Hex(b.TxsRoot()),
 		}).Warn("Failed to verify transactions root.")
 		return ErrInvalidBlockTxsRoot
 	}
-	if !byteutils.Equal(block.state.UsageRoot(), block.UsageRoot()) {
+	if !byteutils.Equal(b.state.UsageRoot(), b.UsageRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.UsageRoot()),
-			"header": byteutils.Bytes2Hex(block.UsageRoot()),
+			"state":  byteutils.Bytes2Hex(b.state.UsageRoot()),
+			"header": byteutils.Bytes2Hex(b.UsageRoot()),
 		}).Warn("Failed to verify usage root.")
 		return ErrInvalidBlockUsageRoot
 	}
-	if !byteutils.Equal(block.state.RecordsRoot(), block.RecordsRoot()) {
+	if !byteutils.Equal(b.state.RecordsRoot(), b.RecordsRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.RecordsRoot()),
-			"header": byteutils.Bytes2Hex(block.RecordsRoot()),
+			"state":  byteutils.Bytes2Hex(b.state.RecordsRoot()),
+			"header": byteutils.Bytes2Hex(b.RecordsRoot()),
 		}).Warn("Failed to verify records root.")
 		return ErrInvalidBlockRecordsRoot
 	}
-	if !byteutils.Equal(block.state.CertificationRoot(), block.CertificationRoot()) {
+	if !byteutils.Equal(b.state.CertificationRoot(), b.CertificationRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.CertificationRoot()),
-			"header": byteutils.Bytes2Hex(block.CertificationRoot()),
+			"state":  byteutils.Bytes2Hex(b.state.CertificationRoot()),
+			"header": byteutils.Bytes2Hex(b.CertificationRoot()),
 		}).Warn("Failed to verify certification root.")
 		return ErrInvalidBlockCertificationRoot
 	}
-	dposRoot, err := block.state.DposState().RootBytes()
+	dposRoot, err := b.state.DposState().RootBytes()
 	if err != nil {
 		return err
 	}
-	if !byteutils.Equal(dposRoot, block.DposRoot()) {
+	if !byteutils.Equal(dposRoot, b.DposRoot()) {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to get state of candidate root.")
 		return err
 	}
-	if !byteutils.Equal(block.state.ReservationQueueHash(), block.ReservationQueueHash()) {
+	if !byteutils.Equal(b.state.ReservationQueueHash(), b.ReservationQueueHash()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.ReservationQueueHash()),
-			"header": byteutils.Bytes2Hex(block.ReservationQueueHash()),
+			"state":  byteutils.Bytes2Hex(b.state.ReservationQueueHash()),
+			"header": byteutils.Bytes2Hex(b.ReservationQueueHash()),
 		}).Warn("Failed to verify reservation queue hash.")
 		return ErrInvalidBlockReservationQueueHash
 	}
@@ -764,42 +796,43 @@ func (block *Block) VerifyState() error {
 }
 
 // SignThis sets signature info in block
-func (block *Block) SignThis(signer signature.Signature) error {
-	if !block.Sealed() {
+func (b *Block) SignThis(signer signature.Signature) error {
+	if !b.Sealed() {
 		return ErrBlockNotSealed
 	}
 
-	return block.BlockData.SignThis(signer)
+	return b.BlockData.SignThis(signer)
 }
 
-func (block *Block) SetMintDposState(parent *Block) error {
-	d := block.consensus
-	return d.SetMintDynastyState(block.timestamp, parent, block)
+//SetMintDposState set mint dys
+func (b *Block) SetMintDposState(parent *Block) error {
+	d := b.consensus
+	return d.SetMintDynastyState(b.timestamp, parent, b)
 }
 
 // BeginBatch makes block state update possible
-func (block *Block) BeginBatch() error {
-	return block.state.BeginBatch()
+func (b *Block) BeginBatch() error {
+	return b.state.BeginBatch()
 }
 
 // RollBack rolls back block state batch updates
-func (block *Block) RollBack() error {
-	return block.state.RollBack()
+func (b *Block) RollBack() error {
+	return b.state.RollBack()
 }
 
 // Commit saves batch updates to storage
-func (block *Block) Commit() error {
-	return block.state.Commit()
+func (b *Block) Commit() error {
+	return b.state.Commit()
 }
 
 // GetBlockData returns data part of block
-func (block *Block) GetBlockData() *BlockData {
-	return block.BlockData
+func (b *Block) GetBlockData() *BlockData {
+	return b.BlockData
 }
 
 // EmitTxExecutionEvent emits events of txs in the block
-func (block *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
-	for _, tx := range block.Transactions() {
+func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
+	for _, tx := range b.Transactions() {
 		event := &Event{
 			Topic: TopicTransactionExecutionResult,
 			Data:  tx.String(),
