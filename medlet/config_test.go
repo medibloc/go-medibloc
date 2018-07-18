@@ -40,7 +40,8 @@ func TestConfigNotExist(t *testing.T) {
 	require.Nil(t, err)
 	os.Remove(f.Name())
 
-	pb := LoadConfig(f.Name())
+	pb, err := LoadConfig(f.Name())
+	require.NoError(t, err)
 	defer os.Remove(f.Name())
 	assert.True(t, proto.Equal(pb, DefaultConfig()))
 }

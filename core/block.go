@@ -307,7 +307,7 @@ func (bd *BlockData) String() string {
 		byteutils.Bytes2Hex(bd.ParentHash()),
 		byteutils.Bytes2Hex(bd.Coinbase().Bytes()),
 		bd.Timestamp(),
-		byteutils.Bytes2Hex(bd.Signature()))
+		byteutils.Bytes2Hex(bd.Sign()))
 }
 
 // SignThis sets signature info in block data
