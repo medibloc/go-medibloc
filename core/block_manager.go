@@ -53,13 +53,14 @@ type BlockManager struct {
 	quitCh                chan int
 }
 
-func (b *BlockManager) TxMap() TxFactory {
-	return b.txMap
+//TxMap returns txMap
+func (bm *BlockManager) TxMap() TxFactory {
+	return bm.txMap
 }
 
 //SetTxMap inject txMap
-func (b *BlockManager) SetTxMap(txMap TxFactory) {
-	b.txMap = txMap
+func (bm *BlockManager) SetTxMap(txMap TxFactory) {
+	bm.txMap = txMap
 }
 
 // NewBlockManager returns BlockManager.

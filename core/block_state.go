@@ -94,38 +94,38 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 	}, nil
 }
 
-func (st *states) Clone() (*states, error) {
-	accState, err := NewAccountStateBatch(st.accState.RootHash(), st.storage)
+func (s *states) Clone() (*states, error) {
+	accState, err := NewAccountStateBatch(s.accState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	txsState, err := trie.NewBatch(st.txsState.RootHash(), st.storage)
+	txsState, err := trie.NewBatch(s.txsState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	usageState, err := trie.NewBatch(st.usageState.RootHash(), st.storage)
+	usageState, err := trie.NewBatch(s.usageState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	recordsState, err := trie.NewBatch(st.recordsState.RootHash(), st.storage)
+	recordsState, err := trie.NewBatch(s.recordsState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	dposState, err := DposState.Clone(st.dposState)
+	dposState, err := DposState.Clone(s.dposState)
 	if err != nil {
 		return nil, err
 	}
 
-	certificationState, err := trie.NewBatch(st.certificationState.RootHash(), st.storage)
+	certificationState, err := trie.NewBatch(s.certificationState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	reservationQueue, err := LoadReservationQueue(st.storage, st.reservationQueue.Hash())
+	reservationQueue, err := LoadReservationQueue(s.storage, s.reservationQueue.Hash())
 	if err != nil {
 		return nil, err
 	}
@@ -138,157 +138,157 @@ func (st *states) Clone() (*states, error) {
 		dposState:          dposState,
 		certificationState: certificationState,
 		reservationQueue:   reservationQueue,
-		storage:            st.storage,
+		storage:            s.storage,
 	}, nil
 }
 
-func (st *states) BeginBatch() error {
-	if err := st.accState.BeginBatch(); err != nil {
+func (s *states) BeginBatch() error {
+	if err := s.accState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.txsState.BeginBatch(); err != nil {
+	if err := s.txsState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.usageState.BeginBatch(); err != nil {
+	if err := s.usageState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.recordsState.BeginBatch(); err != nil {
+	if err := s.recordsState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.DposState().BeginBatch(); err != nil {
+	if err := s.DposState().BeginBatch(); err != nil {
 		return err
 	}
-	if err := st.certificationState.BeginBatch(); err != nil {
+	if err := s.certificationState.BeginBatch(); err != nil {
 		return err
 	}
-	return st.reservationQueue.BeginBatch()
+	return s.reservationQueue.BeginBatch()
 }
 
-func (st *states) Commit() error {
-	if err := st.accState.Commit(); err != nil {
+func (s *states) Commit() error {
+	if err := s.accState.Commit(); err != nil {
 		return err
 	}
-	if err := st.txsState.Commit(); err != nil {
+	if err := s.txsState.Commit(); err != nil {
 		return err
 	}
-	if err := st.usageState.Commit(); err != nil {
+	if err := s.usageState.Commit(); err != nil {
 		return err
 	}
-	if err := st.recordsState.Commit(); err != nil {
+	if err := s.recordsState.Commit(); err != nil {
 		return err
 	}
-	if err := st.dposState.Commit(); err != nil {
+	if err := s.dposState.Commit(); err != nil {
 		return err
 	}
-	if err := st.certificationState.Commit(); err != nil {
+	if err := s.certificationState.Commit(); err != nil {
 		return err
 	}
-	return st.reservationQueue.Commit()
+	return s.reservationQueue.Commit()
 }
 
-func (st *states) AccountsRoot() []byte {
-	return st.accState.RootHash()
+func (s *states) AccountsRoot() []byte {
+	return s.accState.RootHash()
 }
 
-func (st *states) TransactionsRoot() []byte {
-	return st.txsState.RootHash()
+func (s *states) TransactionsRoot() []byte {
+	return s.txsState.RootHash()
 }
 
-func (st *states) UsageRoot() []byte {
-	return st.usageState.RootHash()
+func (s *states) UsageRoot() []byte {
+	return s.usageState.RootHash()
 }
 
-func (st *states) RecordsRoot() []byte {
-	return st.recordsState.RootHash()
+func (s *states) RecordsRoot() []byte {
+	return s.recordsState.RootHash()
 }
 
-func (st *states) CertificationRoot() []byte {
-	return st.certificationState.RootHash()
+func (s *states) CertificationRoot() []byte {
+	return s.certificationState.RootHash()
 }
 
-func (st *states) ReservationQueueHash() []byte {
-	return st.reservationQueue.Hash()
+func (s *states) ReservationQueueHash() []byte {
+	return s.reservationQueue.Hash()
 }
 
-func (st *states) LoadAccountsRoot(rootHash []byte) error {
-	accState, err := NewAccountStateBatch(rootHash, st.storage)
+func (s *states) LoadAccountsRoot(rootHash []byte) error {
+	accState, err := NewAccountStateBatch(rootHash, s.storage)
 	if err != nil {
 		return err
 	}
-	st.accState = accState
+	s.accState = accState
 	return nil
 }
 
-func (st *states) LoadTransactionsRoot(rootHash []byte) error {
-	txsState, err := trie.NewBatch(rootHash, st.storage)
+func (s *states) LoadTransactionsRoot(rootHash []byte) error {
+	txsState, err := trie.NewBatch(rootHash, s.storage)
 	if err != nil {
 		return err
 	}
-	st.txsState = txsState
+	s.txsState = txsState
 	return nil
 }
 
-func (st *states) LoadUsageRoot(rootHash []byte) error {
-	usageState, err := trie.NewBatch(rootHash, st.storage)
+func (s *states) LoadUsageRoot(rootHash []byte) error {
+	usageState, err := trie.NewBatch(rootHash, s.storage)
 	if err != nil {
 		return err
 	}
-	st.usageState = usageState
+	s.usageState = usageState
 	return nil
 }
 
-func (st *states) LoadRecordsRoot(rootHash []byte) error {
-	recordsState, err := trie.NewBatch(rootHash, st.storage)
+func (s *states) LoadRecordsRoot(rootHash []byte) error {
+	recordsState, err := trie.NewBatch(rootHash, s.storage)
 	if err != nil {
 		return err
 	}
-	st.recordsState = recordsState
+	s.recordsState = recordsState
 	return nil
 }
 
-func (st *states) LoadCertificationRoot(rootHash []byte) error {
-	certificationState, err := trie.NewBatch(rootHash, st.storage)
+func (s *states) LoadCertificationRoot(rootHash []byte) error {
+	certificationState, err := trie.NewBatch(rootHash, s.storage)
 	if err != nil {
 		return err
 	}
-	st.certificationState = certificationState
+	s.certificationState = certificationState
 	return nil
 }
 
-func (st *states) LoadReservationQueue(hash []byte) error {
-	rq, err := LoadReservationQueue(st.storage, hash)
+func (s *states) LoadReservationQueue(hash []byte) error {
+	rq, err := LoadReservationQueue(s.storage, hash)
 	if err != nil {
 		return err
 	}
-	st.reservationQueue = rq
+	s.reservationQueue = rq
 	return nil
 }
 
-func (st *states) GetAccount(address common.Address) (Account, error) {
-	return st.accState.GetAccount(address.Bytes())
+func (s *states) GetAccount(address common.Address) (*Account, error) {
+	return s.accState.GetAccount(address.Bytes())
 }
 
-func (st *states) GetAccounts() ([]Account, error) {
-	return st.accState.AccountState().Accounts()
+func (s *states) GetAccounts() ([]*Account, error) {
+	return s.accState.AccountState().Accounts()
 }
 
-func (st *states) AddBalance(address common.Address, amount *util.Uint128) error {
-	return st.accState.AddBalance(address.Bytes(), amount)
+func (s *states) AddBalance(address common.Address, amount *util.Uint128) error {
+	return s.accState.AddBalance(address.Bytes(), amount)
 }
 
-func (st *states) SubBalance(address common.Address, amount *util.Uint128) error {
-	return st.accState.SubBalance(address.Bytes(), amount)
+func (s *states) SubBalance(address common.Address, amount *util.Uint128) error {
+	return s.accState.SubBalance(address.Bytes(), amount)
 }
 
-func (st *states) AddTransaction(tx *Transaction) error {
+func (s *states) AddTransaction(tx *Transaction) error {
 	var err error
 
-	err = st.accState.AddTransaction(tx.From().Bytes(), tx.Hash(), true)
+	err = s.accState.AddTransaction(tx.From().Bytes(), tx.Hash(), true)
 	if err != nil && err != ErrTransactionHashAlreadyAdded {
 		return err
 	}
 
-	err = st.accState.AddTransaction(tx.To().Bytes(), tx.Hash(), false)
+	err = s.accState.AddTransaction(tx.To().Bytes(), tx.Hash(), false)
 	if err != nil && err != ErrTransactionHashAlreadyAdded {
 		return err
 	}
@@ -296,7 +296,7 @@ func (st *states) AddTransaction(tx *Transaction) error {
 	return nil
 }
 
-func (st *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) error {
+func (s *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) error {
 	record := &corepb.Record{
 		Hash:      hash,
 		Owner:     tx.from.Bytes(),
@@ -307,15 +307,15 @@ func (st *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) 
 		return err
 	}
 
-	if err := st.recordsState.Put(hash, recordBytes); err != nil {
+	if err := s.recordsState.Put(hash, recordBytes); err != nil {
 		return err
 	}
 
-	return st.accState.AddRecord(tx.from.Bytes(), hash)
+	return s.accState.AddRecord(tx.from.Bytes(), hash)
 }
 
-func (st *states) GetRecord(hash []byte) (*corepb.Record, error) {
-	recordBytes, err := st.recordsState.Get(hash)
+func (s *states) GetRecord(hash []byte) (*corepb.Record, error) {
+	recordBytes, err := s.recordsState.Get(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -326,19 +326,19 @@ func (st *states) GetRecord(hash []byte) (*corepb.Record, error) {
 	return pbRecord, nil
 }
 
-func (st *states) incrementNonce(address common.Address) error {
-	return st.accState.IncrementNonce(address.Bytes())
+func (s *states) incrementNonce(address common.Address) error {
+	return s.accState.IncrementNonce(address.Bytes())
 }
 
-func (st *states) GetTx(txHash []byte) ([]byte, error) {
-	return st.txsState.Get(txHash)
+func (s *states) GetTx(txHash []byte) ([]byte, error) {
+	return s.txsState.Get(txHash)
 }
 
-func (st *states) PutTx(txHash []byte, txBytes []byte) error {
-	return st.txsState.Put(txHash, txBytes)
+func (s *states) PutTx(txHash []byte, txBytes []byte) error {
+	return s.txsState.Put(txHash, txBytes)
 }
 
-func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
+func (s *states) updateUsage(tx *Transaction, blockTime int64) error {
 	weekSec := int64(604800)
 
 	if tx.Timestamp() < blockTime-weekSec {
@@ -355,7 +355,7 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		return err
 	}
 
-	usageBytes, err := st.usageState.Get(payer.Bytes())
+	usageBytes, err := s.usageState.Get(payer.Bytes())
 	switch err {
 	case nil:
 	case ErrNotFound:
@@ -375,7 +375,7 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 			}).Error("Failed to marshal usage.")
 			return err
 		}
-		return st.usageState.Put(payer.Bytes(), usageBytes)
+		return s.usageState.Put(payer.Bytes(), usageBytes)
 	default:
 		logging.Console().WithFields(logrus.Fields{
 			"payer": payer.Hex(),
@@ -413,11 +413,11 @@ func (st *states) updateUsage(tx *Transaction, blockTime int64) error {
 		return err
 	}
 
-	return st.usageState.Put(payer.Bytes(), pbBytes)
+	return s.usageState.Put(payer.Bytes(), pbBytes)
 }
 
-func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
-	usageBytes, err := st.usageState.Get(addr.Bytes())
+func (s *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
+	usageBytes, err := s.usageState.Get(addr.Bytes())
 	switch err {
 	case nil:
 	case ErrNotFound:
@@ -434,27 +434,27 @@ func (st *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
 }
 
 // GetReservedTasks returns reserved tasks in reservation queue
-func (st *states) GetReservedTasks() []*ReservedTask {
-	return st.reservationQueue.Tasks()
+func (s *states) GetReservedTasks() []*ReservedTask {
+	return s.reservationQueue.Tasks()
 }
 
 // AddReservedTask adds a reserved task in reservation queue
-func (st *states) AddReservedTask(task *ReservedTask) error {
-	return st.reservationQueue.AddTask(task)
+func (s *states) AddReservedTask(task *ReservedTask) error {
+	return s.reservationQueue.AddTask(task)
 }
 
 // PopReservedTasks pops reserved tasks which should be processed before 'before'
-func (st *states) PopReservedTasks(before int64) []*ReservedTask {
-	return st.reservationQueue.PopTasksBefore(before)
+func (s *states) PopReservedTasks(before int64) []*ReservedTask {
+	return s.reservationQueue.PopTasksBefore(before)
 }
 
-func (st *states) PeekHeadReservedTask() *ReservedTask {
-	return st.reservationQueue.Peek()
+func (s *states) PeekHeadReservedTask() *ReservedTask {
+	return s.reservationQueue.Peek()
 }
 
 //Certification returns certification for hash
-func (st *states) Certification(hash []byte) (*corepb.Certification, error) {
-	certBytes, err := st.certificationState.Get(hash)
+func (s *states) Certification(hash []byte) (*corepb.Certification, error) {
+	certBytes, err := s.certificationState.Get(hash)
 	if err != nil {
 		return nil, err
 	}

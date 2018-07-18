@@ -130,6 +130,7 @@ var (
 	ErrCannotConstructVotesCacheInBatch = errors.New("votes cache cannot be constructed in batch mode")
 	ErrVoteDuplicate                    = errors.New("cannot vote already voted account")
 	ErrDynastyExpired                   = errors.New("dynasty in the consensus state has been expired")
+	ErrBlockSignatureNotExist           = errors.New("block signature does not exist in the blockheader")
 	ErrPayerSignatureNotExist           = errors.New("payer signature does not exist in the tx")
 	ErrWrongEventTopic                  = errors.New("required event topic doesn't exist in topic list")
 	ErrTransactionHashAlreadyAdded      = errors.New("transaction already added")
@@ -147,7 +148,7 @@ type Serializable interface {
 	Deserialize([]byte) error
 }
 
-// Consensus is an interface of consensus model.
+// Consensus is an interface of consensus model
 type Consensus interface {
 	NewConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 	LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
@@ -160,6 +161,7 @@ type Consensus interface {
 	SetMintDynastyState(ts int64, parent *Block, block *Block) error
 }
 
+//DposState is an interface for dpos state
 type DposState interface {
 	Clone() (DposState, error)
 	BeginBatch() error

@@ -48,10 +48,10 @@ func TestNewGenesisBlock(t *testing.T) {
 }
 
 func TestCheckGenesisBlock(t *testing.T) {
-	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
+	conf, _, _ := testutil.NewTestGenesisConf(t, testutil.DynastySize)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus := dpos.New()
+	consensus := dpos.New(testutil.DynastySize)
 	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 

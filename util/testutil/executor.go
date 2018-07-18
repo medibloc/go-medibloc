@@ -133,7 +133,7 @@ func (n *Network) NewSeedNode() *Node {
 	return n.NewSeedNodeWithConfig(cfg)
 }
 
-// NewSeedNode creates seed node.
+// NewSeedNodeWithConfig creates seed node.
 func (n *Network) NewSeedNodeWithConfig(cfg *NodeConfig) *Node {
 	node := NewNode(n.t, cfg)
 	n.Seed = node
@@ -146,6 +146,7 @@ func (n *Network) NewNode() *Node {
 	return n.NewNodeWithConfig(NewConfig(n.t))
 }
 
+//NewNodeWithConfig creates node with custom config
 func (n *Network) NewNodeWithConfig(cfg *NodeConfig) *Node {
 	require.NotNil(n.t, n.Seed)
 	require.True(n.t, len(n.Nodes) > 0)
@@ -224,6 +225,7 @@ func (n *Network) assignedMiners() []*AddrKeyPair {
 	return miners
 }
 
+//FindProposer returns block proposer for time stamp
 func (n *Network) FindProposer(ts int64, parent *core.Block) *AddrKeyPair {
 	dynasties := n.Seed.Config.Dynasties
 	d := n.Seed.Med.Consensus()

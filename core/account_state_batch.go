@@ -28,9 +28,9 @@ import (
 
 // AccountStateBatch batch for AccountState
 type AccountStateBatch struct {
-	as            *accountState
+	as            *AccountState
 	batching      bool
-	stageAccounts map[string]*account
+	stageAccounts map[string]*Account
 	storage       storage.Storage
 }
 
@@ -42,9 +42,9 @@ func NewAccountStateBatch(accountsRootHash []byte, s storage.Storage) (*AccountS
 		return nil, err
 	}
 	return &AccountStateBatch{
-		as:            &accountState{accounts: accTrie, storage: s},
+		as:            &AccountState{accounts: accTrie, storage: s},
 		batching:      false,
-		stageAccounts: make(map[string]*account),
+		stageAccounts: make(map[string]*Account),
 		storage:       s,
 	}, nil
 }
@@ -99,19 +99,19 @@ func (as *AccountStateBatch) RollBack() error {
 }
 
 // GetAccount get account in stage(batching) or in original accountState
-func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
+func (as *AccountStateBatch) GetAccount(address []byte) (*Account, error) {
 	s := hex.EncodeToString(address)
 	if acc, ok := as.stageAccounts[s]; ok {
 		return acc, nil
 	}
-	stageAndReturn := func(acc2 *account) *account {
+	stageAndReturn := func(acc2 *Account) *Account {
 		as.stageAccounts[s] = acc2
 		return acc2
 	}
 	accBytes, err := as.as.accounts.Get(address)
 	if err != nil {
 		// create account not exist in
-		return stageAndReturn(&account{
+		return stageAndReturn(&Account{
 			address:       address,
 			balance:       util.NewUint128(),
 			vesting:       util.NewUint128(),
@@ -131,7 +131,7 @@ func (as *AccountStateBatch) GetAccount(address []byte) (*account, error) {
 
 func (as *AccountStateBatch) resetBatch() {
 	as.batching = false
-	as.stageAccounts = make(map[string]*account)
+	as.stageAccounts = make(map[string]*Account)
 }
 
 // AddBalance add balance
@@ -198,7 +198,7 @@ func (as *AccountStateBatch) AddRecord(address []byte, hash []byte) error {
 }
 
 // AccountState getter for accountState
-func (as *AccountStateBatch) AccountState() AccountState {
+func (as *AccountStateBatch) AccountState() *AccountState {
 	return as.as
 }
 

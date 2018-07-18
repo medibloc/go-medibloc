@@ -39,6 +39,7 @@ type State struct {
 	stroage storage.Storage
 }
 
+//NewDposState returns new dpos state
 func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor storage.Storage) (core.DposState, error) {
 	cs, err := trie.NewBatch(candidateStateHash, stor)
 	if err != nil {
@@ -56,14 +57,17 @@ func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor stora
 	}, nil
 }
 
+//CandidateState returns candidate state
 func (s *State) CandidateState() *trie.Batch {
 	return s.candidateState
 }
 
+//DynastyState returns dynasty state
 func (s *State) DynastyState() *trie.Batch {
 	return s.dynastyState
 }
 
+//Commit saves batch to state
 func (s *State) Commit() error {
 	if err := s.candidateState.Commit(); err != nil {
 		return err
@@ -74,13 +78,23 @@ func (s *State) Commit() error {
 	return nil
 }
 
+//RollBack rollback batch
 func (s *State) RollBack() error {
-	panic("implement me")
+	if err := s.candidateState.RollBack(); err != nil {
+		return err
+	}
+	if err := s.dynastyState.RollBack(); err != nil {
+		return err
+	}
+	return nil
 }
 
+//Clone clone state
 func (s *State) Clone() (core.DposState, error) {
 	return NewDposState(s.candidateState.RootHash(), s.dynastyState.RootHash(), s.stroage)
 }
+
+//BeginBatch begin batch
 func (s *State) BeginBatch() error {
 	if err := s.candidateState.BeginBatch(); err != nil {
 		return err
@@ -90,6 +104,8 @@ func (s *State) BeginBatch() error {
 	}
 	return nil
 }
+
+//RootBytes returns root bytes for dpos state
 func (s *State) RootBytes() ([]byte, error) {
 	pbState := &dpospb.State{
 		CandidateRootHash: s.CandidateState().RootHash(),
@@ -97,8 +113,6 @@ func (s *State) RootBytes() ([]byte, error) {
 	}
 	return proto.Marshal(pbState)
 }
-
-//func (s *State) Candidate([]byte, error)
 
 //SortByVotePower returns Descending ordered candidate slice
 func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
@@ -148,6 +162,7 @@ func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
 	return pbCandidates, nil
 }
 
+//MakeNewDynasty returns new dynasty slice for new block
 func MakeNewDynasty(sortedCandidates []*dpospb.Candidate, dynastySize int) []*common.Address {
 	dynasty := make([]*common.Address, 0)
 
@@ -212,6 +227,7 @@ func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]*common.Address,
 	return DynastyStateToDynasty(parent.State().DposState().DynastyState())
 }
 
+//FindMintProposer returns proposer for mint block
 func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
 	mintTs := NextMintSlot2(ts)
 	dynasty, err := d.MakeMintDynasty(mintTs, parent)
@@ -222,6 +238,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 	return *dynasty[int(proposerIndex)%d.dynastySize], nil
 }
 
+//SetMintDynastyState set mint block's dynasty state
 func (d *Dpos) SetMintDynastyState(ts int64, parent *core.Block, block *core.Block) error {
 	ds := block.State().DposState().DynastyState()
 

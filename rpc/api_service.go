@@ -34,7 +34,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func coreAcc2rpcAcc(acc core.Account) (*rpcpb.GetAccountStateResponse, error) {
+func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
 	return &rpcpb.GetAccountStateResponse{
 		Address:       byteutils.Bytes2Hex(acc.Address()),
 		Balance:       acc.Balance().String(),

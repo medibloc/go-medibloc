@@ -22,6 +22,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
@@ -233,6 +234,26 @@ func (b *BlockHeader) Sign() []byte {
 //SetSign set sign
 func (b *BlockHeader) SetSign(sign []byte) {
 	b.sign = sign
+}
+
+//Miner returns miner address from block sign
+func (b *BlockHeader) Miner() (common.Address, error) {
+	if b.sign == nil {
+		return common.Address{}, ErrBlockSignatureNotExist
+	}
+	msg := b.hash
+
+	sig, err := crypto.NewSignature(b.alg)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	pubKey, err := sig.RecoverPublic(msg, b.sign)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	return common.PublicKeyToAddress(pubKey)
 }
 
 // BlockData represents a block

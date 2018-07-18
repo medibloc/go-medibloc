@@ -164,8 +164,7 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	conf, dynasties, distributed := NewTestGenesisConf(t, dynastySize)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	d := dpos.New()
-	d.SetDynastySize(dynastySize)
+	d := dpos.New(dynastySize)
 	genesis, err = core.NewGenesisBlock(conf, d, s)
 	require.NoError(t, err)
 
@@ -221,8 +220,7 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 
 // SignBlockUsingDynasties signs block with dynasties.
 func SignBlockUsingDynasties(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
-	d := dpos.New()
-	d.SetDynastySize(len(dynasties))
+	d := dpos.New(len(dynasties))
 	proposer, err := d.FindMintProposer(block.Timestamp(), block)
 	require.NoError(t, err)
 
@@ -444,7 +442,7 @@ func NewMockMedlet(t *testing.T) *MockMedlet {
 	var ns net.Service
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus := dpos.New()
+	consensus := dpos.New(int(genesisConf.Meta.DynastySize))
 	bm, err := core.NewBlockManager(cfg)
 	require.NoError(t, err)
 	bm.InjectEmitter(core.NewEventEmitter(128))

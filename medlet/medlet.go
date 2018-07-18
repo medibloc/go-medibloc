@@ -86,7 +86,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 
 	tm := core.NewTransactionManager(cfg)
 
-	consensus := dpos.New()
+	consensus := dpos.New(int(genesis.Meta.DynastySize))
 
 	ss := sync.NewService(cfg.Sync)
 

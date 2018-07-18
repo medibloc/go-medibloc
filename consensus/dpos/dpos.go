@@ -50,18 +50,16 @@ type Dpos struct {
 	quitCh chan int
 }
 
-func (d *Dpos) SetDynastySize(dynastySize int) {
-	d.dynastySize = dynastySize
-}
-
+//DynastySize returns dynastySize
 func (d *Dpos) DynastySize() int {
 	return d.dynastySize
 }
 
 // New returns dpos consensus.
-func New() *Dpos {
+func New(dynastySize int) *Dpos {
 	return &Dpos{
-		quitCh: make(chan int, 1),
+		dynastySize: dynastySize,
+		quitCh:      make(chan int, 1),
 	}
 }
 
@@ -527,6 +525,7 @@ func nextMintSlot(ts time.Time) time.Time {
 	return time.Unix(int64(next/time.Second), 0)
 }
 
+//NextMintSlot2 returns timestamp for next mint slot
 func NextMintSlot2(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval

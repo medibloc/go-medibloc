@@ -47,51 +47,51 @@ type Transaction struct {
 }
 
 // ToProto converts Transaction to corepb.Transaction
-func (tx *Transaction) ToProto() (proto.Message, error) {
-	value, err := tx.value.ToFixedSizeByteSlice()
+func (t *Transaction) ToProto() (proto.Message, error) {
+	value, err := t.value.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 
 	return &corepb.Transaction{
-		Hash:      tx.hash,
-		From:      tx.from.Bytes(),
-		To:        tx.to.Bytes(),
+		Hash:      t.hash,
+		From:      t.from.Bytes(),
+		To:        t.to.Bytes(),
 		Value:     value,
-		Timestamp: tx.timestamp,
-		Data:      tx.data,
-		Nonce:     tx.nonce,
-		ChainId:   tx.chainID,
-		Alg:       uint32(tx.alg),
-		Sign:      tx.sign,
-		PayerSign: tx.payerSign,
+		Timestamp: t.timestamp,
+		Data:      t.data,
+		Nonce:     t.nonce,
+		ChainId:   t.chainID,
+		Alg:       uint32(t.alg),
+		Sign:      t.sign,
+		PayerSign: t.payerSign,
 	}, nil
 }
 
 // FromProto converts corepb.Transaction to Transaction
-func (tx *Transaction) FromProto(msg proto.Message) error {
+func (t *Transaction) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Transaction); ok {
-		tx.hash = msg.Hash
-		tx.from = common.BytesToAddress(msg.From)
-		tx.to = common.BytesToAddress(msg.To)
+		t.hash = msg.Hash
+		t.from = common.BytesToAddress(msg.From)
+		t.to = common.BytesToAddress(msg.To)
 
 		value, err := util.NewUint128FromFixedSizeByteSlice(msg.Value)
 		if err != nil {
 			return err
 		}
-		tx.value = value
-		tx.timestamp = msg.Timestamp
-		tx.data = msg.Data
-		tx.nonce = msg.Nonce
-		tx.chainID = msg.ChainId
+		t.value = value
+		t.timestamp = msg.Timestamp
+		t.data = msg.Data
+		t.nonce = msg.Nonce
+		t.chainID = msg.ChainId
 		alg := algorithm.Algorithm(msg.Alg)
 		err = crypto.CheckAlgorithm(alg)
 		if err != nil {
 			return err
 		}
-		tx.alg = alg
-		tx.sign = msg.Sign
-		tx.payerSign = msg.PayerSign
+		t.alg = alg
+		t.sign = msg.Sign
+		t.payerSign = msg.PayerSign
 
 		return nil
 	}
@@ -99,108 +99,134 @@ func (tx *Transaction) FromProto(msg proto.Message) error {
 	return ErrCannotConvertTransaction
 }
 
-func (tx *Transaction) Hash() []byte {
-	return tx.hash
+//Hash returns hash
+func (t *Transaction) Hash() []byte {
+	return t.hash
 }
 
-func (tx *Transaction) SetHash(hash []byte) {
-	tx.hash = hash
+//SetHash set hash
+func (t *Transaction) SetHash(hash []byte) {
+	t.hash = hash
 }
 
-func (tx *Transaction) From() common.Address {
-	return tx.from
+//From returns from
+func (t *Transaction) From() common.Address {
+	return t.from
 }
 
-func (tx *Transaction) SetFrom(from common.Address) {
-	tx.from = from
+//SetFrom set from
+func (t *Transaction) SetFrom(from common.Address) {
+	t.from = from
 }
 
-func (tx *Transaction) To() common.Address {
-	return tx.to
+//To returns to
+func (t *Transaction) To() common.Address {
+	return t.to
 }
 
-func (tx *Transaction) SetTo(to common.Address) {
-	tx.to = to
+//SetTo set to
+func (t *Transaction) SetTo(to common.Address) {
+	t.to = to
 }
 
-func (tx *Transaction) Value() *util.Uint128 {
-	return tx.value
+//Value returns value
+func (t *Transaction) Value() *util.Uint128 {
+	return t.value
 }
 
-func (tx *Transaction) SetValue(value *util.Uint128) {
-	tx.value = value
+//SetValue set value
+func (t *Transaction) SetValue(value *util.Uint128) {
+	t.value = value
 }
 
-func (tx *Transaction) Timestamp() int64 {
-	return tx.timestamp
+//Timestamp returns timestamp
+func (t *Transaction) Timestamp() int64 {
+	return t.timestamp
 }
 
-func (tx *Transaction) SetTimestamp(timestamp int64) {
-	tx.timestamp = timestamp
+//SetTimestamp set timestamp
+func (t *Transaction) SetTimestamp(timestamp int64) {
+	t.timestamp = timestamp
 }
 
+//Data returns data
 func (t *Transaction) Data() *corepb.Data {
 	return t.data
 }
 
+//SetData set data
 func (t *Transaction) SetData(data *corepb.Data) {
 	t.data = data
 }
 
-func (tx *Transaction) Type() string {
-	return tx.data.Type
+//Type returns type
+func (t *Transaction) Type() string {
+	return t.data.Type
 }
 
-func (tx *Transaction) SetType(ttype string) {
-	tx.data.Type = ttype
+//SetType set type
+func (t *Transaction) SetType(ttype string) {
+	t.data.Type = ttype
 }
 
-func (tx *Transaction) Payload() []byte {
-	return tx.data.Payload
+//Payload returns paylaod
+func (t *Transaction) Payload() []byte {
+	return t.data.Payload
 }
 
-func (tx *Transaction) SetPayload(payload []byte) {
-	tx.data.Payload = payload
+//SetPayload set payload
+func (t *Transaction) SetPayload(payload []byte) {
+	t.data.Payload = payload
 }
 
-func (tx *Transaction) Nonce() uint64 {
-	return tx.nonce
+//Nonce returns nounce
+func (t *Transaction) Nonce() uint64 {
+	return t.nonce
 }
 
-func (tx *Transaction) SetNonce(nonce uint64) {
-	tx.nonce = nonce
+//SetNonce set nonce
+func (t *Transaction) SetNonce(nonce uint64) {
+	t.nonce = nonce
 }
 
-func (tx *Transaction) ChainID() uint32 {
-	return tx.chainID
+//ChainID returns chainID
+func (t *Transaction) ChainID() uint32 {
+	return t.chainID
 }
 
-func (tx *Transaction) SetChainID(chainID uint32) {
-	tx.chainID = chainID
+//SetChainID set chainID
+func (t *Transaction) SetChainID(chainID uint32) {
+	t.chainID = chainID
 }
 
-func (tx *Transaction) Alg() algorithm.Algorithm {
-	return tx.alg
+//Alg returns signing algorithm
+func (t *Transaction) Alg() algorithm.Algorithm {
+	return t.alg
 }
 
-func (tx *Transaction) SetAlg(alg algorithm.Algorithm) {
-	tx.alg = alg
+//SetAlg set signing algorithm
+func (t *Transaction) SetAlg(alg algorithm.Algorithm) {
+	t.alg = alg
 }
 
-func (tx *Transaction) Sign() []byte {
-	return tx.sign
+//Sign returns sign
+func (t *Transaction) Sign() []byte {
+	return t.sign
 }
 
-func (tx *Transaction) SetSign(sign []byte) {
-	tx.sign = sign
+//SetSign set sign
+func (t *Transaction) SetSign(sign []byte) {
+	t.sign = sign
 }
 
-func (tx *Transaction) PayerSign() []byte {
-	return tx.payerSign
+//PayerSign return payerSign
+func (t *Transaction) PayerSign() []byte {
+	return t.payerSign
 }
 
-func (tx *Transaction) SetPayerSign(payerSign []byte) {
-	tx.payerSign = payerSign
+//SetPayerSign set payerSign
+func (t *Transaction) SetPayerSign(payerSign []byte) {
+	t.payerSign = payerSign
 }
 
 // Transactions is just multiple txs
@@ -271,24 +297,24 @@ func NewTransactionWithSign(
 }
 
 // CalcHash calculates transaction's hash.
-func (tx *Transaction) CalcHash() ([]byte, error) {
+func (t *Transaction) CalcHash() ([]byte, error) {
 	hasher := sha3.New256()
 
-	value, err := tx.value.ToFixedSizeByteSlice()
+	value, err := t.value.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 	txHashTarget := &corepb.TransactionHashTarget{
-		From:      tx.from.Bytes(),
-		To:        tx.to.Bytes(),
+		From:      t.from.Bytes(),
+		To:        t.to.Bytes(),
 		Value:     value,
-		Timestamp: tx.timestamp,
+		Timestamp: t.timestamp,
 		Data: &corepb.Data{
-			Type:    tx.data.Type,
-			Payload: tx.data.Payload,
+			Type:    t.data.Type,
+			Payload: t.data.Payload,
 		},
-		Nonce:   tx.nonce,
-		ChainId: tx.chainID,
+		Nonce:   t.nonce,
+		ChainId: t.chainID,
 	}
 	data, err := proto.Marshal(txHashTarget)
 	if err != nil {
@@ -301,9 +327,9 @@ func (tx *Transaction) CalcHash() ([]byte, error) {
 }
 
 // SignThis signs tx with given signature interface
-func (tx *Transaction) SignThis(signer signature.Signature) error {
-	tx.alg = signer.Algorithm()
-	hash, err := tx.CalcHash()
+func (t *Transaction) SignThis(signer signature.Signature) error {
+	t.alg = signer.Algorithm()
+	hash, err := t.CalcHash()
 	if err != nil {
 		return err
 	}
@@ -312,33 +338,33 @@ func (tx *Transaction) SignThis(signer signature.Signature) error {
 	if err != nil {
 		return err
 	}
-	tx.hash = hash
-	tx.sign = sig
+	t.hash = hash
+	t.sign = sig
 	return nil
 }
 
-func (tx *Transaction) getPayerSignTarget() []byte {
+func (t *Transaction) getPayerSignTarget() []byte {
 	hasher := sha3.New256()
 
-	hasher.Write(tx.hash)
-	hasher.Write(tx.sign)
+	hasher.Write(t.hash)
+	hasher.Write(t.sign)
 
 	hash := hasher.Sum(nil)
 	return hash
 }
 
-func (tx *Transaction) recoverPayer() (common.Address, error) {
-	if tx.payerSign == nil || len(tx.payerSign) == 0 {
+func (t *Transaction) recoverPayer() (common.Address, error) {
+	if t.payerSign == nil || len(t.payerSign) == 0 {
 		return common.Address{}, ErrPayerSignatureNotExist
 	}
-	msg := tx.getPayerSignTarget()
+	msg := t.getPayerSignTarget()
 
-	sig, err := crypto.NewSignature(tx.alg)
+	sig, err := crypto.NewSignature(t.alg)
 	if err != nil {
 		return common.Address{}, err
 	}
 
-	pubKey, err := sig.RecoverPublic(msg, tx.payerSign)
+	pubKey, err := sig.RecoverPublic(msg, t.payerSign)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -347,55 +373,55 @@ func (tx *Transaction) recoverPayer() (common.Address, error) {
 }
 
 // SignByPayer puts payer's sign in tx
-func (tx *Transaction) SignByPayer(signer signature.Signature) error {
-	target := tx.getPayerSignTarget()
+func (t *Transaction) SignByPayer(signer signature.Signature) error {
+	target := t.getPayerSignTarget()
 
 	sig, err := signer.Sign(target)
 	if err != nil {
 		return err
 	}
-	tx.payerSign = sig
+	t.payerSign = sig
 	return nil
 }
 
 // VerifyIntegrity returns transaction verify result, including Hash and Signature.
-func (tx *Transaction) VerifyIntegrity(chainID uint32) error {
+func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 	// check ChainID.
-	if tx.chainID != chainID {
+	if t.chainID != chainID {
 		return ErrInvalidChainID
 	}
 
 	// check Hash.
-	wantedHash, err := tx.CalcHash()
+	wantedHash, err := t.CalcHash()
 	if err != nil {
 		return err
 	}
-	if !byteutils.Equal(wantedHash, tx.hash) {
+	if !byteutils.Equal(wantedHash, t.hash) {
 		return ErrInvalidTransactionHash
 	}
 
 	// check Signature.
-	return tx.verifySign()
+	return t.verifySign()
 }
 
-func (tx *Transaction) verifySign() error {
-	signer, err := tx.recoverSigner()
+func (t *Transaction) verifySign() error {
+	signer, err := t.recoverSigner()
 	if err != nil {
 		return err
 	}
-	if !tx.from.Equals(signer) {
+	if !t.from.Equals(signer) {
 		return ErrInvalidTransactionSigner
 	}
 	return nil
 }
 
-func (tx *Transaction) recoverSigner() (common.Address, error) {
-	sig, err := crypto.NewSignature(tx.alg)
+func (t *Transaction) recoverSigner() (common.Address, error) {
+	sig, err := crypto.NewSignature(t.alg)
 	if err != nil {
 		return common.Address{}, err
 	}
 
-	pubKey, err := sig.RecoverPublic(tx.hash, tx.sign)
+	pubKey, err := sig.RecoverPublic(t.hash, t.sign)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -404,20 +430,22 @@ func (tx *Transaction) recoverSigner() (common.Address, error) {
 }
 
 // String returns string representation of tx
-func (tx *Transaction) String() string {
+func (t *Transaction) String() string {
 	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v'}`,
-		tx.chainID,
-		tx.hash,
-		tx.from,
-		tx.to,
-		tx.value.String(),
-		tx.Type(),
-		tx.alg,
-		tx.nonce,
+		t.chainID,
+		t.hash,
+		t.from,
+		t.to,
+		t.value.String(),
+		t.Type(),
+		t.alg,
+		t.nonce,
 	)
 }
-func (tx *Transaction) Clone() (*Transaction, error) {
-	protoTx, err := tx.ToProto()
+
+//Clone clone transaction
+func (t *Transaction) Clone() (*Transaction, error) {
+	protoTx, err := t.ToProto()
 	if err != nil {
 		return nil, err
 	}
@@ -575,6 +603,7 @@ func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
+//Execute WithdrawVestingTx
 func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	as := b.state.AccState()
 	cs := b.state.DposState().CandidateState()

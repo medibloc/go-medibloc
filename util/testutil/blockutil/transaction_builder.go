@@ -30,6 +30,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+//TxBuilder is a structure for transaction builder
 type TxBuilder struct {
 	t  *testing.T
 	bb *BlockBuilder
@@ -73,42 +74,49 @@ func (tb *TxBuilder) copy() *TxBuilder {
 
 /* Setters and Getters */
 
+//Hash sets hash
 func (tb *TxBuilder) Hash(hash []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetHash(hash)
 	return n
 }
 
+//From sets from
 func (tb *TxBuilder) From(addr common.Address) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetFrom(addr)
 	return n
 }
 
+//To sets to
 func (tb *TxBuilder) To(addr common.Address) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetTo(addr)
 	return n
 }
 
+//Value sets value
 func (tb *TxBuilder) Value(value uint64) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetValue(util.NewUint128FromUint(value))
 	return n
 }
 
+//Timestamp sets timestamp
 func (tb *TxBuilder) Timestamp(ts int64) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetTimestamp(ts)
 	return n
 }
 
+//Type sets type
 func (tb *TxBuilder) Type(txType string) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetType(txType)
 	return n
 }
 
+//Payload sets payload
 func (tb *TxBuilder) Payload(payload core.TransactionPayload) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -119,30 +127,35 @@ func (tb *TxBuilder) Payload(payload core.TransactionPayload) *TxBuilder {
 	return n
 }
 
+//Nonce sets nonce
 func (tb *TxBuilder) Nonce(nonce uint64) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetNonce(nonce)
 	return n
 }
 
+//ChainID sets chainID
 func (tb *TxBuilder) ChainID(chainID uint32) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetChainID(chainID)
 	return n
 }
 
+//Alg sets signature algorithm
 func (tb *TxBuilder) Alg(alg algorithm.Algorithm) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetAlg(alg)
 	return n
 }
 
+//Sign sets sign
 func (tb *TxBuilder) Sign(sign []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetSign(sign)
 	return n
 }
 
+//PayerSign sets payerSign
 func (tb *TxBuilder) PayerSign(sign []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetPayerSign(sign)
@@ -151,6 +164,7 @@ func (tb *TxBuilder) PayerSign(sign []byte) *TxBuilder {
 
 /* Additional Commands */
 
+//CalcHash calculate hash
 func (tb *TxBuilder) CalcHash() *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -161,6 +175,7 @@ func (tb *TxBuilder) CalcHash() *TxBuilder {
 	return n
 }
 
+//SignKey sign by private key
 func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -175,6 +190,7 @@ func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
+//SignPayerKey sign by payer private key
 func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -192,6 +208,7 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
+//SignPair set from, seal ,calculate hash and sign with key pair
 func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 	n := tb.copy()
 	if n.tx.Nonce() == 0 {
@@ -202,11 +219,13 @@ func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 
+//Build build transaction
 func (tb *TxBuilder) Build() *core.Transaction {
 	n := tb.copy()
 	return n.tx
 }
 
+//BuildProto build protobuf transaction
 func (tb *TxBuilder) BuildProto() *corepb.Transaction {
 	n := tb.copy()
 	t := tb.t
@@ -216,6 +235,7 @@ func (tb *TxBuilder) BuildProto() *corepb.Transaction {
 	return pb.(*corepb.Transaction)
 }
 
+//BuildBytes build marshaled transaction
 func (tb *TxBuilder) BuildBytes() []byte {
 	n := tb.copy()
 	t := tb.t
@@ -227,16 +247,19 @@ func (tb *TxBuilder) BuildBytes() []byte {
 	return data
 }
 
+//Execute excute transaction on block builder
 func (tb *TxBuilder) Execute() *BlockBuilder {
 	n := tb.copy()
 	return n.bb.ExecuteTx(n.tx)
 }
 
+//ExecuteErr expect error occurred on executing
 func (tb *TxBuilder) ExecuteErr(err error) *BlockBuilder {
 	n := tb.copy()
 	return n.bb.ExecuteTxErr(n.tx, err)
 }
 
+//Add add transaction on block builder
 func (tb *TxBuilder) Add() *BlockBuilder {
 	n := tb.copy()
 	return n.bb.AddTx(n.tx)

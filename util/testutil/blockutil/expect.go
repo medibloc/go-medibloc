@@ -23,11 +23,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//Expect is a structure for expect
 type Expect struct {
 	t     *testing.T
 	block *core.Block
 }
 
+//NewExpect return new expect
 func NewExpect(t *testing.T, block *core.Block) *Expect {
 	return &Expect{
 		t:     t,
@@ -35,24 +37,27 @@ func NewExpect(t *testing.T, block *core.Block) *Expect {
 	}
 }
 
-func (e *Expect) account(addr common.Address) core.Account {
+func (e *Expect) account(addr common.Address) *core.Account {
 	acc, err := e.block.State().GetAccount(addr)
 	require.NoError(e.t, err)
 	return acc
 }
 
+//Balance compare balance of account to expected value
 func (e *Expect) Balance(addr common.Address, value uint64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.Balance().Uint64(), value)
 	return e
 }
 
+//Vesting compare vesting of account to expected value
 func (e *Expect) Vesting(addr common.Address, vest uint64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.Vesting().Uint64(), vest)
 	return e
 }
 
+//Nonce compare nonce of account to expected value
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.Nonce(), nonce)

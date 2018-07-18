@@ -30,6 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//BlockBuilder is structure for building block
 type BlockBuilder struct {
 	t *testing.T
 	B *core.Block
@@ -40,6 +41,7 @@ type BlockBuilder struct {
 	KeyPairs    testutil.AddrKeyPairs
 }
 
+//New returns new block builder
 func New(t *testing.T, dynastySize int) *BlockBuilder {
 	return &BlockBuilder{
 		t:           t,
@@ -47,6 +49,7 @@ func New(t *testing.T, dynastySize int) *BlockBuilder {
 	}
 }
 
+//AddKeyPairs sets key pairs on block builder
 func (bb *BlockBuilder) AddKeyPairs(keyPairs testutil.AddrKeyPairs) *BlockBuilder {
 	n := bb.copy()
 	n.KeyPairs = append(n.KeyPairs, keyPairs...)
@@ -79,6 +82,7 @@ func (bb *BlockBuilder) copy() *BlockBuilder {
 	}
 }
 
+//Genesis create genesis block
 func (bb *BlockBuilder) Genesis() *BlockBuilder {
 	n := bb.copy()
 	genesis, dynasties, tokenDist := testutil.NewTestGenesisBlock(bb.t, bb.dynastySize)
@@ -89,24 +93,26 @@ func (bb *BlockBuilder) Genesis() *BlockBuilder {
 	return n
 }
 
+//Block sets block
 func (bb *BlockBuilder) Block(block *core.Block) *BlockBuilder {
 	n := bb.copy()
 	n.B = block
 	return n
 }
 
+//Tx sets tx
 func (bb *BlockBuilder) Tx() *TxBuilder {
 	return newTxBuilder(bb)
 }
 
-/* Setters and Getters */
-
+//Hash sets hash
 func (bb *BlockBuilder) Hash(hash []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetHash(hash)
 	return n
 }
 
+//ParentHash sets parenthash
 func (bb *BlockBuilder) ParentHash(hash []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetParentHash(hash)
@@ -204,14 +210,14 @@ func (bb *BlockBuilder) Height(height uint64) *BlockBuilder {
 	return n
 }
 
+//Sealed sets sealed
 func (bb *BlockBuilder) Sealed(sealed bool) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetSealed(sealed)
 	return n
 }
 
-/* Additional Commands */
-
+//CalcHash calculate hash
 func (bb *BlockBuilder) CalcHash() *BlockBuilder {
 	n := bb.copy()
 	hash := core.HashBlockData(n.B.GetBlockData())
@@ -219,6 +225,7 @@ func (bb *BlockBuilder) CalcHash() *BlockBuilder {
 	return n
 }
 
+//SignKey signs by private key
 func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 	n := bb.copy()
 	t := bb.t
@@ -233,12 +240,14 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 	return n
 }
 
+//SignPair set coinbase, seal ,calculate hash and sign with key pair
 func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	n := bb.copy()
 
 	return n.Coinbase(pair.Addr).Seal().CalcHash().SignKey(pair.PrivKey)
 }
 
+//SignMiner find miner and sign with key pair
 func (bb *BlockBuilder) SignMiner() *BlockBuilder {
 	n := bb.copy()
 
@@ -250,6 +259,7 @@ func (bb *BlockBuilder) SignMiner() *BlockBuilder {
 	return n.SignPair(pair)
 }
 
+//AddTx add transaction
 func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	txs := n.B.Transactions()
@@ -258,6 +268,7 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 	return n
 }
 
+//ExecuteTx execute transaction
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 
@@ -269,6 +280,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	return n
 }
 
+//ExecuteTxErr expect error occurred on executing
 func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 
@@ -285,6 +297,7 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 	return n
 }
 
+//Seal set root hash on header
 func (bb *BlockBuilder) Seal() *BlockBuilder {
 	n := bb.copy()
 	t := bb.t
@@ -321,11 +334,13 @@ func (bb *BlockBuilder) BuildBytes() []byte {
 	return data
 }
 
+//Child create child block
 func (bb *BlockBuilder) Child() *BlockBuilder {
 	n := bb.copy()
 	return n.ChildWithTimestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix())
 }
 
+//ChildWithTimestamp create child block on specific timestamp
 func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetTransactions(make([]*core.Transaction, 0))
@@ -333,12 +348,12 @@ func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState().ExecuteReservedTasks()
 }
 
+//UpdateDynastyState update dynasty state
 func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
 	n := bb.copy()
 	dposState := n.B.State().DposState()
 
-	d := dpos.New()
-	d.SetDynastySize(n.dynastySize)
+	d := dpos.New(n.dynastySize)
 	dynasty, err := d.MakeMintDynasty(n.B.Timestamp(), n.B)
 	require.NoError(n.t, err)
 	dpos.SetDynastyState(dposState.DynastyState(), dynasty)
@@ -347,10 +362,12 @@ func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
 	return n
 }
 
+//Expect return expect
 func (bb *BlockBuilder) Expect() *Expect {
 	return NewExpect(bb.t, bb.Build())
 }
 
+//ExecuteReservedTasks execute reserved tasks
 func (bb *BlockBuilder) ExecuteReservedTasks() *BlockBuilder {
 	n := bb.copy()
 

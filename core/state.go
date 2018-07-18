@@ -25,8 +25,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// account default item in state
-type account struct {
+// Account default item in state
+type Account struct {
 	// address account key
 	address []byte
 	// balance account's coin amount
@@ -49,47 +49,57 @@ type account struct {
 	txsGet [][]byte
 }
 
-func (acc *account) Address() []byte {
+//Address returns address
+func (acc *Account) Address() []byte {
 	return acc.address
 }
 
-func (acc *account) Balance() *util.Uint128 {
+//Balance retruns balance
+func (acc *Account) Balance() *util.Uint128 {
 	return acc.balance
 }
 
-func (acc *account) Vesting() *util.Uint128 {
+//Vesting returns vesting
+func (acc *Account) Vesting() *util.Uint128 {
 	return acc.vesting
 }
 
-func (acc *account) Nonce() uint64 {
+//Nonce returns nonce
+func (acc *Account) Nonce() uint64 {
 	return acc.nonce
 }
 
-func (acc *account) Voted() []byte {
+//Voted returns voted
+func (acc *Account) Voted() []byte {
 	return acc.voted
 }
 
-func (acc *account) Records() [][]byte {
+//Records returns records
+func (acc *Account) Records() [][]byte {
 	return acc.records
 }
 
-func (acc *account) CertsReceived() [][]byte {
+//CertsReceived returns certReceived
+func (acc *Account) CertsReceived() [][]byte {
 	return acc.certsReceived
 }
 
-func (acc *account) CertsIssued() [][]byte {
+//CertsIssued returns certIssued
+func (acc *Account) CertsIssued() [][]byte {
 	return acc.certsIssued
 }
 
-func (acc *account) TxsSend() [][]byte {
+//TxsSend returns txsSend
+func (acc *Account) TxsSend() [][]byte {
 	return acc.txsSend
 }
 
-func (acc *account) TxsGet() [][]byte {
+//TxsGet returns txsGet
+func (acc *Account) TxsGet() [][]byte {
 	return acc.txsGet
 }
 
-func (acc *account) toBytes() ([]byte, error) {
+func (acc *Account) toBytes() ([]byte, error) {
 	balanceBytes, err := acc.balance.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -117,7 +127,7 @@ func (acc *account) toBytes() ([]byte, error) {
 	return bytes, nil
 }
 
-func loadAccount(bytes []byte) (*account, error) {
+func loadAccount(bytes []byte) (*Account, error) {
 	pbAcc := &corepb.Account{}
 	if err := proto.Unmarshal(bytes, pbAcc); err != nil {
 		return nil, err
@@ -126,7 +136,7 @@ func loadAccount(bytes []byte) (*account, error) {
 	balance.FromFixedSizeByteSlice(pbAcc.Balance)
 	vesting := util.NewUint128()
 	vesting.FromFixedSizeByteSlice(pbAcc.Vesting)
-	acc := &account{
+	acc := &Account{
 		address:       pbAcc.Address,
 		balance:       balance,
 		vesting:       vesting,
@@ -141,14 +151,14 @@ func loadAccount(bytes []byte) (*account, error) {
 	return acc, nil
 }
 
-// accountState
-type accountState struct {
+// AccountState is a structure for account state
+type AccountState struct {
 	accounts *trie.Trie
 	storage  storage.Storage
 }
 
 // GetAccount get account for address
-func (as *accountState) GetAccount(address []byte) (Account, error) {
+func (as *AccountState) GetAccount(address []byte) (*Account, error) {
 	bytes, err := as.accounts.Get(address)
 	if err != nil {
 		return nil, err
@@ -157,8 +167,8 @@ func (as *accountState) GetAccount(address []byte) (Account, error) {
 }
 
 // Accounts returns all accounts in the blockchain
-func (as *accountState) Accounts() ([]Account, error) {
-	var accounts []Account
+func (as *AccountState) Accounts() ([]*Account, error) {
+	var accounts []*Account
 	iter, err := as.accounts.Iterator(nil)
 	if err == trie.ErrNotFound {
 		return accounts, nil
@@ -199,36 +209,4 @@ func (as *accountState) Accounts() ([]Account, error) {
 	}
 	return accounts, nil
 
-}
-
-// Account account interface
-type Account interface {
-	// Address getter for address
-	Address() []byte
-
-	// Balance getter for balance
-	Balance() *util.Uint128
-
-	Vesting() *util.Uint128
-
-	Nonce() uint64
-
-	Voted() []byte
-
-	Records() [][]byte
-
-	CertsReceived() [][]byte
-
-	CertsIssued() [][]byte
-
-	TxsSend() [][]byte
-	TxsGet() [][]byte
-}
-
-// AccountState account state interface
-type AccountState interface {
-	// GetAccount get account for address
-	GetAccount(address []byte) (Account, error)
-
-	Accounts() ([]Account, error)
 }
