@@ -2,3 +2,7 @@ ignore:
   - "**/*.pb.go"
   - "**/*.pb.gw.go"
   - "rpc/mock_pb/mock_pb.go"
+  - "net/testing/broadcast/main.go"
+  - "net/testing/normal/main.go"
+  - "net/testing/seed/main.go"
+  - "net/testing/test/main.go"
