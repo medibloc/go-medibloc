@@ -75,7 +75,7 @@ func DefaultConfig() *medletpb.Config {
 			Listen:                     []string{"127.0.0.1:9900", "127.0.0.1:9910"},
 			PrivateKey:                 "",
 			NetworkId:                  0,
-			RouteTableSyncLoopInterval: 50,
+			RouteTableSyncLoopInterval: 2000,
 		},
 		Chain: &medletpb.ChainConfig{
 			Genesis:             "",
