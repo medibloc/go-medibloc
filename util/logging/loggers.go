@@ -125,12 +125,12 @@ func SetTestHook() *test.Hook {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if clog == nil || vlog == nil {
-		initLogger("/tmp", "info", 0)
-	}
-
 	hook := new(test.Hook)
-	clog.Hooks.Add(hook)
-	vlog.Hooks.Add(hook)
+	logger := logrus.New()
+	logger.Level = logrus.DebugLevel
+	logger.Out = ioutil.Discard
+	logger.Hooks.Add(hook)
+	clog = logger
+	vlog = logger
 	return hook
 }

@@ -196,7 +196,6 @@ func (n *Network) Cleanup() {
 
 // SetLogTestHook sets test hook for log messages.
 func (n *Network) SetLogTestHook() *test.Hook {
-	logging.SetNullLogger()
 	return logging.SetTestHook()
 }
 
