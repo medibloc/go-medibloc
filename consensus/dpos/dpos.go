@@ -45,8 +45,7 @@ type Dpos struct {
 	bm *core.BlockManager
 	tm *core.TransactionManager
 
-	genesis       *corepb.Genesis
-	consensusSize int
+	genesis *corepb.Genesis
 
 	quitCh chan int
 }
@@ -111,7 +110,6 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 		}).Error("Dynasty size should be a multiple of three.")
 		return ErrInvalidDynastySize
 	}
-	d.consensusSize = d.dynastySize*2/3 + 1
 
 	d.bm = bm
 	d.tm = tm
@@ -126,6 +124,10 @@ func (d *Dpos) Start() {
 // Stop stops miner.
 func (d *Dpos) Stop() {
 	d.quitCh <- 0
+}
+
+func (d *Dpos) consensusSize() int {
+	return int(d.dynastySize*2/3 + 1)
 }
 
 // ForkChoice chooses fork.
@@ -181,7 +183,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			}
 		}
 
-		if cur.Height()-lib.Height() < uint64(d.consensusSize-len(confirmed)) {
+		if cur.Height()-lib.Height() < uint64(d.consensusSize()-len(confirmed)) {
 			return lib
 		}
 
@@ -197,7 +199,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		}
 
 		confirmed[proposer.Hex()] = true
-		if len(confirmed) >= d.consensusSize {
+		if len(confirmed) >= d.consensusSize() {
 			return cur
 		}
 
