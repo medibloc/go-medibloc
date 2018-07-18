@@ -169,11 +169,11 @@ func (rq *ReservationQueue) AddTask(t *ReservedTask) error {
 	}
 	rq.tasks = append(rq.tasks, t)
 	sort.Sort(rq.tasks)
-	hash, err := rq.calcHash()
-	if err != nil {
-		return err
-	}
-	rq.hash = hash
+	//hash, err := rq.calcHash()
+	//if err != nil {
+	//	return err
+	//}
+	//rq.hash = hash
 	return nil
 }
 
@@ -215,9 +215,12 @@ func (rq *ReservationQueue) popOnlyBefore(timestamp int64) *ReservedTask {
 }
 
 func (rq *ReservationQueue) save() error {
-	if rq.hash == nil {
-		return nil
+	hash, err := rq.calcHash()
+	if err != nil {
+		return err
 	}
+	rq.hash = hash
+
 	msg, err := rq.ToProto()
 	if err != nil {
 		return err

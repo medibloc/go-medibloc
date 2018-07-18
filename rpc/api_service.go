@@ -93,7 +93,7 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 		TxsRoot:       byteutils.Bytes2Hex(pbBlock.Header.TxsRoot),
 		UsageRoot:     byteutils.Bytes2Hex(pbBlock.Header.UsageRoot),
 		RecordsRoot:   byteutils.Bytes2Hex(pbBlock.Header.RecordsRoot),
-		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.ConsensusRoot),
+		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.DposRoot),
 		Transactions:  rpcPbTxs,
 		Height:        pbBlock.Height,
 	}, nil
@@ -105,9 +105,9 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var revokeCertification *core.RevokeCertificationPayload
 
 	switch txData.Type {
-	case core.TxOperationSend:
+	case core.TxOpSend:
 		return nil, nil
-	case core.TxOperationAddRecord:
+	case core.TxOpAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
 		payload := core.NewAddRecordPayload(addRecord.Hash)
 		payloadBuf, err := payload.ToBytes()
@@ -115,15 +115,13 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case core.TxOperationVest:
+	case core.TxOpVest:
 		return nil, nil
-	case core.TxOperationWithdrawVesting:
-		return nil, nil
-	case core.TxOperationVote:
+	case core.TxOpWithdrawVesting:
 		return nil, nil
 	case core.TxPayloadBinaryType:
 		return nil, nil
-	case core.TxOperationAddCertification:
+	case core.TxOpAddCertification:
 		json.Unmarshal([]byte(txData.Payload), &addCertification)
 		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
 			addCertification.ExpirationTime, addCertification.CertificateHash)
@@ -132,7 +130,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case core.TxOperationRevokeCertification:
+	case core.TxOpRevokeCertification:
 		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
 		payload := core.NewRevokeCertificationPayload(revokeCertification.CertificateHash)
 		payloadBuf, err := payload.ToBytes()

@@ -18,6 +18,7 @@ package core_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
@@ -34,16 +35,11 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
 	initialMessage := "Genesis block of MediBloc"
-	assert.Equalf(t, string(txs[0].Data()), initialMessage, "Initial tx payload should equal '%s'", initialMessage)
+	assert.Equalf(t, string(txs[0].Payload()), initialMessage, "Initial tx payload should equal '%s'", initialMessage)
 
-	sto := genesisBlock.Storage()
-
-	accStateBatch, err := core.NewAccountStateBatch(genesisBlock.AccountsRoot(), sto)
-	assert.NoError(t, err)
-	accState := accStateBatch.AccountState()
+	accState := genesisBlock.State().AccState()
 
 	addr := dynasties[0].Addr
-	assert.NoError(t, err)
 	acc, err := accState.GetAccount(addr.Bytes())
 	assert.NoError(t, err)
 
@@ -52,11 +48,10 @@ func TestNewGenesisBlock(t *testing.T) {
 }
 
 func TestCheckGenesisBlock(t *testing.T) {
-	//conf, dynasties, distributed := testutil.NewTestGenesisConf(t)
 	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus := testutil.NewTestConsensus(t)
+	consensus := dpos.New()
 	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 

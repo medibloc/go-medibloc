@@ -17,280 +17,346 @@ package blockutil
 
 import (
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/mitchellh/copystructure"
+	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	defaultSignAlg = algorithm.SECP256K1
-)
-
-// BlockBuilder builds block.
 type BlockBuilder struct {
-	t  *testing.T
-	pb *corepb.Block
+	t *testing.T
+	B *core.Block
+
+	dynastySize int
+	Dynasties   testutil.AddrKeyPairs
+	TokenDist   testutil.AddrKeyPairs
+	KeyPairs    testutil.AddrKeyPairs
 }
 
-// NewBlockBuilder creates BlockBuilder.
-func NewBlockBuilder(t *testing.T) *BlockBuilder {
+func New(t *testing.T, dynastySize int) *BlockBuilder {
 	return &BlockBuilder{
-		t:  t,
-		pb: &corepb.Block{},
+		t:           t,
+		dynastySize: dynastySize,
 	}
 }
 
-// NewBlockBuilderFrom creates BlockBuilder from existing block data.
-func NewBlockBuilderFrom(t *testing.T, bd *core.BlockData) *BlockBuilder {
-	pb, err := bd.ToProto()
-	require.NoError(t, err)
+func (bb *BlockBuilder) AddKeyPairs(keyPairs testutil.AddrKeyPairs) *BlockBuilder {
+	n := bb.copy()
+	n.KeyPairs = append(n.KeyPairs, keyPairs...)
+	return n
+}
+
+func (bb *BlockBuilder) copy() *BlockBuilder {
+	var b *core.Block
+	var err error
+
+	if bb.B != nil {
+		b, err = bb.B.Clone()
+		require.NoError(bb.t, err)
+	}
+
+	//dynasties, err := copystructure.Copy(bb.Dynasties)
+	//require.NoError(bb.t, err)
+	//tokenDist, err := copystructure.Copy(bb.TokenDist)
+	//require.NoError(bb.t, err)
+	//keyPairs, err := copystructure.Copy(bb.KeyPairs)
+	//require.NoError(bb.t, err)
+
 	return &BlockBuilder{
-		t:  t,
-		pb: pb.(*corepb.Block),
+		t:           bb.t,
+		B:           b,
+		dynastySize: bb.dynastySize,
+		Dynasties:   bb.Dynasties,
+		TokenDist:   bb.TokenDist,
+		KeyPairs:    bb.KeyPairs,
 	}
 }
 
-// Hash returns hash.
-func (bb *BlockBuilder) Hash() []byte {
-	return bb.pb.Header.Hash
+func (bb *BlockBuilder) Genesis() *BlockBuilder {
+	n := bb.copy()
+	genesis, dynasties, tokenDist := testutil.NewTestGenesisBlock(bb.t, bb.dynastySize)
+	n.B = genesis
+	n.Dynasties = dynasties
+	n.TokenDist = tokenDist
+	n.KeyPairs = append(n.Dynasties, n.TokenDist...)
+	return n
 }
 
-// SetHash sets hash.
-func (bb *BlockBuilder) SetHash(hash []byte) *BlockBuilder {
-	bb.pb.Header.Hash = hash
-	return bb
+func (bb *BlockBuilder) Block(block *core.Block) *BlockBuilder {
+	n := bb.copy()
+	n.B = block
+	return n
 }
 
-// CalcHash calculates and sets hash.
+func (bb *BlockBuilder) Tx() *TxBuilder {
+	return newTxBuilder(bb)
+}
+
+/* Setters and Getters */
+
+func (bb *BlockBuilder) Hash(hash []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetHash(hash)
+	return n
+}
+
+func (bb *BlockBuilder) ParentHash(hash []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetParentHash(hash)
+	return n
+}
+
+// AccountRoot sets account root.
+func (bb *BlockBuilder) AccountRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetAccsRoot(root)
+	return n
+}
+
+// TransactionRoot sets transaction root.
+func (bb *BlockBuilder) TransactionRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetTxsRoot(root)
+	return n
+}
+
+// UsageRoot sets usage root.
+func (bb *BlockBuilder) UsageRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetUsageRoot(root)
+	return n
+}
+
+// RecordRoot sets record root.
+func (bb *BlockBuilder) RecordRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetRecordsRoot(root)
+	return n
+}
+
+// CertificateRoot sets certificate root.
+func (bb *BlockBuilder) CertificateRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetCertificationRoot(root)
+	return n
+}
+
+// DposRoot sets dpos root.
+func (bb *BlockBuilder) DposRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetDposRoot(root)
+	return n
+}
+
+// ReservationQueueRoot sets reservation queue root.
+func (bb *BlockBuilder) ReservationQueueRoot(root []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetReservationQueueHash(root)
+	return n
+}
+
+// Coinbase sets coinbase.
+func (bb *BlockBuilder) Coinbase(addr common.Address) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetCoinbase(addr)
+	return n
+}
+
+// Timestamp sets timestamp.
+func (bb *BlockBuilder) Timestamp(ts int64) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetTimestamp(ts)
+	return n
+}
+
+// ChainID sets chain ID.
+func (bb *BlockBuilder) ChainID(chainID uint32) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetChainID(chainID)
+	return n
+}
+
+// Alg sets crypto algorithm.
+func (bb *BlockBuilder) Alg(alg algorithm.Algorithm) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetAlg(alg)
+	return n
+}
+
+// Sign sets signature.
+func (bb *BlockBuilder) Sign(sign []byte) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetSign(sign)
+	return n
+}
+
+// Height sets block height.
+func (bb *BlockBuilder) Height(height uint64) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetHeight(height)
+	return n
+}
+
+func (bb *BlockBuilder) Sealed(sealed bool) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetSealed(sealed)
+	return n
+}
+
+/* Additional Commands */
+
 func (bb *BlockBuilder) CalcHash() *BlockBuilder {
-	var bd core.BlockData
-
-	err := bd.FromProto(bb.pb)
-	require.NoError(bb.t, err)
-
-	hash := core.HashBlockData(&bd)
-	bb.pb.Header.Hash = hash
-	return bb
+	n := bb.copy()
+	hash := core.HashBlockData(n.B.GetBlockData())
+	n.B.SetHash(hash)
+	return n
 }
 
-// ParentHash return parent's hash.
-func (bb *BlockBuilder) ParentHash() []byte {
-	return bb.pb.Header.ParentHash
+func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
+	n := bb.copy()
+	t := bb.t
+
+	signer := signer(t, key)
+
+	n.B.SetAlg(signer.Algorithm())
+
+	sig, err := signer.Sign(n.B.Hash())
+	require.NoError(t, err)
+	n.B.SetSign(sig)
+	return n
 }
 
-// SetParentHash sets parent's hash.
-func (bb *BlockBuilder) SetParentHash(hash []byte) *BlockBuilder {
-	bb.pb.Header.ParentHash = hash
-	return bb
+func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
+	n := bb.copy()
+
+	return n.Coinbase(pair.Addr).Seal().CalcHash().SignKey(pair.PrivKey)
 }
 
-// AccountRoot returns account root.
-func (bb *BlockBuilder) AccountRoot() []byte {
-	return bb.pb.Header.AccsRoot
+func (bb *BlockBuilder) SignMiner() *BlockBuilder {
+	n := bb.copy()
+
+	proposer, err := n.B.Consensus().FindMintProposer(n.B.Timestamp(), n.B)
+	require.NoError(n.t, err)
+	pair := n.KeyPairs.FindPair(proposer)
+	require.NotNil(n.t, pair)
+
+	return n.SignPair(pair)
 }
 
-// SetAccountRoot sets account root.
-func (bb *BlockBuilder) SetAccountRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.AccsRoot = root
-	return bb
+func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
+	n := bb.copy()
+	txs := n.B.Transactions()
+	txs = append(txs, tx)
+	n.B.SetTransactions(txs)
+	return n
 }
 
-// TransactionRoot returns transaction root.
-func (bb *BlockBuilder) TransactionRoot() []byte {
-	return bb.pb.Header.TxsRoot
+func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
+	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
+	require.NoError(n.t, n.B.ExecuteTransaction(tx, defaultTxMap))
+	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	require.NoError(bb.t, n.B.Commit())
+
+	return n
 }
 
-// SetTransactionRoot sets transaction root.
-func (bb *BlockBuilder) SetTransactionRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.TxsRoot = root
-	return bb
+func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
+	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
+	err := n.B.ExecuteTransaction(tx, defaultTxMap)
+	if err != nil {
+		require.Equal(n.t, expected, err)
+		return n
+	}
+	err = n.B.AcceptTransaction(tx)
+	require.Equal(n.t, expected, err)
+	require.NoError(bb.t, n.B.Commit())
+
+	return n
 }
 
-// UsageRoot  returns usage root.
-func (bb *BlockBuilder) UsageRoot() []byte {
-	return bb.pb.Header.UsageRoot
-}
-
-// SetUsageRoot sets usage root.
-func (bb *BlockBuilder) SetUsageRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.UsageRoot = root
-	return bb
-}
-
-// RecordRoot returns record root.
-func (bb *BlockBuilder) RecordRoot() []byte {
-	return bb.pb.Header.RecordsRoot
-}
-
-// SetRecordRoot sets record root.
-func (bb *BlockBuilder) SetRecordRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.RecordsRoot = root
-	return bb
-}
-
-// CandidateRoot returns candidate root.
-func (bb *BlockBuilder) CandidateRoot() []byte {
-	return bb.pb.Header.CandidacyRoot
-}
-
-// SetCandidateRoot sets candidate root.
-func (bb *BlockBuilder) SetCandidateRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.CandidacyRoot = root
-	return bb
-}
-
-// CertificateRoot returns certificate root.
-func (bb *BlockBuilder) CertificateRoot() []byte {
-	return bb.pb.Header.CertificationRoot
-}
-
-// SetCertificateRoot sets certificate root.
-func (bb *BlockBuilder) SetCertificateRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.CertificationRoot = root
-	return bb
-}
-
-// ConsensusRoot returns consensus root.
-func (bb *BlockBuilder) ConsensusRoot() []byte {
-	return bb.pb.Header.ConsensusRoot
-}
-
-// SetConsensusRoot sets consensus root.
-func (bb *BlockBuilder) SetConsensusRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.ConsensusRoot = root
-	return bb
-}
-
-// ReservationQueueRoot returns reservation queue root.
-func (bb *BlockBuilder) ReservationQueueRoot() []byte {
-	return bb.pb.Header.ReservationQueueHash
-}
-
-// SetReservationQueueRoot sets reservation queue root.
-func (bb *BlockBuilder) SetReservationQueueRoot(root []byte) *BlockBuilder {
-	bb.pb.Header.ReservationQueueHash = root
-	return bb
-}
-
-// Coinbase returns coinbase.
-func (bb *BlockBuilder) Coinbase() common.Address {
-	return common.BytesToAddress(bb.pb.Header.Coinbase)
-}
-
-// SetCoinbase sets coinbase.
-func (bb *BlockBuilder) SetCoinbase(addr common.Address) *BlockBuilder {
-	bb.pb.Header.Coinbase = addr.Bytes()
-	return bb
-}
-
-// Timestamp returns timestamp.
-func (bb *BlockBuilder) Timestamp() int64 {
-	return bb.pb.Header.Timestamp
-}
-
-// SetTimestamp sets timestamp.
-func (bb *BlockBuilder) SetTimestamp(ts int64) *BlockBuilder {
-	bb.pb.Header.Timestamp = ts
-	return bb
-}
-
-// ChainID returns chain ID.
-func (bb *BlockBuilder) ChainID() uint32 {
-	return bb.pb.Header.ChainId
-}
-
-// SetChainID sets chain ID.
-func (bb *BlockBuilder) SetChainID(chainID uint32) *BlockBuilder {
-	bb.pb.Header.ChainId = chainID
-	return bb
-}
-
-// Alg returns crypto algorithm used for signature.
-func (bb *BlockBuilder) Alg() algorithm.Algorithm {
-	return algorithm.Algorithm(bb.pb.Header.Alg)
-}
-
-// SetAlg sets crypto algorithm.
-func (bb *BlockBuilder) SetAlg(alg algorithm.Algorithm) *BlockBuilder {
-	bb.pb.Header.Alg = uint32(alg)
-	return bb
-}
-
-// Signature returns signature.
-func (bb *BlockBuilder) Signature() []byte {
-	return bb.pb.Header.Sign
-}
-
-// SetSignature sets signature.
-func (bb *BlockBuilder) SetSignature(sign []byte) *BlockBuilder {
-	bb.pb.Header.Sign = sign
-	return bb
-}
-
-// Sign generates and sets block's signature.
-func (bb *BlockBuilder) Sign(key signature.PrivateKey) *BlockBuilder {
-	require.NotNil(bb.t, bb.pb.Header.Hash)
-
-	signer, err := crypto.NewSignature(defaultSignAlg)
-	require.NoError(bb.t, err)
-	signer.InitSign(key)
-
-	bb.pb.Header.Alg = uint32(signer.Algorithm())
-
-	sig, err := signer.Sign(bb.pb.Header.Hash)
-	require.NoError(bb.t, err)
-	bb.pb.Header.Sign = sig
-
-	return bb
-}
-
-// Transactions returns transactions.
-func (bb *BlockBuilder) Transactions() []*corepb.Transaction {
-	return bb.pb.Transactions
-}
-
-// SetTransactions sets transactions.
-func (bb *BlockBuilder) SetTransactions(txs []*corepb.Transaction) *BlockBuilder {
-	bb.pb.Transactions = txs
-	return bb
-}
-
-// Height returns block height.
-func (bb *BlockBuilder) Height() uint64 {
-	return bb.pb.Height
-}
-
-// SetHeight sets block height.
-func (bb *BlockBuilder) SetHeight(height uint64) *BlockBuilder {
-	bb.pb.Height = height
-	return bb
+func (bb *BlockBuilder) Seal() *BlockBuilder {
+	n := bb.copy()
+	t := bb.t
+	err := n.B.Seal()
+	require.NoError(t, err)
+	return n
 }
 
 // Build builds block.
-func (bb *BlockBuilder) Build() *core.BlockData {
-	var bd core.BlockData
-	err := bd.FromProto(bb.pb)
-	require.NoError(bb.t, err)
-	return &bd
+func (bb *BlockBuilder) Build() *core.Block {
+	n := bb.copy()
+	return n.B
 }
 
 // BuildProto builds block in protobuf format.
 func (bb *BlockBuilder) BuildProto() *corepb.Block {
-	pb, err := copystructure.Copy(bb.pb)
-	require.NoError(bb.t, err)
+	n := bb.copy()
+	t := bb.t
+
+	pb, err := n.B.ToProto()
+	require.NoError(t, err)
 	return pb.(*corepb.Block)
 }
 
 // BuildBytes builds block in bytes.
 func (bb *BlockBuilder) BuildBytes() []byte {
-	data, err := proto.Marshal(bb.pb)
-	require.NoError(bb.t, err)
+	n := bb.copy()
+	t := bb.t
+
+	pb, err := n.B.ToProto()
+	require.NoError(t, err)
+	data, err := proto.Marshal(pb)
+	require.NoError(t, err)
 	return data
+}
+
+func (bb *BlockBuilder) Child() *BlockBuilder {
+	n := bb.copy()
+	return n.ChildWithTimestamp(time.Unix(bb.B.Timestamp(), 0).Add(dpos.BlockInterval).Unix())
+}
+
+func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetTransactions(make([]*core.Transaction, 0))
+	//return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState()
+	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState().ExecuteReservedTasks()
+}
+
+func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
+	n := bb.copy()
+	dposState := n.B.State().DposState()
+
+	d := dpos.New()
+	d.SetDynastySize(n.dynastySize)
+	dynasty, err := d.MakeMintDynasty(n.B.Timestamp(), n.B)
+	require.NoError(n.t, err)
+	dpos.SetDynastyState(dposState.DynastyState(), dynasty)
+	require.NoError(n.t, err)
+
+	return n
+}
+
+func (bb *BlockBuilder) Expect() *Expect {
+	return NewExpect(bb.t, bb.Build())
+}
+
+func (bb *BlockBuilder) ExecuteReservedTasks() *BlockBuilder {
+	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
+	require.NoError(n.t, n.B.ExecuteReservedTasks())
+	require.NoError(bb.t, n.B.Commit())
+
+	return n
 }

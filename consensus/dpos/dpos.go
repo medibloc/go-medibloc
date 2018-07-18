@@ -18,7 +18,9 @@ package dpos
 import (
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
@@ -34,6 +36,8 @@ import (
 
 // Dpos returns dpos consensus model.
 type Dpos struct {
+	dynastySize int
+
 	coinbase common.Address
 	miner    common.Address
 	minerKey signature.PrivateKey
@@ -41,11 +45,17 @@ type Dpos struct {
 	bm *core.BlockManager
 	tm *core.TransactionManager
 
-	genesis       *corepb.Genesis
-	dynastySize   int
-	consensusSize int
+	genesis *corepb.Genesis
 
 	quitCh chan int
+}
+
+func (d *Dpos) SetDynastySize(dynastySize int) {
+	d.dynastySize = dynastySize
+}
+
+func (d *Dpos) DynastySize() int {
+	return d.dynastySize
 }
 
 // New returns dpos consensus.
@@ -55,14 +65,24 @@ func New() *Dpos {
 	}
 }
 
-// NewConsensusState generates new consensus state
-func (d *Dpos) NewConsensusState(rootHash []byte, storage storage.Storage) (core.ConsensusState, error) {
-	return NewConsensusState(rootHash, storage)
+// NewConsensusState generates new dpos state
+func (d *Dpos) NewConsensusState(dposRootBytes []byte, stor storage.Storage) (core.DposState, error) {
+	pbState := new(dpospb.State)
+	err := proto.Unmarshal(dposRootBytes, pbState)
+	if err != nil {
+		return nil, err
+	}
+	return NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
 }
 
 // LoadConsensusState loads a consensus state from marshalled bytes
-func (d *Dpos) LoadConsensusState(rootBytes []byte, storage storage.Storage) (core.ConsensusState, error) {
-	return LoadConsensusState(rootBytes, storage)
+func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (core.DposState, error) {
+	pbState := new(dpospb.State)
+	err := proto.Unmarshal(dposRootBytes, pbState)
+	if err != nil {
+		return nil, err
+	}
+	return NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
 }
 
 // Setup sets up dpos.
@@ -90,7 +110,6 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 		}).Error("Dynasty size should be a multiple of three.")
 		return ErrInvalidDynastySize
 	}
-	d.consensusSize = d.dynastySize*2/3 + 1
 
 	d.bm = bm
 	d.tm = tm
@@ -105,6 +124,10 @@ func (d *Dpos) Start() {
 // Stop stops miner.
 func (d *Dpos) Stop() {
 	d.quitCh <- 0
+}
+
+func (d *Dpos) consensusSize() int {
+	return int(d.dynastySize*2/3 + 1)
 }
 
 // ForkChoice chooses fork.
@@ -133,7 +156,8 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	tail := bc.MainTailBlock()
 	cur := tail
 	confirmed := make(map[string]bool)
-	members, err := tail.State().Dynasty()
+	ds := tail.State().DposState().DynastyState()
+	members, err := DynastyStateToDynasty(ds)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":  err,
@@ -148,7 +172,8 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		if gen := dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
 			dynastyGen = gen
 			confirmed = make(map[string]bool)
-			members, err = cur.State().Dynasty()
+			ds := cur.State().DposState().DynastyState()
+			members, err = DynastyStateToDynasty(ds)
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"block": cur,
@@ -158,11 +183,11 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			}
 		}
 
-		if cur.Height()-lib.Height() < uint64(d.consensusSize-len(confirmed)) {
+		if cur.Height()-lib.Height() < uint64(d.consensusSize()-len(confirmed)) {
 			return lib
 		}
 
-		proposer, err := FindProposer(cur.Timestamp(), members)
+		proposer, err := d.findProposer(cur.State().DposState(), cur.Timestamp())
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"block":     cur,
@@ -174,7 +199,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		}
 
 		confirmed[proposer.Hex()] = true
-		if len(confirmed) >= d.consensusSize {
+		if len(confirmed) >= d.consensusSize() {
 			return cur
 		}
 
@@ -190,64 +215,67 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	return lib
 }
 
+func (d *Dpos) findProposer(s core.DposState, timestamp int64) (common.Address, error) {
+	ds := s.DynastyState()
+
+	t := time.Duration(timestamp) * time.Second
+	if t%BlockInterval != 0 {
+		return common.Address{}, ErrInvalidBlockForgeTime
+	}
+
+	slotIndex := int32((t % DynastyInterval) / BlockInterval)
+	addrBytes, err := ds.Get(byteutils.FromInt32(slotIndex % int32(d.dynastySize)))
+	if err != nil {
+		return common.Address{}, err
+	}
+	addr := common.BytesToAddress(addrBytes)
+	return addr, nil
+}
+
 func dynastyGenByTime(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	return int64(now / DynastyInterval)
 }
 
-// VerifyProposer verifies block proposer.
-func (d *Dpos) VerifyProposer(bc *core.BlockChain, block *core.BlockData) error {
-	// TODO @cl9200 Handling when tail height is higher than block height.
-	tail := bc.MainTailBlock()
-	elapsed := time.Duration(block.Timestamp()-tail.Timestamp()) * time.Second
+// VerifyInterval verifies block interval.
+func (d *Dpos) VerifyInterval(bd *core.BlockData, parent *core.Block) error {
+	elapsed := time.Duration(bd.Timestamp()-parent.Timestamp()) * time.Second
 	if elapsed%BlockInterval != 0 {
 		logging.WithFields(logrus.Fields{
-			"block":     block,
-			"timestamp": block.Timestamp(),
+			"blocData":  bd,
+			"timestamp": bd.Timestamp(),
 		}).Debug("Invalid block interval.")
 		return ErrInvalidBlockInterval
 	}
-
-	members, err := tail.State().Dynasty()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": tail,
-		}).Error("Failed to get members of dynasty.")
-		return err
-	}
-
-	proposer, err := FindProposer(block.Timestamp(), members)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":       err,
-			"blockTime": block.Timestamp(),
-			"members":   members,
-		}).Debug("Failed to find a block proposer.")
-		return err
-	}
-
-	err = verifyBlockSign(&proposer, block)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":      err,
-			"proposer": proposer,
-			"block":    block,
-		}).Debug("Failed to verify a block sign.")
-		return err
-	}
-
 	return nil
 }
 
-func verifyBlockSign(proposer *common.Address, block *core.BlockData) error {
-	signer, err := recoverSignerFromSignature(block.Alg(), block.Hash(), block.Signature())
+// VerifyProposer verifies block proposer.
+func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
+	proposer, err := d.FindMintProposer(bd.Timestamp(), parent)
+	if err != nil {
+		return err
+	}
+	err = verifyBlockSign(proposer, bd)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":       err,
+			"proposer":  proposer,
+			"blockData": bd,
+		}).Debug("Failed to verify a block sign.")
+		return err
+	}
+	return nil
+}
+
+func verifyBlockSign(proposer common.Address, bd *core.BlockData) error {
+	signer, err := recoverSignerFromSignature(bd.Alg(), bd.Hash(), bd.Sign())
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":      err,
 			"proposer": proposer,
 			"signer":   signer,
-			"block":    block,
+			"block":    bd,
 		}).Debug("Failed to recover block's signer.")
 		return err
 	}
@@ -255,7 +283,7 @@ func verifyBlockSign(proposer *common.Address, block *core.BlockData) error {
 		logging.WithFields(logrus.Fields{
 			"signer":   signer,
 			"proposer": proposer,
-			"block":    block,
+			"block":    bd,
 		}).Debug("Block proposer and block signer do not match.")
 		return ErrInvalidBlockProposer
 	}
@@ -263,7 +291,7 @@ func verifyBlockSign(proposer *common.Address, block *core.BlockData) error {
 }
 
 func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, cipherText []byte) (common.Address, error) {
-	signature, err := crypto.NewSignature(alg)
+	sig, err := crypto.NewSignature(alg)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
@@ -271,7 +299,7 @@ func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, ciphe
 		}).Debug("Invalid sign algorithm.")
 		return common.Address{}, err
 	}
-	pub, err := signature.RecoverPublic(plainText, cipherText)
+	pub, err := sig.RecoverPublic(plainText, cipherText)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":    err,
@@ -298,33 +326,21 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"lastSlot": lastMintSlot(now),
-			"nextSlot": nextMintSlot(now),
+			"nextSlot": NextMintSlot2(now.Unix()),
 			"now":      now,
 			"err":      err,
 		}).Debug("It's not time to mint.")
 		return err
 	}
 
-	newState, err := tail.State().Clone()
+	mintProposer, err := d.FindMintProposer(deadline.Unix(), tail)
 	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to clone block state of tail.")
 		return err
 	}
-	if err := newState.TransitionDynasty(deadline.Unix()); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"deadline": deadline,
-			"err":      err,
-		}).Error("Failed to transition dynasty.")
-		return err
-	}
-	proposer := newState.Proposer()
-
-	if !d.miner.Equals(proposer) {
+	if !d.miner.Equals(mintProposer) {
 		logging.WithFields(logrus.Fields{
 			"miner":    d.miner,
-			"proposer": proposer,
+			"proposer": mintProposer,
 		}).Debug("It's not my turn to mint the block.")
 		return ErrInvalidBlockProposer
 	}
@@ -370,7 +386,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	time.Sleep(deadline.Sub(time.Now()))
 
 	logging.Console().WithFields(logrus.Fields{
-		"proposer": proposer,
+		"proposer": mintProposer,
 		"block":    block,
 	}).Info("New block is minted.")
 
@@ -390,7 +406,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 }
 
 func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, error) {
-	block, err := core.NewBlock(d.bm.ChainID(), d.miner, tail)
+	block, err := core.NewBlock(tail.ChainID(), d.miner, tail)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -398,31 +414,49 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 	block.SetTimestamp(deadline.Unix())
-	if err := block.State().TransitionDynasty(deadline.Unix()); err != nil {
+
+	if err := block.BeginBatch(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"deadline": deadline,
-			"err":      err,
-		}).Error("Failed to transition dynasty for a new block.")
+			"err":   err,
+			"block": block,
+		}).Error("Failed to begin batch of new block.")
 		return nil, err
 	}
 
-	for deadline.Sub(time.Now()) > 0 {
-		err = block.BeginBatch()
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":   err,
-				"block": block,
-			}).Error("Failed to begin batch of new block.")
-			return nil, err
-		}
+	if err := block.SetMintDposState(tail); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to set dynasty")
+		return nil, err
+	}
 
-		tx := d.tm.Pop()
-		if tx == nil {
+	if err := block.ExecuteReservedTasks(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to execute reserved task")
+	}
+
+	for deadline.Sub(time.Now()) > 0 {
+
+		transaction := d.tm.Pop()
+		if transaction == nil {
 			break
 		}
-		err = block.ExecuteTransaction(tx)
+
+		txMap := d.bm.TxMap()
+		newTxFunc, ok := txMap[transaction.Type()]
+		if !ok {
+			return nil, core.ErrInvalidTransactionType
+		}
+
+		tx, err := newTxFunc(transaction)
+		if err != nil {
+			return nil, err
+		}
+		err = tx.Execute(block)
+
 		if err != nil && err == core.ErrLargeTransactionNonce {
-			if err = d.tm.Push(tx); err != nil {
+			if err = d.tm.Push(transaction); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to push back tx.")
@@ -439,7 +473,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
-				"tx":  tx,
+				"tx":  transaction,
 			}).Error("Failed to execute transaction.")
 
 			err = block.RollBack()
@@ -452,11 +486,11 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 			continue
 		}
 
-		err = block.AcceptTransaction(tx)
+		err = block.AcceptTransaction(transaction)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-				"tx":  tx,
+				"err":         err,
+				"transaction": transaction,
 			}).Error("Failed to accept transaction.")
 
 			err = block.RollBack()
@@ -491,6 +525,12 @@ func nextMintSlot(ts time.Time) time.Time {
 	now := time.Duration(ts.Unix()) * time.Second
 	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval
 	return time.Unix(int64(next/time.Second), 0)
+}
+
+func NextMintSlot2(ts int64) int64 {
+	now := time.Duration(ts) * time.Second
+	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval
+	return int64(next / time.Second)
 }
 
 func mintDeadline(ts time.Time) time.Time {

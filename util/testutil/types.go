@@ -15,7 +15,29 @@
 
 package testutil
 
+import (
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/core"
+)
+
 var (
 	//ChainID is chain id for test configuration.
 	ChainID uint32 = 1
+
+	//DynastySize is dynasty size for test configuration
+	DynastySize = 3
+
+	//TxMap is TxMap
+	TxMap = core.TxFactory{
+		core.TxOpSend:                core.NewSendTx,
+		core.TxOpAddRecord:           core.NewAddRecordTx,
+		core.TxOpVest:                core.NewVestTx,
+		core.TxOpWithdrawVesting:     core.NewWithdrawVestingTx,
+		core.TxOpAddCertification:    core.NewAddCertificationTx,
+		core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
+
+		dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
+		dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
+		dpos.TxOpVote:            dpos.NewVoteTx,
+	}
 )

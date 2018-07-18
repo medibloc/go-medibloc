@@ -102,11 +102,17 @@ func (node *Node) GenesisBlock() *core.Block {
 	return block
 }
 
+// Tail returns tail block.
+func (node *Node) Tail() *core.Block {
+	block := node.Med.BlockManager().TailBlock()
+	return block
+}
+
 // Network is set of nodes.
 type Network struct {
 	t *testing.T
 
-	dynastySize int
+	DynastySize int
 	Seed        *Node
 	Nodes       []*Node
 }
@@ -116,15 +122,19 @@ func NewNetwork(t *testing.T, dynastySize int) *Network {
 	logging.Init("testdata", "debug", 0)
 	return &Network{
 		t:           t,
-		dynastySize: dynastySize,
+		DynastySize: dynastySize,
 	}
 }
 
 // NewSeedNode creates seed node.
 func (n *Network) NewSeedNode() *Node {
 	cfg := NewConfig(n.t).
-		SetRandomGenesis(n.dynastySize)
+		SetRandomGenesis(n.DynastySize)
+	return n.NewSeedNodeWithConfig(cfg)
+}
 
+// NewSeedNode creates seed node.
+func (n *Network) NewSeedNodeWithConfig(cfg *NodeConfig) *Node {
 	node := NewNode(n.t, cfg)
 	n.Seed = node
 	n.Nodes = append(n.Nodes, node)
@@ -133,16 +143,19 @@ func (n *Network) NewSeedNode() *Node {
 
 // NewNode creates node.
 func (n *Network) NewNode() *Node {
+	return n.NewNodeWithConfig(NewConfig(n.t))
+}
+
+func (n *Network) NewNodeWithConfig(cfg *NodeConfig) *Node {
 	require.NotNil(n.t, n.Seed)
 	require.True(n.t, len(n.Nodes) > 0)
 
-	cfg := NewConfig(n.t).
-		SetGenesisFrom(n.Seed).
-		SetSeed(n.Seed)
+	cfg.SetGenesisFrom(n.Seed).SetSeed(n.Seed)
 
 	node := NewNode(n.t, cfg)
 	n.Nodes = append(n.Nodes, node)
 	return node
+
 }
 
 // Start starts nodes in network.
@@ -210,4 +223,14 @@ func (n *Network) assignedMiners() []*AddrKeyPair {
 		}
 	}
 	return miners
+}
+
+func (n *Network) FindProposer(ts int64, parent *core.Block) *AddrKeyPair {
+	dynasties := n.Seed.Config.Dynasties
+	d := n.Seed.Med.Consensus()
+	proposer, err := d.FindMintProposer(ts, parent)
+	require.Nil(n.t, err)
+	v := dynasties.FindPair(proposer)
+	require.NotNil(n.t, v, "Failed to find proposer's privateKey")
+	return v
 }

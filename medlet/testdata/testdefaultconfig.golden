@@ -5,7 +5,7 @@ global: <
 network: <
   listen: "127.0.0.1:9900"
   listen: "127.0.0.1:9910"
-  route_table_sync_loop_interval: 50
+  route_table_sync_loop_interval: 2000
 >
 chain: <
   block_cache_size: 128

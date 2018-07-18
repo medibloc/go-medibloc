@@ -43,6 +43,7 @@ type BlockManager struct {
 	tm        *TransactionManager
 	ns        net.Service
 	consensus Consensus
+	txMap     TxFactory
 
 	syncService          SyncService
 	syncActivationHeight uint64
@@ -50,6 +51,15 @@ type BlockManager struct {
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
+}
+
+func (b *BlockManager) TxMap() TxFactory {
+	return b.txMap
+}
+
+//SetTxMap inject txMap
+func (b *BlockManager) SetTxMap(txMap TxFactory) {
+	b.txMap = txMap
 }
 
 // NewBlockManager returns BlockManager.
@@ -207,19 +217,10 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 	// TODO @cl9200 Filter blocks of same height.
 
-	// TODO @drsleepytiger
 	if err := bd.VerifyIntegrity(); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Debug("Failed to verify block signatures.")
-		return err
-	}
-
-	if err := bm.consensus.VerifyProposer(bm.bc, bd); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":       err,
-			"blockData": bd,
-		}).Debug("Failed to verify blockData.")
 		return err
 	}
 
@@ -300,7 +301,19 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 	children := bm.bp.FindChildren(parent)
 	for _, v := range children {
 		childData := v.(*BlockData)
-		block, err := childData.ExecuteOnParentBlock(parent)
+
+		err := bm.consensus.VerifyProposer(childData, parent)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":       err,
+				"blockData": childData,
+				"parent":    parent,
+			}).Warn("Failed to verifyProposer")
+			fails = append(fails, childData)
+			continue
+		}
+
+		block, err := childData.ExecuteOnParentBlock(parent, bm.txMap)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":    err,
@@ -377,7 +390,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 
 	downloadMsg := &corepb.DownloadParentBlock{
 		Hash: unlinkedBlock.Hash(),
-		Sign: unlinkedBlock.Signature(),
+		Sign: unlinkedBlock.Sign(),
 	}
 	bytes, err := proto.Marshal(downloadMsg)
 	if err != nil {
@@ -387,6 +400,10 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		}).Debug("Failed to marshal download parent request.")
 		return err
 	}
+
+	logging.Console().WithFields(logrus.Fields{
+		"bm": bm,
+	}).Info("request missing parent block")
 
 	return bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
 }
@@ -435,7 +452,6 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 	if err != nil {
 		return
 	}
-
 	ok := bm.activateSync(bd)
 	if !ok {
 		err = bm.requestMissingBlock(msg.MessageFrom(), bd)
@@ -461,6 +477,9 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 	}
 
 	if bm.syncService.IsDownloadActivated() {
+		logging.Console().WithFields(logrus.Fields{
+			"bm": bm,
+		}).Info("sync download is in progress")
 		return true
 	}
 
@@ -522,11 +541,11 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	if !byteutils.Equal(block.Signature(), pbDownloadParentBlock.Sign) {
+	if !byteutils.Equal(block.Sign(), pbDownloadParentBlock.Sign) {
 		logging.WithFields(logrus.Fields{
 			"download.hash": byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),
 			"download.sign": byteutils.Bytes2Hex(pbDownloadParentBlock.Sign),
-			"expect.sign":   byteutils.Bytes2Hex(block.Signature()),
+			"expect.sign":   byteutils.Bytes2Hex(block.Sign()),
 		}).Debug("Failed to check the block's signature.")
 		return
 	}

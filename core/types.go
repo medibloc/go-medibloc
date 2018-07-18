@@ -19,20 +19,18 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 )
 
 // Transaction's string representation.
 const (
-	TxOperationSend                = ""
-	TxOperationAddRecord           = "add_record"
-	TxOperationVest                = "vest"
-	TxOperationWithdrawVesting     = "withdraw_vesting"
-	TxOperationBecomeCandidate     = "become_candidate"
-	TxOperationQuitCandidacy       = "quit_candidacy"
-	TxOperationVote                = "vote"
-	TxOperationAddCertification    = "add_certification"
-	TxOperationRevokeCertification = "revoke_certification"
+	TxOpSend                = ""
+	TxOpAddRecord           = "add_record"
+	TxOpVest                = "vest"
+	TxOpWithdrawVesting     = "withdraw_vesting"
+	TxOpAddCertification    = "add_certification"
+	TxOpRevokeCertification = "revoke_certification"
 )
 
 // Transaction payload type.
@@ -65,6 +63,7 @@ const (
 
 // Error types of core package.
 var (
+	ErrNotFound                         = storage.ErrKeyNotFound
 	ErrBalanceNotEnough                 = errors.New("balance is not enough")
 	ErrBeginAgainInBatch                = errors.New("cannot begin with a batch task unfinished")
 	ErrCannotCloneOnBatching            = errors.New("cannot clone on batching")
@@ -80,6 +79,7 @@ var (
 	ErrGenesisNotMatch                  = errors.New("genesis block does not match")
 	ErrInvalidTransactionHash           = errors.New("invalid transaction hash")
 	ErrInvalidTransactionSigner         = errors.New("transaction recover public key address not equal to from")
+	ErrInvalidTransactionType           = errors.New("invalid transaction type")
 	ErrInvalidProtoToBlock              = errors.New("protobuf message cannot be converted into Block")
 	ErrInvalidProtoToBlockHeader        = errors.New("protobuf message cannot be converted into BlockHeader")
 	ErrInvalidChainID                   = errors.New("invalid transaction chainID")
@@ -111,6 +111,7 @@ var (
 	ErrCertReceivedAlreadyAdded         = errors.New("hash of received cert already added")
 	ErrCertIssuedAlreadyAdded           = errors.New("hash of issued cert already added")
 	ErrCertAlreadyRevoked               = errors.New("cert to revoke has already been revoked")
+	ErrCertAlreadyExpired               = errors.New("cert to revoke has already been expired")
 	ErrInvalidCertificationRevoker      = errors.New("only issuer of the cert can revoke it")
 	ErrTxIsNotFromRecordOwner           = errors.New("adding record reader should be done by record owner")
 	ErrCannotConvertResevedTask         = errors.New("proto message cannot be converted into ResevedTask")
@@ -134,21 +135,6 @@ var (
 	ErrTransactionHashAlreadyAdded      = errors.New("transaction already added")
 )
 
-// ConsensusState is an interface for a consensus state
-type ConsensusState interface {
-	Clone() (ConsensusState, error)
-	RootBytes() ([]byte, error)
-
-	Dynasty() ([]*common.Address, error)
-	InitDynasty(miners []*common.Address, dynastySize int, startTime int64) error
-	Proposer() common.Address
-	Timestamp() int64
-	DynastySize() int
-
-	GetNextStateAfterGenesis(timestamp int64) (ConsensusState, error)
-	GetNextStateAfter(ellapsed int64) (ConsensusState, error)
-}
-
 // HashableBlock is an interface that can get its own or parent's hash.
 type HashableBlock interface {
 	Hash() []byte
@@ -163,12 +149,26 @@ type Serializable interface {
 
 // Consensus is an interface of consensus model.
 type Consensus interface {
-	ForkChoice(bc *BlockChain) (newTail *Block)
-	VerifyProposer(bc *BlockChain, block *BlockData) error
-	FindLIB(bc *BlockChain) (newLIB *Block)
+	NewConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
+	LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 
-	NewConsensusState(rootHash []byte, storage storage.Storage) (ConsensusState, error)
-	LoadConsensusState(rootBytes []byte, storage storage.Storage) (ConsensusState, error)
+	ForkChoice(bc *BlockChain) (newTail *Block)
+	VerifyInterval(bd *BlockData, parent *Block) error
+	VerifyProposer(bd *BlockData, parent *Block) error
+	FindLIB(bc *BlockChain) (newLIB *Block)
+	FindMintProposer(ts int64, parent *Block) (common.Address, error)
+	SetMintDynastyState(ts int64, parent *Block, block *Block) error
+}
+
+type DposState interface {
+	Clone() (DposState, error)
+	BeginBatch() error
+	Commit() error
+	RollBack() error
+	RootBytes() ([]byte, error)
+
+	CandidateState() *trie.Batch
+	DynastyState() *trie.Batch
 }
 
 // Event structure
@@ -179,10 +179,16 @@ type Event struct {
 
 //SyncService interface for sync
 type SyncService interface {
-	Start()
-	Stop()
 	ActiveDownload() error
 	IsDownloadActivated() bool
+}
+
+//TxFactory is a map for tx.Type() to NewTxFunc
+type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
+
+//ExecutableTx interface for execute transaction on state
+type ExecutableTx interface {
+	Execute(b *Block) error
 }
 
 // TransactionPayload is an interface of transaction payload.

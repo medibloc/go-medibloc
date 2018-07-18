@@ -48,7 +48,7 @@ func Console() *logrus.Logger {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if clog != nil {
+	if clog == nil {
 		initLogger("/tmp", "info", 0)
 	}
 	return clog
@@ -64,7 +64,7 @@ func vLog() *logrus.Logger {
 
 	mu.Lock()
 	defer mu.Unlock()
-	if vlog != nil {
+	if vlog == nil {
 		initLogger("/tmp", "info", 0)
 	}
 	return vlog

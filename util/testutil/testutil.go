@@ -95,10 +95,21 @@ func (pair *AddrKeyPair) String() string {
 // AddrKeyPairs is a slice of AddrKeyPair structure.
 type AddrKeyPairs []*AddrKeyPair
 
-func (pairs AddrKeyPairs) findPrivKey(addr common.Address) signature.PrivateKey {
+// FindPrivKey finds private key of given address.
+func (pairs AddrKeyPairs) FindPrivKey(addr common.Address) signature.PrivateKey {
 	for _, dynasty := range pairs {
 		if dynasty.Addr.Equals(addr) {
 			return dynasty.PrivKey
+		}
+	}
+	return nil
+}
+
+// FindPair finds AddrKeyPair of given address.
+func (pairs AddrKeyPairs) FindPair(addr common.Address) *AddrKeyPair {
+	for _, dynasty := range pairs {
+		if dynasty.Addr.Equals(addr) {
+			return dynasty
 		}
 	}
 	return nil
@@ -121,6 +132,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
+
 	for i := 0; i < dynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
 		dynasty = append(dynasty, keypair.Addr.Hex())
@@ -152,20 +164,12 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	conf, dynasties, distributed := NewTestGenesisConf(t, dynastySize)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	genesis, err = core.NewGenesisBlock(conf, NewTestConsensus(t), s)
+	d := dpos.New()
+	d.SetDynastySize(dynastySize)
+	genesis, err = core.NewGenesisBlock(conf, d, s)
 	require.NoError(t, err)
 
 	return genesis, dynasties, distributed
-}
-
-// NewTestConsensus returns a consensus for tests.
-func NewTestConsensus(t *testing.T) core.Consensus {
-	cfg := medlet.DefaultConfig()
-	cfg.Chain.BlockCacheSize = 1
-	cfg.Chain.Coinbase = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	cfg.Chain.Miner = "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c"
-	consensus := dpos.New()
-	return consensus
 }
 
 // NewBlockTestSet generates test block set from BlockID to parentBlockID index
@@ -209,7 +213,7 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 	require.EqualValues(t, block.ParentHash(), parent.Hash())
 
 	parentBlockTime := time.Unix(parent.Timestamp(), 0)
-	err = block.SetTimestamp(parentBlockTime.Add(dpos.BlockInterval).Unix())
+	block.SetTimestamp(parentBlockTime.Add(dpos.BlockInterval).Unix())
 	require.NoError(t, err)
 
 	return block
@@ -217,12 +221,12 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 
 // SignBlockUsingDynasties signs block with dynasties.
 func SignBlockUsingDynasties(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
-	members, err := block.State().Dynasty()
-	require.NoError(t, err)
-	proposer, err := dpos.FindProposer(block.Timestamp(), members)
+	d := dpos.New()
+	d.SetDynastySize(len(dynasties))
+	proposer, err := d.FindMintProposer(block.Timestamp(), block)
 	require.NoError(t, err)
 
-	privKey := dynasties.findPrivKey(proposer)
+	privKey := dynasties.FindPrivKey(proposer)
 	require.NotNil(t, privKey)
 
 	SignBlock(t, block, privKey)
@@ -239,7 +243,7 @@ func SignBlock(t *testing.T, block *core.Block, key signature.PrivateKey) {
 // NewTestBlock return new block for test
 func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	block := getBlock(t, parent, "")
-	require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
+	//require.Nil(t, block.State().TransitionDynasty(block.Timestamp()))
 	err := block.Seal()
 	require.Nil(t, err)
 	return block
@@ -249,8 +253,8 @@ func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 func NewTestBlockWithTimestamp(t *testing.T, parent *core.Block, ts time.Time) *core.Block {
 	block := getBlock(t, parent, "")
 	nextMintTs := nextMintSlot(ts).Unix()
-	require.NoError(t, block.SetTimestamp(nextMintTs))
-	require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
+	block.SetTimestamp(nextMintTs)
+	//require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
 	require.NoError(t, block.Seal())
 
 	return block

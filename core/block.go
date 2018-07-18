@@ -40,9 +40,8 @@ type BlockHeader struct {
 	txsRoot           []byte
 	usageRoot         []byte
 	recordsRoot       []byte
-	candidacyRoot     []byte
 	certificationRoot []byte
-	consensusRoot     []byte
+	dposRoot          []byte
 
 	reservationQueueHash []byte
 
@@ -59,19 +58,18 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	return &corepb.BlockHeader{
 		Hash:                 b.hash,
 		ParentHash:           b.parentHash,
-		AccsRoot:             b.accsRoot,
-		TxsRoot:              b.txsRoot,
-		UsageRoot:            b.usageRoot,
-		RecordsRoot:          b.recordsRoot,
-		CandidacyRoot:        b.candidacyRoot,
-		CertificationRoot:    b.certificationRoot,
-		ConsensusRoot:        b.consensusRoot,
-		ReservationQueueHash: b.reservationQueueHash,
 		Coinbase:             b.coinbase.Bytes(),
 		Timestamp:            b.timestamp,
 		ChainId:              b.chainID,
 		Alg:                  uint32(b.alg),
 		Sign:                 b.sign,
+		AccsRoot:             b.accsRoot,
+		TxsRoot:              b.txsRoot,
+		UsageRoot:            b.usageRoot,
+		RecordsRoot:          b.recordsRoot,
+		CertificationRoot:    nil,
+		DposRoot:             b.dposRoot,
+		ReservationQueueHash: b.reservationQueueHash,
 	}, nil
 }
 
@@ -84,9 +82,8 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.txsRoot = msg.TxsRoot
 		b.usageRoot = msg.UsageRoot
 		b.recordsRoot = msg.RecordsRoot
-		b.candidacyRoot = msg.CandidacyRoot
 		b.certificationRoot = msg.CertificationRoot
-		b.consensusRoot = msg.ConsensusRoot
+		b.dposRoot = msg.DposRoot
 		b.reservationQueueHash = msg.ReservationQueueHash
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		b.timestamp = msg.Timestamp
@@ -98,25 +95,128 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlockHeader
 }
 
+func (b *BlockHeader) Hash() []byte {
+	return b.hash
+}
+
+func (b *BlockHeader) SetHash(hash []byte) {
+	b.hash = hash
+}
+
+func (b *BlockHeader) ParentHash() []byte {
+	return b.parentHash
+}
+
+func (b *BlockHeader) SetParentHash(parentHash []byte) {
+	b.parentHash = parentHash
+}
+
+func (b *BlockHeader) AccsRoot() []byte {
+	return b.accsRoot
+}
+
+func (b *BlockHeader) SetAccsRoot(accsRoot []byte) {
+	b.accsRoot = accsRoot
+}
+
+func (b *BlockHeader) TxsRoot() []byte {
+	return b.txsRoot
+}
+
+func (b *BlockHeader) SetTxsRoot(txsRoot []byte) {
+	b.txsRoot = txsRoot
+}
+
+func (b *BlockHeader) UsageRoot() []byte {
+	return b.usageRoot
+}
+
+func (b *BlockHeader) SetUsageRoot(usageRoot []byte) {
+	b.usageRoot = usageRoot
+}
+
+func (b *BlockHeader) RecordsRoot() []byte {
+	return b.recordsRoot
+}
+
+func (b *BlockHeader) SetRecordsRoot(recordsRoot []byte) {
+	b.recordsRoot = recordsRoot
+}
+
+func (b *BlockHeader) CertificationRoot() []byte {
+	return b.certificationRoot
+}
+
+func (b *BlockHeader) SetCertificationRoot(certificationRoot []byte) {
+	b.certificationRoot = certificationRoot
+}
+
+func (b *BlockHeader) DposRoot() []byte {
+	return b.dposRoot
+}
+
+func (b *BlockHeader) SetDposRoot(dposRoot []byte) {
+	b.dposRoot = dposRoot
+}
+
+func (b *BlockHeader) ReservationQueueHash() []byte {
+	return b.reservationQueueHash
+}
+
+func (b *BlockHeader) SetReservationQueueHash(reservationQueueHash []byte) {
+	b.reservationQueueHash = reservationQueueHash
+}
+
+func (b *BlockHeader) Coinbase() common.Address {
+	return b.coinbase
+}
+
+func (b *BlockHeader) SetCoinbase(coinbase common.Address) {
+	b.coinbase = coinbase
+}
+
+func (b *BlockHeader) Timestamp() int64 {
+	return b.timestamp
+}
+
+func (b *BlockHeader) SetTimestamp(timestamp int64) {
+	b.timestamp = timestamp
+}
+
+func (b *BlockHeader) ChainID() uint32 {
+	return b.chainID
+}
+
+func (b *BlockHeader) SetChainID(chainID uint32) {
+	b.chainID = chainID
+}
+
+func (b *BlockHeader) Alg() algorithm.Algorithm {
+	return b.alg
+}
+
+func (b *BlockHeader) SetAlg(alg algorithm.Algorithm) {
+	b.alg = alg
+}
+
+func (b *BlockHeader) Sign() []byte {
+	return b.sign
+}
+
+func (b *BlockHeader) SetSign(sign []byte) {
+	b.sign = sign
+}
+
 // BlockData represents a block
 type BlockData struct {
-	header       *BlockHeader
+	*BlockHeader
 	transactions Transactions
 	height       uint64
 }
 
-// Block represents block with actual state tries
-type Block struct {
-	*BlockData
-	storage   storage.Storage
-	state     *BlockState
-	consensus Consensus
-	sealed    bool
-}
-
 // ToProto converts Block to corepb.Block
 func (bd *BlockData) ToProto() (proto.Message, error) {
-	header, err := bd.header.ToProto()
+	header, err := bd.BlockHeader.ToProto()
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +245,8 @@ func (bd *BlockData) ToProto() (proto.Message, error) {
 // FromProto converts corepb.Block to Block
 func (bd *BlockData) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Block); ok {
-		bd.header = new(BlockHeader)
-		if err := bd.header.FromProto(msg.Header); err != nil {
+		bd.BlockHeader = new(BlockHeader)
+		if err := bd.BlockHeader.FromProto(msg.Header); err != nil {
 			return err
 		}
 
@@ -164,227 +264,18 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlock
 }
 
-// NewBlock initialize new block data
-func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, error) {
-	state, err := parent.state.Clone()
+func (bd *BlockData) Clone() (*BlockData, error) {
+	protoBd, err := bd.ToProto()
 	if err != nil {
 		return nil, err
 	}
 
-	block := &Block{
-		BlockData: &BlockData{
-			header: &BlockHeader{
-				parentHash: parent.Hash(),
-				coinbase:   coinbase,
-				timestamp:  time.Now().Unix(),
-				chainID:    chainID,
-			},
-			transactions: make(Transactions, 0),
-			height:       parent.height + 1,
-		},
-		storage: parent.storage,
-		state:   state,
-		sealed:  false,
-	}
-
-	return block, nil
-}
-
-// ExecuteOnParentBlock returns Block object with state after block execution
-func (bd *BlockData) ExecuteOnParentBlock(parent *Block) (*Block, error) {
-	block, err := prepareExecution(bd, parent)
+	newBd := new(BlockData)
+	err = newBd.FromProto(protoBd)
 	if err != nil {
 		return nil, err
 	}
-	if err := block.VerifyExecution(); err != nil {
-		return nil, err
-	}
-	return block, err
-}
-
-// prepareExecution by setting states and storage as those of parents
-func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
-	if parent.Height()+1 != bd.Height() {
-		return nil, ErrInvalidBlockHeight
-	}
-
-	block := &Block{
-		BlockData: bd,
-	}
-
-	var err error
-	if block.state, err = parent.state.Clone(); err != nil {
-		return nil, err
-	}
-	block.storage = parent.storage
-	return block, nil
-}
-
-// GetExecutedBlock converts BlockData instance to an already executed Block instance
-func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Storage) (*Block, error) {
-	var err error
-	block := &Block{
-		BlockData: bd,
-		consensus: consensus,
-	}
-	if block.state, err = NewBlockState(block.consensus, storage); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to create new block state.")
-		return nil, err
-	}
-	if err = block.state.LoadAccountsRoot(block.header.accsRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load accounts root.")
-		return nil, err
-	}
-	if err = block.state.LoadTransactionsRoot(block.header.txsRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load transaction root.")
-		return nil, err
-	}
-	if err = block.state.LoadUsageRoot(block.header.usageRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load usage root.")
-		return nil, err
-	}
-	if err = block.state.LoadRecordsRoot(block.header.recordsRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load records root.")
-		return nil, err
-	}
-	if err = block.state.LoadCandidacyRoot(block.header.candidacyRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load candidacy root.")
-		return nil, err
-	}
-	if err = block.state.LoadCertificationRoot(block.header.certificationRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load certification root.")
-		return nil, err
-	}
-	if err = block.state.LoadConsensusRoot(block.consensus, block.header.consensusRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load consensus root.")
-		return nil, err
-	}
-	if err := block.state.LoadReservationQueue(block.header.reservationQueueHash); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load reservation queue.")
-		return nil, err
-	}
-	if err := block.state.ConstructVotesCache(); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to construct votes cache.")
-		return nil, err
-	}
-	block.storage = storage
-	return block, nil
-}
-
-// ChainID returns chain id
-func (bd *BlockData) ChainID() uint32 {
-	return bd.header.chainID
-}
-
-// Coinbase returns coinbase address
-func (bd *BlockData) Coinbase() common.Address {
-	return bd.header.coinbase
-}
-
-// Alg returns sign algorithm
-func (bd *BlockData) Alg() algorithm.Algorithm {
-	return bd.header.alg
-}
-
-// Signature returns block signature
-func (bd *BlockData) Signature() []byte {
-	return bd.header.sign
-}
-
-// Timestamp returns timestamp
-func (bd *BlockData) Timestamp() int64 {
-	return bd.header.timestamp
-}
-
-// SetTimestamp set block timestamp
-func (bd *BlockData) SetTimestamp(timestamp int64) error {
-	bd.header.timestamp = timestamp
-	return nil
-}
-
-// Hash returns block hash
-func (bd *BlockData) Hash() []byte {
-	return bd.header.hash
-}
-
-// ParentHash returns hash of parent block
-func (bd *BlockData) ParentHash() []byte {
-	return bd.header.parentHash
-}
-
-// State returns block state
-func (block *Block) State() *BlockState {
-	return block.state
-}
-
-// AccountsRoot returns root hash of accounts trie
-func (bd *BlockData) AccountsRoot() []byte {
-	return bd.header.accsRoot
-}
-
-// TransactionsRoot returns root hash of txs trie
-func (bd *BlockData) TransactionsRoot() []byte {
-	return bd.header.txsRoot
-}
-
-// UsageRoot returns root hash of usage trie
-func (bd *BlockData) UsageRoot() []byte {
-	return bd.header.usageRoot
-}
-
-// RecordsRoot returns root hash of records trie
-func (bd *BlockData) RecordsRoot() []byte {
-	return bd.header.recordsRoot
-}
-
-// CandidacyRoot returns root hash of candidacy trie
-func (bd *BlockData) CandidacyRoot() []byte {
-	return bd.header.candidacyRoot
-}
-
-// CertificationRoot returns root hash of certification trie
-func (bd *BlockData) CertificationRoot() []byte {
-	return bd.header.certificationRoot
-}
-
-// ConsensusRoot returns root hash of consensus trie
-func (bd *BlockData) ConsensusRoot() []byte {
-	return bd.header.consensusRoot
-}
-
-// ReservationQueueHash returns hash of reservation queue
-func (bd *BlockData) ReservationQueueHash() []byte {
-	return bd.header.reservationQueueHash
+	return newBd, nil
 }
 
 // Height returns height
@@ -408,8 +299,9 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 	return nil
 }
 
+// String implements Stringer interface.
 func (bd *BlockData) String() string {
-	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, sign:%v>",
+		return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, sign:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
@@ -418,14 +310,232 @@ func (bd *BlockData) String() string {
 		byteutils.Bytes2Hex(bd.Signature()))
 }
 
+// SignThis sets signature info in block data
+func (bd *BlockData) SignThis(signer signature.Signature) error {
+	sig, err := signer.Sign(bd.hash)
+	if err != nil {
+		return err
+	}
+	bd.alg = signer.Algorithm()
+	bd.sign = sig
+	return nil
+}
+
+// VerifyIntegrity verifies if block signature is valid
+func (bd *BlockData) VerifyIntegrity() error {
+	if bd.height == GenesisHeight {
+		if !byteutils.Equal(GenesisHash, bd.hash) {
+			return ErrInvalidBlockHash
+		}
+		return nil
+	}
+	for _, tx := range bd.transactions {
+		if err := tx.VerifyIntegrity(bd.chainID); err != nil {
+			return err
+		}
+	}
+
+	wantedHash := HashBlockData(bd)
+	if !byteutils.Equal(wantedHash, bd.hash) {
+		return ErrInvalidBlockHash
+	}
+
+	return nil
+}
+
+// ExecuteOnParentBlock returns Block object with state after block execution
+func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
+
+	if parent.Height()+1 != bd.Height() {
+		return nil, ErrInvalidBlockHeight
+	}
+
+	block, err := prepareExecution(bd, parent)
+	if err != nil {
+		return nil, err
+	}
+	if err := block.VerifyExecution(txMap); err != nil {
+		return nil, err
+	}
+	return block, err
+}
+
+// GetExecutedBlock converts BlockData instance to an already executed Block instance
+func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Storage) (*Block, error) {
+	var err error
+	block := &Block{
+		BlockData: bd,
+		consensus: consensus,
+	}
+	if block.state, err = NewBlockState(block.consensus, storage); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to create new block state.")
+		return nil, err
+	}
+	if err = block.state.LoadAccountsRoot(block.accsRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load accounts root.")
+		return nil, err
+	}
+	if err = block.state.LoadTransactionsRoot(block.txsRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load transaction root.")
+		return nil, err
+	}
+	if err = block.state.LoadUsageRoot(block.usageRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load usage root.")
+		return nil, err
+	}
+	if err = block.state.LoadRecordsRoot(block.recordsRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load records root.")
+		return nil, err
+	}
+	if err = block.state.LoadCertificationRoot(block.certificationRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load certification root.")
+		return nil, err
+	}
+
+	ds, err := consensus.LoadConsensusState(block.dposRoot, storage)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load consensus state.")
+		return nil, err
+	}
+	block.state.dposState = ds
+
+	if err := block.state.LoadReservationQueue(block.reservationQueueHash); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load reservation queue.")
+		return nil, err
+	}
+	block.storage = storage
+	return block, nil
+}
+
+// prepareExecution by setting states and storage as those of parents
+func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
+	block, err := NewBlock(parent.ChainID(), bd.Coinbase(), parent)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("failed to make new block for prepareExcution")
+		return nil, err
+	}
+
+	block.BlockData = bd
+
+	if err := block.BeginBatch(); err != nil {
+		return nil, err
+	}
+
+	if err := block.SetMintDposState(parent); err != nil {
+		block.RollBack()
+		return nil, err
+	}
+
+	if err := block.Commit(); err != nil {
+		return nil, err
+	}
+
+	return block, nil
+}
+
+// Block represents block with actual state tries
+type Block struct {
+	*BlockData
+	storage   storage.Storage
+	state     *BlockState
+	consensus Consensus
+	sealed    bool
+}
+
+func (block *Block) Consensus() Consensus {
+	return block.consensus
+}
+
+// NewBlock initialize new block data
+func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, error) {
+	state, err := parent.state.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	block := &Block{
+		BlockData: &BlockData{
+			BlockHeader: &BlockHeader{
+				parentHash: parent.Hash(),
+				coinbase:   coinbase,
+				timestamp:  time.Now().Unix(),
+				chainID:    chainID,
+			},
+			transactions: make(Transactions, 0),
+			height:       parent.height + 1,
+		},
+		storage:   parent.storage,
+		state:     state,
+		consensus: parent.consensus,
+		sealed:    false,
+	}
+	return block, nil
+}
+
+func (block *Block) Clone() (*Block, error) {
+
+	bd, err := block.BlockData.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := block.state.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Block{
+		BlockData: bd,
+		storage:   block.storage,
+		state:     state,
+		consensus: block.consensus,
+		sealed:    block.sealed,
+	}, nil
+}
+
+// State returns block state
+func (block *Block) State() *BlockState {
+	return block.state
+}
+
 // Storage returns storage used by block
 func (block *Block) Storage() storage.Storage {
 	return block.storage
 }
 
 // Sealed returns sealed
-func (block *Block) Sealed() bool {
-	return block.sealed
+func (b *Block) Sealed() bool {
+	return b.sealed
+}
+
+func (b *Block) SetSealed(sealed bool) {
+	b.sealed = sealed
 }
 
 // Seal writes state root hashes and block hash in block header
@@ -440,21 +550,20 @@ func (block *Block) Seal() error {
 		return ErrReservedTaskNotProcessed
 	}
 
-	block.header.accsRoot = block.state.AccountsRoot()
-	block.header.txsRoot = block.state.TransactionsRoot()
-	block.header.usageRoot = block.state.UsageRoot()
-	block.header.recordsRoot = block.state.RecordsRoot()
-	block.header.candidacyRoot = block.state.CandidacyRoot()
-	block.header.certificationRoot = block.state.CertificationRoot()
-	consensusRoot, err := block.state.ConsensusRoot()
+	block.accsRoot = block.state.AccountsRoot()
+	block.txsRoot = block.state.TransactionsRoot()
+	block.usageRoot = block.state.UsageRoot()
+	block.recordsRoot = block.state.RecordsRoot()
+	block.certificationRoot = block.state.CertificationRoot()
+	dposRoot, err := block.state.dposState.RootBytes()
 	if err != nil {
 		return err
 	}
-	block.header.consensusRoot = consensusRoot
-	block.header.reservationQueueHash = block.state.ReservationQueueHash()
+	block.dposRoot = dposRoot
+	block.reservationQueueHash = block.state.ReservationQueueHash()
 
 	hash := HashBlockData(block.BlockData)
-	block.header.hash = hash
+	block.hash = hash
 	block.sealed = true
 	return nil
 }
@@ -465,13 +574,12 @@ func HashBlockData(bd *BlockData) []byte {
 
 	hasher.Write(bd.ParentHash())
 	hasher.Write(bd.Coinbase().Bytes())
-	hasher.Write(bd.AccountsRoot())
-	hasher.Write(bd.TransactionsRoot())
+	hasher.Write(bd.AccsRoot())
+	hasher.Write(bd.TxsRoot())
 	hasher.Write(bd.UsageRoot())
 	hasher.Write(bd.RecordsRoot())
-	hasher.Write(bd.CandidacyRoot())
 	hasher.Write(bd.CertificationRoot())
-	hasher.Write(bd.ConsensusRoot())
+	hasher.Write(bd.DposRoot())
 	hasher.Write(bd.ReservationQueueHash())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
@@ -484,20 +592,38 @@ func HashBlockData(bd *BlockData) []byte {
 }
 
 // ExecuteTransaction on given block state
-func (block *Block) ExecuteTransaction(tx *Transaction) error {
-	return block.state.ExecuteTx(tx)
+func (block *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
+	err := block.state.checkNonce(transaction)
+	if err != nil {
+		return err
+	}
+
+	newTxFunc, ok := txMap[transaction.Type()]
+	if !ok {
+		return ErrInvalidTransactionType
+	}
+
+	tx, err := newTxFunc(transaction)
+	if err != nil {
+		return err
+	}
+	return tx.Execute(block)
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (block *Block) VerifyExecution() error {
+func (block *Block) VerifyExecution(txMap TxFactory) error {
 	block.BeginBatch()
 
-	if err := block.State().TransitionDynasty(block.Timestamp()); err != nil {
+	if err := block.ExecuteReservedTasks(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Warn("Failed to execute reserved tasks.")
 		block.RollBack()
 		return err
 	}
 
-	if err := block.ExecuteAll(); err != nil {
+	if err := block.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -521,42 +647,42 @@ func (block *Block) VerifyExecution() error {
 }
 
 // ExecuteAll executes all txs in block
-func (block *Block) ExecuteAll() error {
+func (block *Block) ExecuteAll(txMap TxFactory) error {
 	block.BeginBatch()
 
-	for _, tx := range block.transactions {
-		if err := block.ExecuteTransaction(tx); err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":   err,
-				"tx":    tx,
-				"block": block,
-			}).Warn("Failed to execute a transaction.")
+	for _, transaction := range block.transactions {
+		err := block.Execute(transaction, txMap)
+		if err != nil {
 			block.RollBack()
 			return err
 		}
-
-		if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":   err,
-				"tx":    tx,
-				"block": block,
-			}).Warn("Failed to accept a transaction.")
-			block.RollBack()
-			return err
-		}
-	}
-
-	if err := block.ExecuteReservedTasks(); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Warn("Failed to execute reserved tasks.")
-		block.RollBack()
-		return err
 	}
 
 	block.Commit()
 
+	return nil
+}
+
+// Execute executes a transaction.
+func (block *Block) Execute(tx *Transaction, txMap TxFactory) error {
+
+	if err := block.ExecuteTransaction(tx, txMap); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": tx,
+			"block":       block,
+		}).Warn("Failed to execute a transaction.")
+		return err
+	}
+
+	if err := block.state.AcceptTransaction(tx, block.Timestamp()); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": tx,
+			"block":       block,
+		}).Warn("Failed to accept a transaction.")
+		return err
+	}
 	return nil
 }
 
@@ -582,17 +708,17 @@ func (block *Block) AcceptTransaction(tx *Transaction) error {
 
 // VerifyState verifies block states comparing with root hashes in header
 func (block *Block) VerifyState() error {
-	if !byteutils.Equal(block.state.AccountsRoot(), block.AccountsRoot()) {
-		logging.WithFields(logrus.Fields{
+	if !byteutils.Equal(block.state.AccountsRoot(), block.AccsRoot()) {
+		logging.Console().WithFields(logrus.Fields{
 			"state":  byteutils.Bytes2Hex(block.state.AccountsRoot()),
-			"header": byteutils.Bytes2Hex(block.AccountsRoot()),
+			"header": byteutils.Bytes2Hex(block.AccsRoot()),
 		}).Warn("Failed to verify accounts root.")
 		return ErrInvalidBlockAccountsRoot
 	}
-	if !byteutils.Equal(block.state.TransactionsRoot(), block.TransactionsRoot()) {
+	if !byteutils.Equal(block.state.TransactionsRoot(), block.TxsRoot()) {
 		logging.WithFields(logrus.Fields{
 			"state":  byteutils.Bytes2Hex(block.state.TransactionsRoot()),
-			"header": byteutils.Bytes2Hex(block.TransactionsRoot()),
+			"header": byteutils.Bytes2Hex(block.TxsRoot()),
 		}).Warn("Failed to verify transactions root.")
 		return ErrInvalidBlockTxsRoot
 	}
@@ -610,13 +736,6 @@ func (block *Block) VerifyState() error {
 		}).Warn("Failed to verify records root.")
 		return ErrInvalidBlockRecordsRoot
 	}
-	if !byteutils.Equal(block.state.CandidacyRoot(), block.CandidacyRoot()) {
-		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(block.state.CandidacyRoot()),
-			"header": byteutils.Bytes2Hex(block.CandidacyRoot()),
-		}).Warn("Failed to verify candidacy root.")
-		return ErrInvalidBlockCandidacyRoot
-	}
 	if !byteutils.Equal(block.state.CertificationRoot(), block.CertificationRoot()) {
 		logging.WithFields(logrus.Fields{
 			"state":  byteutils.Bytes2Hex(block.state.CertificationRoot()),
@@ -624,19 +743,15 @@ func (block *Block) VerifyState() error {
 		}).Warn("Failed to verify certification root.")
 		return ErrInvalidBlockCertificationRoot
 	}
-	consensusRoot, err := block.state.ConsensusRoot()
+	dposRoot, err := block.state.DposState().RootBytes()
 	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to get state of consensus root.")
 		return err
 	}
-	if !byteutils.Equal(consensusRoot, block.ConsensusRoot()) {
+	if !byteutils.Equal(dposRoot, block.DposRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(consensusRoot),
-			"header": byteutils.Bytes2Hex(block.ConsensusRoot()),
-		}).Warn("Failed to verify consensus root.")
-		return ErrInvalidBlockConsensusRoot
+			"err": err,
+		}).Warn("Failed to get state of candidate root.")
+		return err
 	}
 	if !byteutils.Equal(block.state.ReservationQueueHash(), block.ReservationQueueHash()) {
 		logging.WithFields(logrus.Fields{
@@ -645,17 +760,6 @@ func (block *Block) VerifyState() error {
 		}).Warn("Failed to verify reservation queue hash.")
 		return ErrInvalidBlockReservationQueueHash
 	}
-	return nil
-}
-
-// SignThis sets signature info in block data
-func (bd *BlockData) SignThis(signer signature.Signature) error {
-	sig, err := signer.Sign(bd.header.hash)
-	if err != nil {
-		return err
-	}
-	bd.header.alg = signer.Algorithm()
-	bd.header.sign = sig
 	return nil
 }
 
@@ -668,26 +772,9 @@ func (block *Block) SignThis(signer signature.Signature) error {
 	return block.BlockData.SignThis(signer)
 }
 
-// VerifyIntegrity verifies if block signature is valid
-func (bd *BlockData) VerifyIntegrity() error {
-	if bd.height == GenesisHeight {
-		if !byteutils.Equal(GenesisHash, bd.header.hash) {
-			return ErrInvalidBlockHash
-		}
-		return nil
-	}
-	for _, tx := range bd.transactions {
-		if err := tx.VerifyIntegrity(bd.header.chainID); err != nil {
-			return err
-		}
-	}
-
-	wantedHash := HashBlockData(bd)
-	if !byteutils.Equal(wantedHash, bd.header.hash) {
-		return ErrInvalidBlockHash
-	}
-
-	return nil
+func (block *Block) SetMintDposState(parent *Block) error {
+	d := block.consensus
+	return d.SetMintDynastyState(block.timestamp, parent, block)
 }
 
 // BeginBatch makes block state update possible
