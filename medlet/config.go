@@ -26,13 +26,16 @@ import (
 )
 
 // LoadConfig loads configuration from the file.
-func LoadConfig(file string) *medletpb.Config {
+func LoadConfig(file string) (*medletpb.Config, error) {
 	if file == "" {
-		return DefaultConfig()
+		return DefaultConfig(), nil
 	}
 
 	if !pathExist(file) {
-		createDefaultConfigFile(file)
+		err := createDefaultConfigFile(file)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	b, err := ioutil.ReadFile(file)
@@ -40,7 +43,8 @@ func LoadConfig(file string) *medletpb.Config {
 		log.Console().WithFields(logrus.Fields{
 			"file": file,
 			"err":  err,
-		}).Fatal("Failed to read the config file.")
+		}).Error("Failed to read the config file.")
+		return nil, err
 	}
 	content := string(b)
 
@@ -49,18 +53,21 @@ func LoadConfig(file string) *medletpb.Config {
 		log.Console().WithFields(logrus.Fields{
 			"file": file,
 			"err":  err,
-		}).Fatal("Failed to parse the config file.")
+		}).Error("Failed to parse the config file.")
+		return nil, err
 	}
-	return pb
+	return pb, nil
 }
 
-func createDefaultConfigFile(filename string) {
+func createDefaultConfigFile(filename string) error {
 	if err := ioutil.WriteFile(filename, []byte(defaultConfigString()), 0644); err != nil {
 		log.Console().WithFields(logrus.Fields{
 			"file": filename,
 			"err":  err,
-		}).Fatal("Failed to create the config file.")
+		}).Error("Failed to create the config file.")
+		return err
 	}
+	return nil
 }
 
 //DefaultConfig returns default config.

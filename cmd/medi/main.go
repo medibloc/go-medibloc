@@ -49,7 +49,10 @@ func versionStr() string {
 
 func medi(ctx *cli.Context) error {
 	configFile := ctx.Args().Get(0)
-	conf := medlet.LoadConfig(configFile)
+	conf, err := medlet.LoadConfig(configFile)
+	if err != nil {
+		return err
+	}
 	m, err := medlet.New(conf)
 	if err != nil {
 		return err

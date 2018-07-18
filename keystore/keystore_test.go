@@ -21,34 +21,22 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
-)
-
-var testSigData = make([]byte, 32)
-
-const (
-	veryLightScryptN = 2
-	veryLightScryptP = 1
+	"github.com/stretchr/testify/require"
 )
 
 func TestKeyStore(t *testing.T) {
 	ks := keystore.NewKeyStore()
 
 	key, err := crypto.GenerateKey(algorithm.SECP256K1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	a, err := ks.SetKey(key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !ks.HasAddress(a) {
-		t.Errorf("HasAccount(%x) should've returned true", a)
-	}
-	if err := ks.Delete(a); err != nil {
-		t.Errorf("Delete error: %v", err)
-	}
-	if ks.HasAddress(a) {
-		t.Errorf("HasAccount(%x) should've returned true after Delete", a)
-	}
+	require.NoError(t, err)
+
+	require.True(t, ks.HasAddress(a))
+
+	err = ks.Delete(a)
+	require.NoError(t, err)
+
+	require.False(t, ks.HasAddress(a))
 }

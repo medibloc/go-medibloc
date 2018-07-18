@@ -33,7 +33,7 @@ import (
 // Errors
 var (
 	ErrListenPortIsNotAvailable = errors.New("listen port is not available")
-	ErrConfigLackNetWork        = errors.New("config.conf should has network")
+	ErrConfigLackNetWork        = errors.New("config.conf should have network")
 )
 
 // SerializableToBytes converts serializable to bytes.

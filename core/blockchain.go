@@ -96,7 +96,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	if err != nil && err != storage.ErrKeyNotFound {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to load tail block from storage.")
+		}).Error("Failed to load tail block from storage.")
 		return err
 	}
 	if err != nil && err == storage.ErrKeyNotFound {
@@ -104,7 +104,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
-			}).Fatal("Failed to initialize genesis block to storage.")
+			}).Error("Failed to initialize genesis block to storage.")
 			return err
 		}
 	}
@@ -113,7 +113,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to load genesis block from storage.")
+		}).Error("Failed to load genesis block from storage.")
 		return err
 	}
 
@@ -121,7 +121,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		logging.Console().WithFields(logrus.Fields{
 			"block":   bc.genesisBlock,
 			"genesis": bc.genesis,
-		}).Fatal("Failed to match genesis block and genesis configuration.")
+		}).Error("Failed to match genesis block and genesis configuration.")
 		return ErrGenesisNotMatch
 	}
 
@@ -130,7 +130,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to load tail block from storage.")
+		}).Error("Failed to load tail block from storage.")
 		return err
 	}
 	bc.addToTailBlocks(bc.mainTailBlock)
@@ -140,7 +140,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to load LIB from storage.")
+		}).Error("Failed to load LIB from storage.")
 		return err
 	}
 	return nil

@@ -54,7 +54,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		logging.Console().WithFields(logrus.Fields{
 			"path": cfg.Chain.Genesis,
 			"err":  err,
-		}).Fatal("Failed to load genesis config.")
+		}).Error("Failed to load genesis config.")
 		return nil, err
 	}
 
@@ -62,7 +62,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to create net service.")
+		}).Error("Failed to create net service.")
 		return nil, err
 	}
 
@@ -72,7 +72,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to create leveldb storage.")
+		}).Error("Failed to create leveldb storage.")
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to create BlockManager.")
+		}).Error("Failed to create BlockManager.")
 		return nil, err
 	}
 
@@ -114,7 +114,7 @@ func (m *Medlet) Setup() error {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to setup BlockManager.")
+		}).Error("Failed to setup BlockManager.")
 		return err
 	}
 
@@ -124,7 +124,7 @@ func (m *Medlet) Setup() error {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to setup consensus.")
+		}).Error("Failed to setup consensus.")
 		return err
 	}
 
@@ -145,7 +145,7 @@ func (m *Medlet) Start() error {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to start net service.")
+		}).Error("Failed to start net service.")
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (m *Medlet) Start() error {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Fatal("Failed to start rpc service.")
+		}).Error("Failed to start rpc service.")
 		return err
 	}
 

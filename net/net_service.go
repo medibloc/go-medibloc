@@ -30,7 +30,7 @@ type MedService struct {
 // NewMedService create netService
 func NewMedService(cfg *medletpb.Config) (*MedService, error) {
 	if networkConf := cfg.GetNetwork(); networkConf == nil {
-		logging.Console().Fatal("config.conf should has network")
+		logging.Console().Error("config.conf should have network")
 		return nil, ErrConfigLackNetWork
 	}
 	node, err := NewNode(NewP2PConfig(cfg))
