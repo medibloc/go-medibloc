@@ -251,13 +251,18 @@ func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 func (bb *BlockBuilder) SignMiner() *BlockBuilder {
 	n := bb.copy()
 
-	proposer, err := n.B.Consensus().FindMintProposer(n.B.Timestamp(), n.B)
-	require.NoError(n.t, err)
-	pair := n.KeyPairs.FindPair(proposer)
-	require.NotNil(n.t, pair)
-
-	return n.SignPair(pair)
+	return n.SignPair(n.FindMiner())
 }
+
+func (bb *BlockBuilder) FindMiner() *testutil.AddrKeyPair {
+	proposer, err := bb.B.Consensus().FindMintProposer(bb.B.Timestamp(), bb.B)
+	require.NoError(bb.t, err)
+	pair := bb.KeyPairs.FindPair(proposer)
+	require.NotNil(bb.t, pair)
+
+	return pair
+}
+
 
 //AddTx add transaction
 func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
