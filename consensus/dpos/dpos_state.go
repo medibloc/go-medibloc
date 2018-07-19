@@ -234,8 +234,8 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 	if err != nil {
 		return common.Address{}, err
 	}
-	proposerIndex := (time.Duration(ts) % d.dynastyInterval()) / BlockInterval
-	return *dynasty[int(proposerIndex)%d.dynastySize], nil
+	proposerIndex := int(mintTs) % int(d.dynastyInterval().Seconds()) / int(BlockInterval.Seconds())
+	return *dynasty[proposerIndex], nil
 }
 
 //SetMintDynastyState set mint block's dynasty state

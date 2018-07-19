@@ -27,13 +27,13 @@ import (
 func TestGetMiner(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	miner, err := bb.Build().Miner()
+	proposer, err := bb.Build().Proposer()
 	require.Error(t, err)
 
 	singingMiner := bb.FindMiner()
 	b := bb.SignPair(singingMiner).Build()
 
-	miner, err = b.Miner()
+	proposer, err = b.Proposer()
 	require.NoError(t, err)
-	assert.Equal(t, singingMiner.Addr, miner)
+	assert.Equal(t, singingMiner.Addr, proposer)
 }

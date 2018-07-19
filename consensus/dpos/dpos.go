@@ -189,8 +189,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			return lib
 		}
 
-		miner, err := cur.Miner()
-		proposer, err := d.findProposer(cur.State().DposState(), cur.Timestamp())
+		proposer, err := cur.Proposer()
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"block":     cur,
@@ -201,21 +200,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			return lib
 		}
 
-		if !miner.Equals(proposer) {
-			minerHex := miner.Hex()
-			proposerHex := proposer.Hex()
-			curDynasty, err := DynastyStateToDynasty(cur.State().DposState().DynastyState())
-
-			logging.Console().WithFields(logrus.Fields{
-				"miner":       minerHex,
-				"proposerHex": proposerHex,
-				"curDynasty":  curDynasty,
-				"err":         err,
-			}).Debug("Wrong miner???")
-			//return lib
-		}
-
-		confirmed[miner.Hex()] = true
+		confirmed[proposer.Hex()] = true
 		if len(confirmed) >= d.consensusSize() {
 			return cur
 		}
@@ -287,7 +272,7 @@ func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
 }
 
 func verifyBlockSign(proposer common.Address, bd *core.BlockData) error {
-	signer, err := bd.Miner()
+	signer, err := bd.Proposer()
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":      err,

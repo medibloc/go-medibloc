@@ -236,8 +236,8 @@ func (b *BlockHeader) SetSign(sign []byte) {
 	b.sign = sign
 }
 
-//Miner returns miner address from block sign
-func (b *BlockHeader) Miner() (common.Address, error) {
+//Proposer returns miner address from block sign
+func (b *BlockHeader) Proposer() (common.Address, error) {
 	if b.sign == nil {
 		return common.Address{}, ErrBlockSignatureNotExist
 	}
@@ -360,14 +360,14 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
-	miner, _ := bd.Miner()
-	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, miner:%v>",
+	proposer, _ := bd.Proposer()
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, proposer:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
 		byteutils.Bytes2Hex(bd.Coinbase().Bytes()),
 		bd.Timestamp(),
-		miner.Hex(),
+		proposer.Hex(),
 	)
 }
 

@@ -149,13 +149,12 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	//testNetwork.SetLogTestHook()
+	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
 
-	t.Logf("Dynasties:%v",seed.Config.Dynasties)
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
 
@@ -165,7 +164,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 			SignMiner().Build()
 		blocks = append(blocks, block)
 		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
-		tail = seed.Tail()
+		tail = block
 	}
 	block := bb.Block(blocks[0]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
@@ -517,7 +516,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 
-	block = bb.CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
+	block = bb.Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 }
