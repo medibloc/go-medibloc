@@ -149,12 +149,13 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+	//testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
 
+	t.Logf("Dynasties:%v",seed.Config.Dynasties)
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
 
@@ -164,7 +165,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 			SignMiner().Build()
 		blocks = append(blocks, block)
 		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
-		tail = block
+		tail = seed.Tail()
 	}
 	block := bb.Block(blocks[0]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().

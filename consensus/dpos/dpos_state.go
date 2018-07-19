@@ -206,16 +206,16 @@ func DynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) 
 	return dynasty, nil
 }
 
-func checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
-	parentDynastyIndex := int(time.Duration(parentTimestamp) / DynastyInterval)
-	curDynastyIndex := int(time.Duration(curTimestamp) / DynastyInterval)
+func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
+	parentDynastyIndex := int(time.Duration(parentTimestamp) / d.dynastyInterval())
+	curDynastyIndex := int(time.Duration(curTimestamp) / d.dynastyInterval())
 
 	return curDynastyIndex > parentDynastyIndex
 }
 
 //MakeMintDynasty returns dynasty slice for mint block
 func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]*common.Address, error) {
-	if checkTransitionDynasty(parent.Timestamp(), ts) {
+	if d.checkTransitionDynasty(parent.Timestamp(), ts) {
 		cs := parent.State().DposState().CandidateState()
 		sortedCandidates, err := SortByVotePower(cs)
 		if err != nil {
@@ -234,7 +234,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 	if err != nil {
 		return common.Address{}, err
 	}
-	proposerIndex := (time.Duration(ts) % DynastyInterval) / BlockInterval
+	proposerIndex := (time.Duration(ts) % d.dynastyInterval()) / BlockInterval
 	return *dynasty[int(proposerIndex)%d.dynastySize], nil
 }
 

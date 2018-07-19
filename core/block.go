@@ -245,11 +245,20 @@ func (b *BlockHeader) Miner() (common.Address, error) {
 
 	sig, err := crypto.NewSignature(b.alg)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":       err,
+			"algorithm": b.alg,
+		}).Debug("Invalid sign algorithm.")
 		return common.Address{}, err
 	}
 
 	pubKey, err := sig.RecoverPublic(msg, b.sign)
 	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":    err,
+			"plain":  byteutils.Bytes2Hex(b.hash),
+			"cipher": byteutils.Bytes2Hex(b.sign),
+		}).Debug("Failed to recover public key from cipher text.")
 		return common.Address{}, err
 	}
 
@@ -351,13 +360,15 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
-	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, sign:%v>",
+	miner, _ := bd.Miner()
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, miner:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
 		byteutils.Bytes2Hex(bd.Coinbase().Bytes()),
 		bd.Timestamp(),
-		byteutils.Bytes2Hex(bd.Sign()))
+		miner.Hex(),
+	)
 }
 
 // SignThis sets signature info in block data

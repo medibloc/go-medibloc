@@ -128,6 +128,10 @@ func (d *Dpos) consensusSize() int {
 	return int(d.dynastySize*2/3 + 1)
 }
 
+func (d *Dpos) dynastyInterval() time.Duration {
+	return time.Duration(d.dynastySize*NumberOfRounds) * BlockInterval
+}
+
 // ForkChoice chooses fork.
 func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
 	newTail = bc.MainTailBlock()
@@ -167,7 +171,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	dynastyGen := int64(-1)
 
 	for !byteutils.Equal(cur.Hash(), lib.Hash()) {
-		if gen := dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
+		if gen := d.dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
 			dynastyGen = gen
 			confirmed = make(map[string]bool)
 			ds := cur.State().DposState().DynastyState()
@@ -186,14 +190,29 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		}
 
 		miner, err := cur.Miner()
+		proposer, err := d.findProposer(cur.State().DposState(), cur.Timestamp())
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"block":     cur,
 				"timestamp": cur.Timestamp(),
 				"members":   members,
 				"err":       err,
-			}).Error("Failed to find a block miner.")
+			}).Error("Failed to find a block proposer.")
 			return lib
+		}
+
+		if !miner.Equals(proposer) {
+			minerHex := miner.Hex()
+			proposerHex := proposer.Hex()
+			curDynasty, err := DynastyStateToDynasty(cur.State().DposState().DynastyState())
+
+			logging.Console().WithFields(logrus.Fields{
+				"miner":       minerHex,
+				"proposerHex": proposerHex,
+				"curDynasty":  curDynasty,
+				"err":         err,
+			}).Debug("Wrong miner???")
+			//return lib
 		}
 
 		confirmed[miner.Hex()] = true
@@ -213,9 +232,27 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	return lib
 }
 
-func dynastyGenByTime(ts int64) int64 {
+func (d *Dpos) findProposer(s core.DposState, timestamp int64) (common.Address, error) {
+	ds := s.DynastyState()
+
+	t := time.Duration(timestamp) * time.Second
+	if t%BlockInterval != 0 {
+		return common.Address{}, ErrInvalidBlockForgeTime
+	}
+
+	slotIndex := int32((t % d.dynastyInterval()) / BlockInterval)
+	addrBytes, err := ds.Get(byteutils.FromInt32(slotIndex % int32(d.dynastySize)))
+	if err != nil {
+		return common.Address{}, err
+	}
+	addr := common.BytesToAddress(addrBytes)
+	return addr, nil
+}
+
+
+func (d *Dpos) dynastyGenByTime(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
-	return int64(now / DynastyInterval)
+	return int64(now / d.dynastyInterval())
 }
 
 // VerifyInterval verifies block interval.
@@ -250,7 +287,7 @@ func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
 }
 
 func verifyBlockSign(proposer common.Address, bd *core.BlockData) error {
-	signer, err := recoverSignerFromSignature(bd.Alg(), bd.Hash(), bd.Sign())
+	signer, err := bd.Miner()
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":      err,
