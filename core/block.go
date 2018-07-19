@@ -68,7 +68,7 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		TxsRoot:              b.txsRoot,
 		UsageRoot:            b.usageRoot,
 		RecordsRoot:          b.recordsRoot,
-		CertificationRoot:    nil,
+		CertificationRoot:    b.certificationRoot,
 		DposRoot:             b.dposRoot,
 		ReservationQueueHash: b.reservationQueueHash,
 	}, nil
@@ -798,13 +798,17 @@ func (b *Block) VerifyState() error {
 	}
 	dposRoot, err := b.state.DposState().RootBytes()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get dpos state's root bytes.")
 		return err
 	}
 	if !byteutils.Equal(dposRoot, b.DposRoot()) {
 		logging.WithFields(logrus.Fields{
-			"err": err,
+			"state":  byteutils.Bytes2Hex(dposRoot),
+			"header": byteutils.Bytes2Hex(b.DposRoot()),
 		}).Warn("Failed to get state of candidate root.")
-		return err
+		return ErrInvalidBlockDposRoot
 	}
 	if !byteutils.Equal(b.state.ReservationQueueHash(), b.ReservationQueueHash()) {
 		logging.WithFields(logrus.Fields{

@@ -240,7 +240,7 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 	return n
 }
 
-//SignPair set coinbase, seal ,calculate hash and sign with key pair
+//SignPair set coinbase, seal, calculate hash and sign with key pair
 func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	n := bb.copy()
 
@@ -254,6 +254,7 @@ func (bb *BlockBuilder) SignMiner() *BlockBuilder {
 	return n.SignPair(n.FindMiner())
 }
 
+//FindMiner finds miner.
 func (bb *BlockBuilder) FindMiner() *testutil.AddrKeyPair {
 	proposer, err := bb.B.Consensus().FindMintProposer(bb.B.Timestamp(), bb.B)
 	require.NoError(bb.t, err)
@@ -262,7 +263,6 @@ func (bb *BlockBuilder) FindMiner() *testutil.AddrKeyPair {
 
 	return pair
 }
-
 
 //AddTx add transaction
 func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {

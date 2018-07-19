@@ -318,7 +318,6 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":    err,
-				"block":  block,
 				"parent": parent,
 			}).Warn("Failed to execute on a parent block.")
 			fails = append(fails, childData)

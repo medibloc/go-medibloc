@@ -440,6 +440,87 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
 
+func TestBlockManager_InvalidState(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	tn := testutil.NewNetwork(t, dynastySize)
+	defer tn.Cleanup()
+	tn.SetLogTestHook()
+	seed := tn.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	genesis := seed.GenesisBlock()
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.TokenDist).AddKeyPairs(seed.Config.Dynasties)
+
+	from := seed.Config.TokenDist[0]
+	to := seed.Config.TokenDist[1]
+	bb = bb.Block(genesis).Child().
+		Tx().Type(core.TxOpSend).To(to.Addr).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpAddRecord).
+		Payload(&core.AddRecordPayload{
+			Hash: hash([]byte("Record Hash")),
+		}).SignPair(from).Execute().
+		Tx().Type(core.TxOpAddCertification).To(to.Addr).
+		Payload(&core.AddCertificationPayload{
+			IssueTime:       time.Now().Unix(),
+			ExpirationTime:  time.Now().Add(24 * time.Hour * 365).Unix(),
+			CertificateHash: hash([]byte("Certificate Root Hash")),
+		}).SignPair(from).Execute().
+		Tx().Type(core.TxOpRevokeCertification).To(to.Addr).
+		Payload(&core.RevokeCertificationPayload{
+			CertificateHash: hash([]byte("Certificate Root Hash")),
+		}).SignPair(from).Execute().
+		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
+
+	miner := bb.FindMiner()
+	bb = bb.Coinbase(miner.Addr).Seal()
+
+	block := bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err := bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.TransactionRoot(hash([]byte("invalid transaction root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.UsageRoot(hash([]byte("invalid usage root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.RecordRoot(hash([]byte("invalid records root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.CertificateRoot(hash([]byte("invalid certification root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.ReservationQueueRoot(hash([]byte("invalid reservation queue root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.Coinbase(to.Addr).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.NoError(t, err)
+
+	block = bb.Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	block = bb.ChainID(1111111).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrInvalidChainID, err)
+
+	block = bb.CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+}
+
 func foundInLog(hook *test.Hook, s string) bool {
 	timer := time.NewTimer(10 * time.Second)
 	defer timer.Stop()

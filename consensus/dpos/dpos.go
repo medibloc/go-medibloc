@@ -213,7 +213,6 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	return lib
 }
 
-
 func dynastyGenByTime(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	return int64(now / DynastyInterval)

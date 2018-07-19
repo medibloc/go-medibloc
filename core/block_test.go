@@ -16,11 +16,12 @@
 package core_test
 
 import (
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"testing"
+
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/stretchr/testify/require"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetMiner(t *testing.T) {
@@ -34,5 +35,5 @@ func TestGetMiner(t *testing.T) {
 
 	miner, err = b.Miner()
 	require.NoError(t, err)
-	assert.Equal(t,singingMiner.Addr, miner)
+	assert.Equal(t, singingMiner.Addr, miner)
 }

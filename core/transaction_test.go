@@ -106,7 +106,7 @@ func TestVestAndWithdraw(t *testing.T) {
 }
 
 func TestAddAndRevokeCertification(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	issuer := bb.TokenDist[0]
 	certified := bb.TokenDist[1]
@@ -121,7 +121,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	bb = bb.
 		Tx().Nonce(1).Type(core.TxOpAddCertification).From(issuer.Addr).To(certified.Addr).Payload(addPayload).CalcHash().SignKey(issuer.PrivKey).Execute()
 
-	block := bb.Build()
+	block := bb.Seal().Build()
 
 	issuerAcc, err := block.State().GetAccount(issuer.Addr)
 	require.NoError(t, err)
@@ -136,6 +136,8 @@ func TestAddAndRevokeCertification(t *testing.T) {
 
 	cert, err := block.State().Certification(hash)
 	assert.NoError(t, err)
+
+	assert.Equal(t, block.State().CertificationRoot(), block.CertificationRoot())
 
 	assert.Equal(t, cert.CertificateHash, hash)
 	assert.Equal(t, cert.Issuer, issuer.Addr.Bytes())
