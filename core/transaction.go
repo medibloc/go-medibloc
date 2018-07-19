@@ -457,21 +457,21 @@ func (t *Transaction) Clone() (*Transaction, error) {
 	return newTx, nil
 }
 
-//SendTx is a structure for sending MED
-type SendTx struct {
+//TransferTx is a structure for sending MED
+type TransferTx struct {
 	*Transaction
 }
 
-//NewSendTx returns SendTx
-func NewSendTx(tx *Transaction) (ExecutableTx, error) {
+//NewTransferTx returns TransferTx
+func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	if tx.value.Cmp(util.Uint128Zero()) == 0 {
 		return nil, ErrVoidTransaction
 	}
-	return &SendTx{tx}, nil
+	return &TransferTx{tx}, nil
 }
 
-//Execute SendTx
-func (tx *SendTx) Execute(b *Block) error {
+//Execute TransferTx
+func (tx *TransferTx) Execute(b *Block) error {
 	as := b.state.AccState()
 
 	if err := as.SubBalance(tx.from.Bytes(), tx.value); err != nil {

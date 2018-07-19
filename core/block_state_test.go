@@ -68,11 +68,11 @@ func TestNonceCheck(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	bb = bb.
-		Tx().Type(core.TxOpSend).Value(10).To(to.Addr).Nonce(0).From(from.Addr).CalcHash().SignKey(from.PrivKey).ExecuteErr(core.ErrSmallTransactionNonce).
-		Tx().Type(core.TxOpSend).Value(10).To(to.Addr).Nonce(1).SignPair(from).Execute().
-		Tx().Type(core.TxOpSend).Value(10).To(to.Addr).Nonce(3).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
-		Tx().Type(core.TxOpSend).Value(10).To(to.Addr).SignPair(from).Execute().
-		Tx().Type(core.TxOpSend).Value(10).To(to.Addr).SignPair(from).Execute()
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(0).From(from.Addr).CalcHash().SignKey(from.PrivKey).ExecuteErr(core.ErrSmallTransactionNonce).
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).SignPair(from).Execute().
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(3).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute()
 }
 
 func TestUpdateUsage(t *testing.T) {
@@ -83,9 +83,9 @@ func TestUpdateUsage(t *testing.T) {
 	to := bb.TokenDist[1]
 
 	txs := core.Transactions{
-		bb.Tx().Type(core.TxOpSend).To(to.Addr).Value(10).Nonce(1).SignPair(from).Build(),
-		bb.Tx().Type(core.TxOpSend).To(to.Addr).Value(20).Nonce(2).SignPair(from).Build(),
-		bb.Tx().Type(core.TxOpSend).To(to.Addr).Value(20).Nonce(3).Timestamp(0).SignPair(from).Build(),
+		bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).Nonce(1).SignPair(from).Build(),
+		bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(20).Nonce(2).SignPair(from).Build(),
+		bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(20).Nonce(3).Timestamp(0).SignPair(from).Build(),
 	}
 
 	bb = bb.

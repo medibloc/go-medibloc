@@ -25,17 +25,12 @@ import (
 
 // Transaction's string representation.
 const (
-	TxOpSend                = ""
+	TxOpTransfer            = "transfer"
 	TxOpAddRecord           = "add_record"
 	TxOpVest                = "vest"
 	TxOpWithdrawVesting     = "withdraw_vesting"
 	TxOpAddCertification    = "add_certification"
 	TxOpRevokeCertification = "revoke_certification"
-)
-
-// Transaction payload type.
-const (
-	TxPayloadBinaryType = "binary"
 )
 
 // Transaction's message types.

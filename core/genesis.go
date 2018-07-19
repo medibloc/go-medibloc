@@ -140,7 +140,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		conf.Meta.ChainId,
 		GenesisCoinbase, GenesisCoinbase,
 		util.Uint128Zero(), 1,
-		TxPayloadBinaryType,
+		TxOpTransfer,
 		[]byte(initialMessage),
 	)
 	if err != nil {

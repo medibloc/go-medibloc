@@ -32,7 +32,7 @@ const (
 )
 
 var defaultTxMap = core.TxFactory{
-	core.TxOpSend:                core.NewSendTx,
+	core.TxOpTransfer:            core.NewTransferTx,
 	core.TxOpAddRecord:           core.NewAddRecordTx,
 	core.TxOpVest:                core.NewVestTx,
 	core.TxOpWithdrawVesting:     core.NewWithdrawVestingTx,

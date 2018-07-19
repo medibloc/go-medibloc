@@ -32,6 +32,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 )
 
 func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
@@ -105,7 +106,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	var revokeCertification *core.RevokeCertificationPayload
 
 	switch txData.Type {
-	case core.TxOpSend:
+	case core.TxOpTransfer:
 		return nil, nil
 	case core.TxOpAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
@@ -118,8 +119,6 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 	case core.TxOpVest:
 		return nil, nil
 	case core.TxOpWithdrawVesting:
-		return nil, nil
-	case core.TxPayloadBinaryType:
 		return nil, nil
 	case core.TxOpAddCertification:
 		json.Unmarshal([]byte(txData.Payload), &addCertification)
@@ -138,6 +137,12 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
+	case dpos.TxOpBecomeCandidate:
+		return nil, nil
+	case dpos.TxOpQuitCandidacy:
+		return nil, nil
+	case dpos.TxOpVote:
+		return nil, nil
 	}
 	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 }

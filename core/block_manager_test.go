@@ -179,7 +179,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 
 	block = bb.Block(blocks[dynastySize*2/3]).Child().
-		Tx().Type(core.TxOpSend).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignMiner().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
@@ -193,7 +193,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	parent, err := bm.BlockByHeight(3)
 	require.NoError(t, err)
 	b := bb.Block(parent).Child().Height(20).
-		Tx().Type(core.TxOpSend).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignMiner().Build()
 	err = bm.PushBlockData(b.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
@@ -281,7 +281,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	}
 	for _, test := range tests {
 		block := bb.Block(parent).Child().
-			Tx().Type(core.TxOpSend).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+			Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 			Height(test.height).SignMiner().Build()
 		assert.Equal(t, test.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", test)
 	}

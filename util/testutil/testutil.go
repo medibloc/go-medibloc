@@ -288,7 +288,7 @@ func newTestTransactions(t *testing.T, block *core.Block, from *AddrKeyPair) cor
 		acc, err := block.State().GetAccount(txData.from)
 		require.NoError(t, err)
 		nonce := acc.Nonce()
-		txs[i], err = core.NewTransaction(1, txData.from, txData.to, txData.amount, nonce+1, core.TxPayloadBinaryType, []byte("datadata"))
+		txs[i], err = core.NewTransaction(1, txData.from, txData.to, txData.amount, nonce+1, core.TxOpTransfer, []byte("datadata"))
 		require.NoError(t, err)
 		sig, err := crypto.NewSignature(algorithm.SECP256K1)
 		require.NoError(t, err)

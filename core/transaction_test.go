@@ -34,8 +34,8 @@ func TestSend(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	bb.
-		Tx().Type(core.TxOpSend).To(to.Addr).Value(1000000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
-		Tx().Type(core.TxOpSend).To(to.Addr).Value(10).SignPair(from).Execute().
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1000000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
 		Balance(from.Addr, 1000000000-10)
