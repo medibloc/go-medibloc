@@ -456,7 +456,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	from := seed.Config.TokenDist[0]
 	to := seed.Config.TokenDist[1]
 	bb = bb.Block(genesis).Child().
-		Tx().Type(core.TxOpSend).To(to.Addr).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddRecord).
 		Payload(&core.AddRecordPayload{
 			Hash: hash([]byte("Record Hash")),
