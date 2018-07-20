@@ -225,7 +225,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	b3 := bb.Block(b1).Child().SignMiner().Build()
 	blocks = append(blocks, b3)
 
-	for i := 1; i < dynastySize; i++ {
+	for i := 1; i < dynastySize+2; i++ {
 		block := bb.Block(blocks[i+1]).Child().
 			Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
 			SignMiner().Build()
