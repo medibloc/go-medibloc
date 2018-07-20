@@ -29,7 +29,7 @@ const (
 
 // Consensus properties.
 const (
-	BlockInterval   = 15 * time.Second
+	BlockInterval   = 3 * time.Second
 	NumberOfRounds  = 1
 	MinMintDuration = 2 * time.Second
 

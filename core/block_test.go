@@ -52,12 +52,15 @@ func TestBlock_BasicTx(t *testing.T) {
 	bb := blockutil.New(t, 3)
 	from := seed.Config.TokenDist[0]
 	to := seed.Config.TokenDist[1]
-	tx1 := bb.Block(seed.GenesisBlock()).Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Build()
-	tx2 := bb.Block(seed.GenesisBlock()).Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).Nonce(2).SignPair(from).Build()
+	tx1 := bb.Block(seed.GenesisBlock()).Tx().Timestamp(time.Now().Unix()).Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Build()
+	tx2 := bb.Block(seed.GenesisBlock()).Tx().Timestamp(time.Now().Unix()).Type(core.TxOpTransfer).To(to.Addr).Value(200).Nonce(1).SignPair(from).Build()
+	tx3 := bb.Block(seed.GenesisBlock()).Tx().Timestamp(time.Now().Unix()).Type(core.TxOpTransfer).To(to.Addr).Value(100).Nonce(2).SignPair(from).Build()
 
 	err := seed.Med.TransactionManager().Push(tx1)
 	require.NoError(t, err)
 	err = seed.Med.TransactionManager().Push(tx2)
+	require.NoError(t, err)
+	err = seed.Med.TransactionManager().Push(tx3)
 	require.NoError(t, err)
 
 	for seed.Tail().Height() < 2 {

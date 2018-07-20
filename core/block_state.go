@@ -509,7 +509,7 @@ func (bs *BlockState) BeginBatch() error {
 // RollBack rolls back batch
 func (bs *BlockState) RollBack() error {
 	bs.states = bs.snapshot
-	bs.snapshot = nil
+	//bs.snapshot = nil
 	return nil
 }
 

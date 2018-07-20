@@ -391,25 +391,32 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 			"err": err,
 		}).Error("Failed to execute reserved task")
 	}
+	if err := block.Commit(); err != nil {
+		return nil, err
+	}
 
-	for deadline.Sub(time.Now()) > 0 {
+	for deadline.Sub(time.Now()) > -10*time.Hour {
 
 		transaction := d.tm.Pop()
 		if transaction == nil {
 			break
 		}
 
-		txMap := d.bm.TxMap()
-		newTxFunc, ok := txMap[transaction.Type()]
-		if !ok {
-			return nil, core.ErrInvalidTransactionType
-		}
+		//txMap := d.bm.TxMap()
+		//newTxFunc, ok := txMap[transaction.Type()]
+		//if !ok {
+		//	return nil, core.ErrInvalidTransactionType
+		//}
+		//
+		//tx, err := newTxFunc(transaction)
+		//if err != nil {
+		//	return nil, err
+		//}
 
-		tx, err := newTxFunc(transaction)
-		if err != nil {
+		if err := block.BeginBatch(); err != nil {
 			return nil, err
 		}
-		err = tx.Execute(block)
+		err = block.ExecuteTransaction(transaction, d.bm.TxMap())
 
 		if err != nil && err == core.ErrLargeTransactionNonce {
 			if err = d.tm.Push(transaction); err != nil {
