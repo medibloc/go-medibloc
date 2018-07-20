@@ -226,6 +226,37 @@
           "ApiService"
         ]
       }
+    },
+    "/v1/user/{address}/transactions": {
+      "get": {
+        "operationId": "GetCurrentAccountTransactions",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "include_pending",
+            "description": "Whether or not to include pending transactions. Default is true.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
     }
   },
   "definitions": {

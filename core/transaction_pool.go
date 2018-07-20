@@ -20,6 +20,7 @@ import (
 
 	"sort"
 
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/hashheap"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -79,6 +80,26 @@ func (pool *TransactionPool) GetAll() []*Transaction {
 
 	for _, tx := range pool.all {
 		txs = append(txs, tx)
+	}
+
+	return txs
+}
+
+// GetByAddress returns transactions related to the address in transaction pool
+func (pool *TransactionPool) GetByAddress(address common.Address) []*Transaction {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
+
+	var txs []*Transaction
+
+	if len(pool.all) == 0 {
+		return nil
+	}
+
+	for _, tx := range pool.all {
+		if tx.IsRelatedToAddress(address) {
+			txs = append(txs, tx)
+		}
 	}
 
 	return txs

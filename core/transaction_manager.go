@@ -19,6 +19,7 @@ import (
 	"errors"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -114,6 +115,11 @@ func (mgr *TransactionManager) Get(hash []byte) *Transaction {
 // GetAll returns all transactions from transaction pool
 func (mgr *TransactionManager) GetAll() []*Transaction {
 	return mgr.pool.GetAll()
+}
+
+// GetByAddress returns transactions related with the address from transaction pool
+func (mgr *TransactionManager) GetByAddress(address common.Address) []*Transaction {
+	return mgr.pool.GetByAddress(address)
 }
 
 // Relay relays transaction to network.

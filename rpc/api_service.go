@@ -326,6 +326,59 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 	}, nil
 }
 
+// GetCurrentAccountTransactions returns transactions of the account
+func (s *APIService) GetCurrentAccountTransactions(ctx context.Context,
+	req *rpcpb.GetCurrentAccountTransactionsRequest) (*rpcpb.TransactionsResponse, error) {
+	var txs []*rpcpb.TransactionResponse
+
+	address := common.HexToAddress(req.Address)
+	poolTxs := s.tm.GetByAddress(address)
+	tailBlock := s.bm.TailBlock()
+
+	for _, tx := range poolTxs {
+		corePbTx, err := tx.ToProto()
+		if err != nil {
+			continue
+		}
+		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction), false)
+		if err != nil {
+			continue
+		}
+		txs = append(txs, rpcPbTx)
+		// Add send transaction twice if the address of from is as same as the address of to
+		if tx.Type() == core.TxOpTransfer && tx.From() == tx.To() {
+			txs = append(txs, rpcPbTx)
+		}
+	}
+
+	if tailBlock != nil {
+		acc, err := tailBlock.State().GetAccount(address)
+		if err == nil {
+			txList := append(acc.TxsTo(), acc.TxsFrom()...)
+			for _, hash := range txList {
+				pbTx := new(corepb.Transaction)
+				pb, err := tailBlock.State().GetTx(hash)
+				if err != nil {
+					continue
+				}
+				err = proto.Unmarshal(pb, pbTx)
+				if err != nil {
+					continue
+				}
+				rpcPbTx, err := corePbTx2rpcPbTx(pbTx, true)
+				if err != nil {
+					continue
+				}
+				txs = append(txs, rpcPbTx)
+			}
+		}
+	}
+
+	return &rpcpb.TransactionsResponse{
+		Transactions: txs,
+	}, nil
+}
+
 // GetTransaction returns transaction
 func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.TransactionResponse, error) {
 	if len(req.Hash) != 64 {

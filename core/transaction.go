@@ -229,6 +229,14 @@ func (t *Transaction) SetPayerSign(payerSign []byte) {
 	t.payerSign = payerSign
 }
 
+//IsRelatedToAddress return whether the transaction is related to the address
+func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
+	if t.from == address || t.to == address {
+		return true
+	}
+	return false
+}
+
 // Transactions is just multiple txs
 type Transactions []*Transaction
 

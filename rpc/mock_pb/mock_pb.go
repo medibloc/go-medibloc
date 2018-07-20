@@ -6,12 +6,11 @@ package mock_pb
 
 import (
 	context "context"
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	pb "github.com/medibloc/go-medibloc/rpc/pb"
 	grpc "google.golang.org/grpc"
 	metadata "google.golang.org/grpc/metadata"
+	reflect "reflect"
 )
 
 // MockApiServiceClient is a mock of ApiServiceClient interface
@@ -107,6 +106,24 @@ func (m *MockApiServiceClient) GetBlocks(arg0 context.Context, arg1 *pb.GetBlock
 func (mr *MockApiServiceClientMockRecorder) GetBlocks(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlocks", reflect.TypeOf((*MockApiServiceClient)(nil).GetBlocks), varargs...)
+}
+
+// GetCurrentAccountTransactions mocks base method
+func (m *MockApiServiceClient) GetCurrentAccountTransactions(arg0 context.Context, arg1 *pb.GetCurrentAccountTransactionsRequest, arg2 ...grpc.CallOption) (*pb.TransactionsResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetCurrentAccountTransactions", varargs...)
+	ret0, _ := ret[0].(*pb.TransactionsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCurrentAccountTransactions indicates an expected call of GetCurrentAccountTransactions
+func (mr *MockApiServiceClientMockRecorder) GetCurrentAccountTransactions(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentAccountTransactions", reflect.TypeOf((*MockApiServiceClient)(nil).GetCurrentAccountTransactions), varargs...)
 }
 
 // GetMedState mocks base method
@@ -381,6 +398,19 @@ func (m *MockApiServiceServer) GetBlocks(arg0 context.Context, arg1 *pb.GetBlock
 // GetBlocks indicates an expected call of GetBlocks
 func (mr *MockApiServiceServerMockRecorder) GetBlocks(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlocks", reflect.TypeOf((*MockApiServiceServer)(nil).GetBlocks), arg0, arg1)
+}
+
+// GetCurrentAccountTransactions mocks base method
+func (m *MockApiServiceServer) GetCurrentAccountTransactions(arg0 context.Context, arg1 *pb.GetCurrentAccountTransactionsRequest) (*pb.TransactionsResponse, error) {
+	ret := m.ctrl.Call(m, "GetCurrentAccountTransactions", arg0, arg1)
+	ret0, _ := ret[0].(*pb.TransactionsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCurrentAccountTransactions indicates an expected call of GetCurrentAccountTransactions
+func (mr *MockApiServiceServerMockRecorder) GetCurrentAccountTransactions(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentAccountTransactions", reflect.TypeOf((*MockApiServiceServer)(nil).GetCurrentAccountTransactions), arg0, arg1)
 }
 
 // GetMedState mocks base method

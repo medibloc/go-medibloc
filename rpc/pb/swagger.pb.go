@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -220,6 +220,37 @@ const (
           {
             "name": "height",
             "description": "block account state with height. Or the string \"genesis\", \"confirmed\", \"tail\".",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
+    "/v1/user/{address}/transactions": {
+      "get": {
+        "operationId": "GetCurrentAccountTransactions",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbTransactionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "include_pending",
+            "description": "Whether or not to include pending transactions. Default is true.",
             "in": "query",
             "required": false,
             "type": "string"
