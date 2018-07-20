@@ -281,15 +281,12 @@ func (s *states) SubBalance(address common.Address, amount *util.Uint128) error 
 }
 
 func (s *states) AddTransaction(tx *Transaction) error {
-	var err error
 
-	err = s.accState.AddTxsFrom(tx.From().Bytes(), tx.Hash())
-	if err != nil{
+	if err := s.accState.AddTxsFrom(tx.From().Bytes(), tx.Hash()); err != nil {
 		return err
 	}
 
-	err = s.accState.AddTxsTo(tx.To().Bytes(), tx.Hash())
-	if err != nil{
+	if err := s.accState.AddTxsTo(tx.To().Bytes(), tx.Hash()); err != nil {
 		return err
 	}
 

@@ -151,7 +151,7 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 	return nil
 }
 
-// AddTransaction add transaction in account
+// AddTxsFrom add transaction in TxsFrom
 func (as *AccountStateBatch) AddTxsFrom(address []byte, txHash []byte) error {
 	if !as.batching {
 		return ErrNotBatching
@@ -165,6 +165,7 @@ func (as *AccountStateBatch) AddTxsFrom(address []byte, txHash []byte) error {
 	return nil
 }
 
+//AddTxsTo add transaction in TxsTo
 func (as *AccountStateBatch) AddTxsTo(address []byte, txHash []byte) error {
 	if !as.batching {
 		return ErrNotBatching
