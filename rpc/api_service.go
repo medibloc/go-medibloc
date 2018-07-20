@@ -24,6 +24,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -32,7 +33,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 )
 
 func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {

@@ -217,24 +217,6 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	return lib
 }
 
-func (d *Dpos) findProposer(s core.DposState, timestamp int64) (common.Address, error) {
-	ds := s.DynastyState()
-
-	t := time.Duration(timestamp) * time.Second
-	if t%BlockInterval != 0 {
-		return common.Address{}, ErrInvalidBlockForgeTime
-	}
-
-	slotIndex := int32((t % d.dynastyInterval()) / BlockInterval)
-	addrBytes, err := ds.Get(byteutils.FromInt32(slotIndex % int32(d.dynastySize)))
-	if err != nil {
-		return common.Address{}, err
-	}
-	addr := common.BytesToAddress(addrBytes)
-	return addr, nil
-}
-
-
 func (d *Dpos) dynastyGenByTime(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	return int64(now / d.dynastyInterval())
@@ -291,35 +273,6 @@ func verifyBlockSign(proposer common.Address, bd *core.BlockData) error {
 		return ErrInvalidBlockProposer
 	}
 	return nil
-}
-
-func recoverSignerFromSignature(alg algorithm.Algorithm, plainText []byte, cipherText []byte) (common.Address, error) {
-	sig, err := crypto.NewSignature(alg)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":       err,
-			"algorithm": alg,
-		}).Debug("Invalid sign algorithm.")
-		return common.Address{}, err
-	}
-	pub, err := sig.RecoverPublic(plainText, cipherText)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":    err,
-			"plain":  byteutils.Bytes2Hex(plainText),
-			"cipher": byteutils.Bytes2Hex(cipherText),
-		}).Debug("Failed to recover public key from cipher text.")
-		return common.Address{}, err
-	}
-	addr, err := common.PublicKeyToAddress(pub)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-			"pub": pub,
-		}).Debug("Failed to convert public key to address.")
-		return common.Address{}, err
-	}
-	return addr, nil
 }
 
 func (d *Dpos) mintBlock(now time.Time) error {

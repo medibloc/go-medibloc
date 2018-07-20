@@ -29,8 +29,8 @@ const (
 
 // Consensus properties.
 const (
-	BlockInterval = 15 * time.Second
-	NumberOfRounds = 1
+	BlockInterval   = 15 * time.Second
+	NumberOfRounds  = 1
 	MinMintDuration = 2 * time.Second
 
 	miningTickInterval = time.Second
