@@ -18,6 +18,9 @@ package core_test
 import (
 	"testing"
 
+	"time"
+
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
@@ -36,4 +39,28 @@ func TestGetMiner(t *testing.T) {
 	proposer, err = b.Proposer()
 	require.NoError(t, err)
 	assert.Equal(t, singingMiner.Addr, proposer)
+}
+
+func TestBlock_BasicTx(t *testing.T) {
+	nt := testutil.NewNetwork(t, 3)
+	seed := nt.NewSeedNode()
+	nt.SetMinerFromDynasties(seed)
+	seed.Start()
+
+	nt.WaitForEstablished()
+
+	bb := blockutil.New(t, 3)
+	from := seed.Config.TokenDist[0]
+	to := seed.Config.TokenDist[1]
+	tx1 := bb.Block(seed.GenesisBlock()).Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Build()
+	tx2 := bb.Block(seed.GenesisBlock()).Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).Nonce(2).SignPair(from).Build()
+
+	err := seed.Med.TransactionManager().Push(tx1)
+	require.NoError(t, err)
+	err = seed.Med.TransactionManager().Push(tx2)
+	require.NoError(t, err)
+
+	for seed.Tail().Height() < 2 {
+		time.Sleep(100 * time.Millisecond)
+	}
 }
