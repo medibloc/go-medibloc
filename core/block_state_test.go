@@ -120,3 +120,44 @@ func TestPayerUsageUpdate(t *testing.T) {
 
 	assert.Equal(t, 1, len(usage))
 }
+
+func TestTxsFromTxsTo(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+
+	to := testutil.NewAddrKeyPair(t)
+	from := bb.TokenDist[testutil.DynastySize]
+
+	bb = bb.
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpAddRecord).
+		Payload(&core.AddRecordPayload{
+			Hash: hash([]byte("Record Hash")),
+		}).SignPair(from).Execute().
+		Tx().Type(core.TxOpAddCertification).To(to.Addr).
+		Payload(&core.AddCertificationPayload{
+			IssueTime:       time.Now().Unix(),
+			ExpirationTime:  time.Now().Add(24 * time.Hour * 365).Unix(),
+			CertificateHash: hash([]byte("Certificate Root Hash")),
+		}).SignPair(from).Execute().
+		Tx().Type(core.TxOpRevokeCertification).To(to.Addr).
+		Payload(&core.RevokeCertificationPayload{
+			CertificateHash: hash([]byte("Certificate Root Hash")),
+		}).SignPair(from).Execute().
+		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
+		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(from).Execute().
+		Tx().Type(dpos.TxOpVote).To(from.Addr).SignPair(from).Execute().
+		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(from).Execute()
+
+	block := bb.Build()
+
+	accFrom, err := block.State().GetAccount(from.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, 9, len(accFrom.TxsFrom()))
+	assert.Equal(t, 1, len(accFrom.TxsTo()))
+
+	accTo, err := block.State().GetAccount(to.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, 3, len(accTo.TxsTo()))
+
+}

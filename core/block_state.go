@@ -283,13 +283,13 @@ func (s *states) SubBalance(address common.Address, amount *util.Uint128) error 
 func (s *states) AddTransaction(tx *Transaction) error {
 	var err error
 
-	err = s.accState.AddTransaction(tx.From().Bytes(), tx.Hash(), true)
-	if err != nil && err != ErrTransactionHashAlreadyAdded {
+	err = s.accState.AddTxsFrom(tx.From().Bytes(), tx.Hash())
+	if err != nil{
 		return err
 	}
 
-	err = s.accState.AddTransaction(tx.To().Bytes(), tx.Hash(), false)
-	if err != nil && err != ErrTransactionHashAlreadyAdded {
+	err = s.accState.AddTxsTo(tx.To().Bytes(), tx.Hash())
+	if err != nil{
 		return err
 	}
 
@@ -549,7 +549,15 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 			"tx":  tx,
-		}).Error("Failed to put a transaction to block state.")
+		}).Error("Failed to put a transaction to transaction state.")
+		return err
+	}
+
+	if err := bs.AddTransaction(tx); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"tx":  tx,
+		}).Error("Failed to put a transaction to account")
 		return err
 	}
 

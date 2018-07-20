@@ -152,7 +152,7 @@ func (as *AccountStateBatch) AddBalance(address []byte, amount *util.Uint128) er
 }
 
 // AddTransaction add transaction in account
-func (as *AccountStateBatch) AddTransaction(address []byte, txHash []byte, sendTx bool) error {
+func (as *AccountStateBatch) AddTxsFrom(address []byte, txHash []byte) error {
 	if !as.batching {
 		return ErrNotBatching
 	}
@@ -161,21 +161,20 @@ func (as *AccountStateBatch) AddTransaction(address []byte, txHash []byte, sendT
 		return err
 	}
 
-	if sendTx {
-		for _, tx := range acc.txsSend {
-			if byteutils.Equal(txHash, tx) {
-				return ErrTransactionHashAlreadyAdded
-			}
-		}
-		acc.txsSend = append(acc.txsSend, txHash)
-	} else {
-		for _, tx := range acc.txsGet {
-			if byteutils.Equal(txHash, tx) {
-				return ErrTransactionHashAlreadyAdded
-			}
-		}
-		acc.txsGet = append(acc.txsGet, txHash)
+	acc.txsFrom = append(acc.txsFrom, txHash)
+	return nil
+}
+
+func (as *AccountStateBatch) AddTxsTo(address []byte, txHash []byte) error {
+	if !as.batching {
+		return ErrNotBatching
 	}
+	acc, err := as.GetAccount(address)
+	if err != nil {
+		return err
+	}
+
+	acc.txsTo = append(acc.txsTo, txHash)
 	return nil
 }
 

@@ -44,9 +44,9 @@ type Account struct {
 	// certs issued as a certifier
 	certsIssued [][]byte
 	// transaction sent from account
-	txsSend [][]byte
+	txsFrom [][]byte
 	// transaction sent to account
-	txsGet [][]byte
+	txsTo [][]byte
 }
 
 //Address returns address
@@ -89,14 +89,14 @@ func (acc *Account) CertsIssued() [][]byte {
 	return acc.certsIssued
 }
 
-//TxsSend returns txsSend
-func (acc *Account) TxsSend() [][]byte {
-	return acc.txsSend
+//TxsFrom returns txsFrom
+func (acc *Account) TxsFrom() [][]byte {
+	return acc.txsFrom
 }
 
-//TxsGet returns txsGet
-func (acc *Account) TxsGet() [][]byte {
-	return acc.txsGet
+//TxsTo returns txsTo
+func (acc *Account) TxsTo() [][]byte {
+	return acc.txsTo
 }
 
 func (acc *Account) toBytes() ([]byte, error) {
@@ -117,8 +117,8 @@ func (acc *Account) toBytes() ([]byte, error) {
 		Records:       acc.records,
 		CertsReceived: acc.certsReceived,
 		CertsIssued:   acc.certsIssued,
-		TxsSend:       acc.txsSend,
-		TxsGet:        acc.txsGet,
+		TxsFrom:       acc.txsFrom,
+		TxsTo:         acc.txsTo,
 	}
 	bytes, err := proto.Marshal(pbAcc)
 	if err != nil {
@@ -145,8 +145,8 @@ func loadAccount(bytes []byte) (*Account, error) {
 		records:       pbAcc.Records,
 		certsReceived: pbAcc.CertsReceived,
 		certsIssued:   pbAcc.CertsIssued,
-		txsSend:       pbAcc.TxsSend,
-		txsGet:        pbAcc.TxsGet,
+		txsFrom:       pbAcc.TxsFrom,
+		txsTo:         pbAcc.TxsTo,
 	}
 	return acc, nil
 }
