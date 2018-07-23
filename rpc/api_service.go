@@ -472,7 +472,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
 	}
-	if err = s.tm.Push(tx); err != nil {
+	if err = s.tm.PushAndRelay(tx); err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 	return &rpcpb.SendTransactionResponse{

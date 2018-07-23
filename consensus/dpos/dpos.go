@@ -402,17 +402,6 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 			break
 		}
 
-		//txMap := d.bm.TxMap()
-		//newTxFunc, ok := txMap[transaction.Type()]
-		//if !ok {
-		//	return nil, core.ErrInvalidTransactionType
-		//}
-		//
-		//tx, err := newTxFunc(transaction)
-		//if err != nil {
-		//	return nil, err
-		//}
-
 		if err := block.BeginBatch(); err != nil {
 			return nil, err
 		}

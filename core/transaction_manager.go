@@ -143,12 +143,20 @@ func (mgr *TransactionManager) loop() {
 			if err != nil {
 				continue
 			}
-			if err := mgr.Push(tx); err != nil {
+			if err := mgr.PushAndRelay(tx); err != nil {
 				continue
 			}
-			mgr.Relay(tx)
 		}
 	}
+}
+
+//PushAndRelay push and relay transaction
+func (mgr *TransactionManager) PushAndRelay(tx *Transaction) error {
+	if err := mgr.Push(tx); err != nil {
+		return err
+	}
+	mgr.Relay(tx)
+	return nil
 }
 
 func txFromNetMsg(msg net.Message) (*Transaction, error) {

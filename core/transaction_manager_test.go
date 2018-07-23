@@ -23,7 +23,9 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransactionManager(t *testing.T) {
@@ -109,6 +111,44 @@ func TestTransactionManagerDupTxPush(t *testing.T) {
 	assert.EqualValues(t, dup, actual)
 	actual = mgrs[0].Pop()
 	assert.Nil(t, actual)
+}
+
+func TestTransactionManager_PushAndRelay(t *testing.T) {
+	dynastySize := testutil.DynastySize
+
+	tn := testutil.NewNetwork(t, dynastySize)
+	defer tn.Cleanup()
+	tn.SetLogTestHook()
+	seed := tn.NewSeedNode()
+	seed.Start()
+
+	for i := 1; i < dynastySize; i++ {
+		tn.NewNode().Start()
+	}
+	tn.WaitForEstablished()
+
+	bb := blockutil.New(t, dynastySize).Block(seed.Tail()).Child()
+	tx := bb.
+		Tx().Type(core.TxOpTransfer).To(seed.Config.TokenDist[1].Addr).Value(10).SignPair(seed.Config.TokenDist[0]).Build()
+
+	require.NoError(t, seed.Med.TransactionManager().PushAndRelay(tx))
+
+	startTime := time.Now()
+	relayCompleted := false
+	for time.Now().Sub(startTime) < 10*time.Second && relayCompleted == false {
+		relayCompleted = true
+		for _, n := range tn.Nodes {
+			txs := n.Med.TransactionManager().GetAll()
+			if len(txs) == 0 {
+				relayCompleted = false
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Logf("Waiting time to relay tx: %v", time.Now().Sub(startTime))
+	assert.True(t, relayCompleted)
 }
 
 func expectTxFiltered(t *testing.T, sender, receiver *core.TransactionManager, abnormal *core.Transaction) {
