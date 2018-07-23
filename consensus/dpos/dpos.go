@@ -395,7 +395,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 
-	for deadline.Sub(time.Now()) > -10*time.Hour {
+	for deadline.Sub(time.Now()) > 0 {
 
 		transaction := d.tm.Pop()
 		if transaction == nil {
