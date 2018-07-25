@@ -22,6 +22,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/medlet"
 	log "github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -51,10 +52,16 @@ func medi(ctx *cli.Context) error {
 	configFile := ctx.Args().Get(0)
 	conf, err := medlet.LoadConfig(configFile)
 	if err != nil {
+		log.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to load config.")
 		return err
 	}
 	m, err := medlet.New(conf)
 	if err != nil {
+		log.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create medlet.")
 		return err
 	}
 
@@ -70,8 +77,21 @@ func runMedi(ctx *cli.Context, m *medlet.Medlet) error {
 	// Run Node
 	log.Console().Info("Start medibloc...")
 
-	m.Setup()
-	m.Start()
+	err := m.Setup()
+	if err != nil {
+		log.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to setup medlet.")
+		return err
+	}
+
+	err = m.Start()
+	if err != nil {
+		log.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to start medlet.")
+		return err
+	}
 
 	<-sigch
 	m.Stop()
