@@ -127,6 +127,19 @@ func (acc *Account) toBytes() ([]byte, error) {
 	return bytes, nil
 }
 
+func newAccount(address []byte) *Account {
+	return &Account{
+		address:       address,
+		balance:       util.NewUint128(),
+		vesting:       util.NewUint128(),
+		voted:         []byte{},
+		nonce:         0,
+		records:       [][]byte{},
+		certsReceived: [][]byte{},
+		certsIssued:   [][]byte{},
+	}
+}
+
 func loadAccount(bytes []byte) (*Account, error) {
 	pbAcc := &corepb.Account{}
 	if err := proto.Unmarshal(bytes, pbAcc); err != nil {
