@@ -17,6 +17,7 @@ package core
 
 import (
 	"encoding/hex"
+	"sync"
 
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
@@ -30,8 +31,9 @@ import (
 type AccountStateBatch struct {
 	as            *AccountState
 	batching      bool
-	stageAccounts map[string]*Account
-	storage       storage.Storage
+	stageAccounts *sync.Map // map[string]*Account
+
+	storage storage.Storage
 }
 
 // NewAccountStateBatch create and return new AccountStateBatch instance
@@ -44,7 +46,7 @@ func NewAccountStateBatch(accountsRootHash []byte, s storage.Storage) (*AccountS
 	return &AccountStateBatch{
 		as:            &AccountState{accounts: accTrie, storage: s},
 		batching:      false,
-		stageAccounts: make(map[string]*Account),
+		stageAccounts: new(sync.Map),
 		storage:       s,
 	}, nil
 }
@@ -72,18 +74,19 @@ func (as *AccountStateBatch) Commit() error {
 		return ErrNotBatching
 	}
 
-	for _, acc := range as.stageAccounts {
-		bytes, err := acc.toBytes()
-		if err != nil {
-			return err
-		}
-		err = as.as.accounts.Put(acc.address, bytes)
+	as.stageAccounts.Range(func(key, value interface{}) bool {
+		acc, _ := value.(*Account)
+		accBytes, _ := acc.toBytes()
+
+		err := as.as.accounts.Put(acc.address, accBytes)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
 			}).Info("account put error")
+			return false
 		}
-	}
+		return true
+	})
 
 	as.resetBatch()
 	return nil
@@ -100,38 +103,32 @@ func (as *AccountStateBatch) RollBack() error {
 
 // GetAccount get account in stage(batching) or in original accountState
 func (as *AccountStateBatch) GetAccount(address []byte) (*Account, error) {
-	s := hex.EncodeToString(address)
-	if acc, ok := as.stageAccounts[s]; ok {
-		return acc, nil
+	addr := hex.EncodeToString(address)
+	staged, ok := as.stageAccounts.LoadOrStore(addr, newAccount(address))
+	acc, _ := staged.(*Account)
+	if ok {
+		return acc, nil // if there is staged account, return staged account
 	}
-	stageAndReturn := func(acc2 *Account) *Account {
-		as.stageAccounts[s] = acc2
-		return acc2
-	}
+
 	accBytes, err := as.as.accounts.Get(address)
 	if err != nil {
-		// create account not exist in
-		return stageAndReturn(&Account{
-			address:       address,
-			balance:       util.NewUint128(),
-			vesting:       util.NewUint128(),
-			voted:         []byte{},
-			nonce:         0,
-			records:       [][]byte{},
-			certsReceived: [][]byte{},
-			certsIssued:   [][]byte{},
-		}), nil
+		if err == ErrNotFound {
+			return acc, nil
+		}
+		return nil, err
 	}
-	acc, err := loadAccount(accBytes)
+	acc, err = loadAccount(accBytes)
 	if err != nil {
 		return nil, err
 	}
-	return stageAndReturn(acc), nil
+	as.stageAccounts.Store(addr, acc)
+
+	return acc, nil
 }
 
 func (as *AccountStateBatch) resetBatch() {
 	as.batching = false
-	as.stageAccounts = make(map[string]*Account)
+	as.stageAccounts = new(sync.Map)
 }
 
 // AddBalance add balance
