@@ -439,15 +439,16 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v'}`,
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v, timestamp:%v}`,
 		t.chainID,
-		t.hash,
+		byteutils.Bytes2Hex(t.hash),
 		t.from,
 		t.to,
 		t.value.String(),
 		t.Type(),
 		t.alg,
 		t.nonce,
+		t.timestamp,
 	)
 }
 
