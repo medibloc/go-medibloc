@@ -115,10 +115,17 @@ func (as *AccountStateBatch) GetAccount(address []byte) (*Account, error) {
 		if err == ErrNotFound {
 			return acc, nil
 		}
+		logging.Console().WithFields(logrus.Fields{
+			"err":  err,
+			"addr": addr,
+		}).Error("Failed to get an account.")
 		return nil, err
 	}
 	acc, err = loadAccount(accBytes)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to load an account.")
 		return nil, err
 	}
 	as.stageAccounts.Store(addr, acc)
