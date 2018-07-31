@@ -81,7 +81,8 @@ func (as *AccountStateBatch) Commit() error {
 			err = ErrTypecastFailed
 			return false
 		}
-		accBytes, err := acc.toBytes()
+		var accBytes []byte
+		accBytes, err = acc.toBytes()
 		if err != nil {
 			return false
 		}
