@@ -74,11 +74,19 @@ func (as *AccountStateBatch) Commit() error {
 		return ErrNotBatching
 	}
 
+	var err error
 	as.stageAccounts.Range(func(key, value interface{}) bool {
-		acc, _ := value.(*Account)
-		accBytes, _ := acc.toBytes()
+		acc, ok := value.(*Account)
+		if !ok {
+			err = ErrTypecastFailed
+			return false
+		}
+		accBytes, err := acc.toBytes()
+		if err != nil {
+			return false
+		}
 
-		err := as.as.accounts.Put(acc.address, accBytes)
+		err = as.as.accounts.Put(acc.address, accBytes)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
@@ -87,6 +95,13 @@ func (as *AccountStateBatch) Commit() error {
 		}
 		return true
 	})
+
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to commit account state batch")
+		return err
+	}
 
 	as.resetBatch()
 	return nil
@@ -104,24 +119,25 @@ func (as *AccountStateBatch) RollBack() error {
 // GetAccount get account in stage(batching) or in original accountState
 func (as *AccountStateBatch) GetAccount(address []byte) (*Account, error) {
 	addr := hex.EncodeToString(address)
-	staged, ok := as.stageAccounts.LoadOrStore(addr, newAccount(address))
-	acc, _ := staged.(*Account)
-	if ok {
-		return acc, nil // if there is staged account, return staged account
+	staged, ok := as.stageAccounts.Load(addr)
+	if ok { // if there is staged account, return staged account
+		acc, ok := staged.(*Account)
+		if !ok {
+			return nil, ErrTypecastFailed
+		}
+		return acc, nil
 	}
 
 	accBytes, err := as.as.accounts.Get(address)
+	if err == ErrNotFound { // if there is not account in account trie, return new account
+		acc := newAccount(address)
+		as.stageAccounts.Store(addr, acc)
+		return acc, nil
+	}
 	if err != nil {
-		if err == ErrNotFound {
-			return acc, nil
-		}
-		logging.Console().WithFields(logrus.Fields{
-			"err":  err,
-			"addr": addr,
-		}).Error("Failed to get an account.")
 		return nil, err
 	}
-	acc, err = loadAccount(accBytes)
+	acc, err := loadAccount(accBytes)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -129,7 +145,6 @@ func (as *AccountStateBatch) GetAccount(address []byte) (*Account, error) {
 		return nil, err
 	}
 	as.stageAccounts.Store(addr, acc)
-
 	return acc, nil
 }
 

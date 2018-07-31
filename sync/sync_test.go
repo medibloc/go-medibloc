@@ -37,6 +37,7 @@ func TestService_Start(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, 3)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -99,6 +100,7 @@ func TestForkResistance(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, 3)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -220,6 +222,7 @@ func TestForAutoActivation(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, 3)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -350,6 +353,8 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, 3)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -459,6 +464,8 @@ func TestForUnmarshalFailedMsg(t *testing.T) {
 	//create First Tester(Seed Node)
 	testNetwork := testutil.NewNetwork(t, 3)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 

@@ -39,12 +39,12 @@ const (
 // Error types of dpos package.
 var (
 	ErrAlreadyCandidate       = errors.New("account is already a candidate")
-	ErrNotCandidate           = errors.New("account is not a candidate")
 	ErrBlockMintedInNextSlot  = errors.New("cannot mint block now, there is a block minted in current slot")
 	ErrInvalidBlockForgeTime  = errors.New("invalid time to forge block")
 	ErrInvalidBlockInterval   = errors.New("invalid block interval")
 	ErrInvalidBlockProposer   = errors.New("invalid block proposer")
 	ErrInvalidDynastySize     = errors.New("invalid dynasty size")
+	ErrNotCandidate           = errors.New("account is not a candidate")
 	ErrVoteDuplicate          = errors.New("cannot vote already voted account")
 	ErrWaitingBlockInLastSlot = errors.New("cannot mint block now, waiting for last block")
 )

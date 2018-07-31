@@ -128,6 +128,7 @@ var (
 	ErrPayerSignatureNotExist           = errors.New("payer signature does not exist in the tx")
 	ErrWrongEventTopic                  = errors.New("required event topic doesn't exist in topic list")
 	ErrTransactionHashAlreadyAdded      = errors.New("transaction already added")
+	ErrTypecastFailed                   = errors.New("failed to typecast")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
