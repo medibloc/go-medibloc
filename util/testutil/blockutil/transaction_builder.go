@@ -219,6 +219,14 @@ func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 
+//RandomTx generate random Tx
+func (tb *TxBuilder) RandomTx() *TxBuilder {
+	n := tb.copy()
+	from := testutil.NewAddrKeyPair(n.t)
+	to := testutil.NewAddrKeyPair(n.t)
+	return n.Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
+}
+
 //Build build transaction
 func (tb *TxBuilder) Build() *core.Transaction {
 	n := tb.copy()

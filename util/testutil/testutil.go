@@ -35,7 +35,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -52,8 +51,6 @@ type BlockID int
 var (
 	// GenesisID genesis ID
 	GenesisID BlockID = -1
-
-	fromAddress = "02279dcbc360174b4348685e75287a60abc5290497d2e3330b6a1791c4f35bcd20"
 )
 
 // AddrKeyPair contains address and private key.
@@ -218,26 +215,6 @@ func getBlock(t *testing.T, parent *core.Block, coinbaseHex string) *core.Block 
 	return block
 }
 
-// SignBlockUsingDynasties signs block with dynasties.
-func SignBlockUsingDynasties(t *testing.T, block *core.Block, dynasties AddrKeyPairs) {
-	d := dpos.New(len(dynasties))
-	proposer, err := d.FindMintProposer(block.Timestamp(), block)
-	require.NoError(t, err)
-
-	privKey := dynasties.FindPrivKey(proposer)
-	require.NotNil(t, privKey)
-
-	SignBlock(t, block, privKey)
-}
-
-// SignBlock signs block.
-func SignBlock(t *testing.T, block *core.Block, key signature.PrivateKey) {
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
-	require.NoError(t, err)
-	sig.InitSign(key)
-	block.SignThis(sig)
-}
-
 // NewTestBlock return new block for test
 func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	block := getBlock(t, parent, "")
@@ -245,60 +222,6 @@ func NewTestBlock(t *testing.T, parent *core.Block) *core.Block {
 	err := block.Seal()
 	require.Nil(t, err)
 	return block
-}
-
-// NewTestBlockWithTimestamp return new block for test with current timestamp
-func NewTestBlockWithTimestamp(t *testing.T, parent *core.Block, ts time.Time) *core.Block {
-	block := getBlock(t, parent, "")
-	nextMintTs := nextMintSlot(ts).Unix()
-	block.SetTimestamp(nextMintTs)
-	//require.NoError(t, block.State().TransitionDynasty(block.Timestamp()))
-	require.NoError(t, block.Seal())
-
-	return block
-}
-
-// NewTestBlockWithTxs return new block containing transactions
-func NewTestBlockWithTxs(t *testing.T, parent *core.Block, from *AddrKeyPair) *core.Block {
-	block := getBlock(t, parent, fromAddress)
-	txs := newTestTransactions(t, block, from)
-	block.SetTransactions(txs)
-	return block
-}
-
-func newTestTransactions(t *testing.T, block *core.Block, from *AddrKeyPair) core.Transactions {
-	ks := keystore.NewKeyStore()
-	txDatas := []struct {
-		from    common.Address
-		to      common.Address
-		amount  *util.Uint128
-		privKey signature.PrivateKey
-	}{
-		{
-			from.Addr,
-			MockAddress(t, ks),
-			util.NewUint128FromUint(10),
-			from.PrivKey,
-		},
-	}
-
-	var err error
-	txs := make(core.Transactions, len(txDatas))
-	for i, txData := range txDatas {
-		acc, err := block.State().GetAccount(txData.from)
-		require.NoError(t, err)
-		nonce := acc.Nonce()
-		txs[i], err = core.NewTransaction(1, txData.from, txData.to, txData.amount, nonce+1, core.TxOpTransfer, []byte("datadata"))
-		require.NoError(t, err)
-		sig, err := crypto.NewSignature(algorithm.SECP256K1)
-		require.NoError(t, err)
-		assert.NoError(t, err)
-		sig.InitSign(txData.privKey)
-		assert.NoError(t, txs[i].SignThis(sig))
-	}
-	require.NoError(t, err)
-
-	return txs
 }
 
 // NewTransaction return new transaction
@@ -339,14 +262,6 @@ func newNonce(t *testing.T) uint64 {
 	return n.Uint64()
 }
 
-// NewRandomTransaction return new random transaction
-func NewRandomTransaction(t *testing.T) *core.Transaction {
-	from := NewPrivateKey(t)
-	to := NewPrivateKey(t)
-	tx := NewTransaction(t, from, to, newNonce(t))
-	return tx
-}
-
 // NewRandomSignedTransaction return new random signed transaction
 func NewRandomSignedTransaction(t *testing.T) *core.Transaction {
 	from := NewPrivateKey(t)
@@ -378,45 +293,6 @@ func GetStorage(t *testing.T) storage.Storage {
 	s, err := storage.NewMemoryStorage()
 	assert.Nil(t, err)
 	return s
-}
-
-// MockAddress return random generated address
-func MockAddress(t *testing.T, ks *keystore.KeyStore) common.Address {
-	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
-	assert.NoError(t, err)
-	acc, err := ks.SetKey(privKey)
-	assert.NoError(t, err)
-	return acc
-}
-
-// NewTestTransactionManagers return new test transaction managers
-func NewTestTransactionManagers(t *testing.T, n int) (mgrs []*core.TransactionManager, closeFn func()) {
-	// New test network
-	tm := net.NewMedServiceTestManager(n, 1)
-	svc, err := tm.MakeNewTestMedService()
-	require.Nil(t, err)
-	require.Len(t, svc, n)
-
-	tm.StartMedServices()
-	tm.WaitStreamReady()
-	tm.WaitRouteTableSync()
-
-	cfg := medlet.DefaultConfig()
-	cfg.Chain.BlockCacheSize = 1
-	for i := 0; i < n; i++ {
-		mgr := core.NewTransactionManager(cfg)
-		mgr.Setup(svc[i])
-		mgr.InjectEmitter(core.NewEventEmitter(128))
-		mgr.Start()
-		mgrs = append(mgrs, mgr)
-	}
-
-	return mgrs, func() {
-		for _, mgr := range mgrs {
-			mgr.Stop()
-		}
-		tm.StopMedServices()
-	}
 }
 
 // MockMedlet sets up components for tests.
@@ -530,10 +406,4 @@ func FindRandomListenPorts(n int) (ports []string) {
 	}
 
 	return ports
-}
-
-func nextMintSlot(ts time.Time) time.Time {
-	now := time.Duration(ts.Unix()) * time.Second
-	next := ((now + dpos.BlockInterval - time.Second) / dpos.BlockInterval) * dpos.BlockInterval
-	return time.Unix(int64(next/time.Second), 0)
 }

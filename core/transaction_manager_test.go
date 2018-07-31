@@ -20,135 +20,115 @@ import (
 
 	"time"
 
-	"bytes"
-
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransactionManager(t *testing.T) {
-	mgrs, closeFn := testutil.NewTestTransactionManagers(t, 2)
-	defer closeFn()
+func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	tx := testutil.NewRandomSignedTransaction(t)
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	node := testNetwork.NewNode()
+	node.Start()
+	testNetwork.WaitForEstablished()
 
-	mgrs[0].Broadcast(tx)
+	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).Tx()
 
-	found := false
-	for i := 0; i < 100; i++ {
-		actual := mgrs[1].Pop()
-		if actual != nil && bytes.Equal(tx.Hash(), actual.Hash()) {
-			found = true
-			break
-		}
+	tx := tb.RandomTx().Build()
+	seed.Med.TransactionManager().Broadcast(tx)
+
+	var actual *core.Transaction
+	startTime := time.Now()
+	for actual == nil {
+		require.True(t, time.Now().Sub(startTime) < time.Duration(5*time.Second))
+		actual = node.Med.TransactionManager().Pop()
 		time.Sleep(10 * time.Millisecond)
 	}
-	assert.True(t, found)
+	require.EqualValues(t, tx.Hash(), actual.Hash())
 
-	tx = testutil.NewRandomSignedTransaction(t)
-	mgrs[1].Relay(tx)
-	found = false
-	for i := 0; i < 100; i++ {
-		actual := mgrs[0].Pop()
-		if actual != nil && bytes.Equal(tx.Hash(), actual.Hash()) {
-			found = true
-			break
-		}
+	tx = tb.RandomTx().Build()
+	node.Med.TransactionManager().Relay(tx)
+
+	actual = nil
+	startTime = time.Now()
+	for actual == nil {
+		require.True(t, time.Now().Sub(startTime) < time.Duration(5*time.Second))
+		actual = seed.Med.TransactionManager().Pop()
 		time.Sleep(10 * time.Millisecond)
 	}
-	assert.True(t, found)
+	require.EqualValues(t, tx.Hash(), actual.Hash())
 }
 
-func TestTransactionManagerAbnormalTx(t *testing.T) {
-	mgrs, closeFn := testutil.NewTestTransactionManagers(t, 2)
-	defer closeFn()
+func TestTransactionManager_Push(t *testing.T) {
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
-	sender, receiver := mgrs[0], mgrs[1]
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	tm := seed.Med.TransactionManager()
+
+	randomTb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).Tx().RandomTx()
+
+	// Wrong chainID
+	wrongChainIDTx := randomTb.ChainID(testutil.ChainID + 1).Build()
+	assert.Equal(t, core.ErrInvalidChainID, tm.Push(wrongChainIDTx))
+
+	// Wrong hash
+	wrongHashTx := randomTb.Hash([]byte{}).Build()
+	assert.Equal(t, core.ErrInvalidTransactionHash, tm.Push(wrongHashTx))
 
 	// No signature
-	noSign := testutil.NewRandomTransaction(t)
-	expectTxFiltered(t, sender, receiver, noSign)
+	noSignTx := randomTb.Sign([]byte{}).Build()
+	assert.Equal(t, secp256k1.ErrInvalidSignatureLen, tm.Push(noSignTx))
 
 	// Invalid signature
-	from, to := testutil.NewPrivateKey(t), testutil.NewPrivateKey(t)
-	invalidSign := testutil.NewTransaction(t, from, to, 10)
-	testutil.SignTx(t, invalidSign, to)
-	expectTxFiltered(t, sender, receiver, invalidSign)
-}
+	invalidSigner := testutil.NewAddrKeyPair(t)
+	invalidSignTx := randomTb.SignKey(invalidSigner.PrivKey).Build()
+	assert.Equal(t, core.ErrInvalidTransactionSigner, tm.Push(invalidSignTx))
 
-func TestTransactionManagerDupTxFromNet(t *testing.T) {
-	mgrs, closeFn := testutil.NewTestTransactionManagers(t, 2)
-	defer closeFn()
+	// No transactions on pool
+	assert.Nil(t, tm.Pop())
 
-	sender, receiver := mgrs[0], mgrs[1]
+	// Push duplicate transaction push
+	tx := randomTb.Build()
+	assert.NoError(t, tm.Push(tx))
+	assert.Equal(t, core.ErrDuplicatedTransaction, tm.Push(tx))
 
-	dup := testutil.NewRandomSignedTransaction(t)
-	sender.Broadcast(dup)
-	sender.Broadcast(dup)
-	time.Sleep(100 * time.Millisecond)
-
-	normal := testutil.NewRandomSignedTransaction(t)
-	sender.Broadcast(normal)
-
-	var count int
-	for {
-		recv := receiver.Pop()
-		if recv != nil && byteutils.Equal(recv.Hash(), normal.Hash()) {
-			break
-		}
-		if recv != nil {
-			count++
-		}
-		time.Sleep(time.Millisecond)
-	}
-	assert.Equal(t, 1, count)
-}
-
-func TestTransactionManagerDupTxPush(t *testing.T) {
-	mgrs, closeFn := testutil.NewTestTransactionManagers(t, 2)
-	defer closeFn()
-
-	dup := testutil.NewRandomSignedTransaction(t)
-	err := mgrs[0].Push(dup)
-	assert.NoError(t, err)
-	err = mgrs[0].Push(dup)
-	assert.EqualValues(t, core.ErrDuplicatedTransaction, err)
-
-	actual := mgrs[0].Pop()
-	assert.EqualValues(t, dup, actual)
-	actual = mgrs[0].Pop()
-	assert.Nil(t, actual)
 }
 
 func TestTransactionManager_PushAndRelay(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	numberOfNodes := 5
 
-	tn := testutil.NewNetwork(t, dynastySize)
-	defer tn.Cleanup()
-	tn.SetLogTestHook()
-	seed := tn.NewSeedNode()
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
+	seed := testNetwork.NewSeedNode()
 	seed.Start()
+	seedTm := seed.Med.TransactionManager()
 
-	for i := 1; i < dynastySize; i++ {
-		tn.NewNode().Start()
+	for i := 1; i < numberOfNodes; i++ {
+		testNetwork.NewNode().Start()
 	}
-	tn.WaitForEstablished()
+	testNetwork.WaitForEstablished()
 
-	bb := blockutil.New(t, dynastySize).Block(seed.Tail()).Child()
-	tx := bb.
-		Tx().Type(core.TxOpTransfer).To(seed.Config.TokenDist[1].Addr).Value(10).SignPair(seed.Config.TokenDist[0]).Build()
+	randomTx := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).Tx().RandomTx().Build()
 
-	require.NoError(t, seed.Med.TransactionManager().PushAndRelay(tx))
+	require.NoError(t, seedTm.PushAndRelay(randomTx))
 
 	startTime := time.Now()
 	relayCompleted := false
 	for time.Now().Sub(startTime) < 10*time.Second && relayCompleted == false {
 		relayCompleted = true
-		for _, n := range tn.Nodes {
+		for _, n := range testNetwork.Nodes {
 			txs := n.Med.TransactionManager().GetAll()
 			if len(txs) == 0 {
 				relayCompleted = false
@@ -160,20 +140,4 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 
 	t.Logf("Waiting time to relay tx: %v", time.Now().Sub(startTime))
 	assert.True(t, relayCompleted)
-}
-
-func expectTxFiltered(t *testing.T, sender, receiver *core.TransactionManager, abnormal *core.Transaction) {
-	sender.Broadcast(abnormal)
-
-	time.Sleep(100 * time.Millisecond)
-
-	normal := testutil.NewRandomSignedTransaction(t)
-	sender.Broadcast(normal)
-
-	var recv *core.Transaction
-	for recv == nil {
-		recv = receiver.Pop()
-		time.Sleep(time.Millisecond)
-	}
-	assert.EqualValues(t, normal.Hash(), recv.Hash())
 }
