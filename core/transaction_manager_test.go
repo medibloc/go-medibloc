@@ -20,6 +20,8 @@ import (
 
 	"time"
 
+	"bytes"
+
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -35,21 +37,30 @@ func TestTransactionManager(t *testing.T) {
 	tx := testutil.NewRandomSignedTransaction(t)
 
 	mgrs[0].Broadcast(tx)
-	var actual *core.Transaction
-	for actual == nil {
-		actual = mgrs[1].Pop()
-		time.Sleep(time.Millisecond)
+
+	found := false
+	for i := 0; i < 100; i++ {
+		actual := mgrs[1].Pop()
+		if actual != nil && bytes.Equal(tx.Hash(), actual.Hash()) {
+			found = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	assert.EqualValues(t, tx.Hash(), actual.Hash())
+	assert.True(t, found)
 
 	tx = testutil.NewRandomSignedTransaction(t)
 	mgrs[1].Relay(tx)
-	actual = nil
-	for actual == nil {
-		actual = mgrs[0].Pop()
-		time.Sleep(time.Millisecond)
+	found = false
+	for i := 0; i < 100; i++ {
+		actual := mgrs[0].Pop()
+		if actual != nil && bytes.Equal(tx.Hash(), actual.Hash()) {
+			found = true
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	assert.EqualValues(t, tx.Hash(), actual.Hash())
+	assert.True(t, found)
 }
 
 func TestTransactionManagerAbnormalTx(t *testing.T) {
