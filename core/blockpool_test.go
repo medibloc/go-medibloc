@@ -20,66 +20,34 @@ import (
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestBlockPoolPush(t *testing.T) {
-	tests := []struct {
-		name        string
-		idxToParent []testutil.BlockID
-	}{
-		{"case 1", []testutil.BlockID{testutil.GenesisID, 0, 0, 1, 1, 2, 2}},
-		{"case 2", []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}},
-		{"case 3", []testutil.BlockID{testutil.GenesisID, 0, 0, 0, 0, 0, 0}},
-	}
-	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			bp, err := core.NewBlockPool(128)
-			assert.Nil(t, err)
-
-			blocks := testutil.NewBlockTestSet(t, genesis, test.idxToParent)
-			for _, block := range blocks {
-				err = bp.Push(block)
-				assert.Nil(t, err)
-			}
-
-			for i, parentID := range test.idxToParent {
-				id := testutil.BlockID(i)
-				block := blocks[id]
-
-				// Check finding parent block
-				expected := blocks[parentID]
-				actual := bp.FindParent(block)
-				assert.Equal(t, expected, actual)
-
-				// Check finding children blocks
-				childIDs := findChildIDs(test.idxToParent, id)
-				childBlocks := make([]core.HashableBlock, 0)
-				for _, cid := range childIDs {
-					childBlocks = append(childBlocks, blocks[cid])
-				}
-				assert.True(t, equalBlocks(childBlocks, bp.FindChildren(block)))
-
-				// Check ancestor block
-				assert.Equal(t, genesis, bp.FindUnlinkedAncestor(block))
-			}
-		})
-	}
+func TestNewBlockPool(t *testing.T) {
+	_, err := core.NewBlockPool(-1)
+	require.NotNil(t, err)
 }
 
 func TestBlockPoolEvict(t *testing.T) {
-	cacheSize := 3
+	var (
+		cacheSize = 3
+		nBlocks   = 5
+		blocks    []*core.Block
+	)
 	bp, err := core.NewBlockPool(cacheSize)
 	require.Nil(t, err)
 
-	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
-	idxToParent := []testutil.BlockID{testutil.GenesisID, 0, 1, 2, 3, 4, 5}
-	blockMap := testutil.NewBlockTestSet(t, genesis, idxToParent)
+	tail := bb.Build()
+	for i := 0; i < nBlocks; i++ {
+		mint := bb.Block(tail).Child().SignMiner().Build()
+		blocks = append(blocks, mint)
+		tail = mint
+	}
 
-	blocks := mapToSlice(blockMap)
 	for i, block := range blocks {
 		err = bp.Push(block)
 		assert.Nil(t, err)
@@ -90,18 +58,12 @@ func TestBlockPoolEvict(t *testing.T) {
 	}
 }
 
-func TestWrongCacheSize(t *testing.T) {
-	_, err := core.NewBlockPool(-1)
-	require.NotNil(t, err)
-}
-
 func TestDuplicatedBlock(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
+	block := blockutil.New(t, testutil.DynastySize).Genesis().Child().SignMiner().Build()
 
-	block := testutil.NewTestBlock(t, genesis)
 	err = bp.Push(block)
 	assert.Nil(t, err)
 
@@ -121,14 +83,15 @@ func TestRemove(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	genesis := bb.Build()
 
 	// Push genesis
 	err = bp.Push(genesis)
 	assert.Nil(t, err)
 
 	// Push genesis's child
-	block := testutil.NewTestBlock(t, genesis)
+	block := bb.Child().SignMiner().Build()
 	err = bp.Push(block)
 	assert.Nil(t, err)
 
@@ -154,7 +117,7 @@ func TestNotFound(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
+	genesis := blockutil.New(t, testutil.DynastySize).Genesis().Build()
 
 	blocks := bp.FindChildren(genesis)
 	assert.Len(t, blocks, 0)
@@ -170,12 +133,15 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	genesis, _, _ := testutil.NewTestGenesisBlock(t, 21)
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	genesis := bb.Build()
 
-	grandParent := testutil.NewTestBlock(t, genesis)
-	parent := testutil.NewTestBlock(t, grandParent)
-	child1 := testutil.NewTestBlock(t, parent)
-	child2 := testutil.NewTestBlock(t, parent)
+	bb = bb.Child().SignMiner()
+	grandParent := bb.Build()
+	bb = bb.Child().SignMiner()
+	parent := bb.Build()
+	child1 := bb.Child().Tx().RandomTx().Execute().SignMiner().Build()
+	child2 := bb.Child().Tx().RandomTx().Execute().SignMiner().Build()
 
 	err = bp.Push(genesis)
 	assert.Nil(t, err)
@@ -199,15 +165,6 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	assert.True(t, equalBlocks([]core.HashableBlock{child1, child2}, blocks))
 }
 
-func findChildIDs(idxToParent []testutil.BlockID, id testutil.BlockID) (childIDs []testutil.BlockID) {
-	for i, parentID := range idxToParent {
-		if parentID == id {
-			childIDs = append(childIDs, testutil.BlockID(i))
-		}
-	}
-	return childIDs
-}
-
 func equalBlocks(expected, actual []core.HashableBlock) bool {
 	if len(expected) != len(actual) {
 		return false
@@ -224,11 +181,4 @@ func equalBlocks(expected, actual []core.HashableBlock) bool {
 		}
 	}
 	return true
-}
-
-func mapToSlice(blocks map[testutil.BlockID]*core.Block) (slice []*core.Block) {
-	for _, block := range blocks {
-		slice = append(slice, block)
-	}
-	return slice
 }

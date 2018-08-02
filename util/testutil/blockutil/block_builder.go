@@ -26,6 +26,7 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -116,6 +117,20 @@ func (bb *BlockBuilder) Hash(hash []byte) *BlockBuilder {
 func (bb *BlockBuilder) ParentHash(hash []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetParentHash(hash)
+	return n
+}
+
+// Reward sets reward.
+func (bb *BlockBuilder) Reward(reward uint64) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetReward(util.NewUint128FromUint(reward))
+	return n
+}
+
+// Supply sets supply.
+func (bb *BlockBuilder) Supply(supply uint64) *BlockBuilder {
+	n := bb.copy()
+	n.B.SetSupply(util.NewUint128FromUint(supply))
 	return n
 }
 
@@ -244,7 +259,7 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	n := bb.copy()
 
-	return n.Coinbase(pair.Addr).Seal().CalcHash().SignKey(pair.PrivKey)
+	return n.Coinbase(pair.Addr).PayReward().Seal().CalcHash().SignKey(pair.PrivKey)
 }
 
 //SignMiner find miner and sign with key pair
@@ -298,6 +313,17 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 	err = n.B.AcceptTransaction(tx)
 	require.Equal(n.t, expected, err)
 	require.NoError(bb.t, n.B.Commit())
+
+	return n
+}
+
+//PayReward pay reward and update reward and supply
+func (bb *BlockBuilder) PayReward() *BlockBuilder {
+	n := bb.copy()
+
+	require.NoError(n.t, n.B.BeginBatch())
+	require.NoError(n.t, n.B.PayReward(n.B.Coinbase(), n.B.State().Supply()))
+	require.NoError(n.t, n.B.Commit())
 
 	return n
 }

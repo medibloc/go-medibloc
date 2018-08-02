@@ -464,6 +464,14 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 			return nil, err
 		}
 	}
+
+	block.BeginBatch()
+	block.SetCoinbase(d.coinbase)
+	if err := block.PayReward(d.coinbase, tail.Supply()); err != nil {
+		return nil, err
+	}
+	block.Commit()
+
 	return block, nil
 }
 

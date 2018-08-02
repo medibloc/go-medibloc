@@ -61,7 +61,7 @@ func TestAddRecord(t *testing.T) {
 func TestVestAndWithdraw(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	from := bb.TokenDist[0]
+	from := bb.TokenDist[testutil.DynastySize]
 	vestingAmount := uint64(1000)
 	withdrawAmount := uint64(301)
 
@@ -121,7 +121,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	bb = bb.
 		Tx().Nonce(1).Type(core.TxOpAddCertification).From(issuer.Addr).To(certified.Addr).Payload(addPayload).CalcHash().SignKey(issuer.PrivKey).Execute()
 
-	block := bb.Seal().Build()
+	block := bb.PayReward().Seal().Build()
 
 	issuerAcc, err := block.State().GetAccount(issuer.Addr)
 	require.NoError(t, err)

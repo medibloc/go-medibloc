@@ -379,7 +379,7 @@ func (bc *BlockChain) loadBetweenBlocks(from *Block, to *Block) ([]*Block, error
 	revertBlock := to
 	var err error
 
-	for !byteutils.Equal(from.Hash(), revertBlock.Hash()){
+	for !byteutils.Equal(from.Hash(), revertBlock.Hash()) {
 		blocks = append(blocks, revertBlock)
 		revertBlock, err = bc.parentBlock(revertBlock)
 		if err != nil {

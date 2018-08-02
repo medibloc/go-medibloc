@@ -17,67 +17,22 @@ package core_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTransactionPool(t *testing.T) {
-	keys := testutil.NewKeySlice(t, 4)
-	tx0 := testutil.NewSignedTransaction(t, keys[0], keys[2], 0)
-	time.Sleep(1 * time.Second)
-	tx1 := testutil.NewSignedTransaction(t, keys[0], keys[2], 1)
-	time.Sleep(1 * time.Second)
-	tx2 := testutil.NewSignedTransaction(t, keys[2], keys[3], 2)
-	time.Sleep(1 * time.Second)
-	tx3 := testutil.NewSignedTransaction(t, keys[2], keys[1], 3)
-	time.Sleep(1 * time.Second)
-	tx4 := testutil.NewSignedTransaction(t, keys[0], keys[3], 0)
-
-	txs := []*core.Transaction{
-		0: tx0,
-		1: tx1,
-		2: tx2,
-		3: tx3,
-		4: tx4,
-	}
-
-	pool := core.NewTransactionPool(128)
-	pool.SetEventEmitter(core.NewEventEmitter(128))
-	for _, tx := range txs {
-		err := pool.Push(tx)
-		assert.NoError(t, err)
-	}
-
-	// changed to timestamp order (from nonce order)
-	assert.Equal(t, txs[0], pool.Pop())
-	assert.Equal(t, txs[2], pool.Pop())
-	assert.Equal(t, txs[3], pool.Pop())
-	assert.Equal(t, txs[4], pool.Pop())
-	assert.Equal(t, txs[1], pool.Pop())
-	assert.Nil(t, pool.Pop())
-}
-
-func TestDuplicatedTx(t *testing.T) {
-	tx := testutil.NewRandomSignedTransaction(t)
-
-	pool := core.NewTransactionPool(128)
-	pool.SetEventEmitter(core.NewEventEmitter(128))
-
-	err := pool.Push(tx)
-	assert.NoError(t, err)
-	err = pool.Push(tx)
-	assert.Equal(t, core.ErrDuplicatedTransaction, err)
-}
-
 func TestTransactionGetDel(t *testing.T) {
-	tx1 := testutil.NewRandomSignedTransaction(t)
-	tx2 := testutil.NewRandomSignedTransaction(t)
+	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+
+	tx1 := tb.RandomTx().Build()
+	tx2 := tb.RandomTx().Build()
 
 	pool := core.NewTransactionPool(128)
 	pool.SetEventEmitter(core.NewEventEmitter(128))
+
 	err := pool.Push(tx1)
 	assert.NoError(t, err)
 	err = pool.Push(tx2)
@@ -104,27 +59,33 @@ func TestTransactionGetDel(t *testing.T) {
 }
 
 func TestTransactionPoolEvict(t *testing.T) {
-	keys := testutil.NewKeySlice(t, 4)
-	txs := []*core.Transaction{
-		0: testutil.NewSignedTransaction(t, keys[0], keys[1], 0),
-		1: testutil.NewSignedTransaction(t, keys[1], keys[2], 1),
-		2: testutil.NewSignedTransaction(t, keys[2], keys[3], 2),
-		3: testutil.NewSignedTransaction(t, keys[3], keys[0], 3),
-		4: testutil.NewSignedTransaction(t, keys[2], keys[1], 0),
+	var (
+		nTransaction = 5
+		poolSize     = 3
+	)
+
+	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	var txs []*core.Transaction
+	for i := 0; i < nTransaction; i++ {
+		tx := tb.RandomTx().Build()
+		txs = append(txs, tx)
 	}
 
-	pool := core.NewTransactionPool(3)
+	pool := core.NewTransactionPool(poolSize)
 	pool.SetEventEmitter(core.NewEventEmitter(128))
 	for _, tx := range txs {
 		err := pool.Push(tx)
 		assert.NoError(t, err)
 	}
 
-	assert.Nil(t, pool.Get(txs[2].Hash()))
+	for i := 3; i < nTransaction; i++ {
+		assert.Nil(t, pool.Get(txs[i].Hash()))
+	}
 }
 
 func TestEmptyPool(t *testing.T) {
-	tx := testutil.NewRandomSignedTransaction(t)
+	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	tx := tb.RandomTx().Build()
 
 	pool := core.NewTransactionPool(128)
 	assert.Nil(t, pool.Pop())

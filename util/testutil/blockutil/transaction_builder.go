@@ -222,7 +222,9 @@ func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 //RandomTx generate random Tx
 func (tb *TxBuilder) RandomTx() *TxBuilder {
 	n := tb.copy()
-	from := testutil.NewAddrKeyPair(n.t)
+	require.NotEqual(n.t, 0, len(n.bb.KeyPairs), "No key pair added on block builder")
+
+	from := n.bb.KeyPairs[0]
 	to := testutil.NewAddrKeyPair(n.t)
 	return n.Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
 }

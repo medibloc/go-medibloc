@@ -29,6 +29,9 @@ import (
 )
 
 type states struct {
+	reward *util.Uint128
+	supply *util.Uint128
+
 	accState           *AccountStateBatch
 	txsState           *trie.Batch
 	usageState         *trie.Batch
@@ -39,6 +42,14 @@ type states struct {
 	reservationQueue *ReservationQueue
 
 	storage storage.Storage
+}
+
+func (s *states) Supply() *util.Uint128 {
+	return s.supply.DeepCopy()
+}
+
+func (s *states) Reward() *util.Uint128 {
+	return s.reward.DeepCopy()
 }
 
 func (s *states) AccState() *AccountStateBatch {
@@ -83,6 +94,8 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 	reservationQueue := NewEmptyReservationQueue(stor)
 
 	return &states{
+		reward:             util.NewUint128(),
+		supply:             util.NewUint128(),
 		accState:           accState,
 		txsState:           txsState,
 		usageState:         usageState,
@@ -131,6 +144,8 @@ func (s *states) Clone() (*states, error) {
 	}
 
 	return &states{
+		reward:             s.reward.DeepCopy(),
+		supply:             s.supply.DeepCopy(),
 		accState:           accState,
 		txsState:           txsState,
 		usageState:         usageState,

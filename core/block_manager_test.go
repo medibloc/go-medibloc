@@ -81,43 +81,54 @@ func TestBlockManager_Reverse(t *testing.T) {
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
-//func TestBlockManager_Tree(t *testing.T) {
-//	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
-//	defer testNetwork.Cleanup()
-//	seed := testNetwork.NewSeedNode()
-//	seed.Start()
-//	bm := seed.Med.BlockManager()
-//
-//	tail := seed.Tail()
-//
-//	bb := blockutil.New(t, testNetwork.DynastySize).Block(tail).Child().SetDynastyState()
-//	miner := testNetwork.FindProposer(bb.B.Timestamp(), tail)
-//	mint := bb.Coinbase(miner.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
-//
-//	miner = testNetwork.FindProposer(bb.B.Timestamp(), mint)
-//	bb.Block(mint).Coinbase(miner.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
-//
-//
-//	tests := []struct {
-//		idxToParent []testutil.BlockID
-//	}{
-//		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 1, 1, 3, 3, 3, 3, 7, 7}},
-//		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 2, 2, 2, 3, 3, 7, 7}},
-//		{[]testutil.BlockID{testutil.GenesisID, 0, 0, 1, 2, 3, 3, 2, 5, 5, 6, 7}},
-//	}
-//
-//	for _, test := range tests {
-//		blockDatas := getBlockDataList(t, test.idxToParent, genesis, dynasties)
-//		for i := range blockDatas {
-//			j := rand.Intn(i + 1)
-//			blockDatas[i], blockDatas[j] = blockDatas[j], blockDatas[i]
-//		}
-//		for _, blockData := range blockDatas {
-//			err := bm.PushBlockData(blockData)
-//			require.Nil(t, err)
-//		}
-//	}
-//}
+func TestBlockManager_Forked(t *testing.T) {
+	var (
+		mainChainHeight   = 6
+		forkedChainHeight = 5
+		forkedHeight      = 3 // must higher than LIB height
+		mainChainBlocks   []*core.Block
+		forkedChainBlocks []*core.Block
+	)
+
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
+	genesis := seed.Tail()
+	tail := genesis
+	for i := 1; i < mainChainHeight; i++ {
+		mint := bb.Block(tail).Child().SignMiner().Build()
+		mainChainBlocks = append(mainChainBlocks, mint)
+		tail = mint
+	}
+
+	tail = genesis
+	for i := 1; i < forkedChainHeight; i++ {
+		var mint *core.Block
+		if i+1 < forkedHeight {
+			mint = mainChainBlocks[i-1]
+		} else {
+			mint = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		}
+		forkedChainBlocks = append(forkedChainBlocks, mint)
+		tail = mint
+	}
+
+	bm := seed.Med.BlockManager()
+	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
+		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
+	}
+	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
+
+	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
+		assert.NoError(t, bm.PushBlockData(mainChainBlocks[i].BlockData))
+	}
+	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
+}
 
 func TestBlockManager_CircularParentLink(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
@@ -411,7 +422,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	// Invalid Block Hash
 	bb = bb.Block(genesis).Child()
 	pair := testNetwork.FindProposer(bb.B.Timestamp(), genesis)
-	block := bb.Coinbase(pair.Addr).Seal().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Build()
+	block := bb.Coinbase(pair.Addr).PayReward().Seal().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidBlockHash, err)
 
@@ -474,7 +485,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
 
 	miner := bb.FindMiner()
-	bb = bb.Coinbase(miner.Addr).Seal()
+	bb = bb.Coinbase(miner.Addr).PayReward().Seal()
 
 	block := bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())

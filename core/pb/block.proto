@@ -5,18 +5,19 @@ message BlockHeader {
   bytes hash  = 1;
   bytes parent_hash = 2;
   bytes coinbase = 3;
-  int64 timestamp = 4;
-  uint32 chain_id = 5;
-  uint32 alg = 6;
-  bytes sign = 7;
-  bytes accs_root = 8;
-  bytes txs_root = 9;
-  bytes usage_root = 10;
-  bytes records_root = 11;
-  bytes certification_root = 12;
-  bytes dpos_root = 13;
-
-  bytes reservation_queue_hash = 15;
+  bytes reward = 4;
+  bytes supply = 5;
+  int64 timestamp = 6;
+  uint32 chain_id = 7;
+  uint32 alg = 11;
+  bytes sign = 12;
+  bytes accs_root = 21;
+  bytes txs_root = 22;
+  bytes usage_root = 23;
+  bytes records_root = 24;
+  bytes certification_root = 25;
+  bytes dpos_root = 26;
+  bytes reservation_queue_hash = 27;
 }
 
 message Block {

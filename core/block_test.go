@@ -20,7 +20,6 @@ import (
 
 	"time"
 
-	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
@@ -43,18 +42,19 @@ func TestGetMiner(t *testing.T) {
 
 func TestBlock_BasicTx(t *testing.T) {
 	nt := testutil.NewNetwork(t, 3)
+	defer nt.Cleanup()
+	nt.SetLogTestHook()
+
 	seed := nt.NewSeedNode()
 	nt.SetMinerFromDynasties(seed)
 	seed.Start()
 
 	nt.WaitForEstablished()
 
-	bb := blockutil.New(t, 3)
-	from := seed.Config.TokenDist[0]
-	to := seed.Config.TokenDist[1]
-	tx1 := bb.Block(seed.GenesisBlock()).Tx().Timestamp(time.Now().Unix()).Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Build()
-	tx2 := bb.Block(seed.GenesisBlock()).Tx().Timestamp(time.Now().Unix()).Type(core.TxOpTransfer).To(to.Addr).Value(200).Nonce(1).SignPair(from).Build()
-	tx3 := bb.Block(seed.GenesisBlock()).Tx().Timestamp(time.Now().Unix()).Type(core.TxOpTransfer).To(to.Addr).Value(100).Nonce(2).SignPair(from).Build()
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist)
+	tx1 := bb.Block(seed.GenesisBlock()).Tx().RandomTx().Build()
+	tx2 := bb.Block(seed.GenesisBlock()).Tx().RandomTx().Build()
+	tx3 := bb.Block(seed.GenesisBlock()).Tx().RandomTx().Build()
 
 	err := seed.Med.TransactionManager().Push(tx1)
 	require.NoError(t, err)

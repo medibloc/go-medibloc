@@ -56,6 +56,16 @@ type BlockHeader struct {
 
 // ToProto converts BlockHeader to corepb.BlockHeader
 func (b *BlockHeader) ToProto() (proto.Message, error) {
+	reward, err := b.reward.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	supply, err := b.supply.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
 	return &corepb.BlockHeader{
 		Hash:                 b.hash,
 		ParentHash:           b.parentHash,
@@ -361,11 +371,13 @@ func (bd *BlockData) SetTransactions(txs Transactions) error {
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
 	proposer, _ := bd.Proposer()
-	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, timestamp:%v, proposer:%v>",
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, reward:%v, supply:%v, timestamp:%v, proposer:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
 		byteutils.Bytes2Hex(bd.Coinbase().Bytes()),
+		bd.Reward().String(),
+		bd.Supply().String(),
 		bd.Timestamp(),
 		proposer.Hex(),
 	)
@@ -546,6 +558,8 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 			BlockHeader: &BlockHeader{
 				parentHash: parent.Hash(),
 				coinbase:   coinbase,
+				reward:     parent.Reward(),
+				supply:     parent.Supply(),
 				timestamp:  time.Now().Unix(),
 				chainID:    chainID,
 			},
@@ -614,6 +628,8 @@ func (b *Block) Seal() error {
 		return ErrReservedTaskNotProcessed
 	}
 
+	b.reward = b.state.Reward()
+	b.supply = b.state.Supply()
 	b.accsRoot = b.state.AccountsRoot()
 	b.txsRoot = b.state.TransactionsRoot()
 	b.usageRoot = b.state.UsageRoot()
@@ -696,6 +712,17 @@ func (b *Block) VerifyExecution(txMap TxFactory) error {
 		return err
 	}
 
+	if err := b.PayReward(b.coinbase, b.State().Supply()); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":   err,
+			"block": b,
+		}).Error("Failed to pay block reward.")
+		b.RollBack()
+		return err
+	}
+
+	b.Commit()
+
 	if err := b.VerifyState(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -705,14 +732,11 @@ func (b *Block) VerifyExecution(txMap TxFactory) error {
 		return err
 	}
 
-	b.Commit()
-
 	return nil
 }
 
 // ExecuteAll executes all txs in block
 func (b *Block) ExecuteAll(txMap TxFactory) error {
-	b.BeginBatch()
 
 	for _, transaction := range b.transactions {
 		err := b.Execute(transaction, txMap)
@@ -721,8 +745,6 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 			return err
 		}
 	}
-
-	b.Commit()
 
 	return nil
 }
@@ -772,6 +794,21 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 
 // VerifyState verifies block states comparing with root hashes in header
 func (b *Block) VerifyState() error {
+	if b.state.Reward().Cmp(b.Reward()) != 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"state":  b.state.Reward(),
+			"header": b.Reward(),
+		}).Warn("Failed to verify reward.")
+		return ErrInvalidBlockReward
+	}
+	if b.state.Supply().Cmp(b.Supply()) != 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"state":  b.state.Supply(),
+			"header": b.Supply(),
+		}).Warn("Failed to verify supply.")
+		return ErrInvalidBlockSupply
+	}
+
 	if !byteutils.Equal(b.state.AccountsRoot(), b.AccsRoot()) {
 		logging.Console().WithFields(logrus.Fields{
 			"state":  byteutils.Bytes2Hex(b.state.AccountsRoot()),
@@ -888,4 +925,27 @@ func BytesToBlockData(bytes []byte) (*BlockData, error) {
 		return nil, err
 	}
 	return bd, nil
+}
+
+//CalcMintReward returns calculated block produce reward
+func CalcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
+	rateNum, err := util.NewUint128FromString(rateNum)
+	if err != nil {
+		return nil, err
+	}
+	rateDecimal, err := util.NewUint128FromString(rateDecimal)
+	if err != nil {
+		return nil, err
+	}
+	tempReward, err := rateNum.Mul(parentSupply)
+	if err != nil {
+		return nil, err
+	}
+	reward, err := tempReward.Div(rateDecimal)
+	if err != nil {
+		return nil, err
+	}
+
+	return reward, nil
+
 }

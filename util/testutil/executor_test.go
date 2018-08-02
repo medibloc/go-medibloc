@@ -25,6 +25,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,11 +38,14 @@ func TestNetworkUtil(t *testing.T) {
 	}
 	nt.Start()
 	defer nt.Cleanup()
+	nt.SetLogTestHook()
 	nt.WaitForEstablished()
 
 	genesis, err := nt.Nodes[0].Med.BlockManager().BlockByHeight(core.GenesisHeight)
 	require.NoError(t, err)
-	block := testutil.NewTestBlock(t, genesis)
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(nt.Seed.Config.Dynasties)
+	block := bb.Block(genesis).Child().SignMiner().Build()
 
 	to := nt.Nodes[1]
 	ch := make(chan net.Message)

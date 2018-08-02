@@ -39,7 +39,7 @@ func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
 	node.Start()
 	testNetwork.WaitForEstablished()
 
-	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).Tx()
+	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 
 	tx := tb.RandomTx().Build()
 	seed.Med.TransactionManager().Broadcast(tx)
@@ -75,7 +75,7 @@ func TestTransactionManager_Push(t *testing.T) {
 	seed.Start()
 	tm := seed.Med.TransactionManager()
 
-	randomTb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).Tx().RandomTx()
+	randomTb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx()
 
 	// Wrong chainID
 	wrongChainIDTx := randomTb.ChainID(testutil.ChainID + 1).Build()
@@ -120,7 +120,7 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 	}
 	testNetwork.WaitForEstablished()
 
-	randomTx := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).Tx().RandomTx().Build()
+	randomTx := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx().Build()
 
 	require.NoError(t, seedTm.PushAndRelay(randomTx))
 

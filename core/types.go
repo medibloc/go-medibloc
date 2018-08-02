@@ -56,6 +56,11 @@ const (
 	RtWithdrawInterval = int64(3000)
 )
 
+const (
+	rateNum     = "464"
+	rateDecimal = "100000000000"
+)
+
 // Error types of core package.
 var (
 	ErrNotFound                         = storage.ErrKeyNotFound
@@ -91,6 +96,8 @@ var (
 	ErrBlockNotExist                    = errors.New("block not exist")
 	ErrBlockNotSealed                   = errors.New("block should be sealed first to be signed")
 	ErrInvalidBlockHeight               = errors.New("block height should be one block higher than the parent")
+	ErrInvalidBlockReward               = errors.New("invalid reward")
+	ErrInvalidBlockSupply               = errors.New("invalid supply")
 	ErrInvalidBlockAccountsRoot         = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot              = errors.New("invalid transactions state root hash")
 	ErrInvalidBlockUsageRoot            = errors.New("invalid usage state root hash")
