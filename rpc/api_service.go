@@ -36,6 +36,14 @@ import (
 )
 
 func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
+	var txsFrom []string
+	var txsTo []string
+	for _, hash := range acc.TxsFrom() {
+		txsFrom = append(txsFrom, byteutils.Bytes2Hex(hash))
+	}
+	for _, hash := range acc.TxsTo() {
+		txsTo = append(txsTo, byteutils.Bytes2Hex(hash))
+	}
 	return &rpcpb.GetAccountStateResponse{
 		Address:       byteutils.Bytes2Hex(acc.Address()),
 		Balance:       acc.Balance().String(),
@@ -45,6 +53,8 @@ func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
 		Records:       nil, // TODO @ggomma
 		Vesting:       acc.Vesting().String(),
 		Voted:         byteutils.Bytes2Hex(acc.Voted()),
+		TxsSend:       txsFrom,
+		TxsGet:        txsTo,
 	}, nil
 }
 
