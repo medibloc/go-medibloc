@@ -31,4 +31,7 @@ type Storage interface {
 
 	// Put put the key-value entry to Storage.
 	Put(key []byte, value []byte) error
+
+	// Close closes storage
+	Close() error
 }

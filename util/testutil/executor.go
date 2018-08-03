@@ -82,6 +82,16 @@ func (node *Node) Stop() {
 	node.Med.Stop()
 }
 
+func (node *Node) Restart() {
+	node.Stop()
+
+	med, err := medlet.New(node.Config.Config)
+	require.Nil(node.t, err)
+
+	node.Med = med
+	node.Start()
+}
+
 // IsStarted returns whether it has been started.
 func (node *Node) IsStarted() bool {
 	node.mu.RLock()

@@ -62,7 +62,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		return err
 	}
 
-	zeroBytes, err := util.Uint128Zero().ToFixedSizeByteSlice()
+	zeroBytes, _ := util.Uint128Zero().ToFixedSizeByteSlice()
 	pbCandidate := &dpospb.Candidate{
 		Address:   tx.candidateAddr.Bytes(),
 		Collatral: collateralBytes,

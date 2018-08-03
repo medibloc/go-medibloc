@@ -21,6 +21,8 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/stretchr/testify/require"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"time"
 )
 
 func TestNewBlockChain(t *testing.T) {
@@ -34,4 +36,25 @@ func TestNewBlockChain(t *testing.T) {
 	cfg.Chain.TailCacheSize = 0
 	_, err = core.NewBlockChain(cfg)
 	require.EqualError(t, err, "Must provide a positive size")
+}
+
+func TestRestartNode(t *testing.T) {
+	testNet := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNet.Cleanup()
+
+	seed := testNet.NewSeedNode()
+	testNet.SetMinerFromDynasties(seed)
+	seed.Start()
+
+	for seed.Tail().Height() < 2 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	seed.Restart()
+
+	for seed.Tail().Height() < 3 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+
 }

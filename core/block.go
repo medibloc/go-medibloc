@@ -482,6 +482,10 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		}).Error("Failed to create new block state.")
 		return nil, err
 	}
+
+	block.state.reward = bd.Reward()
+	block.state.supply = bd.Supply()
+
 	if err = block.state.LoadAccountsRoot(block.accsRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,

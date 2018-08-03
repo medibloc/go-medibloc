@@ -26,6 +26,8 @@ type LeveldbStorage struct {
 	db *leveldb.DB
 }
 
+var _ Storage = &LeveldbStorage{}
+
 // NewLeveldbStorage init a LeveldbStorage
 func NewLeveldbStorage(path string) (*LeveldbStorage, error) {
 	// TODO path & parameters may be passed within Config struct
@@ -43,6 +45,11 @@ func NewLeveldbStorage(path string) (*LeveldbStorage, error) {
 	return &LeveldbStorage{
 		db: db,
 	}, nil
+}
+
+//Close closes leveldb storage
+func (storage *LeveldbStorage) Close() error{
+	return storage.db.Close()
 }
 
 // Delete delete the key entry in Storage.

@@ -190,6 +190,13 @@ func (m *Medlet) Start() error {
 
 // Stop stops the services of the medlet.
 func (m *Medlet) Stop() {
+	err := m.storage.Close()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+		   "err":err,
+		}).Error("failed to close storage")
+	}
+
 	m.eventEmitter.Stop()
 
 	m.netService.Stop()

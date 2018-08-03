@@ -25,6 +25,8 @@ type MemoryStorage struct {
 	data *sync.Map
 }
 
+var _ Storage = &MemoryStorage{}
+
 // NewMemoryStorage init a storage
 func NewMemoryStorage() (*MemoryStorage, error) {
 	return &MemoryStorage{
@@ -49,5 +51,10 @@ func (s *MemoryStorage) Get(key []byte) ([]byte, error) {
 // Put put the key-value entry to Storage.
 func (s *MemoryStorage) Put(key []byte, value []byte) error {
 	s.data.Store(hex.EncodeToString(key), value)
+	return nil
+}
+
+//Close closes memory storage
+func (s *MemoryStorage) Close() error {
 	return nil
 }
