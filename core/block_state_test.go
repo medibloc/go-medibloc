@@ -104,6 +104,28 @@ func TestUpdateUsage(t *testing.T) {
 	}
 }
 
+func TestUsageWindowReset(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+
+	from := bb.TokenDist[0]
+	to := bb.TokenDist[1]
+
+	bb = bb.ChildWithTimestamp(time.Now().Unix()).Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().SignMiner()
+	block := bb.Build()
+
+	usage, err := block.State().GetUsage(from.Addr)
+	assert.NoError(t, err)
+	assert.Len(t, usage, 1)
+
+	afterWeek := dpos.NextMintSlot2(time.Now().Add(7*24*time.Hour + 3*time.Second).Unix())
+	bb = bb.ChildWithTimestamp(afterWeek).Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().SignMiner()
+	block = bb.Build()
+
+	usage, err = block.State().GetUsage(from.Addr)
+	assert.NoError(t, err)
+	assert.Len(t, usage, 1)
+}
+
 func TestPayerUsageUpdate(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 

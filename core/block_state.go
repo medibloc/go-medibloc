@@ -368,27 +368,7 @@ func (s *states) updateUsage(tx *Transaction, blockTime int64) error {
 	}
 
 	usageBytes, err := s.usageState.Get(payer.Bytes())
-	switch err {
-	case nil:
-	case ErrNotFound:
-		usage := &corepb.Usage{
-			Timestamps: []*corepb.TxTimestamp{
-				{
-					Hash:      tx.Hash(),
-					Timestamp: tx.Timestamp(),
-				},
-			},
-		}
-		usageBytes, err = proto.Marshal(usage)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"usage": usage,
-				"err":   err,
-			}).Error("Failed to marshal usage.")
-			return err
-		}
-		return s.usageState.Put(payer.Bytes(), usageBytes)
-	default:
+	if err != nil && err != ErrNotFound {
 		logging.Console().WithFields(logrus.Fields{
 			"payer": payer.Hex(),
 			"err":   err,
@@ -396,22 +376,34 @@ func (s *states) updateUsage(tx *Transaction, blockTime int64) error {
 		return err
 	}
 
-	pbUsage := new(corepb.Usage)
-	if err := proto.Unmarshal(usageBytes, pbUsage); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"pb":  pbUsage,
-		}).Error("Failed to unmarshal proto.")
-		return err
+	var pbUsage *corepb.Usage
+	if err != nil && err == ErrNotFound {
+		pbUsage = &corepb.Usage{
+			Timestamps: []*corepb.TxTimestamp{},
+		}
+	} else {
+		pbUsage = new(corepb.Usage)
+		if err := proto.Unmarshal(usageBytes, pbUsage); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+				"pb":  pbUsage,
+			}).Error("Failed to unmarshal proto.")
+			return err
+		}
 	}
 
-	var idx int
-	for idx = range pbUsage.Timestamps {
-		if blockTime-weekSec < tx.Timestamp() {
+	for i, ttx := range pbUsage.Timestamps {
+		if blockTime-weekSec > ttx.Timestamp {
+			pbUsage.Timestamps = pbUsage.Timestamps[i+1:]
 			break
 		}
 	}
-	pbUsage.Timestamps = append(pbUsage.Timestamps[idx:], &corepb.TxTimestamp{Hash: tx.Hash(), Timestamp: tx.Timestamp()})
+
+	pbUsage.Timestamps = append(pbUsage.Timestamps, &corepb.TxTimestamp{
+		Hash:      tx.Hash(),
+		Timestamp: tx.Timestamp(),
+	})
+
 	sort.Slice(pbUsage.Timestamps, func(i, j int) bool {
 		return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp
 	})
