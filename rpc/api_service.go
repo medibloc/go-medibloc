@@ -25,6 +25,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -34,6 +35,24 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+func candidate2rpcCandidate(candidate *dpospb.Candidate) (*rpcpb.Candidate, error) {
+	collatral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collatral)
+	if err != nil {
+		return nil, err
+	}
+
+	votePower, err := util.NewUint128FromFixedSizeByteSlice(candidate.VotePower)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpcpb.Candidate{
+		Address:   byteutils.Bytes2Hex(candidate.Address),
+		Collatral: collatral.String(),
+		VotePower: votePower.String(),
+	}, nil
+}
 
 func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
 	var txsFrom []string
@@ -246,6 +265,55 @@ func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamsReques
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, acc := range accs {
+		rpcAcc, err := coreAcc2rpcAcc(acc)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+		rpcAccs = append(rpcAccs, rpcAcc)
+	}
+
+	return &rpcpb.AccountsResponse{
+		Accounts: rpcAccs,
+	}, nil
+}
+
+// GetCandidates returns all candidates
+func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.CandidatesResponse, error) {
+	var rpcCandidates []*rpcpb.Candidate
+	block := s.bm.TailBlock()
+
+	candidates, err := block.State().GetCandidates()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	for _, candidate := range candidates {
+		rpcCandidate, err := candidate2rpcCandidate(candidate)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+		rpcCandidates = append(rpcCandidates, rpcCandidate)
+	}
+	return &rpcpb.CandidatesResponse{
+		Candidates: rpcCandidates,
+	}, nil
+}
+
+// GetDynasty returns all dynasty accounts
+func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.AccountsResponse, error) {
+	var rpcAccs []*rpcpb.GetAccountStateResponse
+
+	block := s.bm.TailBlock()
+
+	addrs, err := block.State().GetDynasty()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	for _, addr := range addrs {
+		acc, err := block.State().GetAccount(*addr)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+
 		rpcAcc, err := coreAcc2rpcAcc(acc)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)

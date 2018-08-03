@@ -109,6 +109,24 @@ func (mr *MockApiServiceClientMockRecorder) GetBlocks(arg0, arg1 interface{}, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlocks", reflect.TypeOf((*MockApiServiceClient)(nil).GetBlocks), varargs...)
 }
 
+// GetCandidates mocks base method
+func (m *MockApiServiceClient) GetCandidates(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.CandidatesResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetCandidates", varargs...)
+	ret0, _ := ret[0].(*pb.CandidatesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCandidates indicates an expected call of GetCandidates
+func (mr *MockApiServiceClientMockRecorder) GetCandidates(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCandidates", reflect.TypeOf((*MockApiServiceClient)(nil).GetCandidates), varargs...)
+}
+
 // GetCurrentAccountTransactions mocks base method
 func (m *MockApiServiceClient) GetCurrentAccountTransactions(arg0 context.Context, arg1 *pb.GetCurrentAccountTransactionsRequest, arg2 ...grpc.CallOption) (*pb.TransactionsResponse, error) {
 	varargs := []interface{}{arg0, arg1}
@@ -125,6 +143,24 @@ func (m *MockApiServiceClient) GetCurrentAccountTransactions(arg0 context.Contex
 func (mr *MockApiServiceClientMockRecorder) GetCurrentAccountTransactions(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentAccountTransactions", reflect.TypeOf((*MockApiServiceClient)(nil).GetCurrentAccountTransactions), varargs...)
+}
+
+// GetDynasty mocks base method
+func (m *MockApiServiceClient) GetDynasty(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.AccountsResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetDynasty", varargs...)
+	ret0, _ := ret[0].(*pb.AccountsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDynasty indicates an expected call of GetDynasty
+func (mr *MockApiServiceClientMockRecorder) GetDynasty(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDynasty", reflect.TypeOf((*MockApiServiceClient)(nil).GetDynasty), varargs...)
 }
 
 // GetMedState mocks base method
@@ -401,6 +437,19 @@ func (mr *MockApiServiceServerMockRecorder) GetBlocks(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlocks", reflect.TypeOf((*MockApiServiceServer)(nil).GetBlocks), arg0, arg1)
 }
 
+// GetCandidates mocks base method
+func (m *MockApiServiceServer) GetCandidates(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.CandidatesResponse, error) {
+	ret := m.ctrl.Call(m, "GetCandidates", arg0, arg1)
+	ret0, _ := ret[0].(*pb.CandidatesResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCandidates indicates an expected call of GetCandidates
+func (mr *MockApiServiceServerMockRecorder) GetCandidates(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCandidates", reflect.TypeOf((*MockApiServiceServer)(nil).GetCandidates), arg0, arg1)
+}
+
 // GetCurrentAccountTransactions mocks base method
 func (m *MockApiServiceServer) GetCurrentAccountTransactions(arg0 context.Context, arg1 *pb.GetCurrentAccountTransactionsRequest) (*pb.TransactionsResponse, error) {
 	ret := m.ctrl.Call(m, "GetCurrentAccountTransactions", arg0, arg1)
@@ -412,6 +461,19 @@ func (m *MockApiServiceServer) GetCurrentAccountTransactions(arg0 context.Contex
 // GetCurrentAccountTransactions indicates an expected call of GetCurrentAccountTransactions
 func (mr *MockApiServiceServerMockRecorder) GetCurrentAccountTransactions(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentAccountTransactions", reflect.TypeOf((*MockApiServiceServer)(nil).GetCurrentAccountTransactions), arg0, arg1)
+}
+
+// GetDynasty mocks base method
+func (m *MockApiServiceServer) GetDynasty(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.AccountsResponse, error) {
+	ret := m.ctrl.Call(m, "GetDynasty", arg0, arg1)
+	ret0, _ := ret[0].(*pb.AccountsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetDynasty indicates an expected call of GetDynasty
+func (mr *MockApiServiceServerMockRecorder) GetDynasty(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDynasty", reflect.TypeOf((*MockApiServiceServer)(nil).GetDynasty), arg0, arg1)
 }
 
 // GetMedState mocks base method

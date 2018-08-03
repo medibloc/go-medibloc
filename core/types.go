@@ -20,6 +20,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/storage"
 )
 
@@ -173,6 +174,9 @@ type DposState interface {
 
 	CandidateState() *trie.Batch
 	DynastyState() *trie.Batch
+
+	Candidates() ([]*dpospb.Candidate, error)
+	Dynasty() ([]*common.Address, error)
 }
 
 // Event structure

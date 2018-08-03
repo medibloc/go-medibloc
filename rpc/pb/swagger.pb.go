@@ -75,6 +75,38 @@ const (
         ]
       }
     },
+    "/v1/candidates": {
+      "get": {
+        "operationId": "GetCandidates",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbCandidatesResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
+    "/v1/dynasty": {
+      "get": {
+        "operationId": "GetDynasty",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbAccountsResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/node/medstate": {
       "get": {
         "operationId": "GetMedState",
@@ -349,6 +381,31 @@ const (
           "type": "array",
           "items": {
             "$ref": "#/definitions/rpcpbBlockResponse"
+          }
+        }
+      }
+    },
+    "rpcpbCandidate": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "collatral": {
+          "type": "string"
+        },
+        "votePower": {
+          "type": "string"
+        }
+      }
+    },
+    "rpcpbCandidatesResponse": {
+      "type": "object",
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbCandidate"
           }
         }
       }

@@ -212,6 +212,31 @@ func DynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) 
 	return dynasty, nil
 }
 
+//CandidateStateToCandidates convert candidate trie to Candidate Proto
+func CandidateStateToCandidates(candidateState *trie.Batch) ([]*dpospb.Candidate, error) {
+	candidates := make([]*dpospb.Candidate, 0)
+
+	iter, err := candidateState.Iterator(nil)
+	if err != nil {
+		return nil, err
+	}
+	exist, err := iter.Next()
+	for exist {
+		if err != nil {
+			return nil, err
+		}
+		pbCandidate := new(dpospb.Candidate)
+		err = proto.Unmarshal(iter.Value(), pbCandidate)
+		if err != nil {
+			return nil, err
+		}
+
+		candidates = append(candidates, pbCandidate)
+		exist, err = iter.Next()
+	}
+	return candidates, nil
+}
+
 func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
 	parentDynastyIndex := int(time.Duration(parentTimestamp) / d.dynastyInterval())
 	curDynastyIndex := int(time.Duration(curTimestamp) / d.dynastyInterval())
@@ -279,7 +304,12 @@ func (s *State) Candidate(addr common.Address) (*dpospb.Candidate, error) {
 	return pbCandidate, nil
 }
 
-//Dynasty returns slice of addresses in dynasty
+// Candidates returns slice of candidate addresses
+func (s *State) Candidates() ([]*dpospb.Candidate, error) {
+	return CandidateStateToCandidates(s.candidateState)
+}
+
+// Dynasty returns slice of addresses in dynasty
 func (s *State) Dynasty() ([]*common.Address, error) {
 	return DynastyStateToDynasty(s.dynastyState)
 }

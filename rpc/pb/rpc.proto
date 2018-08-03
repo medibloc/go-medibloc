@@ -17,17 +17,29 @@ service ApiService {
 		};
 	}
 
-    rpc GetBlock (GetBlockRequest) returns (BlockResponse) {
-        option (google.api.http) = {
-            get: "/v1/block"
-        };
-    }
+	rpc GetCandidates (NonParamsRequest) returns (CandidatesResponse) {
+		option (google.api.http) = {
+			get: "/v1/candidates"
+		};
+	}
 
-    rpc GetBlocks (GetBlocksRequest) returns (BlocksResponse) {
-    	option (google.api.http) = {
-    		get: "/v1/blocks"
-    	};
-    }
+	rpc GetDynasty (NonParamsRequest) returns (AccountsResponse) {
+		option (google.api.http) = {
+			get: "/v1/dynasty"
+		};
+	}
+
+	rpc GetBlock (GetBlockRequest) returns (BlockResponse) {
+		option (google.api.http) = {
+			get: "/v1/block"
+		};
+	}
+
+	rpc GetBlocks (GetBlocksRequest) returns (BlocksResponse) {
+		option (google.api.http) = {
+			get: "/v1/blocks"
+		};
+	}
 
 	rpc GetCurrentAccountTransactions (GetCurrentAccountTransactionsRequest) returns (TransactionsResponse) {
 		option (google.api.http) = {
@@ -55,9 +67,9 @@ service ApiService {
 
 	rpc SendTransaction (SendTransactionRequest) returns (SendTransactionResponse) {
 		option (google.api.http) = {
-          post: "/v1/transaction"
-          body: "*"
-      };
+			post: "/v1/transaction"
+			body: "*"
+		};
 	}
 
 	rpc Subscribe (SubscribeRequest) returns (stream SubscribeResponse) {
@@ -101,9 +113,9 @@ message GetAccountStateResponse {
 message GetBlockRequest {
     // Block hash. Or the string "genesis", "confirmed", "tail".
     string hash = 1;
-}
+  }
 
-message BlockResponse {
+  message BlockResponse {
 	// Block hash
 	string hash = 1;
 	// Block parent hash
@@ -251,4 +263,14 @@ message TransactionsResponse {
 
 message AccountsResponse {
 	repeated GetAccountStateResponse accounts = 1;
+}
+
+message Candidate {
+	string address = 1;
+	string collatral = 2;
+	string votePower = 3;
+}
+
+message CandidatesResponse {
+	repeated Candidate candidates = 1;
 }

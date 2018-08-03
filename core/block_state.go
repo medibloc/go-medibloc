@@ -21,6 +21,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -58,6 +59,14 @@ func (s *states) AccState() *AccountStateBatch {
 
 func (s *states) DposState() DposState {
 	return s.dposState
+}
+
+func (s *states) GetCandidates() ([]*dpospb.Candidate, error) {
+	return s.DposState().Candidates()
+}
+
+func (s *states) GetDynasty() ([]*common.Address, error) {
+	return s.DposState().Dynasty()
 }
 
 func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
