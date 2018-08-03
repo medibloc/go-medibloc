@@ -76,8 +76,20 @@ func TestBlock_PayReward(t *testing.T) {
 	bb = bb.Child().Tx().RandomTx().Execute()
 	miner := bb.FindMiner()
 
-	// wrong reward value
+	// wrong reward value (calculate reward based on wrong supply)
 	block := bb.Supply(77777777777).PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
 	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, testutil.TxMap)
 	assert.Equal(t, core.ErrInvalidBlockReward, err)
+
+	// wrong reward value (duplicate reward)
+	block = bb.PayReward().PayReward().CalcHash().SignKey(miner.PrivKey).Build()
+	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, testutil.TxMap)
+	assert.Equal(t, core.ErrInvalidBlockReward, err)
+
+	// wrong supply on header
+	block = bb.PayReward().Seal().Supply(1234567890).CalcHash().SignKey(miner.PrivKey).Build()
+	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, testutil.TxMap)
+	assert.Equal(t, core.ErrInvalidBlockSupply, err)
+
+
 }

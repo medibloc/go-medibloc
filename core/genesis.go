@@ -97,10 +97,11 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	for i, v := range conf.GetConsensus().GetDpos().GetDynasty() {
 		member := common.HexToAddress(v)
 
+		zeroBytes, _ := util.Uint128Zero().ToFixedSizeByteSlice()
 		candidatePb := &dpospb.Candidate{
 			Address:   member.Bytes(),
-			Collatral: make([]byte, 0),
-			VotePower: make([]byte, 0),
+			Collatral: zeroBytes,
+			VotePower: zeroBytes,
 		}
 
 		candidate, err := proto.Marshal(candidatePb)

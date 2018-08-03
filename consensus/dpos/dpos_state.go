@@ -29,6 +29,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
+	"bytes"
 )
 
 //State is a structure for dpos state
@@ -154,7 +155,7 @@ func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
 
 	if sortErr != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"err": err,
+			"err": sortErr,
 		}).Error("Sort Error")
 		return nil, sortErr
 	}
@@ -172,6 +173,10 @@ func MakeNewDynasty(sortedCandidates []*dpospb.Candidate, dynastySize int) []*co
 		dynasty = append(dynasty, &addr)
 	}
 	// Todo @drsleepytiger ordering BP
+
+	sort.Slice(dynasty, func(i, j int) bool {
+		return bytes.Compare(dynasty[i].Bytes(), dynasty[j].Bytes()) < 0
+	})
 
 	return dynasty
 }
