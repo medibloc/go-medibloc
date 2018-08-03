@@ -193,7 +193,7 @@ func (m *Medlet) Stop() {
 	err := m.storage.Close()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-		   "err":err,
+			"err": err,
 		}).Error("failed to close storage")
 	}
 

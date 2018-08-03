@@ -82,6 +82,7 @@ func (node *Node) Stop() {
 	node.Med.Stop()
 }
 
+//Restart restart node
 func (node *Node) Restart() {
 	node.Stop()
 

@@ -19,6 +19,8 @@ import (
 	"sort"
 	"time"
 
+	"bytes"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -29,7 +31,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"bytes"
 )
 
 //State is a structure for dpos state

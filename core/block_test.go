@@ -91,5 +91,4 @@ func TestBlock_PayReward(t *testing.T) {
 	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, testutil.TxMap)
 	assert.Equal(t, core.ErrInvalidBlockSupply, err)
 
-
 }

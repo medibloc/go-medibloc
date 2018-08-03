@@ -18,11 +18,12 @@ package core_test
 import (
 	"testing"
 
+	"time"
+
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet"
-	"github.com/stretchr/testify/require"
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"time"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewBlockChain(t *testing.T) {
@@ -55,6 +56,5 @@ func TestRestartNode(t *testing.T) {
 	for seed.Tail().Height() < 3 {
 		time.Sleep(100 * time.Millisecond)
 	}
-
 
 }

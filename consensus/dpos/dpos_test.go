@@ -2,9 +2,10 @@ package dpos_test
 
 import (
 	"testing"
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
-	"github.com/medibloc/go-medibloc/util/testutil"
+
 	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/require"
 )
 
