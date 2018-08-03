@@ -26,6 +26,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -47,6 +48,8 @@ type BlockHeader struct {
 	reservationQueueHash []byte
 
 	coinbase  common.Address
+	reward    *util.Uint128
+	supply    *util.Uint128
 	timestamp int64
 	chainID   uint32
 
@@ -70,6 +73,8 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		Hash:                 b.hash,
 		ParentHash:           b.parentHash,
 		Coinbase:             b.coinbase.Bytes(),
+		Reward:               reward,
+		Supply:               supply,
 		Timestamp:            b.timestamp,
 		ChainId:              b.chainID,
 		Alg:                  uint32(b.alg),
@@ -97,6 +102,16 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.dposRoot = msg.DposRoot
 		b.reservationQueueHash = msg.ReservationQueueHash
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
+		reward, err := util.NewUint128FromFixedSizeByteSlice(msg.Reward)
+		if err != nil {
+			return err
+		}
+		b.reward = reward
+		supply, err := util.NewUint128FromFixedSizeByteSlice(msg.Supply)
+		if err != nil {
+			return err
+		}
+		b.supply = supply
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
 		b.alg = algorithm.Algorithm(msg.Alg)
@@ -206,12 +221,32 @@ func (b *BlockHeader) SetCoinbase(coinbase common.Address) {
 	b.coinbase = coinbase
 }
 
+//Reward returns reward
+func (b *BlockHeader) Reward() *util.Uint128 {
+	return b.reward
+}
+
+//SetReward sets reward
+func (b *BlockHeader) SetReward(reward *util.Uint128) {
+	b.reward = reward
+}
+
+//Supply returns supply
+func (b *BlockHeader) Supply() *util.Uint128 {
+	return b.supply.DeepCopy()
+}
+
+//SetSupply sets supply
+func (b *BlockHeader) SetSupply(supply *util.Uint128) {
+	b.supply = supply
+}
+
 //Timestamp returns timestamp of block
 func (b *BlockHeader) Timestamp() int64 {
 	return b.timestamp
 }
 
-//SetTimestamp set timestamp of block
+//SetTimestamp sets timestamp of block
 func (b *BlockHeader) SetTimestamp(timestamp int64) {
 	b.timestamp = timestamp
 }
@@ -221,7 +256,7 @@ func (b *BlockHeader) ChainID() uint32 {
 	return b.chainID
 }
 
-//SetChainID set chainID
+//SetChainID sets chainID
 func (b *BlockHeader) SetChainID(chainID uint32) {
 	b.chainID = chainID
 }
@@ -231,7 +266,7 @@ func (b *BlockHeader) Alg() algorithm.Algorithm {
 	return b.alg
 }
 
-//SetAlg set signing algorithm
+//SetAlg sets signing algorithm
 func (b *BlockHeader) SetAlg(alg algorithm.Algorithm) {
 	b.alg = alg
 }
@@ -241,7 +276,7 @@ func (b *BlockHeader) Sign() []byte {
 	return b.sign
 }
 
-//SetSign set sign
+//SetSign sets sign
 func (b *BlockHeader) SetSign(sign []byte) {
 	b.sign = sign
 }
@@ -783,6 +818,28 @@ func (b *Block) ExecuteReservedTasks() error {
 	return nil
 }
 
+//PayReward add reward to coinbase and update reward and supply
+func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) error {
+	reward, err := calcMintReward(parentSupply)
+	if err != nil {
+		return err
+	}
+
+	if err := b.state.accState.AddBalance(coinbase.Bytes(), reward); err != nil {
+		return err
+	}
+
+	supply, err := parentSupply.Add(reward)
+	if err != nil {
+		return err
+	}
+
+	b.state.reward = reward
+	b.state.supply = supply
+
+	return nil
+}
+
 // AcceptTransaction adds tx in block state
 func (b *Block) AcceptTransaction(tx *Transaction) error {
 	if err := b.state.AcceptTransaction(tx, b.Timestamp()); err != nil {
@@ -927,8 +984,8 @@ func BytesToBlockData(bytes []byte) (*BlockData, error) {
 	return bd, nil
 }
 
-//CalcMintReward returns calculated block produce reward
-func CalcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
+//calcMintReward returns calculated block produce reward
+func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 	rateNum, err := util.NewUint128FromString(rateNum)
 	if err != nil {
 		return nil, err

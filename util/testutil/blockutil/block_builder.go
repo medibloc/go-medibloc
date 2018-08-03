@@ -322,7 +322,7 @@ func (bb *BlockBuilder) PayReward() *BlockBuilder {
 	n := bb.copy()
 
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.PayReward(n.B.Coinbase(), n.B.State().Supply()))
+	require.NoError(n.t, n.B.PayReward(n.B.Coinbase(), n.B.Supply()))
 	require.NoError(n.t, n.B.Commit())
 
 	return n

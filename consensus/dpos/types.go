@@ -43,6 +43,7 @@ var (
 	ErrInvalidBlockForgeTime  = errors.New("invalid time to forge block")
 	ErrInvalidBlockInterval   = errors.New("invalid block interval")
 	ErrInvalidBlockProposer   = errors.New("invalid block proposer")
+	ErrInvalidBlockReward     = errors.New("invalid block reward")
 	ErrInvalidDynastySize     = errors.New("invalid dynasty size")
 	ErrNotCandidate           = errors.New("account is not a candidate")
 	ErrVoteDuplicate          = errors.New("cannot vote already voted account")

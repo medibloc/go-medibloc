@@ -485,10 +485,16 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
 
 	miner := bb.FindMiner()
-	bb = bb.Coinbase(miner.Addr).PayReward().Seal()
+	bb = bb.Coinbase(miner.Addr).PayReward()
 
-	block := bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block := bb.PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
+	bb = bb.Seal()
+
+	block = bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
 	block = bb.TransactionRoot(hash([]byte("invalid transaction root"))).CalcHash().SignKey(miner.PrivKey).Build()
@@ -530,6 +536,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	block = bb.Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+
 }
 
 func foundInLog(hook *test.Hook, s string) bool {

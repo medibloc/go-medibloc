@@ -79,6 +79,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				parentHash: GenesisHash,
 				chainID:    conf.Meta.ChainId,
 				coinbase:   GenesisCoinbase,
+				reward:     util.NewUint128FromUint(0),
 				timestamp:  GenesisTimestamp,
 				alg:        algorithm.SECP256K1,
 			},
@@ -112,6 +113,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 	}
 
+	supply := util.NewUint128()
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Value)
@@ -132,7 +134,16 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 			return nil, err
 		}
+		supply, err = supply.Add(balance)
+		if err != nil {
+			if err := genesisBlock.RollBack(); err != nil {
+				return nil, err
+			}
+			return nil, err
+		}
 	}
+	genesisBlock.supply = supply
+	genesisBlock.state.supply = supply.DeepCopy()
 
 	initialMessage := "Genesis block of MediBloc"
 

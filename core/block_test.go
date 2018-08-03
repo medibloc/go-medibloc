@@ -20,6 +20,7 @@ import (
 
 	"time"
 
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
@@ -66,4 +67,17 @@ func TestBlock_BasicTx(t *testing.T) {
 	for seed.Tail().Height() < 2 {
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func TestBlock_PayReward(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	parent := bb.Build()
+
+	bb = bb.Child().Tx().RandomTx().Execute()
+	miner := bb.FindMiner()
+
+	// wrong reward value
+	block := bb.Supply(77777777777).PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, testutil.TxMap)
+	assert.Equal(t, core.ErrInvalidBlockReward, err)
 }
