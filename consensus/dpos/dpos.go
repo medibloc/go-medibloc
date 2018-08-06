@@ -238,39 +238,29 @@ func (d *Dpos) VerifyInterval(bd *core.BlockData, parent *core.Block) error {
 
 // VerifyProposer verifies block proposer.
 func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
+	signer, err := bd.Proposer()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Warn("Failed to recover block's signer.")
+		return err
+	}
+
 	proposer, err := d.FindMintProposer(bd.Timestamp(), parent)
 	if err != nil {
 		return err
 	}
-	err = verifyBlockSign(proposer, bd)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":       err,
-			"proposer":  proposer,
-			"blockData": bd,
-		}).Debug("Failed to verify a block sign.")
-		return err
-	}
-	return nil
-}
+	if !signer.Equals(proposer) {
 
-func verifyBlockSign(proposer common.Address, bd *core.BlockData) error {
-	signer, err := bd.Proposer()
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":      err,
+		dynasty, _ := d.MakeMintDynasty(bd.Timestamp(), parent)
+
+		logging.Console().WithFields(logrus.Fields{
+			"bd":       bd,
 			"proposer": proposer,
 			"signer":   signer,
-			"block":    bd,
-		}).Debug("Failed to recover block's signer.")
-		return err
-	}
-	if !proposer.Equals(signer) {
-		logging.WithFields(logrus.Fields{
-			"signer":   signer,
-			"proposer": proposer,
-			"block":    bd,
-		}).Debug("Block proposer and block signer do not match.")
+			"dynasty":  dynasty,
+		}).Warn("Block proposer and block signer do not match.")
 		return ErrInvalidBlockProposer
 	}
 	return nil

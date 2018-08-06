@@ -87,7 +87,7 @@ var (
 	ErrTransactionHashFailed            = errors.New("failed to hash transaction")
 	ErrInvalidBlockToProto              = errors.New("block cannot be converted into proto")
 	ErrInvalidBlockHash                 = errors.New("invalid block hash")
-	ErrInvalidSetTimestamp              = errors.New("cannot set timestamp to a sealed block")
+	ErrInvalidTimestamp                 = errors.New("child block's timestamp is smaller than parent block's")
 	ErrBlockAlreadySealed               = errors.New("cannot seal an already sealed block")
 	ErrNilArgument                      = errors.New("argument(s) is nil")
 	ErrVoidTransaction                  = errors.New("nothing to do with transaction")

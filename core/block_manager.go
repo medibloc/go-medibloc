@@ -303,7 +303,31 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 	for _, v := range children {
 		childData := v.(*BlockData)
 
-		err := bm.consensus.VerifyProposer(childData, parent)
+		err := verifyBlockHeight(childData, parent)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Warn("Failed to verifyBlockHeight")
+			continue
+		}
+
+		err = verifyTimestamp(childData, parent)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Warn("Failed to verifyBlockHeight")
+			continue
+		}
+
+		err = bm.consensus.VerifyInterval(childData, parent)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err":       err,
+				"timestamp": childData.timestamp,
+			}).Warn("Block timestamp is wrong")
+		}
+
+		err = bm.consensus.VerifyProposer(childData, parent)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":       err,
@@ -338,6 +362,19 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		fails = append(fails, childFail...)
 	}
 	return all, tails, fails
+}
+func verifyTimestamp(bd *BlockData, parent *Block) error {
+	if bd.Timestamp() < parent.Timestamp() {
+		return ErrInvalidTimestamp
+	}
+	return nil
+}
+
+func verifyBlockHeight(bd *BlockData, parent *Block) error {
+	if parent.Height()+1 != bd.Height() {
+		return ErrInvalidBlockHeight
+	}
+	return nil
 }
 
 func (bm *BlockManager) revertBlocks(blocks []*Block, newBlocks []*Block) error {

@@ -267,7 +267,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 
 	for i := 0; i < 6; i++ {
 		block := bb.Block(tail).Child().
-			Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+			Tx().RandomTx().Execute().
 			SignMiner().Build()
 		err := bm.PushBlockData(block.GetBlockData())
 		tail = block
@@ -292,7 +292,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	}
 	for _, test := range tests {
 		block := bb.Block(parent).Child().
-			Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+			Tx().RandomTx().Execute().
 			Height(test.height).SignMiner().Build()
 		assert.Equal(t, test.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", test)
 	}

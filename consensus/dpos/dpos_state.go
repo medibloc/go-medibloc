@@ -127,6 +127,9 @@ func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
 	exist, err := iter.Next()
 	for exist {
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("failed to iterate")
 			return nil, err
 		}
 		candidateBytes := iter.Value()
@@ -238,8 +241,8 @@ func CandidateStateToCandidates(candidateState *trie.Batch) ([]*dpospb.Candidate
 }
 
 func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
-	parentDynastyIndex := int(time.Duration(parentTimestamp) / d.DynastyInterval())
-	curDynastyIndex := int(time.Duration(curTimestamp) / d.DynastyInterval())
+	parentDynastyIndex := int(time.Duration(parentTimestamp) * time.Second / d.DynastyInterval())
+	curDynastyIndex := int(time.Duration(curTimestamp) * time.Second / d.DynastyInterval())
 
 	return curDynastyIndex > parentDynastyIndex
 }

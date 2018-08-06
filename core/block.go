@@ -454,10 +454,6 @@ func (bd *BlockData) VerifyIntegrity() error {
 // ExecuteOnParentBlock returns Block object with state after block execution
 func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
 
-	if parent.Height()+1 != bd.Height() {
-		return nil, ErrInvalidBlockHeight
-	}
-
 	block, err := prepareExecution(bd, parent)
 	if err != nil {
 		return nil, err

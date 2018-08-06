@@ -37,6 +37,7 @@ type BlockBuilder struct {
 	B *core.Block
 
 	dynastySize int
+	proposer    common.Address
 	Dynasties   testutil.AddrKeyPairs
 	TokenDist   testutil.AddrKeyPairs
 	KeyPairs    testutil.AddrKeyPairs
@@ -77,6 +78,7 @@ func (bb *BlockBuilder) copy() *BlockBuilder {
 		t:           bb.t,
 		B:           b,
 		dynastySize: bb.dynastySize,
+		proposer:    bb.proposer,
 		Dynasties:   bb.Dynasties,
 		TokenDist:   bb.TokenDist,
 		KeyPairs:    bb.KeyPairs,
@@ -97,7 +99,11 @@ func (bb *BlockBuilder) Genesis() *BlockBuilder {
 //Block sets block
 func (bb *BlockBuilder) Block(block *core.Block) *BlockBuilder {
 	n := bb.copy()
+	proposer, _ := block.Proposer()
+	//require.NoError(n.t, err)
+
 	n.B = block
+	n.proposer = proposer
 	return n
 }
 
@@ -262,18 +268,17 @@ func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	return n.Coinbase(pair.Addr).PayReward().Seal().CalcHash().SignKey(pair.PrivKey)
 }
 
-//SignMiner find miner and sign with key pair
+//SignMiner find proposer and sign with key pair
 func (bb *BlockBuilder) SignMiner() *BlockBuilder {
 	n := bb.copy()
 
 	return n.SignPair(n.FindMiner())
 }
 
-//FindMiner finds miner.
+//FindMiner finds proposer.
 func (bb *BlockBuilder) FindMiner() *testutil.AddrKeyPair {
-	proposer, err := bb.B.Consensus().FindMintProposer(bb.B.Timestamp(), bb.B)
-	require.NoError(bb.t, err)
-	pair := bb.KeyPairs.FindPair(proposer)
+	require.NotNil(bb.t, bb.proposer)
+	pair := bb.KeyPairs.FindPair(bb.proposer)
 	require.NotNil(bb.t, pair)
 
 	return pair
@@ -374,21 +379,34 @@ func (bb *BlockBuilder) Child() *BlockBuilder {
 //ChildWithTimestamp create child block on specific timestamp
 func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
+	parent := bb.B
 	n.B.SetTransactions(make([]*core.Transaction, 0))
-	//return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState()
-	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState().ExecuteReservedTasks()
+	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState(parent).ExecuteReservedTasks()
+}
+
+//ChildNextDynasty create first child block of next dynasty
+func (bb *BlockBuilder) ChildNextDynasty() *BlockBuilder {
+	n := bb.copy()
+
+	d := dpos.New(n.dynastySize)
+	curDynastyIndex := int(time.Duration(n.B.Timestamp()) * time.Second / d.DynastyInterval())
+	nextTs := int64(time.Duration(curDynastyIndex+1) * d.DynastyInterval() / time.Second)
+
+	return n.ChildWithTimestamp(nextTs)
 }
 
 //UpdateDynastyState update dynasty state
-func (bb *BlockBuilder) UpdateDynastyState() *BlockBuilder {
+func (bb *BlockBuilder) UpdateDynastyState(parent *core.Block) *BlockBuilder {
 	n := bb.copy()
-	dposState := n.B.State().DposState()
-
 	d := dpos.New(n.dynastySize)
-	dynasty, err := d.MakeMintDynasty(n.B.Timestamp(), n.B)
+
+	mintProposer, err := d.FindMintProposer(n.B.Timestamp(), parent)
 	require.NoError(n.t, err)
-	dpos.SetDynastyState(dposState.DynastyState(), dynasty)
-	require.NoError(n.t, err)
+	n.proposer = mintProposer
+
+	require.NoError(n.t, n.B.BeginBatch())
+	require.NoError(n.t, n.B.SetMintDposState(parent))
+	require.NoError(n.t, n.B.Commit())
 
 	return n
 }

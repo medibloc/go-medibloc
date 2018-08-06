@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -184,4 +185,20 @@ func FindRandomListenPorts(n int) (ports []string) {
 	}
 
 	return ports
+}
+
+//KeyOf find the key at which a given value can be found in the trie batch
+func KeyOf(t *testing.T, trie *trie.Batch, value []byte) []byte {
+	iter, err := trie.Iterator(nil)
+	require.NoError(t, err)
+
+	exist, err := iter.Next()
+	for exist {
+		require.NoError(t, err)
+		if byteutils.Equal(iter.Value(), value) {
+			return iter.Key()
+		}
+		exist, err = iter.Next()
+	}
+	return nil
 }
