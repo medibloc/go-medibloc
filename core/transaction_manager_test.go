@@ -20,6 +20,8 @@ import (
 
 	"time"
 
+	"bytes"
+
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -46,24 +48,22 @@ func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
 
 	var actual *core.Transaction
 	startTime := time.Now()
-	for actual == nil {
+	for actual == nil || !bytes.Equal(tx.Hash(), actual.Hash()) {
 		require.True(t, time.Now().Sub(startTime) < time.Duration(5*time.Second))
 		actual = node.Med.TransactionManager().Pop()
 		time.Sleep(10 * time.Millisecond)
 	}
-	require.EqualValues(t, tx.Hash(), actual.Hash())
 
 	tx = tb.RandomTx().Build()
 	node.Med.TransactionManager().Relay(tx)
 
 	actual = nil
 	startTime = time.Now()
-	for actual == nil {
+	for actual == nil || !bytes.Equal(tx.Hash(), actual.Hash()) {
 		require.True(t, time.Now().Sub(startTime) < time.Duration(5*time.Second))
 		actual = seed.Med.TransactionManager().Pop()
 		time.Sleep(10 * time.Millisecond)
 	}
-	require.EqualValues(t, tx.Hash(), actual.Hash())
 }
 
 func TestTransactionManager_Push(t *testing.T) {
