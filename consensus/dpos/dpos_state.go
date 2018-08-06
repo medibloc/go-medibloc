@@ -265,7 +265,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 	if err != nil {
 		return common.Address{}, err
 	}
-	proposerIndex := int(mintTs) % int(d.dynastyInterval().Seconds()) / int(BlockInterval.Seconds())
+	proposerIndex := int(mintTs) % int(d.DynastyInterval().Seconds()) / int(BlockInterval.Seconds())
 	return *dynasty[proposerIndex], nil
 }
 

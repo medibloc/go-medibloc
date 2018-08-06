@@ -128,7 +128,8 @@ func (d *Dpos) consensusSize() int {
 	return int(d.dynastySize*2/3 + 1)
 }
 
-func (d *Dpos) dynastyInterval() time.Duration {
+//DynastyInterval returns dynasty interval
+func (d *Dpos) DynastyInterval() time.Duration {
 	return time.Duration(d.dynastySize*NumberOfRounds) * BlockInterval
 }
 
@@ -219,7 +220,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 
 func (d *Dpos) dynastyGenByTime(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
-	return int64(now / d.dynastyInterval())
+	return int64(now / d.DynastyInterval())
 }
 
 // VerifyInterval verifies block interval.
