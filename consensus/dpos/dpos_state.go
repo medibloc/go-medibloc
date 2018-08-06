@@ -238,8 +238,8 @@ func CandidateStateToCandidates(candidateState *trie.Batch) ([]*dpospb.Candidate
 }
 
 func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
-	parentDynastyIndex := int(time.Duration(parentTimestamp) * time.Second / d.DynastyInterval())
-	curDynastyIndex := int(time.Duration(curTimestamp) * time.Second / d.DynastyInterval())
+	parentDynastyIndex := int(time.Duration(parentTimestamp) / d.DynastyInterval())
+	curDynastyIndex := int(time.Duration(curTimestamp) / d.DynastyInterval())
 
 	return curDynastyIndex > parentDynastyIndex
 }
