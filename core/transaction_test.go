@@ -89,7 +89,7 @@ func TestVestAndWithdraw(t *testing.T) {
 
 	acc, err := bb.B.State().GetAccount(from.Addr)
 	require.NoError(t, err)
-	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance())
+	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance)
 
 	for i := 0; i < len(reservedTasks)+5; i++ {
 		bb = bb.SignMiner().
@@ -98,7 +98,7 @@ func TestVestAndWithdraw(t *testing.T) {
 		acc, err := bb.B.State().GetAccount(from.Addr)
 		require.NoError(t, err)
 		reservedTasks = bb.B.State().GetReservedTasks()
-		t.Logf("ts:%v, balance: %v, remain tasks: %v", bb.B.Timestamp(), acc.Balance(), len(reservedTasks))
+		t.Logf("ts:%v, balance: %v, remain tasks: %v", bb.B.Timestamp(), acc.Balance, len(reservedTasks))
 	}
 
 	bb.Expect().Balance(from.Addr, 1000000000-vestingAmount+withdrawAmount)
@@ -128,11 +128,13 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	certifiedAcc, err := block.State().GetAccount(certified.Addr)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(issuerAcc.CertsIssued()))
-	assert.Equal(t, 1, len(certifiedAcc.CertsReceived()))
+	assert.Equal(t, 1, testutil.TrieLen(t, issuerAcc.CertsIssued))
+	assert.Equal(t, 1, testutil.TrieLen(t, certifiedAcc.CertsReceived))
 
-	assert.Equal(t, hash, issuerAcc.CertsIssued()[0])
-	assert.Equal(t, hash, certifiedAcc.CertsReceived()[0])
+	_, err = issuerAcc.CertsIssued.Get(hash)
+	assert.NoError(t, err)
+	_, err = certifiedAcc.CertsReceived.Get(hash)
+	assert.NoError(t, err)
 
 	cert, err := block.State().Certification(hash)
 	assert.NoError(t, err)

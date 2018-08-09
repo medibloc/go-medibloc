@@ -57,7 +57,7 @@ func TestDynastyState(t *testing.T) {
 	assert.NoError(t, err)
 
 	for i, v := range actual {
-		assert.Equal(t, bb.Dynasties[i].Addr, *v)
+		assert.Equal(t, bb.Dynasties[i].Addr, v)
 	}
 }
 
@@ -175,11 +175,11 @@ func TestTxsFromTxsTo(t *testing.T) {
 
 	accFrom, err := block.State().GetAccount(from.Addr)
 	require.NoError(t, err)
-	assert.Equal(t, 9, len(accFrom.TxsFrom()))
-	assert.Equal(t, 1, len(accFrom.TxsTo()))
+	assert.Equal(t, 9, testutil.TrieLen(t, accFrom.TxsFrom))
+	assert.Equal(t, 1, testutil.TrieLen(t, accFrom.TxsTo))
 
 	accTo, err := block.State().GetAccount(to.Addr)
 	require.NoError(t, err)
-	assert.Equal(t, 3, len(accTo.TxsTo()))
+	assert.Equal(t, 3, testutil.TrieLen(t, accTo.TxsTo))
 
 }

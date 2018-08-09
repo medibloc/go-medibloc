@@ -202,3 +202,22 @@ func KeyOf(t *testing.T, trie *trie.Batch, value []byte) []byte {
 	}
 	return nil
 }
+
+//TrieLen counts the number of trie members
+func TrieLen(t *testing.T, trie *trie.Trie) int {
+	if trie.RootHash() == nil {
+		return 0
+	}
+
+	iter, err := trie.Iterator(nil)
+	require.NoError(t, err)
+
+	var cnt int
+	exist, err := iter.Next()
+	for exist {
+		require.NoError(t, err)
+		cnt++
+		exist, err = iter.Next()
+	}
+	return cnt
+}

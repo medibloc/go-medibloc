@@ -40,11 +40,11 @@ func TestNewGenesisBlock(t *testing.T) {
 	accState := genesisBlock.State().AccState()
 
 	addr := dynasties[0].Addr
-	acc, err := accState.GetAccount(addr.Bytes())
+	acc, err := accState.GetAccount(addr)
 	assert.NoError(t, err)
 
 	expectedBalance, _ := util.NewUint128FromString("1000000000")
-	assert.Zerof(t, acc.Balance().Cmp(expectedBalance), "Balance of new account in genesis block should equal to %s", expectedBalance.String())
+	assert.Zerof(t, acc.Balance.Cmp(expectedBalance), "Balance of new account in genesis block should equal to %s", expectedBalance.String())
 }
 
 func TestCheckGenesisBlock(t *testing.T) {

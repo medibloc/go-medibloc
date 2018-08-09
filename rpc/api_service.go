@@ -25,7 +25,6 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -36,44 +35,33 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func candidate2rpcCandidate(candidate *dpospb.Candidate) (*rpcpb.Candidate, error) {
-	collatral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collatral)
-	if err != nil {
-		return nil, err
-	}
-
-	votePower, err := util.NewUint128FromFixedSizeByteSlice(candidate.VotePower)
-	if err != nil {
-		return nil, err
-	}
-
+func candidate2rpcCandidate(candidate *core.Account) (*rpcpb.Candidate, error) {
 	return &rpcpb.Candidate{
-		Address:   byteutils.Bytes2Hex(candidate.Address),
-		Collatral: collatral.String(),
-		VotePower: votePower.String(),
+		Address:   candidate.Address.Hex(),
+		Collatral: candidate.Collateral.String(),
+		VotePower: candidate.VotePower.String(),
 	}, nil
 }
-
 func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
 	var txsFrom []string
 	var txsTo []string
-	for _, hash := range acc.TxsFrom() {
+	for _, hash := range acc.TxsFromSlice() {
 		txsFrom = append(txsFrom, byteutils.Bytes2Hex(hash))
 	}
-	for _, hash := range acc.TxsTo() {
+	for _, hash := range acc.TxsToSlice() {
 		txsTo = append(txsTo, byteutils.Bytes2Hex(hash))
 	}
 	return &rpcpb.GetAccountStateResponse{
-		Address:       byteutils.Bytes2Hex(acc.Address()),
-		Balance:       acc.Balance().String(),
+		Address:       acc.Address.Hex(),
+		Balance:       acc.Balance.String(),
 		CertsIssued:   nil, // TODO @ggomma
 		CertsReceived: nil, // TODO @ggomma
-		Nonce:         acc.Nonce(),
+		Nonce:         acc.Nonce,
 		Records:       nil, // TODO @ggomma
-		Vesting:       acc.Vesting().String(),
-		Voted:         byteutils.Bytes2Hex(acc.Voted()),
-		TxsSend:       txsFrom,
-		TxsGet:        txsTo,
+		Vesting:       acc.Vesting.String(),
+		//Voted:         byteutils.Bytes2Hex(acc.Voted),
+		TxsSend: txsFrom,
+		TxsGet:  txsTo,
 	}, nil
 }
 
@@ -241,16 +229,16 @@ func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountS
 		}, nil
 	}
 	return &rpcpb.GetAccountStateResponse{
-		Address:       byteutils.Bytes2Hex(acc.Address()),
-		Balance:       acc.Balance().String(),
-		CertsIssued:   byteutils.BytesSlice2HexSlice(acc.CertsIssued()),
-		CertsReceived: byteutils.BytesSlice2HexSlice(acc.CertsReceived()),
-		Nonce:         acc.Nonce(),
-		Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
-		Vesting:       acc.Vesting().String(),
-		Voted:         byteutils.Bytes2Hex(acc.Voted()),
-		TxsSend:       byteutils.BytesSlice2HexSlice(acc.TxsFrom()),
-		TxsGet:        byteutils.BytesSlice2HexSlice(acc.TxsTo()),
+		Address: acc.Address.Hex(),
+		Balance: acc.Balance.String(),
+		//CertsIssued:   byteutils.BytesSlice2HexSlice(acc.CertsIssued()),
+		//CertsReceived: byteutils.BytesSlice2HexSlice(acc.CertsReceived()),
+		Nonce: acc.Nonce,
+		//Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
+		Vesting: acc.Vesting.String(),
+		//Voted:         byteutils.Bytes2Hex(acc.Voted()),
+		//TxsSend:       byteutils.BytesSlice2HexSlice(acc.TxsFrom()),
+		//TxsGet:        byteutils.BytesSlice2HexSlice(acc.TxsTo()),
 	}, nil
 }
 
@@ -287,7 +275,11 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequ
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, candidate := range candidates {
-		rpcCandidate, err := candidate2rpcCandidate(candidate)
+		acc, err := block.State().AccState().GetAccount(candidate)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+		rpcCandidate, err := candidate2rpcCandidate(acc)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
@@ -309,7 +301,7 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamsRequest
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, addr := range addrs {
-		acc, err := block.State().GetAccount(*addr)
+		acc, err := block.State().GetAccount(addr)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
@@ -432,7 +424,7 @@ func (s *APIService) GetCurrentAccountTransactions(ctx context.Context,
 	if tailBlock != nil {
 		acc, err := tailBlock.State().GetAccount(address)
 		if err == nil {
-			txList := append(acc.TxsTo(), acc.TxsFrom()...)
+			txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
 			for _, hash := range txList {
 				pbTx := new(corepb.Transaction)
 				pb, err := tailBlock.State().GetTx(hash)

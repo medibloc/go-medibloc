@@ -20,7 +20,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
@@ -97,19 +96,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	for i, v := range conf.GetConsensus().GetDpos().GetDynasty() {
 		member := common.HexToAddress(v)
 
-		zeroBytes, _ := util.Uint128Zero().ToFixedSizeByteSlice()
-		candidatePb := &dpospb.Candidate{
-			Address:   member.Bytes(),
-			Collatral: zeroBytes,
-			VotePower: zeroBytes,
-		}
-
-		candidate, err := proto.Marshal(candidatePb)
-		if err != nil {
-			return nil, err
-		}
-
-		genesisBlock.State().dposState.CandidateState().Put(member.Bytes(), candidate)
+		genesisBlock.State().dposState.CandidateState().Put(member.Bytes(), member.Bytes())
 		genesisBlock.State().dposState.DynastyState().Put(byteutils.FromInt32(int32(i)), member.Bytes())
 
 	}
@@ -220,7 +207,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		return false
 	}
 
-	accounts, err := block.State().accState.AccountState().Accounts()
+	accounts, err := block.State().accState.Accounts()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -262,7 +249,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	for _, account := range accounts {
 		contains := false
 		for _, token := range tokenDist {
-			if token.Address == byteutils.Bytes2Hex(account.Address()) {
+			if token.Address == account.Address.Hex() {
 				balance, err := util.NewUint128FromString(token.Value)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
@@ -270,11 +257,11 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 					}).Error("Failed to convert balance from string to uint128.")
 					return false
 				}
-				if balance.Cmp(account.Balance()) != 0 {
+				if balance.Cmp(account.Balance) != 0 {
 					logging.Console().WithFields(logrus.Fields{
-						"balanceInBlock": account.Balance(),
+						"balanceInBlock": account.Balance,
 						"balanceInConf":  balance,
-						"account":        byteutils.Bytes2Hex(account.Address()),
+						"account":        account.Address.Hex(),
 					}).Error("Genesis's token balance does not match.")
 					return false
 				}
@@ -284,7 +271,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		}
 		if !contains {
 			logging.Console().WithFields(logrus.Fields{
-				"account": byteutils.Bytes2Hex(account.Address()),
+				"account": account.Address.Hex(),
 			}).Error("Accounts of token distribution don't match.")
 			return false
 		}

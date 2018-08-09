@@ -13,15 +13,17 @@ import (
 
 func TestMakeNewDynasty(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	b := bb.Build()
 
-	cs := bb.Build().State().DposState().CandidateState()
-	ds := bb.Build().State().DposState().DynastyState()
+	as := b.State().AccState()
+	cs := b.State().DposState().CandidateState()
+	ds := b.State().DposState().DynastyState()
 
 	genesisDynasty, err := dpos.DynastyStateToDynasty(ds)
 	require.NoError(t, err)
 	t.Log("genesis dynasty", genesisDynasty)
 
-	candidates, err := dpos.SortByVotePower(cs)
+	candidates, err := dpos.SortByVotePower(as, cs)
 	require.NoError(t, err)
 
 	newDynasty := dpos.MakeNewDynasty(candidates, testutil.DynastySize)
@@ -31,6 +33,7 @@ func TestMakeNewDynasty(t *testing.T) {
 func TestChangeDynasty(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()

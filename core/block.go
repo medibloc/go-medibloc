@@ -825,7 +825,7 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 		return err
 	}
 
-	if err := b.state.accState.AddBalance(coinbase.Bytes(), reward); err != nil {
+	if err := b.state.accState.AddBalance(coinbase, reward); err != nil {
 		return err
 	}
 

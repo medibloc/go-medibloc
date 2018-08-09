@@ -21,7 +21,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -33,7 +32,7 @@ type states struct {
 	reward *util.Uint128
 	supply *util.Uint128
 
-	accState           *AccountStateBatch
+	accState           *AccountState
 	txsState           *trie.Batch
 	usageState         *trie.Batch
 	recordsState       *trie.Batch
@@ -53,7 +52,7 @@ func (s *states) Reward() *util.Uint128 {
 	return s.reward.DeepCopy()
 }
 
-func (s *states) AccState() *AccountStateBatch {
+func (s *states) AccState() *AccountState {
 	return s.accState
 }
 
@@ -61,16 +60,16 @@ func (s *states) DposState() DposState {
 	return s.dposState
 }
 
-func (s *states) GetCandidates() ([]*dpospb.Candidate, error) {
+func (s *states) GetCandidates() ([]common.Address, error) {
 	return s.DposState().Candidates()
 }
 
-func (s *states) GetDynasty() ([]*common.Address, error) {
+func (s *states) GetDynasty() ([]common.Address, error) {
 	return s.DposState().Dynasty()
 }
 
 func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
-	accState, err := NewAccountStateBatch(nil, stor)
+	accState, err := NewAccountState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +116,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 }
 
 func (s *states) Clone() (*states, error) {
-	accState, err := NewAccountStateBatch(s.accState.RootHash(), s.storage)
+	accState, err := NewAccountState(s.accState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +234,7 @@ func (s *states) ReservationQueueHash() []byte {
 }
 
 func (s *states) LoadAccountsRoot(rootHash []byte) error {
-	accState, err := NewAccountStateBatch(rootHash, s.storage)
+	accState, err := NewAccountState(rootHash, s.storage)
 	if err != nil {
 		return err
 	}
@@ -288,29 +287,29 @@ func (s *states) LoadReservationQueue(hash []byte) error {
 	return nil
 }
 
-func (s *states) GetAccount(address common.Address) (*Account, error) {
-	return s.accState.GetAccount(address.Bytes())
+func (s *states) GetAccount(addr common.Address) (*Account, error) {
+	return s.accState.GetAccount(addr)
 }
 
 func (s *states) GetAccounts() ([]*Account, error) {
-	return s.accState.AccountState().Accounts()
+	return s.accState.Accounts()
 }
 
 func (s *states) AddBalance(address common.Address, amount *util.Uint128) error {
-	return s.accState.AddBalance(address.Bytes(), amount)
+	return s.accState.AddBalance(address, amount)
 }
 
 func (s *states) SubBalance(address common.Address, amount *util.Uint128) error {
-	return s.accState.SubBalance(address.Bytes(), amount)
+	return s.accState.SubBalance(address, amount)
 }
 
 func (s *states) AddTransaction(tx *Transaction) error {
 
-	if err := s.accState.AddTxsFrom(tx.From().Bytes(), tx.Hash()); err != nil {
+	if err := s.accState.AddTxsFrom(tx.From(), tx.Hash()); err != nil {
 		return err
 	}
 
-	if err := s.accState.AddTxsTo(tx.To().Bytes(), tx.Hash()); err != nil {
+	if err := s.accState.AddTxsTo(tx.To(), tx.Hash()); err != nil {
 		return err
 	}
 
@@ -332,7 +331,7 @@ func (s *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) e
 		return err
 	}
 
-	return s.accState.AddRecord(tx.from.Bytes(), hash)
+	return s.accState.AddRecord(tx.from, hash)
 }
 
 func (s *states) GetRecord(hash []byte) (*corepb.Record, error) {
@@ -348,7 +347,7 @@ func (s *states) GetRecord(hash []byte) (*corepb.Record, error) {
 }
 
 func (s *states) incrementNonce(address common.Address) error {
-	return s.accState.IncrementNonce(address.Bytes())
+	return s.accState.IncrementNonce(address)
 }
 
 func (s *states) GetTx(txHash []byte) ([]byte, error) {
@@ -587,12 +586,12 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 }
 
 func (bs *BlockState) checkNonce(tx *Transaction) error {
-	fromAcc, err := bs.AccState().GetAccount(tx.from.Bytes())
+	fromAcc, err := bs.AccState().GetAccount(tx.from)
 	if err != nil {
 		return err
 	}
 
-	expectedNonce := fromAcc.nonce + 1
+	expectedNonce := fromAcc.Nonce + 1
 	if tx.nonce > expectedNonce {
 		return ErrLargeTransactionNonce
 	} else if tx.nonce < expectedNonce {

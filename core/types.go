@@ -20,7 +20,6 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/storage"
 )
 
@@ -137,6 +136,8 @@ var (
 	ErrWrongEventTopic                  = errors.New("required event topic doesn't exist in topic list")
 	ErrTransactionHashAlreadyAdded      = errors.New("transaction already added")
 	ErrTypecastFailed                   = errors.New("failed to typecast")
+	ErrAlreadyInVoters                  = errors.New("voter is already in voters")
+	ErrNotInVoters                      = errors.New("voter is not in voters")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -175,8 +176,9 @@ type DposState interface {
 	CandidateState() *trie.Batch
 	DynastyState() *trie.Batch
 
-	Candidates() ([]*dpospb.Candidate, error)
-	Dynasty() ([]*common.Address, error)
+	IsCandidate(addr common.Address) (bool, error)
+	Candidates() ([]common.Address, error)
+	Dynasty() ([]common.Address, error)
 }
 
 // Event structure

@@ -18,6 +18,7 @@ package dpos_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -41,20 +42,34 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
 
-	pbCandidate, err := block.State().DposState().(*dpos.State).Candidate(candidate.Addr)
+	cs := block.State().DposState().CandidateState()
+	as := block.State().AccState()
+
+	_, err := cs.Get(candidate.Addr.Bytes())
 	assert.NoError(t, err)
 
-	tenBytes, err := util.NewUint128FromUint(10).ToFixedSizeByteSlice()
-	assert.Equal(t, pbCandidate.Collatral, tenBytes)
+	acc, err := as.GetAccount(candidate.Addr)
+	require.NoError(t, err)
+
+	assert.Equal(t, util.NewUint128FromUint(10), acc.Collateral)
 
 	bb = bb.
 		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(2).SignPair(candidate).Execute().
 		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(3).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
 
 	block = bb.Build()
+	as = block.State().AccState()
+	cs = block.State().DposState().CandidateState()
 
-	_, err = block.State().DposState().(*dpos.State).Candidate(candidate.Addr)
-	assert.Equal(t, dpos.ErrNotCandidate, err)
+	acc, err = as.GetAccount(candidate.Addr)
+	require.NoError(t, err)
+
+	assert.Equal(t, util.NewUint128FromUint(0), acc.Collateral)
+	assert.Equal(t, 0, len(acc.VotersSlice()))
+	assert.Equal(t, util.NewUint128FromUint(0), acc.VotePower)
+
+	_, err = cs.Get(candidate.Addr.Bytes())
+	assert.Equal(t, trie.ErrNotFound, err)
 }
 
 func TestVote(t *testing.T) {
@@ -73,13 +88,14 @@ func TestVote(t *testing.T) {
 
 	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
-	assert.Equal(t, voterAcc.Voted(), candidate.Addr.Bytes())
+	assert.Equal(t, voterAcc.VotedSlice()[0], candidate.Addr.Bytes())
 
-	pbCandidate, err := block.State().DposState().(*dpos.State).Candidate(candidate.Addr)
+	_, err = block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
 	assert.NoError(t, err)
 
-	expectedVotePower, err := util.NewUint128FromUint(333).ToFixedSizeByteSlice()
+	acc, err := block.State().GetAccount(candidate.Addr)
 	require.NoError(t, err)
-	assert.Equal(t, pbCandidate.VotePower, expectedVotePower)
+
+	assert.Equal(t, util.NewUint128FromUint(333), acc.VotePower)
 
 }

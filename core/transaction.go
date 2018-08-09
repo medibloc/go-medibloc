@@ -21,7 +21,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -483,10 +482,10 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 func (tx *TransferTx) Execute(b *Block) error {
 	as := b.state.AccState()
 
-	if err := as.SubBalance(tx.from.Bytes(), tx.value); err != nil {
+	if err := as.SubBalance(tx.from, tx.value); err != nil {
 		return err
 	}
-	return as.AddBalance(tx.to.Bytes(), tx.value)
+	return as.AddBalance(tx.to, tx.value)
 }
 
 //AddRecordTx is a structure for adding record
@@ -549,53 +548,46 @@ func NewVestTx(tx *Transaction) (ExecutableTx, error) {
 //Execute VestTx
 func (tx *VestTx) Execute(b *Block) error {
 	as := b.state.AccState()
-	cs := b.state.DposState().CandidateState()
 
-	if err := as.SubBalance(tx.user.Bytes(), tx.amount); err != nil {
+	if err := as.SubBalance(tx.user, tx.amount); err != nil {
 		return err
 	}
-	if err := as.AddVesting(tx.user.Bytes(), tx.amount); err != nil {
+	if err := as.AddVesting(tx.user, tx.amount); err != nil {
 		return err
 	}
 
-	account, err := as.GetAccount(tx.user.Bytes())
+	account, err := as.GetAccount(tx.user)
 	if err != nil {
 		return err
 	}
 
-	// Check user voted
-	candidate := account.Voted()
-	if candidate == nil {
+	// Add user's vesting to candidates' votePower
+	candidates := account.Voted
+	if candidates.RootHash() == nil {
 		return nil
 	}
-
-	// Add user's vesting to candidate's votePower
-	candidateBytes, err := cs.Get(candidate)
-	if err != nil {
-		return nil
-	}
-	pbCandidate := new(dpospb.Candidate)
-	if err := proto.Unmarshal(candidateBytes, pbCandidate); err != nil {
-		return err
-	}
-	votePower, err := util.NewUint128FromFixedSizeByteSlice(pbCandidate.VotePower)
-	if err != nil {
-		return err
-	}
-	newVotePower, err := votePower.Add(tx.amount)
-	if err != nil {
-		return err
-	}
-	pbCandidate.VotePower, err = newVotePower.ToFixedSizeByteSlice()
-	if err != nil {
-		return err
-	}
-	newCandidateBytes, err := proto.Marshal(pbCandidate)
+	iter, err := candidates.Iterator(nil)
 	if err != nil {
 		return err
 	}
 
-	return cs.Put(candidate, newCandidateBytes)
+	exist, err := iter.Next()
+	if err != nil {
+		return err
+	}
+	for exist {
+		addr := common.BytesToAddress(iter.Key())
+		if err := as.AddVotePower(addr, tx.amount); err != nil {
+			return err
+		}
+
+		exist, err = iter.Next()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 //WithdrawVestingTx is a structure for withdrawing vesting
@@ -615,14 +607,13 @@ func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
 //Execute WithdrawVestingTx
 func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	as := b.state.AccState()
-	cs := b.state.DposState().CandidateState()
 
-	account, err := as.GetAccount(tx.user.Bytes())
+	account, err := as.GetAccount(tx.user)
 	if err != nil {
 		return err
 	}
 
-	if err := as.SubVesting(tx.user.Bytes(), tx.amount); err != nil {
+	if err := as.SubVesting(tx.user, tx.amount); err != nil {
 		return err
 	}
 
@@ -653,39 +644,32 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		amountLeft, _ = amountLeft.Sub(splitAmount)
 	}
 
-	// Check user voted
-	candidate := account.Voted()
-	if candidate == nil {
+	// Add user's vesting to candidates' votePower
+	candidates := account.Voted
+	if candidates.RootHash() == nil {
 		return nil
 	}
-
-	// Subtract user's vesting to candidate's votePower
-	candidateBytes, err := cs.Get(candidate)
-	if err != nil {
-		return nil
-	}
-	pbCandidate := new(dpospb.Candidate)
-	if err := proto.Unmarshal(candidateBytes, pbCandidate); err != nil {
-		return err
-	}
-	votePower, err := util.NewUint128FromFixedSizeByteSlice(pbCandidate.VotePower)
-	if err != nil {
-		return err
-	}
-	newVotePower, err := votePower.Sub(tx.amount)
-	if err != nil {
-		return err
-	}
-	pbCandidate.VotePower, err = newVotePower.ToFixedSizeByteSlice()
-	if err != nil {
-		return err
-	}
-	newCandidateBytes, err := proto.Marshal(pbCandidate)
+	iter, err := candidates.Iterator(nil)
 	if err != nil {
 		return err
 	}
 
-	return cs.Put(candidate, newCandidateBytes)
+	exist, err := iter.Next()
+	if err != nil {
+		return err
+	}
+	for exist {
+		addr := common.BytesToAddress(iter.Key())
+		if err := as.SubVotePower(addr, tx.amount); err != nil {
+			return err
+		}
+
+		exist, err = iter.Next()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 //AddCertificationTx is a structure for adding certification
@@ -722,10 +706,10 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 	as := b.state.AccState()
 	cs := b.state.certificationState
 
-	if err := as.AddCertReceived(tx.Certified.Bytes(), tx.Payload.CertificateHash); err != nil {
+	if err := as.AddCertReceived(tx.Certified, tx.Payload.CertificateHash); err != nil {
 		return err
 	}
-	if err := as.AddCertIssued(tx.Issuer.Bytes(), tx.Payload.CertificateHash); err != nil {
+	if err := as.AddCertIssued(tx.Issuer, tx.Payload.CertificateHash); err != nil {
 		return err
 	}
 	pbCertification := &corepb.Certification{

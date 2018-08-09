@@ -27,7 +27,6 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -35,10 +34,10 @@ import (
 
 //State is a structure for dpos state
 type State struct {
-	candidateState *trie.Batch // key: addr, value: {addr, collateral, votePower}
+	candidateState *trie.Batch // key: addr, value: addr
 	dynastyState   *trie.Batch // key: order, value: bpAddr
 
-	stroage storage.Storage
+	storage storage.Storage
 }
 
 //NewDposState returns new dpos state
@@ -55,7 +54,7 @@ func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor stora
 	return &State{
 		candidateState: cs,
 		dynastyState:   ds,
-		stroage:        stor,
+		storage:        stor,
 	}, nil
 }
 
@@ -93,7 +92,7 @@ func (s *State) RollBack() error {
 
 //Clone clone state
 func (s *State) Clone() (core.DposState, error) {
-	return NewDposState(s.candidateState.RootHash(), s.dynastyState.RootHash(), s.stroage)
+	return NewDposState(s.candidateState.RootHash(), s.dynastyState.RootHash(), s.storage)
 }
 
 //BeginBatch begin batch
@@ -117,8 +116,11 @@ func (s *State) RootBytes() ([]byte, error) {
 }
 
 //SortByVotePower returns Descending ordered candidate slice
-func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
-	pbCandidates := make([]*dpospb.Candidate, 0)
+func SortByVotePower(as *core.AccountState, cs *trie.Batch) ([]common.Address, error) {
+	//pbCandidates := make([]*dpospb.Candidate, 0)
+
+	accounts := make([]*core.Account, 0)
+	candidates := make([]common.Address, 0)
 
 	iter, err := cs.Iterator(nil)
 	if err != nil {
@@ -132,29 +134,20 @@ func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
 			}).Error("failed to iterate")
 			return nil, err
 		}
-		candidateBytes := iter.Value()
-
-		pbCandidate := new(dpospb.Candidate)
-		proto.Unmarshal(candidateBytes, pbCandidate)
-		pbCandidates = append(pbCandidates, pbCandidate)
+		addr := common.BytesToAddress(iter.Key())
+		acc, err := as.GetAccount(addr)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, acc)
 
 		exist, err = iter.Next()
 	}
 
 	var sortErr error
-	sort.Slice(pbCandidates, func(i, j int) bool {
-		x, err := util.NewUint128FromFixedSizeByteSlice(pbCandidates[i].VotePower)
-		if err != nil {
-			sortErr = err
-			return false
-		}
-		y, err := util.NewUint128FromFixedSizeByteSlice(pbCandidates[j].VotePower)
-		if err != nil {
-			sortErr = err
-			return false
-		}
+	sort.Slice(accounts, func(i, j int) bool {
 		// TODO @drSleepyTiger Secondary condition for same voting power
-		return x.Cmp(y) > 0
+		return accounts[i].VotePower.Cmp(accounts[j].VotePower) > 0
 	})
 
 	if sortErr != nil {
@@ -164,17 +157,20 @@ func SortByVotePower(cs *trie.Batch) ([]*dpospb.Candidate, error) {
 		return nil, sortErr
 	}
 
-	return pbCandidates, nil
+	for _, v := range accounts {
+		candidates = append(candidates, v.Address)
+	}
+
+	return candidates, nil
 }
 
 //MakeNewDynasty returns new dynasty slice for new block
-func MakeNewDynasty(sortedCandidates []*dpospb.Candidate, dynastySize int) []*common.Address {
-	dynasty := make([]*common.Address, 0)
+func MakeNewDynasty(sortedCandidates []common.Address, dynastySize int) []common.Address {
+	dynasty := make([]common.Address, 0)
 
 	for i := 0; i < dynastySize; i++ {
-		addrBytes := sortedCandidates[i].Address
-		addr := common.BytesToAddress(addrBytes)
-		dynasty = append(dynasty, &addr)
+		addr := sortedCandidates[i]
+		dynasty = append(dynasty, addr)
 	}
 	// Todo @drsleepytiger ordering BP
 
@@ -186,7 +182,7 @@ func MakeNewDynasty(sortedCandidates []*dpospb.Candidate, dynastySize int) []*co
 }
 
 //SetDynastyState set dynasty state using dynasty slice
-func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) error {
+func SetDynastyState(ds *trie.Batch, dynasty []common.Address) error {
 	for i, addr := range dynasty {
 		if err := ds.Put(byteutils.FromInt32(int32(i)), addr.Bytes()); err != nil {
 			return err
@@ -196,8 +192,8 @@ func SetDynastyState(ds *trie.Batch, dynasty []*common.Address) error {
 }
 
 //DynastyStateToDynasty convert dynasty trie to address slice
-func DynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) {
-	dynasty := make([]*common.Address, 0)
+func DynastyStateToDynasty(dynastyState *trie.Batch) ([]common.Address, error) {
+	dynasty := make([]common.Address, 0)
 	iter, err := dynastyState.Iterator(nil)
 	if err != nil {
 		return nil, err
@@ -208,7 +204,7 @@ func DynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) 
 			return nil, err
 		}
 		addr := common.BytesToAddress(iter.Value())
-		dynasty = append(dynasty, &addr)
+		dynasty = append(dynasty, addr)
 
 		exist, err = iter.Next()
 	}
@@ -216,26 +212,24 @@ func DynastyStateToDynasty(dynastyState *trie.Batch) ([]*common.Address, error) 
 }
 
 //CandidateStateToCandidates convert candidate trie to Candidate Proto
-func CandidateStateToCandidates(candidateState *trie.Batch) ([]*dpospb.Candidate, error) {
-	candidates := make([]*dpospb.Candidate, 0)
+func CandidateStateToCandidates(candidateState *trie.Batch) ([]common.Address, error) {
+	candidates := make([]common.Address, 0)
 
 	iter, err := candidateState.Iterator(nil)
 	if err != nil {
 		return nil, err
 	}
 	exist, err := iter.Next()
+	if err != nil {
+		return nil, err
+	}
 	for exist {
-		if err != nil {
-			return nil, err
-		}
-		pbCandidate := new(dpospb.Candidate)
-		err = proto.Unmarshal(iter.Value(), pbCandidate)
-		if err != nil {
-			return nil, err
-		}
-
-		candidates = append(candidates, pbCandidate)
+		addr := common.BytesToAddress(iter.Key())
+		candidates = append(candidates, addr)
 		exist, err = iter.Next()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return candidates, nil
 }
@@ -248,10 +242,11 @@ func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64)
 }
 
 //MakeMintDynasty returns dynasty slice for mint block
-func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]*common.Address, error) {
+func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]common.Address, error) {
 	if d.checkTransitionDynasty(parent.Timestamp(), ts) {
+		as := parent.State().AccState()
 		cs := parent.State().DposState().CandidateState()
-		sortedCandidates, err := SortByVotePower(cs)
+		sortedCandidates, err := SortByVotePower(as, cs)
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +264,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 		return common.Address{}, err
 	}
 	proposerIndex := int(mintTs) % int(d.DynastyInterval().Seconds()) / int(BlockInterval.Seconds())
-	return *dynasty[proposerIndex], nil
+	return dynasty[proposerIndex], nil
 }
 
 //SetMintDynastyState set mint block's dynasty state
@@ -289,30 +284,27 @@ func (d *Dpos) SetMintDynastyState(ts int64, parent *core.Block, block *core.Blo
 	return nil
 }
 
-//Candidate returns candidate data in cadidateState
-func (s *State) Candidate(addr common.Address) (*dpospb.Candidate, error) {
+// IsCandidate returns true if addr is in candidateState
+func (s *State) IsCandidate(addr common.Address) (bool, error) {
 	cs := s.candidateState
 
-	candidateBytes, err := cs.Get(addr.Bytes())
+	_, err := cs.Get(addr.Bytes())
+	if err == trie.ErrNotFound {
+		return false, nil
+	}
 	if err != nil {
-		return nil, ErrNotCandidate
+		return false, err
 	}
 
-	pbCandidate := new(dpospb.Candidate)
-	err = proto.Unmarshal(candidateBytes, pbCandidate)
-	if err != nil {
-		return nil, err
-	}
-
-	return pbCandidate, nil
+	return true, nil
 }
 
-// Candidates returns slice of candidate addresses
-func (s *State) Candidates() ([]*dpospb.Candidate, error) {
+// Candidates returns slice of addresses in candidates
+func (s *State) Candidates() ([]common.Address, error) {
 	return CandidateStateToCandidates(s.candidateState)
 }
 
 // Dynasty returns slice of addresses in dynasty
-func (s *State) Dynasty() ([]*common.Address, error) {
+func (s *State) Dynasty() ([]common.Address, error) {
 	return DynastyStateToDynasty(s.dynastyState)
 }

@@ -46,20 +46,20 @@ func (e *Expect) account(addr common.Address) *core.Account {
 //Balance compare balance of account to expected value
 func (e *Expect) Balance(addr common.Address, value uint64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Balance().Uint64(), value)
+	require.Equal(e.t, acc.Balance.Uint64(), value)
 	return e
 }
 
 //Vesting compare vesting of account to expected value
 func (e *Expect) Vesting(addr common.Address, vest uint64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Vesting().Uint64(), vest)
+	require.Equal(e.t, acc.Vesting.Uint64(), vest)
 	return e
 }
 
 //Nonce compare nonce of account to expected value
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Nonce(), nonce)
+	require.Equal(e.t, acc.Nonce, nonce)
 	return e
 }

@@ -16,13 +16,10 @@
 package dpos
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // BecomeCandidateTx is a structure for quiting cadidate
@@ -52,28 +49,14 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		return ErrAlreadyCandidate
 	}
 
-	err = as.SubBalance(tx.candidateAddr.Bytes(), tx.collateral)
+	err = as.SubBalance(tx.candidateAddr, tx.collateral)
 	if err != nil {
 		return err
 	}
 
-	collateralBytes, err := tx.collateral.ToFixedSizeByteSlice()
-	if err != nil {
-		return err
-	}
+	err = as.SetCollateral(tx.candidateAddr, tx.collateral)
 
-	zeroBytes, _ := util.Uint128Zero().ToFixedSizeByteSlice()
-	pbCandidate := &dpospb.Candidate{
-		Address:   tx.candidateAddr.Bytes(),
-		Collatral: collateralBytes,
-		VotePower: zeroBytes,
-	}
-	candidateBytes, err := proto.Marshal(pbCandidate)
-	if err != nil {
-		return err
-	}
-
-	return cs.Put(tx.candidateAddr.Bytes(), candidateBytes)
+	return cs.Put(tx.candidateAddr.Bytes(), tx.candidateAddr.Bytes())
 }
 
 //QuitCandidateTx is a structure for quiting cadidate
@@ -93,23 +76,57 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 	cs := b.State().DposState().CandidateState()
 	as := b.State().AccState()
 
-	candidateBytes, err := cs.Get(tx.candidateAddr.Bytes())
+	_, err := cs.Get(tx.candidateAddr.Bytes())
 	if err != nil {
 		return ErrNotCandidate
 	}
 
 	// Refund collateral
-	pbCandidate := new(dpospb.Candidate)
-	err = proto.Unmarshal(candidateBytes, pbCandidate)
+	acc, err := as.GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
 	}
-	collateral, err := util.NewUint128FromFixedSizeByteSlice(pbCandidate.Collatral)
+
+	if err := as.AddBalance(tx.candidateAddr, acc.Collateral); err != nil {
+		return err
+	}
+
+	if err := as.SetCollateral(tx.candidateAddr, util.NewUint128FromUint(0)); err != nil {
+		return err
+	}
+
+	if err := as.SubVotePower(tx.candidateAddr, acc.VotePower); err != nil {
+		return err
+	}
+
+	voters := acc.Voters
+	if voters.RootHash() == nil {
+		return cs.Delete(tx.candidateAddr.Bytes())
+	}
+
+	iter, err := voters.Iterator(nil)
 	if err != nil {
 		return err
 	}
-	if err := as.AddBalance(tx.candidateAddr.Bytes(), collateral); err != nil {
+	exist, err := iter.Next()
+	if err != nil {
 		return err
+	}
+	for exist {
+		voterAddr := common.BytesToAddress(iter.Key())
+		err = as.SubVoted(voterAddr, tx.candidateAddr)
+		if err != nil {
+			return err
+		}
+		err = as.SubVoters(tx.candidateAddr, voterAddr)
+		if err != nil {
+			return err
+		}
+
+		exist, err = iter.Next()
+		if err != nil {
+			return err
+		}
 	}
 
 	return cs.Delete(tx.candidateAddr.Bytes())
@@ -134,44 +151,28 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 	cs := b.State().DposState().CandidateState()
 	as := b.State().AccState()
 
-	candidateBytes, err := cs.Get(tx.candidateAddr.Bytes())
+	_, err := cs.Get(tx.candidateAddr.Bytes())
 	if err != nil {
 		return ErrNotCandidate
 	}
 
-	voter, err := as.GetAccount(tx.voter.Bytes())
+	voter, err := as.GetAccount(tx.voter)
 	if err != nil {
 		return err
 	}
 
-	// Set voter's voted candidate
-	if byteutils.Equal(voter.Voted(), tx.candidateAddr.Bytes()) {
-		return ErrVoteDuplicate
+	// Add voter's addr to candidate's voters
+	if err := as.AddVoters(tx.candidateAddr, tx.voter); err != nil {
+		return err
 	}
-	as.SetVoted(tx.voter.Bytes(), tx.candidateAddr.Bytes())
-
 	// Add voter's vesting to candidate's votePower
-	pbCandidate := new(dpospb.Candidate)
-	err = proto.Unmarshal(candidateBytes, pbCandidate)
-	if err != nil {
+	if err := as.AddVotePower(tx.candidateAddr, voter.Vesting); err != nil {
 		return err
 	}
-	votePower, err := util.NewUint128FromFixedSizeByteSlice(pbCandidate.VotePower)
-	if err != nil {
-		return err
-	}
-	newVotePower, err := votePower.Add(voter.Vesting())
-	if err != nil {
-		return err
-	}
-	pbCandidate.VotePower, err = newVotePower.ToFixedSizeByteSlice()
-	if err != nil {
-		return err
-	}
-	newBytesCandidate, err := proto.Marshal(pbCandidate)
-	if err != nil {
+	// Add cadidate's addr to voter's voted
+	if err := as.SetVoted(tx.voter, []common.Address{tx.candidateAddr}); err != nil {
 		return err
 	}
 
-	return cs.Put(tx.candidateAddr.Bytes(), newBytesCandidate)
+	return nil
 }
