@@ -20,7 +20,7 @@ swagger = `{
   "paths": {
     "/v1/account": {
       "get": {
-        "operationId": "GetAccountState",
+        "operationId": "GetAccount",
         "responses": {
           "200": {
             "description": "",

@@ -36,22 +36,22 @@ func (m *MockApiServiceClient) EXPECT() *MockApiServiceClientMockRecorder {
 	return m.recorder
 }
 
-// GetAccountState mocks base method
-func (m *MockApiServiceClient) GetAccountState(arg0 context.Context, arg1 *pb.GetAccountRequest, arg2 ...grpc.CallOption) (*pb.GetAccountResponse, error) {
+// GetAccount mocks base method
+func (m *MockApiServiceClient) GetAccount(arg0 context.Context, arg1 *pb.GetAccountRequest, arg2 ...grpc.CallOption) (*pb.GetAccountResponse, error) {
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "GetAccountState", varargs...)
+	ret := m.ctrl.Call(m, "GetAccount", varargs...)
 	ret0, _ := ret[0].(*pb.GetAccountResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAccountState indicates an expected call of GetAccountState
-func (mr *MockApiServiceClientMockRecorder) GetAccountState(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+// GetAccount indicates an expected call of GetAccount
+func (mr *MockApiServiceClientMockRecorder) GetAccount(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	varargs := append([]interface{}{arg0, arg1}, arg2...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountState", reflect.TypeOf((*MockApiServiceClient)(nil).GetAccountState), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccount", reflect.TypeOf((*MockApiServiceClient)(nil).GetAccount), varargs...)
 }
 
 // GetAccountTransactions mocks base method
@@ -348,17 +348,17 @@ func (m *MockApiServiceServer) EXPECT() *MockApiServiceServerMockRecorder {
 	return m.recorder
 }
 
-// GetAccountState mocks base method
-func (m *MockApiServiceServer) GetAccountState(arg0 context.Context, arg1 *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
-	ret := m.ctrl.Call(m, "GetAccountState", arg0, arg1)
+// GetAccount mocks base method
+func (m *MockApiServiceServer) GetAccount(arg0 context.Context, arg1 *pb.GetAccountRequest) (*pb.GetAccountResponse, error) {
+	ret := m.ctrl.Call(m, "GetAccount", arg0, arg1)
 	ret0, _ := ret[0].(*pb.GetAccountResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAccountState indicates an expected call of GetAccountState
-func (mr *MockApiServiceServerMockRecorder) GetAccountState(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccountState", reflect.TypeOf((*MockApiServiceServer)(nil).GetAccountState), arg0, arg1)
+// GetAccount indicates an expected call of GetAccount
+func (mr *MockApiServiceServerMockRecorder) GetAccount(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAccount", reflect.TypeOf((*MockApiServiceServer)(nil).GetAccount), arg0, arg1)
 }
 
 // GetAccountTransactions mocks base method

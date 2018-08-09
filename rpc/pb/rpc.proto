@@ -5,7 +5,7 @@ package rpcpb;
 import "google/api/annotations.proto";
 
 service ApiService {
-	rpc GetAccountState (GetAccountRequest) returns (GetAccountResponse) {
+	rpc GetAccount (GetAccountRequest) returns (GetAccountResponse) {
 		option (google.api.http) = {
 			get: "/v1/account"
 		};
