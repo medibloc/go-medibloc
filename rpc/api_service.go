@@ -16,7 +16,6 @@
 package rpc
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
@@ -166,7 +165,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 
 // GetPendingTransactions sends all transactions in the transaction pool
 func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetTransactionsResponse, error) {
-	txs := s.tm.GetAll()
+	txs := Transactions(s.tm.GetAll())
 	rpcTxs, err := coreTxs2rpcTxs(txs)
 	if err != nil {
 		return nil, err
@@ -174,119 +173,6 @@ func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonP
 
 	return &rpcpb.TransactionsResponse{
 		Transactions: rpcTxs,
-	}, nil
-}
-
-// GetAccounts return all account in the blockchain
-func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.AccountsResponse, error) {
-	var rpcAccs []*rpcpb.GetAccountStateResponse
-
-	block := s.bm.TailBlock()
-
-	accs, err := block.State().GetAccounts()
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
-	}
-	for _, acc := range accs {
-		rpcAcc, err := coreAcc2rpcAcc(acc)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-		rpcAccs = append(rpcAccs, rpcAcc)
-	}
-
-	return &rpcpb.AccountsResponse{
-		Accounts: rpcAccs,
-	}, nil
-}
-
-// GetBlocks returns blocks
-func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest) (*rpcpb.BlocksResponse, error) {
-	var block *core.Block
-	var rpcPbBlocks []*rpcpb.BlockResponse
-	var err error
-
-	if req.From > req.To {
-		return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
-	}
-
-	for i := req.From; i <= req.To; i++ {
-		block, err = s.bm.BlockByHeight(i)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
-		}
-
-		pb, err := block.ToProto()
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
-		}
-
-		if pbBlock, ok := pb.(*corepb.Block); ok {
-			rpcPbBlock, err := corePbBlock2rpcPbBlock(pbBlock)
-			if err != nil {
-				return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
-			}
-			rpcPbBlocks = append(rpcPbBlocks, rpcPbBlock)
-		} else {
-			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
-		}
-	}
-
-	return &rpcpb.BlocksResponse{
-		Blocks: rpcPbBlocks,
-	}, nil
-}
-
-// GetCurrentAccountTransactions returns transactions of the account
-func (s *APIService) GetCurrentAccountTransactions(ctx context.Context,
-	req *rpcpb.GetCurrentAccountTransactionsRequest) (*rpcpb.TransactionsResponse, error) {
-	var txs []*rpcpb.TransactionResponse
-
-	address := common.HexToAddress(req.Address)
-	poolTxs := s.tm.GetByAddress(address)
-	tailBlock := s.bm.TailBlock()
-
-	for _, tx := range poolTxs {
-		corePbTx, err := tx.ToProto()
-		if err != nil {
-			continue
-		}
-		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction), false)
-		if err != nil {
-			continue
-		}
-		txs = append(txs, rpcPbTx)
-		// Add send transaction twice if the address of from is as same as the address of to
-		if tx.Type() == core.TxOpTransfer && tx.From() == tx.To() {
-			txs = append(txs, rpcPbTx)
-		}
-	}
-
-	if tailBlock != nil {
-		acc, err := tailBlock.State().GetAccount(address)
-		if err == nil {
-			txList := append(acc.TxsTo(), acc.TxsFrom()...)
-			for _, hash := range txList {
-				pbTx := new(corepb.Transaction)
-				pb, err := tailBlock.State().GetTx(hash)
-				if err != nil {
-					continue
-				}
-				err = proto.Unmarshal(pb, pbTx)
-				if err != nil {
-					continue
-				}
-				rpcPbTx, err := corePbTx2rpcPbTx(pbTx, true)
-				if err != nil {
-					continue
-				}
-				txs = append(txs, rpcPbTx)
-			}
-		}
-	}
-
-	return &rpcpb.TransactionsResponse{
-		Transactions: txs,
 	}, nil
 }
 
@@ -324,6 +210,51 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	}
 
 	return coreTx2rpcTx(tx, executed), nil
+}
+
+// GetAccountTransactions returns transactions of the account
+func (s *APIService) GetAccountTransactions(ctx context.Context,
+	req *rpcpb.GetAccountTransactionsRequest) (*rpcpb.GetTransactionsResponse, error) {
+	var txs []*rpcpb.GetTransactionResponse
+
+	address := common.HexToAddress(req.Address)
+	poolTxs := s.tm.GetByAddress(address)
+	for _, tx := range poolTxs {
+		txs = append(txs, coreTx2rpcTx(tx, false))
+		// Add send transaction twice if the address of from is as same as the address of to
+		if tx.Type() == core.TxOpTransfer && tx.From() == tx.To() {
+			txs = append(txs, coreTx2RpcTx(tx, false))
+		}
+	}
+
+	tailBlock := s.bm.TailBlock()
+	if tailBlock == nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+	}
+
+	acc, err := tailBlock.State().GetAccount(address)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+	}
+	if acc != nil {
+		txList := append(acc.TxsTo(), acc.TxsFrom()...)
+		for _, hash := range txList {
+			tx := new(core.Transaction)
+			pb, err := tailBlock.State().GetTx(hash)
+			if err != nil {
+				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+			}
+			err = tx.FromProto(pb)
+			if err != nil {
+				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+			}
+			txs = append(txs, coreTx2rpcTx(tx))
+		}
+	}
+
+	return &rpcpb.GetTransactionsResponse{
+		Transactions: txs,
+	}, nil
 }
 
 // SendTransaction sends transaction
