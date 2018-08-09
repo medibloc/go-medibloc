@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -18,24 +18,39 @@ const (
     "application/json"
   ],
   "paths": {
-    "/v1/block": {
+    "/v1/account": {
       "get": {
-        "operationId": "GetBlock",
+        "operationId": "GetAccountState",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbBlockResponse"
+              "$ref": "#/definitions/rpcpbGetAccountResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "hash",
-            "description": "Block hash. Or the string \"genesis\", \"confirmed\", \"tail\".",
+            "name": "address",
+            "description": "Hex string of the account addresss.",
             "in": "query",
             "required": false,
             "type": "string"
+          },
+          {
+            "name": "type",
+            "description": "If you send type, height field is ignored.\nBlock type \"genesis\", \"confirmed\", or \"tail\".",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "height",
+            "description": "Block account state with height.",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
           }
         ],
         "tags": [
@@ -43,27 +58,35 @@ const (
         ]
       }
     },
-    "/v1/blocks": {
+    "/v1/block": {
       "get": {
-        "operationId": "GetBlocks",
+        "operationId": "GetBlock",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbBlocksResponse"
+              "$ref": "#/definitions/rpcpbGetBlockResponse"
             }
           }
         },
         "parameters": [
           {
-            "name": "from",
+            "name": "hash",
+            "description": "If you send hash, type and height field is ignored.\nBlock hash.",
             "in": "query",
             "required": false,
-            "type": "string",
-            "format": "uint64"
+            "type": "string"
           },
           {
-            "name": "to",
+            "name": "type",
+            "description": "Block type \"genesis\", \"confirmed\", or \"tail\".",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "height",
+            "description": "Block height.",
             "in": "query",
             "required": false,
             "type": "string",
@@ -82,7 +105,7 @@ const (
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbCandidatesResponse"
+              "$ref": "#/definitions/rpcpbGetCandidatesResponse"
             }
           }
         },
@@ -98,7 +121,7 @@ const (
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbAccountsResponse"
+              "$ref": "#/definitions/rpcpbGetDynastyResponse"
             }
           }
         },
@@ -156,7 +179,7 @@ const (
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbTransactionResponse"
+              "$ref": "#/definitions/rpcpbGetTransactionResponse"
             }
           }
         },
@@ -205,58 +228,10 @@ const (
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbTransactionsResponse"
+              "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
           }
         },
-        "tags": [
-          "ApiService"
-        ]
-      }
-    },
-    "/v1/user/accounts": {
-      "get": {
-        "operationId": "GetAccounts",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbAccountsResponse"
-            }
-          }
-        },
-        "tags": [
-          "ApiService"
-        ]
-      }
-    },
-    "/v1/user/accountstate": {
-      "get": {
-        "operationId": "GetAccountState",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbGetAccountStateResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "address",
-            "description": "Hex string of the account addresss.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          },
-          {
-            "name": "height",
-            "description": "block account state with height. Or the string \"genesis\", \"confirmed\", \"tail\".",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
         "tags": [
           "ApiService"
         ]
@@ -264,12 +239,12 @@ const (
     },
     "/v1/user/{address}/transactions": {
       "get": {
-        "operationId": "GetCurrentAccountTransactions",
+        "operationId": "GetAccountTransactions",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbTransactionsResponse"
+              "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
           }
         },
@@ -295,20 +270,89 @@ const (
     }
   },
   "definitions": {
-    "rpcpbAccountsResponse": {
+    "rpcpbCandidate": {
       "type": "object",
       "properties": {
-        "accounts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/rpcpbGetAccountStateResponse"
-          }
+        "address": {
+          "type": "string"
+        },
+        "collatral": {
+          "type": "string"
+        },
+        "votePower": {
+          "type": "string"
         }
       }
     },
-    "rpcpbBlockResponse": {
+    "rpcpbGetAccountResponse": {
       "type": "object",
       "properties": {
+        "address": {
+          "type": "string",
+          "description": "Hex string of the account address."
+        },
+        "balance": {
+          "type": "string",
+          "description": "Current balance in unit of 1/(10^8) MED."
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Current transaction count."
+        },
+        "vesting": {
+          "type": "string",
+          "description": "Current vesting in unit of 1/(10^8) MED."
+        },
+        "voted": {
+          "type": "string",
+          "description": "Voted address."
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of record hash."
+        },
+        "certs_received": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Account addresses that have certificated the account."
+        },
+        "certs_issued": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Account addresses certificated by the account."
+        },
+        "txs_from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Transactions sent from account"
+        },
+        "txs_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Transactions sent to account"
+        }
+      }
+    },
+    "rpcpbGetBlockResponse": {
+      "type": "object",
+      "properties": {
+        "height": {
+          "type": "string",
+          "format": "uint64",
+          "title": "Block height"
+        },
         "hash": {
           "type": "string",
           "title": "Block hash"
@@ -320,6 +364,14 @@ const (
         "coinbase": {
           "type": "string",
           "title": "Block coinbase address"
+        },
+        "reward": {
+          "type": "string",
+          "title": "Block reward"
+        },
+        "supply": {
+          "type": "string",
+          "title": "Block supply"
         },
         "timestamp": {
           "type": "string",
@@ -356,50 +408,24 @@ const (
           "type": "string",
           "title": "Root hash of records trie"
         },
-        "consensus_root": {
+        "certification_root": {
           "type": "string",
-          "title": "Root hash of consensus trie"
+          "title": "Root hash of certification trie"
+        },
+        "dpos_root": {
+          "type": "string",
+          "title": "Root hash of dpos state trie"
         },
         "transactions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/rpcpbTransactionResponse"
+            "$ref": "#/definitions/rpcpbGetTransactionResponse"
           },
           "title": "Transactions in block"
-        },
-        "height": {
-          "type": "string",
-          "format": "uint64",
-          "title": "Block height"
         }
       }
     },
-    "rpcpbBlocksResponse": {
-      "type": "object",
-      "properties": {
-        "blocks": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/rpcpbBlockResponse"
-          }
-        }
-      }
-    },
-    "rpcpbCandidate": {
-      "type": "object",
-      "properties": {
-        "address": {
-          "type": "string"
-        },
-        "collatral": {
-          "type": "string"
-        },
-        "votePower": {
-          "type": "string"
-        }
-      }
-    },
-    "rpcpbCandidatesResponse": {
+    "rpcpbGetCandidatesResponse": {
       "type": "object",
       "properties": {
         "candidates": {
@@ -410,64 +436,14 @@ const (
         }
       }
     },
-    "rpcpbGetAccountStateResponse": {
+    "rpcpbGetDynastyResponse": {
       "type": "object",
       "properties": {
-        "address": {
-          "type": "string",
-          "description": "Hex string of the account address."
-        },
-        "balance": {
-          "type": "string",
-          "description": "Current balance in unit of 1/(10^8) MED."
-        },
-        "certs_issued": {
+        "addresses": {
           "type": "array",
           "items": {
             "type": "string"
-          },
-          "description": "Account addresses certificated by the account."
-        },
-        "certs_received": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Account addresses that have certificated the account."
-        },
-        "nonce": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Current transaction count."
-        },
-        "records": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of record hash."
-        },
-        "vesting": {
-          "type": "string",
-          "description": "Current vesting in unit of 1/(10^8) MED."
-        },
-        "voted": {
-          "type": "string",
-          "description": "Voted address."
-        },
-        "txs_send": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Transactions sent from account"
-        },
-        "txs_get": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Transactions sent to account"
+          }
         }
       }
     },
@@ -491,6 +467,75 @@ const (
         "LIB": {
           "type": "string",
           "title": "Current LIB hash"
+        }
+      }
+    },
+    "rpcpbGetTransactionResponse": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "title": "Transaction hash"
+        },
+        "from": {
+          "type": "string",
+          "description": "Hex string of the sender account addresss."
+        },
+        "to": {
+          "type": "string",
+          "description": "Hex string of the receiver account addresss."
+        },
+        "value": {
+          "type": "string",
+          "description": "Amount of value sending with this transaction."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Transaction timestamp."
+        },
+        "data": {
+          "$ref": "#/definitions/rpcpbTransactionData",
+          "description": "Transaction Data type."
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Transaction nonce."
+        },
+        "chain_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction chain ID."
+        },
+        "alg": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction algorithm."
+        },
+        "sign": {
+          "type": "string",
+          "description": "Transaction sign."
+        },
+        "payer_sign": {
+          "type": "string",
+          "description": "Transaction payer's sign."
+        },
+        "executed": {
+          "type": "boolean",
+          "format": "boolean",
+          "description": "If transaction is executed and included in the block, it returns true. otherwise, false."
+        }
+      }
+    },
+    "rpcpbGetTransactionsResponse": {
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbGetTransactionResponse"
+          }
         }
       }
     },
@@ -588,75 +633,6 @@ const (
         "payload": {
           "type": "string",
           "description": "Transaction data payload."
-        }
-      }
-    },
-    "rpcpbTransactionResponse": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string",
-          "title": "Transaction hash"
-        },
-        "from": {
-          "type": "string",
-          "description": "Hex string of the sender account addresss."
-        },
-        "to": {
-          "type": "string",
-          "description": "Hex string of the receiver account addresss."
-        },
-        "value": {
-          "type": "string",
-          "description": "Amount of value sending with this transaction."
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Transaction timestamp."
-        },
-        "data": {
-          "$ref": "#/definitions/rpcpbTransactionData",
-          "description": "Transaction Data type."
-        },
-        "nonce": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Transaction nonce."
-        },
-        "chain_id": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Transaction chain ID."
-        },
-        "alg": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Transaction algorithm."
-        },
-        "sign": {
-          "type": "string",
-          "description": "Transaction sign."
-        },
-        "payer_sign": {
-          "type": "string",
-          "description": "Transaction payer's sign."
-        },
-        "executed": {
-          "type": "boolean",
-          "format": "boolean",
-          "description": "If transaction is executed and included in the block, it returns true. otherwise, false."
-        }
-      }
-    },
-    "rpcpbTransactionsResponse": {
-      "type": "object",
-      "properties": {
-        "transactions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/rpcpbTransactionResponse"
-          }
         }
       }
     }

@@ -5,45 +5,27 @@ package rpcpb;
 import "google/api/annotations.proto";
 
 service ApiService {
-	rpc GetAccountState (GetAccountStateRequest) returns (GetAccountStateResponse) {
+	rpc GetAccountState (GetAccountRequest) returns (GetAccountResponse) {
 		option (google.api.http) = {
-			get: "/v1/user/accountstate"
+			get: "/v1/account"
 		};
 	}
 
-	rpc GetAccounts (NonParamsRequest) returns (AccountsResponse) {
-		option (google.api.http) = {
-			get: "/v1/user/accounts"
-		};
-	}
-
-	rpc GetCandidates (NonParamsRequest) returns (CandidatesResponse) {
-		option (google.api.http) = {
-			get: "/v1/candidates"
-		};
-	}
-
-	rpc GetDynasty (NonParamsRequest) returns (AccountsResponse) {
-		option (google.api.http) = {
-			get: "/v1/dynasty"
-		};
-	}
-
-	rpc GetBlock (GetBlockRequest) returns (BlockResponse) {
+	rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {
 		option (google.api.http) = {
 			get: "/v1/block"
 		};
 	}
 
-	rpc GetBlocks (GetBlocksRequest) returns (BlocksResponse) {
+	rpc GetCandidates (NonParamsRequest) returns (GetCandidatesResponse) {
 		option (google.api.http) = {
-			get: "/v1/blocks"
+			get: "/v1/candidates"
 		};
 	}
 
-	rpc GetCurrentAccountTransactions (GetCurrentAccountTransactionsRequest) returns (TransactionsResponse) {
+	rpc GetDynasty (NonParamsRequest) returns (GetDynastyResponse) {
 		option (google.api.http) = {
-			get: "/v1/user/{address}/transactions"
+			get: "/v1/dynasty"
 		};
 	}
 
@@ -53,15 +35,21 @@ service ApiService {
 		};
 	}
 
-	rpc GetTransaction (GetTransactionRequest) returns (TransactionResponse) {
+	rpc GetPendingTransactions (NonParamsRequest) returns (GetTransactionsResponse) {
+		option (google.api.http) = {
+			get: "/v1/transactions/pending"
+		};
+	}
+
+	rpc GetTransaction (GetTransactionRequest) returns (GetTransactionResponse) {
 		option (google.api.http) = {
 			get: "/v1/transaction"
 		};
 	}
 
-	rpc GetPendingTransactions (NonParamsRequest) returns (TransactionsResponse) {
+	rpc GetAccountTransactions (GetAccountTransactionsRequest) returns (GetTransactionsResponse) {
 		option (google.api.http) = {
-			get: "/v1/transactions/pending"
+			get: "/v1/user/{address}/transactions"
 		};
 	}
 
@@ -80,87 +68,120 @@ service ApiService {
 	}
 }
 
-message GetAccountStateRequest {
+message GetAccountRequest {
 	// Hex string of the account addresss.
 	string address = 1;
-	// block account state with height. Or the string "genesis", "confirmed", "tail".
-	string height = 2;
+	// If you send type, height field is ignored.
+	// Block type "genesis", "confirmed", or "tail".
+	string type = 2;
+	// Block account state with height
+	uint64 height = 3;
 }
 
-message GetAccountStateResponse {
+message GetAccountResponse {
 	// Hex string of the account address.
 	string address = 1;
 	// Current balance in unit of 1/(10^8) MED.
 	string balance = 2; // uint128, len=16
-	// Account addresses certificated by the account.
-	repeated string certs_issued = 3;
-	// Account addresses that have certificated the account.
-	repeated string certs_received = 4;
 	// Current transaction count.
-	uint64 nonce = 5;
+	uint64 nonce = 3;
+	// Current vesting in unit of 1/(10^8) MED.
+	string vesting = 4;
+
+	// Voted address.
+	string voted = 5;
+
 	// List of record hash.
 	repeated string records = 6;
-	// Current vesting in unit of 1/(10^8) MED.
-	string vesting = 7;
-	// Voted address.
-	string voted = 8;
+	// Account addresses that have certificated the account.
+	repeated string certs_received = 7;
+	// Account addresses certificated by the account.
+	repeated string certs_issued = 8;
 	// Transactions sent from account
-	repeated string txs_send = 9;
+	repeated string txs_from = 9;
 	// Transactions sent to account
-	repeated string txs_get = 10;
+	repeated string txs_to = 10;
 }
 
 message GetBlockRequest {
-    // Block hash. Or the string "genesis", "confirmed", "tail".
-    string hash = 1;
-  }
-
-  message BlockResponse {
+	// If you send hash, type and height field is ignored.
 	// Block hash
 	string hash = 1;
-	// Block parent hash
-	string parent_hash = 2;
-	// Block coinbase address
-	string coinbase = 3;
-	// Block timestamp
-	int64 timestamp = 4;
-	// Block chain id
-	uint32 chain_id = 5;
-	// Block signature algorithm
-	uint32 alg = 6;
-	// Block signature
-	string sign = 7;
-	// Root hash of accounts trie
-	string accs_root = 8;
-	// Root hash of transactions trie
-	string txs_root = 9;
-	// Root hash of usage trie
-	string usage_root = 10;
-	// Root hash of records trie
-	string records_root = 11;
-	// Root hash of consensus trie
-	string consensus_root = 12;
-	// Transactions in block
-	repeated TransactionResponse transactions = 13;
+	// Block type "genesis", "confirmed", or "tail".
+	string type = 2;
 	// Block height
-	uint64 height = 14;
+	uint64 height = 3;
+}
+
+message GetBlockResponse {
+	// Block height
+	uint64 height = 1;
+	// Block hash
+	string hash = 2;
+	// Block parent hash
+	string parent_hash = 3;
+	// Block coinbase address
+	string coinbase = 4;
+	// Block reward
+	string reward = 5;
+	// Block supply
+	string supply = 6;
+	// Block timestamp
+	int64 timestamp = 7;
+	// Block chain id
+	uint32 chain_id = 8;
+	// Block signature algorithm
+	uint32 alg = 9;
+	// Block signature
+	string sign = 10;
+
+	// Root hash of accounts trie
+	string accs_root = 20;
+	// Root hash of transactions trie
+	string txs_root = 21;
+	// Root hash of usage trie
+	string usage_root = 22;
+	// Root hash of records trie
+	string records_root = 23;
+	// Root hash of certification trie
+	string certification_root = 24;
+	// Root hash of dpos state trie
+	string dpos_root = 25;
+
+	// Transactions in block
+	repeated GetTransactionResponse transactions = 30;
 }
 
 message NonParamsRequest {
 }
 
+message Candidate {
+	string address = 1;
+	string collatral = 2;
+	string votePower = 3;
+}
+
+message GetCandidatesResponse {
+	repeated Candidate candidates = 1;
+}
+
+message GetDynastyResponse {
+	repeated string addresses = 1;
+}
+
 message GetMedStateResponse {
 	// Block chain id
 	uint32 chain_id = 1;
-
 	// Current tail block hash
 	string tail = 2;
-
 	// Current tail block height
 	uint64 height = 3;
-
 	// Current LIB hash
 	string LIB = 4;
+}
+
+message GetTransactionsResponse {
+	repeated GetTransactionResponse transactions = 1;
 }
 
 message GetTransactionRequest {
@@ -168,7 +189,41 @@ message GetTransactionRequest {
 	string hash = 1;
 }
 
-message GetCurrentAccountTransactionsRequest {
+message TransactionData {
+	// Transaction data type.
+	string type = 1;
+	// Transaction data payload.
+	string payload = 2;
+}
+
+message GetTransactionResponse {
+	// Transaction hash
+	string hash = 1;
+	// Hex string of the sender account addresss.
+	string from = 2;
+	// Hex string of the receiver account addresss.
+	string to = 3;
+	// Amount of value sending with this transaction.
+	string value = 4; // uint128, len=16
+	// Transaction timestamp.
+	int64 timestamp = 5;
+	// Transaction Data type.
+	TransactionData data = 6;
+	// Transaction nonce.
+	uint64 nonce = 7;
+	// Transaction chain ID.
+	uint32 chain_id = 8;
+	// Transaction algorithm.
+	uint32 alg = 9;
+	// Transaction sign.
+	string sign = 10;
+	// Transaction payer's sign.
+	string payer_sign = 11;
+	// If transaction is executed and included in the block, it returns true. otherwise, false.
+	bool executed = 12;
+}
+
+message GetAccountTransactionsRequest {
 	// Hex string of the account addresss.
 	string address = 1;
 	// Whether or not to include pending transactions. Default is true.
@@ -205,40 +260,6 @@ message SendTransactionResponse {
 	string hash = 1;
 }
 
-message TransactionData {
-	// Transaction data type.
-	string type = 1;
-	// Transaction data payload.
-	string payload = 2;
-}
-
-message TransactionResponse {
-	// Transaction hash
-	string hash = 1;
-	// Hex string of the sender account addresss.
-	string from = 2;
-	// Hex string of the receiver account addresss.
-	string to = 3;
-	// Amount of value sending with this transaction.
-	string value = 4; // uint128, len=16
-	// Transaction timestamp.
-	int64 timestamp = 5;
-	// Transaction Data type.
-	TransactionData data = 6;
-	// Transaction nonce.
-	uint64 nonce = 7;
-	// Transaction chain ID.
-	uint32 chain_id = 8;
-	// Transaction algorithm.
-	uint32 alg = 9;
-	// Transaction sign.
-	string sign = 10;
-	// Transaction payer's sign.
-	string payer_sign = 11;
-	// If transaction is executed and included in the block, it returns true. otherwise, false.
-	bool executed = 12;
-}
-
 message SubscribeRequest {
 	repeated string topics = 1;
 }
@@ -246,31 +267,4 @@ message SubscribeRequest {
 message SubscribeResponse {
 	string topic = 1;
 	string data = 2;
-}
-
-message GetBlocksRequest {
-	uint64 from = 1;
-	uint64 to = 2;
-}
-
-message BlocksResponse {
-	repeated BlockResponse blocks = 1;
-}
-
-message TransactionsResponse {
-	repeated TransactionResponse transactions = 1;
-}
-
-message AccountsResponse {
-	repeated GetAccountStateResponse accounts = 1;
-}
-
-message Candidate {
-	string address = 1;
-	string collatral = 2;
-	string votePower = 3;
-}
-
-message CandidatesResponse {
-	repeated Candidate candidates = 1;
 }
