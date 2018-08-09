@@ -17,25 +17,25 @@ service ApiService {
 		};
 	}
 
-	rpc GetCandidates (NonParamsRequest) returns (GetCandidatesResponse) {
+	rpc GetCandidates (NonParamRequest) returns (GetCandidatesResponse) {
 		option (google.api.http) = {
 			get: "/v1/candidates"
 		};
 	}
 
-	rpc GetDynasty (NonParamsRequest) returns (GetDynastyResponse) {
+	rpc GetDynasty (NonParamRequest) returns (GetDynastyResponse) {
 		option (google.api.http) = {
 			get: "/v1/dynasty"
 		};
 	}
 
-	rpc GetMedState (NonParamsRequest) returns (GetMedStateResponse) {
+	rpc GetMedState (NonParamRequest) returns (GetMedStateResponse) {
 		option (google.api.http) = {
 			get: "/v1/node/medstate"
 		};
 	}
 
-	rpc GetPendingTransactions (NonParamsRequest) returns (GetTransactionsResponse) {
+	rpc GetPendingTransactions (NonParamRequest) returns (GetTransactionsResponse) {
 		option (google.api.http) = {
 			get: "/v1/transactions/pending"
 		};
@@ -152,7 +152,7 @@ message GetBlockResponse {
 	repeated GetTransactionResponse transactions = 30;
 }
 
-message NonParamsRequest {
+message NonParamRequest {
 }
 
 message Candidate {

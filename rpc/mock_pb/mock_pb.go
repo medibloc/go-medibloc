@@ -91,7 +91,7 @@ func (mr *MockApiServiceClientMockRecorder) GetBlock(arg0, arg1 interface{}, arg
 }
 
 // GetCandidates mocks base method
-func (m *MockApiServiceClient) GetCandidates(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.GetCandidatesResponse, error) {
+func (m *MockApiServiceClient) GetCandidates(arg0 context.Context, arg1 *pb.NonParamRequest, arg2 ...grpc.CallOption) (*pb.GetCandidatesResponse, error) {
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
@@ -109,7 +109,7 @@ func (mr *MockApiServiceClientMockRecorder) GetCandidates(arg0, arg1 interface{}
 }
 
 // GetDynasty mocks base method
-func (m *MockApiServiceClient) GetDynasty(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.GetDynastyResponse, error) {
+func (m *MockApiServiceClient) GetDynasty(arg0 context.Context, arg1 *pb.NonParamRequest, arg2 ...grpc.CallOption) (*pb.GetDynastyResponse, error) {
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
@@ -127,7 +127,7 @@ func (mr *MockApiServiceClientMockRecorder) GetDynasty(arg0, arg1 interface{}, a
 }
 
 // GetMedState mocks base method
-func (m *MockApiServiceClient) GetMedState(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.GetMedStateResponse, error) {
+func (m *MockApiServiceClient) GetMedState(arg0 context.Context, arg1 *pb.NonParamRequest, arg2 ...grpc.CallOption) (*pb.GetMedStateResponse, error) {
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
@@ -145,7 +145,7 @@ func (mr *MockApiServiceClientMockRecorder) GetMedState(arg0, arg1 interface{}, 
 }
 
 // GetPendingTransactions mocks base method
-func (m *MockApiServiceClient) GetPendingTransactions(arg0 context.Context, arg1 *pb.NonParamsRequest, arg2 ...grpc.CallOption) (*pb.GetTransactionsResponse, error) {
+func (m *MockApiServiceClient) GetPendingTransactions(arg0 context.Context, arg1 *pb.NonParamRequest, arg2 ...grpc.CallOption) (*pb.GetTransactionsResponse, error) {
 	varargs := []interface{}{arg0, arg1}
 	for _, a := range arg2 {
 		varargs = append(varargs, a)
@@ -388,7 +388,7 @@ func (mr *MockApiServiceServerMockRecorder) GetBlock(arg0, arg1 interface{}) *go
 }
 
 // GetCandidates mocks base method
-func (m *MockApiServiceServer) GetCandidates(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetCandidatesResponse, error) {
+func (m *MockApiServiceServer) GetCandidates(arg0 context.Context, arg1 *pb.NonParamRequest) (*pb.GetCandidatesResponse, error) {
 	ret := m.ctrl.Call(m, "GetCandidates", arg0, arg1)
 	ret0, _ := ret[0].(*pb.GetCandidatesResponse)
 	ret1, _ := ret[1].(error)
@@ -401,7 +401,7 @@ func (mr *MockApiServiceServerMockRecorder) GetCandidates(arg0, arg1 interface{}
 }
 
 // GetDynasty mocks base method
-func (m *MockApiServiceServer) GetDynasty(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetDynastyResponse, error) {
+func (m *MockApiServiceServer) GetDynasty(arg0 context.Context, arg1 *pb.NonParamRequest) (*pb.GetDynastyResponse, error) {
 	ret := m.ctrl.Call(m, "GetDynasty", arg0, arg1)
 	ret0, _ := ret[0].(*pb.GetDynastyResponse)
 	ret1, _ := ret[1].(error)
@@ -414,7 +414,7 @@ func (mr *MockApiServiceServerMockRecorder) GetDynasty(arg0, arg1 interface{}) *
 }
 
 // GetMedState mocks base method
-func (m *MockApiServiceServer) GetMedState(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetMedStateResponse, error) {
+func (m *MockApiServiceServer) GetMedState(arg0 context.Context, arg1 *pb.NonParamRequest) (*pb.GetMedStateResponse, error) {
 	ret := m.ctrl.Call(m, "GetMedState", arg0, arg1)
 	ret0, _ := ret[0].(*pb.GetMedStateResponse)
 	ret1, _ := ret[1].(error)
@@ -427,7 +427,7 @@ func (mr *MockApiServiceServerMockRecorder) GetMedState(arg0, arg1 interface{}) 
 }
 
 // GetPendingTransactions mocks base method
-func (m *MockApiServiceServer) GetPendingTransactions(arg0 context.Context, arg1 *pb.NonParamsRequest) (*pb.GetTransactionsResponse, error) {
+func (m *MockApiServiceServer) GetPendingTransactions(arg0 context.Context, arg1 *pb.NonParamRequest) (*pb.GetTransactionsResponse, error) {
 	ret := m.ctrl.Call(m, "GetPendingTransactions", arg0, arg1)
 	ret0, _ := ret[0].(*pb.GetTransactionsResponse)
 	ret1, _ := ret[1].(error)

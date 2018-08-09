@@ -63,7 +63,7 @@ func request_ApiService_GetBlock_0(ctx context.Context, marshaler runtime.Marsha
 }
 
 func request_ApiService_GetCandidates_0(ctx context.Context, marshaler runtime.Marshaler, client ApiServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq NonParamsRequest
+	var protoReq NonParamRequest
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetCandidates(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -72,7 +72,7 @@ func request_ApiService_GetCandidates_0(ctx context.Context, marshaler runtime.M
 }
 
 func request_ApiService_GetDynasty_0(ctx context.Context, marshaler runtime.Marshaler, client ApiServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq NonParamsRequest
+	var protoReq NonParamRequest
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetDynasty(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -81,7 +81,7 @@ func request_ApiService_GetDynasty_0(ctx context.Context, marshaler runtime.Mars
 }
 
 func request_ApiService_GetMedState_0(ctx context.Context, marshaler runtime.Marshaler, client ApiServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq NonParamsRequest
+	var protoReq NonParamRequest
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetMedState(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -90,7 +90,7 @@ func request_ApiService_GetMedState_0(ctx context.Context, marshaler runtime.Mar
 }
 
 func request_ApiService_GetPendingTransactions_0(ctx context.Context, marshaler runtime.Marshaler, client ApiServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq NonParamsRequest
+	var protoReq NonParamRequest
 	var metadata runtime.ServerMetadata
 
 	msg, err := client.GetPendingTransactions(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
