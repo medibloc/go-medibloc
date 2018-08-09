@@ -164,6 +164,19 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 	}, nil
 }
 
+// GetPendingTransactions sends all transactions in the transaction pool
+func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetTransactionsResponse, error) {
+	txs := s.tm.GetAll()
+	rpcTxs, err := coreTxs2rpcTxs(txs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &rpcpb.TransactionsResponse{
+		Transactions: rpcTxs,
+	}, nil
+}
+
 // GetAccounts return all account in the blockchain
 func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.AccountsResponse, error) {
 	var rpcAccs []*rpcpb.GetAccountStateResponse
@@ -311,27 +324,6 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	}
 
 	return coreTx2rpcTx(tx, executed), nil
-}
-
-// GetPendingTransactions sends all transactions in the transaction pool
-func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.TransactionsResponse, error) {
-	var rpcPbTxs []*rpcpb.TransactionResponse
-
-	txs := s.tm.GetAll()
-	for _, tx := range txs {
-		corePbTx, err := tx.ToProto()
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
-		}
-		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction), false)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
-		}
-		rpcPbTxs = append(rpcPbTxs, rpcPbTx)
-	}
-	return &rpcpb.TransactionsResponse{
-		Transactions: rpcPbTxs,
-	}, nil
 }
 
 // SendTransaction sends transaction

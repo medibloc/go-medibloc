@@ -53,13 +53,9 @@ func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAcc
 }
 
 func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
-	var rpcTxs []*rpcpb.GetTransactionResponse
-	for _, tx := range block.Transactions() {
-		rpcTx, err := coreTx2rpcTx(tx, true)
-		if err != nil {
-			return nil, err
-		}
-		rpcTxs = append(rpcTxs, rpcTx)
+	txs, err := coreTxs2rpcTxs(block.Transactions(), true)
+	if err != nil {
+		return nil, err
 	}
 
 	return &rpcpb.BlockResponse{
@@ -79,7 +75,7 @@ func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
 		RecordsRoot:       byteutils.Bytes2Hex(block.RecordsRoot()),
 		CertificationRoot: byteutils.Bytes2Hex(block.CertificationRoot()),
 		DposRoot:          byteutils.Bytes2Hex(block.DposRoot()),
-		Transactions:      rpcTxs,
+		Transactions:      txs,
 	}, nil
 }
 
@@ -119,4 +115,16 @@ func coreTx2rpcTx(tx *Transaction, executed bool) *rpcpb.GetTransactionResponse 
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
 		Executed:  executed,
 	}
+}
+
+func coreTxs2rpcTxs(txs *Transactions, executed bool) (*rpcpb.GetTransactionsResponse, error) {
+	var rpcTxs []*rpcpb.GetTransactionResponse
+	for _, tx := range txs {
+		rpcTx, err := coreTx2rpcTx(tx, executed)
+		if err != nil {
+			return nil, err
+		}
+		rpcTxs = append(rpcTxs, rpcTx)
+	}
+	return rpcTxs, nil
 }
