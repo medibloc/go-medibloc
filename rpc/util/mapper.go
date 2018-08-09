@@ -23,18 +23,23 @@ import (
 	"github.com/medibloc/go-nebulas/util"
 )
 
-func coreAccount2rpcAccount(account *core.Account) (*rpcpb.GetAccountResponse, error) {
-	var txsFrom []string
-	var txsTo []string
-	for _, hash := range acc.TxsFrom() {
-		txsFrom = append(txsFrom, byteutils.Bytes2Hex(hash))
+func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAccountResponse {
+	if account == nil {
+		return &rpcpb.GetAccountResponse{
+			Address:       address,
+			Balance:       "0",
+			Nonce:         0,
+			Vesting:       "0",
+			Voted:         "",
+			Records:       []string{},
+			CertsIssued:   []string{},
+			CertsReceived: []string{},
+			TxsFrom:       []string{},
+			TxsTo:         []string{},
+		}
 	}
-	for _, hash := range acc.TxsFrom() {
-		txsTo = append(txsFrom, byteutils.Bytes2Hex(hash))
-	}
-
 	return &rpcpb.GetAccountResponse{
-		Address:       byteutils.Bytes2Hex(account.Address()),
+		Address:       address,
 		Balance:       account.Balance().String(),
 		Nonce:         account.Nonce(),
 		Vesting:       account.Vesting().String(),
@@ -42,9 +47,9 @@ func coreAccount2rpcAccount(account *core.Account) (*rpcpb.GetAccountResponse, e
 		Records:       nil, // TODO @ggomma
 		CertsIssued:   nil, // TODO @ggomma
 		CertsReceived: nil, // TODO @ggomma
-		TxsFrom:       txsFrom,
-		TxsTo:         txsTo,
-	}, nil
+		TxsFrom:       byteutils.BytesSlice2HexSlice(account.TxsFrom()),
+		TxsTo:         byteutils.BytesSlice2HexSlice(account.TxsTo()),
+	}
 }
 
 func coreBlock2rpcBlock(block *corepb.Block) (*rpcpb.GetBlockResponse, error) {

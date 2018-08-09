@@ -16,7 +16,6 @@
 package rpc
 
 import (
-	"encoding/json"
 	"regexp"
 
 	"strconv"
@@ -24,8 +23,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -35,146 +32,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-func candidate2rpcCandidate(candidate *dpospb.Candidate) (*rpcpb.Candidate, error) {
-	collatral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collatral)
-	if err != nil {
-		return nil, err
-	}
-
-	votePower, err := util.NewUint128FromFixedSizeByteSlice(candidate.VotePower)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rpcpb.Candidate{
-		Address:   byteutils.Bytes2Hex(candidate.Address),
-		Collatral: collatral.String(),
-		VotePower: votePower.String(),
-	}, nil
-}
-
-func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
-	var txsFrom []string
-	var txsTo []string
-	for _, hash := range acc.TxsFrom() {
-		txsFrom = append(txsFrom, byteutils.Bytes2Hex(hash))
-	}
-	for _, hash := range acc.TxsTo() {
-		txsTo = append(txsTo, byteutils.Bytes2Hex(hash))
-	}
-	return &rpcpb.GetAccountStateResponse{
-		Address:       byteutils.Bytes2Hex(acc.Address()),
-		Balance:       acc.Balance().String(),
-		CertsIssued:   nil, // TODO @ggomma
-		CertsReceived: nil, // TODO @ggomma
-		Nonce:         acc.Nonce(),
-		Records:       nil, // TODO @ggomma
-		Vesting:       acc.Vesting().String(),
-		Voted:         byteutils.Bytes2Hex(acc.Voted()),
-		TxsSend:       txsFrom,
-		TxsGet:        txsTo,
-	}, nil
-}
-
-func corePbTx2rpcPbTx(pbTx *corepb.Transaction, executed bool) (*rpcpb.TransactionResponse, error) {
-	value, err := util.NewUint128FromFixedSizeByteSlice(pbTx.Value)
-	if err != nil {
-		return nil, err
-	}
-	return &rpcpb.TransactionResponse{
-		Hash:      byteutils.Bytes2Hex(pbTx.Hash),
-		From:      byteutils.Bytes2Hex(pbTx.From),
-		To:        byteutils.Bytes2Hex(pbTx.To),
-		Value:     value.String(),
-		Timestamp: pbTx.Timestamp,
-		Data: &rpcpb.TransactionData{
-			Type:    pbTx.Data.Type,
-			Payload: string(pbTx.Data.Payload),
-		},
-		Nonce:     pbTx.Nonce,
-		ChainId:   pbTx.ChainId,
-		Alg:       pbTx.Alg,
-		Sign:      byteutils.Bytes2Hex(pbTx.Sign),
-		PayerSign: byteutils.Bytes2Hex(pbTx.PayerSign),
-		Executed:  executed,
-	}, nil
-}
-
-func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error) {
-	var rpcPbTxs []*rpcpb.TransactionResponse
-	for _, pbTx := range pbBlock.GetTransactions() {
-		rpcPbTx, err := corePbTx2rpcPbTx(pbTx, true)
-		if err != nil {
-			return nil, err
-		}
-		rpcPbTxs = append(rpcPbTxs, rpcPbTx)
-	}
-
-	return &rpcpb.BlockResponse{
-		Hash:          byteutils.Bytes2Hex(pbBlock.Header.Hash),
-		ParentHash:    byteutils.Bytes2Hex(pbBlock.Header.ParentHash),
-		Coinbase:      byteutils.Bytes2Hex(pbBlock.Header.Coinbase),
-		Timestamp:     pbBlock.Header.Timestamp,
-		ChainId:       pbBlock.Header.ChainId,
-		Alg:           pbBlock.Header.Alg,
-		Sign:          byteutils.Bytes2Hex(pbBlock.Header.Sign),
-		AccsRoot:      byteutils.Bytes2Hex(pbBlock.Header.AccsRoot),
-		TxsRoot:       byteutils.Bytes2Hex(pbBlock.Header.TxsRoot),
-		UsageRoot:     byteutils.Bytes2Hex(pbBlock.Header.UsageRoot),
-		RecordsRoot:   byteutils.Bytes2Hex(pbBlock.Header.RecordsRoot),
-		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.DposRoot),
-		Transactions:  rpcPbTxs,
-		Height:        pbBlock.Height,
-	}, nil
-}
-
-func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
-	var addRecord *core.AddRecordPayload
-	var addCertification *core.AddCertificationPayload
-	var revokeCertification *core.RevokeCertificationPayload
-
-	switch txData.Type {
-	case core.TxOpTransfer:
-		return nil, nil
-	case core.TxOpAddRecord:
-		json.Unmarshal([]byte(txData.Payload), &addRecord)
-		payload := core.NewAddRecordPayload(addRecord.Hash)
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpVest:
-		return nil, nil
-	case core.TxOpWithdrawVesting:
-		return nil, nil
-	case core.TxOpAddCertification:
-		json.Unmarshal([]byte(txData.Payload), &addCertification)
-		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
-			addCertification.ExpirationTime, addCertification.CertificateHash)
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpRevokeCertification:
-		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
-		payload := core.NewRevokeCertificationPayload(revokeCertification.CertificateHash)
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case dpos.TxOpBecomeCandidate:
-		return nil, nil
-	case dpos.TxOpQuitCandidacy:
-		return nil, nil
-	case dpos.TxOpVote:
-		return nil, nil
-	}
-	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
-}
 
 // APIService is blockchain api rpc service.
 type APIService struct {
@@ -191,6 +48,38 @@ func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.
 	}
 }
 
+// GetAccount handles GetAccount rpc.
+func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountRequest) (*rpcpb.GetAccountResponse, error) {
+	var block *core.Block
+	var err error
+
+	switch req.Type {
+	case GENESIS:
+		block, err = s.bm.BlockByHeight(1)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+		}
+	case CONFIRMED:
+		block = s.bm.LIB()
+	case TAIL:
+		block = s.bm.TailBlock()
+	default:
+		block, err = s.bm.BlockByHeight(req.Height)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
+		}
+	}
+	if block == nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+	}
+
+	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
+	if err != nil {
+		return coreAccount2rpcAccount(nil, req.Address), nil
+	}
+	return coreAccount2rpcAccount(acc, nil), nil
+}
+
 // GetMedState return mednet state
 func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.GetMedStateResponse, error) {
 	tailBlock := s.bm.TailBlock()
@@ -201,56 +90,6 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 		Tail:    byteutils.Bytes2Hex(tailBlock.Hash()),
 		Height:  tailBlock.Height(),
 		LIB:     byteutils.Bytes2Hex(lib.Hash()),
-	}, nil
-}
-
-// GetAccountState handles GetAccountState rpc.
-func (s *APIService) GetAccountState(ctx context.Context, req *rpcpb.GetAccountStateRequest) (*rpcpb.GetAccountStateResponse, error) {
-	var block *core.Block
-	var err error
-	switch req.Height {
-	case GENESIS:
-		block, err = s.bm.BlockByHeight(1)
-	case CONFIRMED:
-		block = s.bm.LIB()
-	case TAIL:
-		block = s.bm.TailBlock()
-	default:
-		height, err := strconv.ParseUint(req.Height, 10, 64)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, ErrMsgConvertBlockHeightFailed)
-		}
-		block, err = s.bm.BlockByHeight(height)
-	}
-	if block == nil || err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
-	}
-	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
-	if err != nil {
-		return &rpcpb.GetAccountStateResponse{
-			Address:       req.Address,
-			Balance:       util.Uint128Zero().String(),
-			CertsIssued:   []string{},
-			CertsReceived: []string{},
-			Nonce:         0,
-			Records:       []string{},
-			Vesting:       util.Uint128Zero().String(),
-			Voted:         "",
-			TxsSend:       []string{},
-			TxsGet:        []string{},
-		}, nil
-	}
-	return &rpcpb.GetAccountStateResponse{
-		Address:       byteutils.Bytes2Hex(acc.Address()),
-		Balance:       acc.Balance().String(),
-		CertsIssued:   byteutils.BytesSlice2HexSlice(acc.CertsIssued()),
-		CertsReceived: byteutils.BytesSlice2HexSlice(acc.CertsReceived()),
-		Nonce:         acc.Nonce(),
-		Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
-		Vesting:       acc.Vesting().String(),
-		Voted:         byteutils.Bytes2Hex(acc.Voted()),
-		TxsSend:       byteutils.BytesSlice2HexSlice(acc.TxsFrom()),
-		TxsGet:        byteutils.BytesSlice2HexSlice(acc.TxsTo()),
 	}, nil
 }
 
