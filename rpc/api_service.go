@@ -112,7 +112,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 }
 
 // GetCandidates returns all candidates
-func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.CandidatesResponse, error) {
+func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetCandidatesResponse, error) {
 	var rpcCandidates []*rpcpb.Candidate
 	block := s.bm.TailBlock()
 
@@ -121,7 +121,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequ
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, candidate := range candidates {
-		rpcCandidate, err := candidate2rpcCandidate(candidate)
+		rpcCandidate, err := dposCandidate2rpcCandidate(candidate)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
@@ -133,8 +133,8 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequ
 }
 
 // GetDynasty returns all dynasty accounts
-func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.AccountsResponse, error) {
-	var rpcAccs []*rpcpb.GetAccountStateResponse
+func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetDynastyResponse, error) {
+	var addresses []string
 
 	block := s.bm.TailBlock()
 
@@ -143,25 +143,16 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamsRequest
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, addr := range addrs {
-		acc, err := block.State().GetAccount(*addr)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-
-		rpcAcc, err := coreAcc2rpcAcc(acc)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-		rpcAccs = append(rpcAccs, rpcAcc)
+		addresses = append(addresses, byteutils.Bytes2Hex(addr))
 	}
 
-	return &rpcpb.AccountsResponse{
-		Accounts: rpcAccs,
+	return &rpcpb.GetDynastyResponse{
+		Addresses: addresses,
 	}, nil
 }
 
 // GetMedState return mednet state
-func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.GetMedStateResponse, error) {
+func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetMedStateResponse, error) {
 	tailBlock := s.bm.TailBlock()
 	lib := s.bm.LIB()
 
@@ -174,7 +165,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsReques
 }
 
 // GetAccounts return all account in the blockchain
-func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.AccountsResponse, error) {
+func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.AccountsResponse, error) {
 	var rpcAccs []*rpcpb.GetAccountStateResponse
 
 	block := s.bm.TailBlock()
@@ -193,27 +184,6 @@ func (s *APIService) GetAccounts(ctx context.Context, req *rpcpb.NonParamsReques
 
 	return &rpcpb.AccountsResponse{
 		Accounts: rpcAccs,
-	}, nil
-}
-
-// GetCandidates returns all candidates
-func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.CandidatesResponse, error) {
-	var rpcCandidates []*rpcpb.Candidate
-	block := s.bm.TailBlock()
-
-	candidates, err := block.State().GetCandidates()
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
-	}
-	for _, candidate := range candidates {
-		rpcCandidate, err := candidate2rpcCandidate(candidate)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-		rpcCandidates = append(rpcCandidates, rpcCandidate)
-	}
-	return &rpcpb.CandidatesResponse{
-		Candidates: rpcCandidates,
 	}, nil
 }
 
@@ -344,7 +314,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 }
 
 // GetPendingTransactions sends all transactions in the transaction pool
-func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.TransactionsResponse, error) {
+func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.TransactionsResponse, error) {
 	var rpcPbTxs []*rpcpb.TransactionResponse
 
 	txs := s.tm.GetAll()
