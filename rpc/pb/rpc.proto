@@ -266,5 +266,9 @@ message SubscribeRequest {
 
 message SubscribeResponse {
 	string topic = 1;
-	string data = 2;
+	oneof data {
+		GetBlockResponse block = 2;
+		GetTransactionResponse transaction = 3;
+		GetAccountResponse account = 4;
+	}
 }

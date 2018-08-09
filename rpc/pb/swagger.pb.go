@@ -618,8 +618,14 @@ swagger = `{
         "topic": {
           "type": "string"
         },
-        "data": {
-          "type": "string"
+        "block": {
+          "$ref": "#/definitions/rpcpbGetBlockResponse"
+        },
+        "transaction": {
+          "$ref": "#/definitions/rpcpbGetTransactionResponse"
+        },
+        "account": {
+          "$ref": "#/definitions/rpcpbGetAccountResponse"
         }
       }
     },
