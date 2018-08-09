@@ -39,6 +39,7 @@ const (
 	ErrMsgInvalidBlockHeight         = "invalid block height"
 	ErrMsgInvalidDataType            = "invalid transaction data type"
 	ErrMsgInvalidTransaction         = "invalid transaction"
+	ErrMsgInvalidTxHash              = "invalid transaction hash"
 	ErrMsgInvalidTxValue             = "invalid transaction value"
 	ErrMsgInvalidTxDataPayload       = "invalid transaction data payload"
 	ErrMsgTransactionNotFound        = "transaction not found"

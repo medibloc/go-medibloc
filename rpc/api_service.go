@@ -16,10 +16,6 @@
 package rpc
 
 import (
-	"regexp"
-
-	"strconv"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -80,6 +76,90 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	return coreAccount2rpcAccount(acc, nil), nil
 }
 
+// GetBlock returns block
+func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.GetBlockResponse, error) {
+	var block *core.Block
+	var err error
+
+	if req.Hash != nil {
+		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
+		if block == nil {
+			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+		}
+	}
+
+	switch req.Hash {
+	case GENESIS:
+		block, err = s.bm.BlockByHeight(1)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+		}
+	case CONFIRMED:
+		block = s.bm.LIB()
+	case TAIL:
+		block = s.bm.TailBlock()
+	default:
+		block, err = s.bm.BlockByHeight(req.Height)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
+		}
+	}
+	if block == nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+	}
+
+	return coreBlock2rpcBlock(block)
+}
+
+// GetCandidates returns all candidates
+func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.CandidatesResponse, error) {
+	var rpcCandidates []*rpcpb.Candidate
+	block := s.bm.TailBlock()
+
+	candidates, err := block.State().GetCandidates()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	for _, candidate := range candidates {
+		rpcCandidate, err := candidate2rpcCandidate(candidate)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+		rpcCandidates = append(rpcCandidates, rpcCandidate)
+	}
+	return &rpcpb.CandidatesResponse{
+		Candidates: rpcCandidates,
+	}, nil
+}
+
+// GetDynasty returns all dynasty accounts
+func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.AccountsResponse, error) {
+	var rpcAccs []*rpcpb.GetAccountStateResponse
+
+	block := s.bm.TailBlock()
+
+	addrs, err := block.State().GetDynasty()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	for _, addr := range addrs {
+		acc, err := block.State().GetAccount(*addr)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+
+		rpcAcc, err := coreAcc2rpcAcc(acc)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+		}
+		rpcAccs = append(rpcAccs, rpcAcc)
+	}
+
+	return &rpcpb.AccountsResponse{
+		Accounts: rpcAccs,
+	}, nil
+}
+
 // GetMedState return mednet state
 func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.GetMedStateResponse, error) {
 	tailBlock := s.bm.TailBlock()
@@ -135,75 +215,6 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamsRequ
 	return &rpcpb.CandidatesResponse{
 		Candidates: rpcCandidates,
 	}, nil
-}
-
-// GetDynasty returns all dynasty accounts
-func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamsRequest) (*rpcpb.AccountsResponse, error) {
-	var rpcAccs []*rpcpb.GetAccountStateResponse
-
-	block := s.bm.TailBlock()
-
-	addrs, err := block.State().GetDynasty()
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
-	}
-	for _, addr := range addrs {
-		acc, err := block.State().GetAccount(*addr)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-
-		rpcAcc, err := coreAcc2rpcAcc(acc)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-		rpcAccs = append(rpcAccs, rpcAcc)
-	}
-
-	return &rpcpb.AccountsResponse{
-		Accounts: rpcAccs,
-	}, nil
-}
-
-// GetBlock returns block
-func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.BlockResponse, error) {
-	var block *core.Block
-	var err error
-	switch req.Hash {
-	case GENESIS:
-		block, err = s.bm.BlockByHeight(1)
-	case CONFIRMED:
-		block = s.bm.LIB()
-	case TAIL:
-		block = s.bm.TailBlock()
-	default:
-		if number, _ := regexp.MatchString("^[0-9]*$", req.Hash); number {
-			height, err := strconv.ParseUint(req.Hash, 10, 64)
-			if height == 0 || err != nil {
-				return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
-			}
-			block, err = s.bm.BlockByHeight(height)
-			if err != nil {
-				return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
-			}
-		} else {
-			block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
-		}
-	}
-	if block == nil || err != nil {
-		return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
-	}
-	pb, err := block.ToProto()
-	if err == nil {
-		if pbBlock, ok := pb.(*corepb.Block); ok {
-			res, err := corePbBlock2rpcPbBlock(pbBlock)
-			if err != nil {
-				return nil, status.Error(codes.Internal, ErrMsgConvertBlockResponseFailed)
-			}
-			return res, nil
-		}
-	}
-	return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 }
 
 // GetBlocks returns blocks
@@ -297,47 +308,39 @@ func (s *APIService) GetCurrentAccountTransactions(ctx context.Context,
 }
 
 // GetTransaction returns transaction
-func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.TransactionResponse, error) {
+func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.GetTransactionResponse, error) {
 	if len(req.Hash) != 64 {
-		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
+		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
 	}
-	executed := true
 
 	tailBlock := s.bm.TailBlock()
 	if tailBlock == nil {
-		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
+		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}
 
+	executed := true
+	tx := new(core.Transaction)
 	txHash := byteutils.Hex2Bytes(req.Hash)
-
-	pbTx := new(corepb.Transaction)
 	pb, err := tailBlock.State().GetTx(txHash)
+	// If tx is in txPool
 	if err != nil {
 		if err != trie.ErrNotFound {
 			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
 		}
-		tx := s.tm.Get(txHash)
+		// Get tx from txPool (type *Transaction)
+		tx = s.tm.Get(txHash)
 		if tx == nil {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 		}
-		prePbTx, err := tx.ToProto()
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
-		}
-		pbTx = prePbTx.(*corepb.Transaction)
 		executed = false
-	} else {
-		err = proto.Unmarshal(pb, pbTx)
+	} else { // If tx is already included in a block
+		err := tx.FromProto(pb)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
 		}
 	}
 
-	res, err := corePbTx2rpcPbTx(pbTx, executed)
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgConvertTxResponseFailed)
-	}
-	return res, nil
+	return coreTx2rpcTx(tx, executed), nil
 }
 
 // GetPendingTransactions sends all transactions in the transaction pool
