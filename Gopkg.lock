@@ -527,12 +527,6 @@
   version = "v1.3.0"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/ryszard/goskiplist"
-  packages = ["skiplist"]
-  revision = "2dfbae5fcf46374f166f8969cb07e167f1be6273"
-
-[[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
   revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
@@ -759,6 +753,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "da26cb3c0aeaf896275b91795ecfe2de5cf53b62dc2ba760d04aa215faa4dd2b"
+  inputs-digest = "a2ed869e2a2475dc4af05082540427b0ee4e9151a17e8283692cb2e83b94fb60"
   solver-name = "gps-cdcl"
   solver-version = 1

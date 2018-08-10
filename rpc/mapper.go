@@ -22,8 +22,8 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc/pb"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-nebulas/util"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
