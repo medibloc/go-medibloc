@@ -134,14 +134,12 @@ func coreTxs2rpcTxs(txs *Transactions, executed bool) (*rpcpb.GetTransactionsRes
 	return rpcTxs, nil
 }
 
-func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
+func rpcPayload2payloadBuffer(txData *rpcpb.TransactionData) ([]byte, error) {
 	var addRecord *core.AddRecordPayload
 	var addCertification *core.AddCertificationPayload
 	var revokeCertification *core.RevokeCertificationPayload
 
 	switch txData.Type {
-	case core.TxOpTransfer:
-		return nil, nil
 	case core.TxOpAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
 		payload := core.NewAddRecordPayload(addRecord.Hash)
@@ -150,10 +148,6 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case core.TxOpVest:
-		return nil, nil
-	case core.TxOpWithdrawVesting:
-		return nil, nil
 	case core.TxOpAddCertification:
 		json.Unmarshal([]byte(txData.Payload), &addCertification)
 		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
@@ -171,12 +165,9 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 			return nil, err
 		}
 		return payloadBuf, nil
-	case dpos.TxOpBecomeCandidate:
+	case core.TxOpTransfer, core.TxOpVest, core.TxOpWithdrawVesting, dpos.TxOpBecomeCandidate, dpos.TxOpQuitCandidacy, dpos.TxOpVote:
 		return nil, nil
-	case dpos.TxOpQuitCandidacy:
-		return nil, nil
-	case dpos.TxOpVote:
-		return nil, nil
+	default:
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 	}
-	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
 }

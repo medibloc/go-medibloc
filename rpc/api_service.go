@@ -263,7 +263,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxValue)
 	}
-	payloadBuf, err := generatePayloadBuf(req.Data)
+	payloadBuf, err := rpcPayload2payloadBuffer(req.Data)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxDataPayload)
 	}
