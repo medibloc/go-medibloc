@@ -48,7 +48,7 @@ func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAcc
 		Balance:       account.Balance().String(),
 		Nonce:         account.Nonce(),
 		Vesting:       account.Vesting().String(),
-		Voted:         byteutils.Bytes2Hex(acc.Voted()),
+		Voted:         byteutils.Bytes2Hex(account.Voted()),
 		Records:       nil, // TODO @ggomma
 		CertsIssued:   nil, // TODO @ggomma
 		CertsReceived: nil, // TODO @ggomma
@@ -57,22 +57,17 @@ func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAcc
 	}
 }
 
-func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
-	txs, err := coreTxs2rpcTxs(block.Transactions(), true)
-	if err != nil {
-		return nil, err
-	}
-
-	return &rpcpb.BlockResponse{
+func coreBlock2rpcBlock(block *core.Block) *rpcpb.GetBlockResponse {
+	return &rpcpb.GetBlockResponse{
 		Height:            block.Height(),
 		Hash:              byteutils.Bytes2Hex(block.Hash()),
 		ParentHash:        byteutils.Bytes2Hex(block.ParentHash()),
-		Coinbase:          byteutils.Bytes2Hex(block.Coinbase()),
+		Coinbase:          block.Coinbase().Hex(),
 		Reward:            block.Reward().String(),
 		Supply:            block.Supply().String(),
 		Timestamp:         block.Timestamp(),
-		ChainId:           block.ChainId(),
-		Alg:               block.Alg(),
+		ChainId:           block.ChainID(),
+		Alg:               uint32(block.Alg()),
 		Sign:              byteutils.Bytes2Hex(block.Sign()),
 		AccsRoot:          byteutils.Bytes2Hex(block.AccsRoot()),
 		TxsRoot:           byteutils.Bytes2Hex(block.TxsRoot()),
@@ -80,12 +75,12 @@ func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
 		RecordsRoot:       byteutils.Bytes2Hex(block.RecordsRoot()),
 		CertificationRoot: byteutils.Bytes2Hex(block.CertificationRoot()),
 		DposRoot:          byteutils.Bytes2Hex(block.DposRoot()),
-		Transactions:      txs,
-	}, nil
+		Transactions:      coreTxs2rpcTxs(block.Transactions(), true),
+	}
 }
 
 func dposCandidate2rpcCandidate(candidate *dpospb.Candidate) (*rpcpb.Candidate, error) {
-	collateral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collateral)
+	collatral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collatral)
 	if err != nil {
 		return nil, err
 	}
@@ -102,11 +97,11 @@ func dposCandidate2rpcCandidate(candidate *dpospb.Candidate) (*rpcpb.Candidate, 
 	}, nil
 }
 
-func coreTx2rpcTx(tx *Transaction, executed bool) *rpcpb.GetTransactionResponse {
+func coreTx2rpcTx(tx *core.Transaction, executed bool) *rpcpb.GetTransactionResponse {
 	return &rpcpb.GetTransactionResponse{
 		Hash:      byteutils.Bytes2Hex(tx.Hash()),
-		From:      byteutils.Bytes2Hex(tx.From()),
-		To:        byteutils.Bytes2Hex(tx.To()),
+		From:      tx.From().Hex(),
+		To:        tx.To().Hex(),
 		Value:     tx.Value().String(),
 		Timestamp: tx.Timestamp(),
 		Data: &rpcpb.TransactionData{
@@ -114,24 +109,21 @@ func coreTx2rpcTx(tx *Transaction, executed bool) *rpcpb.GetTransactionResponse 
 			Payload: byteutils.Bytes2Hex(tx.Payload()),
 		},
 		Nonce:     tx.Nonce(),
-		ChainId:   tx.ChainId(),
-		Alg:       tx.Alg(),
+		ChainId:   tx.ChainID(),
+		Alg:       uint32(tx.Alg()),
 		Sign:      byteutils.Bytes2Hex(tx.Sign()),
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
 		Executed:  executed,
 	}
 }
 
-func coreTxs2rpcTxs(txs *Transactions, executed bool) (*rpcpb.GetTransactionsResponse, error) {
+func coreTxs2rpcTxs(txs core.Transactions, executed bool) []*rpcpb.GetTransactionResponse {
 	var rpcTxs []*rpcpb.GetTransactionResponse
 	for _, tx := range txs {
-		rpcTx, err := coreTx2rpcTx(tx, executed)
-		if err != nil {
-			return nil, err
-		}
+		rpcTx := coreTx2rpcTx(tx, executed)
 		rpcTxs = append(rpcTxs, rpcTx)
 	}
-	return rpcTxs, nil
+	return rpcTxs
 }
 
 func rpcPayload2payloadBuffer(txData *rpcpb.TransactionData) ([]byte, error) {

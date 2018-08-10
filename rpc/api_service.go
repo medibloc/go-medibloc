@@ -16,6 +16,7 @@
 package rpc
 
 import (
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
@@ -72,7 +73,7 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if err != nil {
 		return coreAccount2rpcAccount(nil, req.Address), nil
 	}
-	return coreAccount2rpcAccount(acc, nil), nil
+	return coreAccount2rpcAccount(acc, req.Address), nil
 }
 
 // GetBlock returns block
@@ -80,14 +81,15 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	var block *core.Block
 	var err error
 
-	if req.Hash != nil {
+	if len(req.Hash) == 64 {
 		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
+		return coreBlock2rpcBlock(block), nil
 	}
 
-	switch req.Hash {
+	switch req.Type {
 	case GENESIS:
 		block, err = s.bm.BlockByHeight(1)
 		if err != nil {
@@ -107,7 +109,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	return coreBlock2rpcBlock(block)
+	return coreBlock2rpcBlock(block), nil
 }
 
 // GetCandidates returns all candidates
@@ -126,7 +128,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 		}
 		rpcCandidates = append(rpcCandidates, rpcCandidate)
 	}
-	return &rpcpb.CandidatesResponse{
+	return &rpcpb.GetCandidatesResponse{
 		Candidates: rpcCandidates,
 	}, nil
 }
@@ -142,7 +144,7 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest)
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, addr := range addrs {
-		addresses = append(addresses, byteutils.Bytes2Hex(addr))
+		addresses = append(addresses, addr.Hex())
 	}
 
 	return &rpcpb.GetDynastyResponse{
@@ -165,13 +167,10 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 
 // GetPendingTransactions sends all transactions in the transaction pool
 func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetTransactionsResponse, error) {
-	txs := Transactions(s.tm.GetAll())
-	rpcTxs, err := coreTxs2rpcTxs(txs)
-	if err != nil {
-		return nil, err
-	}
+	txs := core.Transactions(s.tm.GetAll())
+	rpcTxs := coreTxs2rpcTxs(txs, false)
 
-	return &rpcpb.TransactionsResponse{
+	return &rpcpb.GetTransactionsResponse{
 		Transactions: rpcTxs,
 	}, nil
 }
@@ -203,7 +202,12 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		}
 		executed = false
 	} else { // If tx is already included in a block
-		err := tx.FromProto(pb)
+		pbTx := new(corepb.Transaction)
+		err = proto.Unmarshal(pb, pbTx)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
+		}
+		err := tx.FromProto(pbTx)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
 		}
@@ -223,7 +227,7 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 		txs = append(txs, coreTx2rpcTx(tx, false))
 		// Add send transaction twice if the address of from is as same as the address of to
 		if tx.Type() == core.TxOpTransfer && tx.From() == tx.To() {
-			txs = append(txs, coreTx2RpcTx(tx, false))
+			txs = append(txs, coreTx2rpcTx(tx, false))
 		}
 	}
 
@@ -244,11 +248,16 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 			}
-			err = tx.FromProto(pb)
+			pbTx := new(corepb.Transaction)
+			err = proto.Unmarshal(pb, pbTx)
+			if err != nil {
+				return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
+			}
+			err = tx.FromProto(pbTx)
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 			}
-			txs = append(txs, coreTx2rpcTx(tx))
+			txs = append(txs, coreTx2rpcTx(tx, true))
 		}
 	}
 
@@ -311,7 +320,7 @@ func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiServ
 		case event := <-eventSub.EventChan():
 			err := stream.Send(&rpcpb.SubscribeResponse{
 				Topic: event.Topic,
-				Data:  event.Data,
+				Hash:  event.Data,
 			})
 			// TODO : Send timeout
 			if err != nil {
