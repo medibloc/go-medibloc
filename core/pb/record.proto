@@ -1,8 +1,0 @@
-syntax = "proto3";
-package corepb;
-
-message Record {
-  bytes hash = 1;
-  bytes owner = 2;
-  int64 timestamp = 3;
-}

@@ -143,14 +143,14 @@ func (bb *BlockBuilder) Supply(supply uint64) *BlockBuilder {
 // AccountRoot sets account root.
 func (bb *BlockBuilder) AccountRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
-	n.B.SetAccsRoot(root)
+	n.B.SetAccStateRoot(root)
 	return n
 }
 
-// TransactionRoot sets transaction root.
-func (bb *BlockBuilder) TransactionRoot(root []byte) *BlockBuilder {
+// DataRoot sets data state root.
+func (bb *BlockBuilder) DataRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
-	n.B.SetTxsRoot(root)
+	n.B.SetDataStateRoot(root)
 	return n
 }
 
@@ -158,20 +158,6 @@ func (bb *BlockBuilder) TransactionRoot(root []byte) *BlockBuilder {
 func (bb *BlockBuilder) UsageRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetUsageRoot(root)
-	return n
-}
-
-// RecordRoot sets record root.
-func (bb *BlockBuilder) RecordRoot(root []byte) *BlockBuilder {
-	n := bb.copy()
-	n.B.SetRecordsRoot(root)
-	return n
-}
-
-// CertificateRoot sets certificate root.
-func (bb *BlockBuilder) CertificateRoot(root []byte) *BlockBuilder {
-	n := bb.copy()
-	n.B.SetCertificationRoot(root)
 	return n
 }
 

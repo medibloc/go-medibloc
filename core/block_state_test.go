@@ -36,16 +36,20 @@ func TestCloneState(t *testing.T) {
 	newState, err := state.Clone()
 	require.NoError(t, err)
 
+	dataRoot, err := state.DataRoot()
+	require.NoError(t, err)
+	newDataRoot, err := newState.DataRoot()
+	require.NoError(t, err)
+
+	dposRoot, err := state.DposState().RootBytes()
+	require.NoError(t, err)
+	newDposRoot, err := newState.DposState().RootBytes()
+	require.NoError(t, err)
+
 	assert.Equal(t, state.AccountsRoot(), newState.AccountsRoot())
-	assert.Equal(t, state.TransactionsRoot(), newState.TransactionsRoot())
+	assert.Equal(t, dataRoot, newDataRoot)
+	assert.Equal(t, dposRoot, newDposRoot)
 	assert.Equal(t, state.UsageRoot(), newState.UsageRoot())
-	assert.Equal(t, state.RecordsRoot(), newState.RecordsRoot())
-
-	ds, err := state.DposState().RootBytes()
-	newDs, err := newState.DposState().RootBytes()
-
-	assert.Equal(t, ds, newDs)
-	assert.Equal(t, state.CertificationRoot(), newState.CertificationRoot())
 	assert.Equal(t, state.ReservationQueueHash(), newState.ReservationQueueHash())
 
 }
@@ -133,7 +137,9 @@ func TestPayerUsageUpdate(t *testing.T) {
 	payer := bb.TokenDist[0]
 
 	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
-	payload := core.NewAddRecordPayload(recordHash)
+	payload := &core.AddRecordPayload{
+		RecordHash: recordHash,
+	}
 	bb = bb.Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(user).SignPayerKey(payer.PrivKey).Execute()
 	block := bb.Build()
 
@@ -153,7 +159,7 @@ func TestTxsFromTxsTo(t *testing.T) {
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddRecord).
 		Payload(&core.AddRecordPayload{
-			Hash: hash([]byte("Record Hash")),
+			RecordHash: hash([]byte("Record Hash")),
 		}).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddCertification).To(to.Addr).
 		Payload(&core.AddCertificationPayload{

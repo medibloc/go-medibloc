@@ -21,14 +21,7 @@ import (
 
 // AddRecordPayload is payload type for TxOpAddRecord
 type AddRecordPayload struct {
-	Hash []byte
-}
-
-// NewAddRecordPayload generates a AddRecordPayload
-func NewAddRecordPayload(hash []byte) *AddRecordPayload {
-	return &AddRecordPayload{
-		Hash: hash,
-	}
+	RecordHash []byte
 }
 
 // FromBytes converts bytes to payload.
@@ -44,13 +37,11 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
 }
 
-// NewAddCertificationPayload generates a AddCertificationPayload
-func NewAddCertificationPayload(issueTime int64, expirationTime int64, certHash []byte) *AddCertificationPayload {
-	return &AddCertificationPayload{
-		IssueTime:       issueTime,
-		ExpirationTime:  expirationTime,
-		CertificateHash: certHash,
-	}
+// AddCertificationPayload is payload type for AddCertificationTx
+type AddCertificationPayload struct {
+	IssueTime       int64
+	ExpirationTime  int64
+	CertificateHash []byte
 }
 
 // FromBytes converts bytes to payload.
@@ -64,6 +55,11 @@ func (payload *AddCertificationPayload) FromBytes(b []byte) error {
 // ToBytes returns marshaled AddCertificationPayload
 func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
 	return json.Marshal(payload)
+}
+
+// RevokeCertificationPayload is payload type for RevokeCertificationTx
+type RevokeCertificationPayload struct {
+	CertificateHash []byte
 }
 
 // NewRevokeCertificationPayload generates a RevokeCertificationPayload

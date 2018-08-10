@@ -1,8 +1,21 @@
+// Copyright (C) 2018  MediBloc
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 package core
 
 import (
-	"fmt"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -26,7 +39,7 @@ type Account struct {
 	VotePower  *util.Uint128 // sum of voters' vesting
 
 	Records       *trie.Trie // records
-	CertsReceived *trie.Trie // certs received by a certif
+	CertsReceived *trie.Trie // certs received by a certifier
 	CertsIssued   *trie.Trie // certs issued as a certifier
 	TxsFrom       *trie.Trie // transaction sent from account
 	TxsTo         *trie.Trie // transaction sent to account
@@ -84,7 +97,7 @@ func newAccount(stor storage.Storage) (*Account, error) {
 	return acc, nil
 }
 
-func (acc *Account) fromProto(pbAcc *corepb.Account1) error {
+func (acc *Account) fromProto(pbAcc *corepb.AccountState) error {
 	var err error
 
 	acc.Address = common.BytesToAddress(pbAcc.Address)
@@ -117,14 +130,10 @@ func (acc *Account) fromProto(pbAcc *corepb.Account1) error {
 }
 
 func (acc *Account) fromBytes(accountBytes []byte) error {
-	pbAccount := new(corepb.Account1)
+	pbAccount := new(corepb.AccountState)
 	if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
 		return err
 	}
-	if err := acc.fromProto(pbAccount); err != nil {
-		return err
-	}
-
 	if err := acc.fromProto(pbAccount); err != nil {
 		return err
 	}
@@ -143,7 +152,7 @@ func LoadAccount(accountBytes []byte, stor storage.Storage) (*Account, error) {
 	return acc, nil
 }
 
-func (acc *Account) toProto() (*corepb.Account1, error) {
+func (acc *Account) toProto() (*corepb.AccountState, error) {
 	balance, err := acc.Balance.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -160,7 +169,7 @@ func (acc *Account) toProto() (*corepb.Account1, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &corepb.Account1{
+	return &corepb.AccountState{
 		Address:               acc.Address.Bytes(),
 		Balance:               balance,
 		Nonce:                 acc.Nonce,
@@ -241,13 +250,12 @@ func NewAccountState(rootHash []byte, stor storage.Storage) (*AccountState, erro
 
 //GetAccount returns account
 func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
-	acc, err := newAccount(as.storage)
-	if err != nil {
-		return nil, err
-	}
-
 	accountBytes, err := as.Get(addr.Bytes())
 	if err == ErrNotFound {
+		acc, err := newAccount(as.storage)
+		if err != nil {
+			return nil, err
+		}
 		acc.Address = addr
 		return acc, nil
 	}
@@ -255,17 +263,7 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 		return nil, err
 	}
 
-	pbAccount := new(corepb.Account1)
-	if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to Unmarshal account")
-		return nil, err
-	}
-	if err := acc.fromProto(pbAccount); err != nil {
-		return nil, err
-	}
-	return acc, nil
+	return LoadAccount(accountBytes, as.storage)
 }
 
 //PutAccount put account to trie batch
@@ -443,10 +441,8 @@ func (as AccountState) AddVoters(candidate common.Address, voter common.Address)
 		return err
 	}
 
-	fmt.Println(voter)
 	as.PutAccount(acc)
 	acc, _ = as.GetAccount(candidate)
-	fmt.Println(acc.VotersSlice())
 
 	return nil
 }
@@ -457,7 +453,6 @@ func (as AccountState) SubVoters(candidate common.Address, voter common.Address)
 	if err != nil {
 		return err
 	}
-	fmt.Println("voters:", acc.VotersSlice())
 	_, err = acc.Voters.Get(voter.Bytes())
 	if err == ErrNotFound {
 		return ErrNotInVoters
@@ -551,6 +546,19 @@ func (as *AccountState) AddTxsTo(addr common.Address, txHash []byte) error {
 	return as.PutAccount(acc)
 }
 
+//AddTxs add transaction to account state
+func (as *AccountState) AddTxs(tx *Transaction) error {
+	if err := as.AddTxsFrom(tx.From(), tx.Hash()); err != nil {
+		return err
+	}
+
+	if err := as.AddTxsTo(tx.To(), tx.Hash()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 //Accounts returns account slice
 func (as *AccountState) Accounts() ([]*Account, error) {
 	var accounts []*Account
@@ -577,7 +585,7 @@ func (as *AccountState) Accounts() ([]*Account, error) {
 		}
 		accountBytes := iter.Value()
 
-		pbAccount := new(corepb.Account1)
+		pbAccount := new(corepb.AccountState)
 		if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
 			return nil, err
 		}

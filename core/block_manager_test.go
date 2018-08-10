@@ -385,7 +385,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 
 	// Hash Not found
 	invalid = &corepb.DownloadParentBlock{
-		Hash: []byte("Not Found Hash"),
+		Hash: []byte("Not Found RecordHash"),
 		Sign: []byte{},
 	}
 	bytes, err = proto.Marshal(invalid)
@@ -469,7 +469,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddRecord).
 		Payload(&core.AddRecordPayload{
-			Hash: hash([]byte("Record Hash")),
+			RecordHash: hash([]byte("Record Hash")),
 		}).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddCertification).To(to.Addr).
 		Payload(&core.AddCertificationPayload{
@@ -497,19 +497,11 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.TransactionRoot(hash([]byte("invalid transaction root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.DataRoot(hash([]byte("invalid data root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
 	block = bb.UsageRoot(hash([]byte("invalid usage root"))).CalcHash().SignKey(miner.PrivKey).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
-
-	block = bb.RecordRoot(hash([]byte("invalid records root"))).CalcHash().SignKey(miner.PrivKey).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
-
-	block = bb.CertificateRoot(hash([]byte("invalid certification root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 

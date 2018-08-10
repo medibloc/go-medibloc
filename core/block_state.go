@@ -32,13 +32,10 @@ type states struct {
 	reward *util.Uint128
 	supply *util.Uint128
 
-	accState           *AccountState
-	txsState           *trie.Batch
-	usageState         *trie.Batch
-	recordsState       *trie.Batch
-	dposState          DposState
-	certificationState *trie.Batch
-
+	accState         *AccountState
+	dataState        *DataState
+	dposState        DposState
+	usageState       *trie.Batch
 	reservationQueue *ReservationQueue
 
 	storage storage.Storage
@@ -74,17 +71,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	txsState, err := trie.NewBatch(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-
-	usageState, err := trie.NewBatch(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-
-	recordsState, err := trie.NewBatch(nil, stor)
+	dataState, err := NewDataState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +81,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	certificationState, err := trie.NewBatch(nil, stor)
+	usageState, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -102,16 +89,14 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 	reservationQueue := NewEmptyReservationQueue(stor)
 
 	return &states{
-		reward:             util.NewUint128(),
-		supply:             util.NewUint128(),
-		accState:           accState,
-		txsState:           txsState,
-		usageState:         usageState,
-		recordsState:       recordsState,
-		dposState:          dposState,
-		certificationState: certificationState,
-		reservationQueue:   reservationQueue,
-		storage:            stor,
+		reward:           util.NewUint128(),
+		supply:           util.NewUint128(),
+		accState:         accState,
+		dataState:        dataState,
+		dposState:        dposState,
+		usageState:       usageState,
+		reservationQueue: reservationQueue,
+		storage:          stor,
 	}, nil
 }
 
@@ -121,17 +106,11 @@ func (s *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	txsState, err := trie.NewBatch(s.txsState.RootHash(), s.storage)
+	dsBytes, err := s.dataState.RootBytes()
 	if err != nil {
 		return nil, err
 	}
-
-	usageState, err := trie.NewBatch(s.usageState.RootHash(), s.storage)
-	if err != nil {
-		return nil, err
-	}
-
-	recordsState, err := trie.NewBatch(s.recordsState.RootHash(), s.storage)
+	dataState, err := NewDataState(dsBytes, s.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +120,7 @@ func (s *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	certificationState, err := trie.NewBatch(s.certificationState.RootHash(), s.storage)
+	usageState, err := trie.NewBatch(s.usageState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -152,16 +131,14 @@ func (s *states) Clone() (*states, error) {
 	}
 
 	return &states{
-		reward:             s.reward.DeepCopy(),
-		supply:             s.supply.DeepCopy(),
-		accState:           accState,
-		txsState:           txsState,
-		usageState:         usageState,
-		recordsState:       recordsState,
-		dposState:          dposState,
-		certificationState: certificationState,
-		reservationQueue:   reservationQueue,
-		storage:            s.storage,
+		reward:           s.reward.DeepCopy(),
+		supply:           s.supply.DeepCopy(),
+		accState:         accState,
+		dataState:        dataState,
+		dposState:        dposState,
+		usageState:       usageState,
+		reservationQueue: reservationQueue,
+		storage:          s.storage,
 	}, nil
 }
 
@@ -169,19 +146,13 @@ func (s *states) BeginBatch() error {
 	if err := s.accState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := s.txsState.BeginBatch(); err != nil {
-		return err
-	}
-	if err := s.usageState.BeginBatch(); err != nil {
-		return err
-	}
-	if err := s.recordsState.BeginBatch(); err != nil {
+	if err := s.dataState.BeginBatch(); err != nil {
 		return err
 	}
 	if err := s.DposState().BeginBatch(); err != nil {
 		return err
 	}
-	if err := s.certificationState.BeginBatch(); err != nil {
+	if err := s.usageState.BeginBatch(); err != nil {
 		return err
 	}
 	return s.reservationQueue.BeginBatch()
@@ -191,19 +162,13 @@ func (s *states) Commit() error {
 	if err := s.accState.Commit(); err != nil {
 		return err
 	}
-	if err := s.txsState.Commit(); err != nil {
-		return err
-	}
-	if err := s.usageState.Commit(); err != nil {
-		return err
-	}
-	if err := s.recordsState.Commit(); err != nil {
+	if err := s.dataState.Commit(); err != nil {
 		return err
 	}
 	if err := s.dposState.Commit(); err != nil {
 		return err
 	}
-	if err := s.certificationState.Commit(); err != nil {
+	if err := s.usageState.Commit(); err != nil {
 		return err
 	}
 	return s.reservationQueue.Commit()
@@ -213,27 +178,23 @@ func (s *states) AccountsRoot() []byte {
 	return s.accState.RootHash()
 }
 
-func (s *states) TransactionsRoot() []byte {
-	return s.txsState.RootHash()
+func (s *states) DataRoot() ([]byte, error) {
+	return s.dataState.RootBytes()
+}
+
+func (s *states) DposRoot() ([]byte, error) {
+	return s.dposState.RootBytes()
 }
 
 func (s *states) UsageRoot() []byte {
 	return s.usageState.RootHash()
 }
 
-func (s *states) RecordsRoot() []byte {
-	return s.recordsState.RootHash()
-}
-
-func (s *states) CertificationRoot() []byte {
-	return s.certificationState.RootHash()
-}
-
 func (s *states) ReservationQueueHash() []byte {
 	return s.reservationQueue.Hash()
 }
 
-func (s *states) LoadAccountsRoot(rootHash []byte) error {
+func (s *states) LoadAccountState(rootHash []byte) error {
 	accState, err := NewAccountState(rootHash, s.storage)
 	if err != nil {
 		return err
@@ -242,12 +203,12 @@ func (s *states) LoadAccountsRoot(rootHash []byte) error {
 	return nil
 }
 
-func (s *states) LoadTransactionsRoot(rootHash []byte) error {
-	txsState, err := trie.NewBatch(rootHash, s.storage)
+func (s *states) LoadDataState(rootBytes []byte) error {
+	dataState, err := NewDataState(rootBytes, s.storage)
 	if err != nil {
 		return err
 	}
-	s.txsState = txsState
+	s.dataState = dataState
 	return nil
 }
 
@@ -260,24 +221,6 @@ func (s *states) LoadUsageRoot(rootHash []byte) error {
 	return nil
 }
 
-func (s *states) LoadRecordsRoot(rootHash []byte) error {
-	recordsState, err := trie.NewBatch(rootHash, s.storage)
-	if err != nil {
-		return err
-	}
-	s.recordsState = recordsState
-	return nil
-}
-
-func (s *states) LoadCertificationRoot(rootHash []byte) error {
-	certificationState, err := trie.NewBatch(rootHash, s.storage)
-	if err != nil {
-		return err
-	}
-	s.certificationState = certificationState
-	return nil
-}
-
 func (s *states) LoadReservationQueue(hash []byte) error {
 	rq, err := LoadReservationQueue(s.storage, hash)
 	if err != nil {
@@ -285,6 +228,10 @@ func (s *states) LoadReservationQueue(hash []byte) error {
 	}
 	s.reservationQueue = rq
 	return nil
+}
+
+func (s *states) DataState() *DataState {
+	return s.dataState
 }
 
 func (s *states) GetAccount(addr common.Address) (*Account, error) {
@@ -303,59 +250,8 @@ func (s *states) SubBalance(address common.Address, amount *util.Uint128) error 
 	return s.accState.SubBalance(address, amount)
 }
 
-func (s *states) AddTransaction(tx *Transaction) error {
-
-	if err := s.accState.AddTxsFrom(tx.From(), tx.Hash()); err != nil {
-		return err
-	}
-
-	if err := s.accState.AddTxsTo(tx.To(), tx.Hash()); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *states) AddRecord(tx *Transaction, hash []byte, owner common.Address) error {
-	record := &corepb.Record{
-		Hash:      hash,
-		Owner:     tx.from.Bytes(),
-		Timestamp: tx.Timestamp(),
-	}
-	recordBytes, err := proto.Marshal(record)
-	if err != nil {
-		return err
-	}
-
-	if err := s.recordsState.Put(hash, recordBytes); err != nil {
-		return err
-	}
-
-	return s.accState.AddRecord(tx.from, hash)
-}
-
-func (s *states) GetRecord(hash []byte) (*corepb.Record, error) {
-	recordBytes, err := s.recordsState.Get(hash)
-	if err != nil {
-		return nil, err
-	}
-	pbRecord := new(corepb.Record)
-	if err := proto.Unmarshal(recordBytes, pbRecord); err != nil {
-		return nil, err
-	}
-	return pbRecord, nil
-}
-
 func (s *states) incrementNonce(address common.Address) error {
 	return s.accState.IncrementNonce(address)
-}
-
-func (s *states) GetTx(txHash []byte) ([]byte, error) {
-	return s.txsState.Get(txHash)
-}
-
-func (s *states) PutTx(txHash []byte, txBytes []byte) error {
-	return s.txsState.Put(txHash, txBytes)
 }
 
 func (s *states) updateUsage(tx *Transaction, blockTime int64) error {
@@ -464,20 +360,6 @@ func (s *states) PeekHeadReservedTask() *ReservedTask {
 	return s.reservationQueue.Peek()
 }
 
-//Certification returns certification for hash
-func (s *states) Certification(hash []byte) (*corepb.Certification, error) {
-	certBytes, err := s.certificationState.Get(hash)
-	if err != nil {
-		return nil, err
-	}
-	pbCert := new(corepb.Certification)
-	err = proto.Unmarshal(certBytes, pbCert)
-	if err != nil {
-		return nil, err
-	}
-	return pbCert, nil
-}
-
 // BlockState possesses every states a block should have
 type BlockState struct {
 	*states
@@ -557,7 +439,7 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 		return err
 	}
 
-	if err := bs.PutTx(tx.hash, txBytes); err != nil {
+	if err := bs.dataState.PutTx(tx.hash, txBytes); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 			"tx":  tx,
@@ -565,7 +447,7 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 		return err
 	}
 
-	if err := bs.AddTransaction(tx); err != nil {
+	if err := bs.accState.AddTxs(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 			"tx":  tx,

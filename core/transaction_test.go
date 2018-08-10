@@ -46,16 +46,23 @@ func TestAddRecord(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
 	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
-	payload := core.NewAddRecordPayload(recordHash)
+	payload := &core.AddRecordPayload{RecordHash: recordHash}
 	owner := bb.TokenDist[0]
 
 	block := bb.
 		Tx().Type(core.TxOpAddRecord).Payload(payload).Nonce(1).SignPair(owner).Execute().
 		Build()
 
-	record, err := block.State().GetRecord(recordHash)
+	record, err := block.State().DataState().GetRecord(recordHash)
 	assert.NoError(t, err)
-	assert.Equal(t, record.Hash, recordHash)
+	assert.Equal(t, recordHash, record.RecordHash)
+
+	acc, err := block.State().GetAccount(owner.Addr)
+	assert.NoError(t, err)
+
+	recordHashOnAccount, err := acc.Records.Get(recordHash)
+	assert.NoError(t, err)
+	assert.Equal(t, recordHash, recordHashOnAccount)
 }
 
 func TestVestAndWithdraw(t *testing.T) {
@@ -116,7 +123,11 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	hash := byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 
 	// Add certification Test
-	addPayload := core.NewAddCertificationPayload(issueTime, expirationTime, hash)
+	addPayload := &core.AddCertificationPayload{
+		IssueTime:       issueTime,
+		ExpirationTime:  expirationTime,
+		CertificateHash: hash,
+	}
 
 	bb = bb.
 		Tx().Nonce(1).Type(core.TxOpAddCertification).From(issuer.Addr).To(certified.Addr).Payload(addPayload).CalcHash().SignKey(issuer.PrivKey).Execute()
@@ -136,10 +147,12 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	_, err = certifiedAcc.CertsReceived.Get(hash)
 	assert.NoError(t, err)
 
-	cert, err := block.State().Certification(hash)
+	cert, err := block.State().DataState().Certification(hash)
 	assert.NoError(t, err)
 
-	assert.Equal(t, block.State().CertificationRoot(), block.CertificationRoot())
+	dataRoot, err := block.State().DataState().RootBytes()
+	assert.NoError(t, err)
+	assert.Equal(t, dataRoot, block.DataStateRoot())
 
 	assert.Equal(t, cert.CertificateHash, hash)
 	assert.Equal(t, cert.Issuer, issuer.Addr.Bytes())
@@ -152,7 +165,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	// Revoke certification Test
 	wrongRevoker := bb.TokenDist[2]
 	revokeTime := time.Now().Unix() + int64(50000)
-	revokePayload := core.NewRevokeCertificationPayload(hash)
+	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb = bb.
 		Tx().Nonce(1).Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(wrongRevoker).ExecuteErr(core.ErrInvalidCertificationRevoker).
@@ -167,7 +180,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	certifiedAcc, err = block.State().GetAccount(certified.Addr)
 	require.NoError(t, err)
 
-	cert, err = block.State().Certification(hash)
+	cert, err = block.State().DataState().Certification(hash)
 	require.NoError(t, err)
 
 	assert.Equal(t, cert.RevocationTime, revokeTime)

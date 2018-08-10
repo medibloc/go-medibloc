@@ -38,12 +38,10 @@ type BlockHeader struct {
 	hash       []byte
 	parentHash []byte
 
-	accsRoot          []byte
-	txsRoot           []byte
-	usageRoot         []byte
-	recordsRoot       []byte
-	certificationRoot []byte
-	dposRoot          []byte
+	accStateRoot  []byte
+	dataStateRoot []byte
+	dposRoot      []byte
+	usageRoot     []byte
 
 	reservationQueueHash []byte
 
@@ -79,12 +77,10 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		ChainId:              b.chainID,
 		Alg:                  uint32(b.alg),
 		Sign:                 b.sign,
-		AccsRoot:             b.accsRoot,
-		TxsRoot:              b.txsRoot,
-		UsageRoot:            b.usageRoot,
-		RecordsRoot:          b.recordsRoot,
-		CertificationRoot:    b.certificationRoot,
+		AccStateRoot:         b.accStateRoot,
+		DataStateRoot:        b.dataStateRoot,
 		DposRoot:             b.dposRoot,
+		UsageRoot:            b.usageRoot,
 		ReservationQueueHash: b.reservationQueueHash,
 	}, nil
 }
@@ -94,11 +90,9 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.BlockHeader); ok {
 		b.hash = msg.Hash
 		b.parentHash = msg.ParentHash
-		b.accsRoot = msg.AccsRoot
-		b.txsRoot = msg.TxsRoot
+		b.accStateRoot = msg.AccStateRoot
+		b.dataStateRoot = msg.DataStateRoot
 		b.usageRoot = msg.UsageRoot
-		b.recordsRoot = msg.RecordsRoot
-		b.certificationRoot = msg.CertificationRoot
 		b.dposRoot = msg.DposRoot
 		b.reservationQueueHash = msg.ReservationQueueHash
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
@@ -141,24 +135,24 @@ func (b *BlockHeader) SetParentHash(parentHash []byte) {
 	b.parentHash = parentHash
 }
 
-//AccsRoot returns block header's accsRoot
-func (b *BlockHeader) AccsRoot() []byte {
-	return b.accsRoot
+//AccStateRoot returns block header's accStateRoot
+func (b *BlockHeader) AccStateRoot() []byte {
+	return b.accStateRoot
 }
 
-//SetAccsRoot set block header's accsRoot
-func (b *BlockHeader) SetAccsRoot(accsRoot []byte) {
-	b.accsRoot = accsRoot
+//SetAccStateRoot set block header's accStateRoot
+func (b *BlockHeader) SetAccStateRoot(accStateRoot []byte) {
+	b.accStateRoot = accStateRoot
 }
 
-//TxsRoot returns block header's txsRoot
-func (b *BlockHeader) TxsRoot() []byte {
-	return b.txsRoot
+//DataStateRoot returns block header's txsRoot
+func (b *BlockHeader) DataStateRoot() []byte {
+	return b.dataStateRoot
 }
 
-//SetTxsRoot set block header's txsRoot
-func (b *BlockHeader) SetTxsRoot(txsRoot []byte) {
-	b.txsRoot = txsRoot
+//SetDataStateRoot set block header's txsRoot
+func (b *BlockHeader) SetDataStateRoot(dsRoot []byte) {
+	b.dataStateRoot = dsRoot
 }
 
 //UsageRoot returns block header's usageRoot
@@ -169,26 +163,6 @@ func (b *BlockHeader) UsageRoot() []byte {
 //SetUsageRoot set block header's usageRoot
 func (b *BlockHeader) SetUsageRoot(usageRoot []byte) {
 	b.usageRoot = usageRoot
-}
-
-//RecordsRoot returns block header's recordRoot
-func (b *BlockHeader) RecordsRoot() []byte {
-	return b.recordsRoot
-}
-
-//SetRecordsRoot set block header's recordRoot
-func (b *BlockHeader) SetRecordsRoot(recordsRoot []byte) {
-	b.recordsRoot = recordsRoot
-}
-
-//CertificationRoot returns block header's CertificationRoot
-func (b *BlockHeader) CertificationRoot() []byte {
-	return b.certificationRoot
-}
-
-//SetCertificationRoot set block header's CertificationRoot
-func (b *BlockHeader) SetCertificationRoot(certificationRoot []byte) {
-	b.certificationRoot = certificationRoot
 }
 
 //DposRoot returns block header's dposRoot
@@ -482,39 +456,18 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	block.state.reward = bd.Reward()
 	block.state.supply = bd.Supply()
 
-	if err = block.state.LoadAccountsRoot(block.accsRoot); err != nil {
+	if err = block.state.LoadAccountState(block.accStateRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
 		}).Error("Failed to load accounts root.")
 		return nil, err
 	}
-	if err = block.state.LoadTransactionsRoot(block.txsRoot); err != nil {
+	if err = block.state.LoadDataState(block.dataStateRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
 		}).Error("Failed to load transaction root.")
-		return nil, err
-	}
-	if err = block.state.LoadUsageRoot(block.usageRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load usage root.")
-		return nil, err
-	}
-	if err = block.state.LoadRecordsRoot(block.recordsRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load records root.")
-		return nil, err
-	}
-	if err = block.state.LoadCertificationRoot(block.certificationRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load certification root.")
 		return nil, err
 	}
 
@@ -527,6 +480,14 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		return nil, err
 	}
 	block.state.dposState = ds
+
+	if err = block.state.LoadUsageRoot(block.usageRoot); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": block,
+		}).Error("Failed to load usage root.")
+		return nil, err
+	}
 
 	if err := block.state.LoadReservationQueue(block.reservationQueueHash); err != nil {
 		logging.WithFields(logrus.Fields{
@@ -662,19 +623,20 @@ func (b *Block) Seal() error {
 	if head != nil && head.Timestamp() < b.Timestamp() {
 		return ErrReservedTaskNotProcessed
 	}
-
-	b.reward = b.state.Reward()
-	b.supply = b.state.Supply()
-	b.accsRoot = b.state.AccountsRoot()
-	b.txsRoot = b.state.TransactionsRoot()
-	b.usageRoot = b.state.UsageRoot()
-	b.recordsRoot = b.state.RecordsRoot()
-	b.certificationRoot = b.state.CertificationRoot()
+	dataRoot, err := b.state.DataRoot()
+	if err != nil {
+		return err
+	}
 	dposRoot, err := b.state.dposState.RootBytes()
 	if err != nil {
 		return err
 	}
+	b.reward = b.state.Reward()
+	b.supply = b.state.Supply()
+	b.accStateRoot = b.state.AccountsRoot()
+	b.dataStateRoot = dataRoot
 	b.dposRoot = dposRoot
+	b.usageRoot = b.state.UsageRoot()
 	b.reservationQueueHash = b.state.ReservationQueueHash()
 
 	hash := HashBlockData(b.BlockData)
@@ -689,12 +651,10 @@ func HashBlockData(bd *BlockData) []byte {
 
 	hasher.Write(bd.ParentHash())
 	hasher.Write(bd.Coinbase().Bytes())
-	hasher.Write(bd.AccsRoot())
-	hasher.Write(bd.TxsRoot())
-	hasher.Write(bd.UsageRoot())
-	hasher.Write(bd.RecordsRoot())
-	hasher.Write(bd.CertificationRoot())
+	hasher.Write(bd.AccStateRoot())
+	hasher.Write(bd.DataStateRoot())
 	hasher.Write(bd.DposRoot())
+	hasher.Write(bd.UsageRoot())
 	hasher.Write(bd.ReservationQueueHash())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
@@ -713,7 +673,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
-	newTxFunc, ok := txMap[transaction.Type()]
+	newTxFunc, ok := txMap[transaction.TxType()]
 	if !ok {
 		return ErrInvalidTransactionType
 	}
@@ -866,17 +826,31 @@ func (b *Block) VerifyState() error {
 		return ErrInvalidBlockSupply
 	}
 
-	if !byteutils.Equal(b.state.AccountsRoot(), b.AccsRoot()) {
+	dataRoot, err := b.state.DataRoot()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get data state's root bytes.")
+		return err
+	}
+	dposRoot, err := b.state.DposState().RootBytes()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get dpos state's root bytes.")
+		return err
+	}
+	if !byteutils.Equal(b.state.AccountsRoot(), b.AccStateRoot()) {
 		logging.Console().WithFields(logrus.Fields{
 			"state":  byteutils.Bytes2Hex(b.state.AccountsRoot()),
-			"header": byteutils.Bytes2Hex(b.AccsRoot()),
+			"header": byteutils.Bytes2Hex(b.AccStateRoot()),
 		}).Warn("Failed to verify accounts root.")
 		return ErrInvalidBlockAccountsRoot
 	}
-	if !byteutils.Equal(b.state.TransactionsRoot(), b.TxsRoot()) {
+	if !byteutils.Equal(dataRoot, b.DataStateRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.TransactionsRoot()),
-			"header": byteutils.Bytes2Hex(b.TxsRoot()),
+			"state":  byteutils.Bytes2Hex(dataRoot),
+			"header": byteutils.Bytes2Hex(b.DataStateRoot()),
 		}).Warn("Failed to verify transactions root.")
 		return ErrInvalidBlockTxsRoot
 	}
@@ -886,27 +860,6 @@ func (b *Block) VerifyState() error {
 			"header": byteutils.Bytes2Hex(b.UsageRoot()),
 		}).Warn("Failed to verify usage root.")
 		return ErrInvalidBlockUsageRoot
-	}
-	if !byteutils.Equal(b.state.RecordsRoot(), b.RecordsRoot()) {
-		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.RecordsRoot()),
-			"header": byteutils.Bytes2Hex(b.RecordsRoot()),
-		}).Warn("Failed to verify records root.")
-		return ErrInvalidBlockRecordsRoot
-	}
-	if !byteutils.Equal(b.state.CertificationRoot(), b.CertificationRoot()) {
-		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.CertificationRoot()),
-			"header": byteutils.Bytes2Hex(b.CertificationRoot()),
-		}).Warn("Failed to verify certification root.")
-		return ErrInvalidBlockCertificationRoot
-	}
-	dposRoot, err := b.state.DposState().RootBytes()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get dpos state's root bytes.")
-		return err
 	}
 	if !byteutils.Equal(dposRoot, b.DposRoot()) {
 		logging.WithFields(logrus.Fields{

@@ -27,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -77,8 +78,8 @@ func corePbTx2rpcPbTx(pbTx *corepb.Transaction, executed bool) (*rpcpb.Transacti
 		Value:     value.String(),
 		Timestamp: pbTx.Timestamp,
 		Data: &rpcpb.TransactionData{
-			Type:    pbTx.Data.Type,
-			Payload: string(pbTx.Data.Payload),
+			Type:    pbTx.TxType,
+			Payload: string(pbTx.Payload),
 		},
 		Nonce:     pbTx.Nonce,
 		ChainId:   pbTx.ChainId,
@@ -100,17 +101,17 @@ func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error)
 	}
 
 	return &rpcpb.BlockResponse{
-		Hash:          byteutils.Bytes2Hex(pbBlock.Header.Hash),
-		ParentHash:    byteutils.Bytes2Hex(pbBlock.Header.ParentHash),
-		Coinbase:      byteutils.Bytes2Hex(pbBlock.Header.Coinbase),
-		Timestamp:     pbBlock.Header.Timestamp,
-		ChainId:       pbBlock.Header.ChainId,
-		Alg:           pbBlock.Header.Alg,
-		Sign:          byteutils.Bytes2Hex(pbBlock.Header.Sign),
-		AccsRoot:      byteutils.Bytes2Hex(pbBlock.Header.AccsRoot),
-		TxsRoot:       byteutils.Bytes2Hex(pbBlock.Header.TxsRoot),
-		UsageRoot:     byteutils.Bytes2Hex(pbBlock.Header.UsageRoot),
-		RecordsRoot:   byteutils.Bytes2Hex(pbBlock.Header.RecordsRoot),
+		Hash:       byteutils.Bytes2Hex(pbBlock.Header.Hash),
+		ParentHash: byteutils.Bytes2Hex(pbBlock.Header.ParentHash),
+		Coinbase:   byteutils.Bytes2Hex(pbBlock.Header.Coinbase),
+		Timestamp:  pbBlock.Header.Timestamp,
+		ChainId:    pbBlock.Header.ChainId,
+		Alg:        pbBlock.Header.Alg,
+		Sign:       byteutils.Bytes2Hex(pbBlock.Header.Sign),
+		AccsRoot:   byteutils.Bytes2Hex(pbBlock.Header.AccStateRoot),
+		//TxsRoot:       byteutils.Bytes2Hex(pbBlock.Header.TxsRoot),
+		UsageRoot: byteutils.Bytes2Hex(pbBlock.Header.UsageRoot),
+		//RecordsRoot:   byteutils.Bytes2Hex(pbBlock.Header.RecordsRoot),
 		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.DposRoot),
 		Transactions:  rpcPbTxs,
 		Height:        pbBlock.Height,
@@ -127,7 +128,7 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 		return nil, nil
 	case core.TxOpAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
-		payload := core.NewAddRecordPayload(addRecord.Hash)
+		payload := &core.AddRecordPayload{RecordHash: addRecord.RecordHash}
 		payloadBuf, err := payload.ToBytes()
 		if err != nil {
 			return nil, err
@@ -139,8 +140,11 @@ func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
 		return nil, nil
 	case core.TxOpAddCertification:
 		json.Unmarshal([]byte(txData.Payload), &addCertification)
-		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
-			addCertification.ExpirationTime, addCertification.CertificateHash)
+		payload := &core.AddCertificationPayload{
+			IssueTime:       addCertification.IssueTime,
+			ExpirationTime:  addCertification.ExpirationTime,
+			CertificateHash: addCertification.CertificateHash,
+		}
 		payloadBuf, err := payload.ToBytes()
 		if err != nil {
 			return nil, err
@@ -416,7 +420,7 @@ func (s *APIService) GetCurrentAccountTransactions(ctx context.Context,
 		}
 		txs = append(txs, rpcPbTx)
 		// Add send transaction twice if the address of from is as same as the address of to
-		if tx.Type() == core.TxOpTransfer && tx.From() == tx.To() {
+		if tx.TxType() == core.TxOpTransfer && tx.From() == tx.To() {
 			txs = append(txs, rpcPbTx)
 		}
 	}
@@ -427,7 +431,7 @@ func (s *APIService) GetCurrentAccountTransactions(ctx context.Context,
 			txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
 			for _, hash := range txList {
 				pbTx := new(corepb.Transaction)
-				pb, err := tailBlock.State().GetTx(hash)
+				pb, err := tailBlock.State().DataState().GetTx(hash)
 				if err != nil {
 					continue
 				}
@@ -464,7 +468,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	txHash := byteutils.Hex2Bytes(req.Hash)
 
 	pbTx := new(corepb.Transaction)
-	pb, err := tailBlock.State().GetTx(txHash)
+	pb, err := tailBlock.State().DataState().GetTx(txHash)
 	if err != nil {
 		if err != trie.ErrNotFound {
 			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
@@ -524,21 +528,20 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxDataPayload)
 	}
-	tx, err := core.BuildTransaction(
-		req.ChainId,
-		common.HexToAddress(req.From),
-		common.HexToAddress(req.To),
-		value,
-		req.Nonce,
-		req.Timestamp,
-		&corepb.Data{
-			Type:    req.Data.Type,
-			Payload: payloadBuf,
-		},
-		byteutils.Hex2Bytes(req.Hash),
-		req.Alg,
-		byteutils.Hex2Bytes(req.Sign),
-		byteutils.Hex2Bytes(req.PayerSign))
+	var tx *core.Transaction
+
+	tx.SetTxType(req.Data.Type)
+	tx.SetFrom(common.HexToAddress(req.From))
+	tx.SetTo(common.HexToAddress(req.To))
+	tx.SetValue(value)
+	tx.SetTimestamp(req.Timestamp)
+	tx.SetNonce(req.Nonce)
+	tx.SetChainID(req.ChainId)
+	tx.SetPayload(payloadBuf)
+	tx.SetAlg(algorithm.Algorithm(req.Alg))
+	tx.SetSign(byteutils.Hex2Bytes(req.Sign))
+	tx.SetPayerSign(byteutils.Hex2Bytes(req.PayerSign))
+
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
 	}

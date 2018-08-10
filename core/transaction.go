@@ -17,7 +17,6 @@ package core
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -33,13 +32,14 @@ import (
 // Transaction struct represents transaction
 type Transaction struct {
 	hash      []byte
+	txType    string
 	from      common.Address
 	to        common.Address
 	value     *util.Uint128
 	timestamp int64
-	data      *corepb.Data
 	nonce     uint64
 	chainID   uint32
+	payload   []byte
 	alg       algorithm.Algorithm
 	sign      []byte
 	payerSign []byte
@@ -54,13 +54,14 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 
 	return &corepb.Transaction{
 		Hash:      t.hash,
+		TxType:    t.txType,
 		From:      t.from.Bytes(),
 		To:        t.to.Bytes(),
 		Value:     value,
 		Timestamp: t.timestamp,
-		Data:      t.data,
 		Nonce:     t.nonce,
 		ChainId:   t.chainID,
+		Payload:   t.payload,
 		Alg:       uint32(t.alg),
 		Sign:      t.sign,
 		PayerSign: t.payerSign,
@@ -70,19 +71,20 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 // FromProto converts corepb.Transaction to Transaction
 func (t *Transaction) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Transaction); ok {
-		t.hash = msg.Hash
-		t.from = common.BytesToAddress(msg.From)
-		t.to = common.BytesToAddress(msg.To)
-
 		value, err := util.NewUint128FromFixedSizeByteSlice(msg.Value)
 		if err != nil {
 			return err
 		}
+
+		t.hash = msg.Hash
+		t.txType = msg.TxType
+		t.from = common.BytesToAddress(msg.From)
+		t.to = common.BytesToAddress(msg.To)
 		t.value = value
 		t.timestamp = msg.Timestamp
-		t.data = msg.Data
 		t.nonce = msg.Nonce
 		t.chainID = msg.ChainId
+		t.payload = msg.Payload
 		alg := algorithm.Algorithm(msg.Alg)
 		err = crypto.CheckAlgorithm(alg)
 		if err != nil {
@@ -103,9 +105,19 @@ func (t *Transaction) Hash() []byte {
 	return t.hash
 }
 
-//SetHash set hash
+//SetHash sets hash
 func (t *Transaction) SetHash(hash []byte) {
 	t.hash = hash
+}
+
+//TxType returns type
+func (t *Transaction) TxType() string {
+	return t.txType
+}
+
+//SetTxType sets type
+func (t *Transaction) SetTxType(txType string) {
+	t.txType = txType
 }
 
 //From returns from
@@ -113,7 +125,7 @@ func (t *Transaction) From() common.Address {
 	return t.from
 }
 
-//SetFrom set from
+//SetFrom sets from
 func (t *Transaction) SetFrom(from common.Address) {
 	t.from = from
 }
@@ -123,7 +135,7 @@ func (t *Transaction) To() common.Address {
 	return t.to
 }
 
-//SetTo set to
+//SetTo sets to
 func (t *Transaction) SetTo(to common.Address) {
 	t.to = to
 }
@@ -148,34 +160,14 @@ func (t *Transaction) SetTimestamp(timestamp int64) {
 	t.timestamp = timestamp
 }
 
-//Data returns data
-func (t *Transaction) Data() *corepb.Data {
-	return t.data
-}
-
-//SetData set data
-func (t *Transaction) SetData(data *corepb.Data) {
-	t.data = data
-}
-
-//Type returns type
-func (t *Transaction) Type() string {
-	return t.data.Type
-}
-
-//SetType set type
-func (t *Transaction) SetType(ttype string) {
-	t.data.Type = ttype
-}
-
 //Payload returns paylaod
 func (t *Transaction) Payload() []byte {
-	return t.data.Payload
+	return t.payload
 }
 
 //SetPayload set payload
 func (t *Transaction) SetPayload(payload []byte) {
-	t.data.Payload = payload
+	t.payload = payload
 }
 
 //Nonce returns nounce
@@ -239,70 +231,6 @@ func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
 // Transactions is just multiple txs
 type Transactions []*Transaction
 
-// BuildTransaction generates a Transaction instance with entire fields
-func BuildTransaction(
-	chainID uint32,
-	from, to common.Address,
-	value *util.Uint128,
-	nonce uint64,
-	timestamp int64,
-	data *corepb.Data,
-	hash []byte,
-	alg uint32,
-	sign []byte,
-	payerSign []byte) (*Transaction, error) {
-	return &Transaction{
-		from:      from,
-		to:        to,
-		value:     value,
-		timestamp: timestamp,
-		data:      data,
-		nonce:     nonce,
-		chainID:   chainID,
-		hash:      hash,
-		alg:       algorithm.Algorithm(alg),
-		sign:      sign,
-		payerSign: payerSign,
-	}, nil
-}
-
-// NewTransaction generates a Transaction instance
-func NewTransaction(
-	chainID uint32,
-	from, to common.Address,
-	value *util.Uint128,
-	nonce uint64,
-	payloadType string,
-	payload []byte) (*Transaction, error) {
-	return NewTransactionWithSign(chainID, from, to, value, nonce, payloadType, payload, []byte{}, []byte{}, []byte{})
-}
-
-// NewTransactionWithSign generates a Transaction instance with sign
-func NewTransactionWithSign(
-	chainID uint32,
-	from, to common.Address,
-	value *util.Uint128,
-	nonce uint64,
-	payloadType string,
-	payload []byte,
-	hash []byte,
-	sign []byte,
-	payerSign []byte) (*Transaction, error) {
-
-	return &Transaction{
-		from:      from,
-		to:        to,
-		value:     value,
-		timestamp: time.Now().Unix(),
-		data:      &corepb.Data{Type: payloadType, Payload: payload},
-		nonce:     nonce,
-		chainID:   chainID,
-		hash:      hash,
-		sign:      sign,
-		payerSign: payerSign,
-	}, nil
-}
-
 // CalcHash calculates transaction's hash.
 func (t *Transaction) CalcHash() ([]byte, error) {
 	hasher := sha3.New256()
@@ -312,22 +240,20 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 		return nil, err
 	}
 	txHashTarget := &corepb.TransactionHashTarget{
+		TxType:    t.txType,
 		From:      t.from.Bytes(),
 		To:        t.to.Bytes(),
 		Value:     value,
 		Timestamp: t.timestamp,
-		Data: &corepb.Data{
-			Type:    t.data.Type,
-			Payload: t.data.Payload,
-		},
-		Nonce:   t.nonce,
-		ChainId: t.chainID,
+		Nonce:     t.nonce,
+		ChainId:   t.chainID,
+		Payload:   t.payload,
 	}
-	data, err := proto.Marshal(txHashTarget)
+	txHashTargetBytes, err := proto.Marshal(txHashTarget)
 	if err != nil {
 		return nil, err
 	}
-	hasher.Write(data)
+	hasher.Write(txHashTargetBytes)
 
 	hash := hasher.Sum(nil)
 	return hash, nil
@@ -444,7 +370,7 @@ func (t *Transaction) String() string {
 		t.from,
 		t.to,
 		t.value.String(),
-		t.Type(),
+		t.TxType(),
 		t.alg,
 		t.nonce,
 		t.timestamp,
@@ -490,45 +416,45 @@ func (tx *TransferTx) Execute(b *Block) error {
 
 //AddRecordTx is a structure for adding record
 type AddRecordTx struct {
-	owner     common.Address
-	timestamp int64
-	payload   []byte
+	owner      common.Address
+	timestamp  int64
+	recordHash []byte
 }
 
 //NewAddRecordTx returns AddRecordTx
 func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
+	payload := new(AddRecordPayload)
+	if err := payload.FromBytes(tx.payload); err != nil {
+		return nil, err
+	}
 	return &AddRecordTx{
-		owner:     tx.From(),
-		timestamp: tx.Timestamp(),
-		payload:   tx.Payload(),
+		owner:      tx.From(),
+		timestamp:  tx.Timestamp(),
+		recordHash: payload.RecordHash,
 	}, nil
 }
 
 //Execute AddRecordTx
 func (tx *AddRecordTx) Execute(b *Block) error {
-	rs := b.state.recordsState
-	//as := b.state.accState
+	rs := b.state.dataState.RecordsState
+	as := b.state.accState
 
-	// Account state 변경 로직 추가
-	//as.AddRecord()
-
-	var payload AddRecordPayload
-	err := payload.FromBytes(tx.payload)
-	if err != nil {
+	//Account state 변경 로직 추가
+	if err := as.AddRecord(tx.owner, tx.recordHash); err != nil {
 		return err
 	}
 
 	pbRecord := &corepb.Record{
-		Hash:      payload.Hash,
-		Owner:     tx.owner.Bytes(),
-		Timestamp: tx.timestamp,
+		Owner:      tx.owner.Bytes(),
+		RecordHash: tx.recordHash,
+		Timestamp:  tx.timestamp,
 	}
 	recordBytes, err := proto.Marshal(pbRecord)
 	if err != nil {
 		return err
 	}
 
-	return rs.Put(payload.Hash, recordBytes)
+	return rs.Put(tx.recordHash, recordBytes)
 }
 
 //VestTx is a structure for withdrawing vesting
@@ -679,13 +605,6 @@ type AddCertificationTx struct {
 	Payload   *AddCertificationPayload
 }
 
-// AddCertificationPayload is payload type for AddCertificationTx
-type AddCertificationPayload struct {
-	IssueTime       int64
-	ExpirationTime  int64
-	CertificateHash []byte
-}
-
 //NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(AddCertificationPayload)
@@ -704,7 +623,7 @@ func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 //Execute AddCertificationTx
 func (tx *AddCertificationTx) Execute(b *Block) error {
 	as := b.state.AccState()
-	cs := b.state.certificationState
+	cs := b.state.dataState.CertificationState
 
 	if err := as.AddCertReceived(tx.Certified, tx.Payload.CertificateHash); err != nil {
 		return err
@@ -734,11 +653,6 @@ type RevokeCertificationTx struct {
 	RevocationTime int64
 }
 
-// RevokeCertificationPayload is payload type for RevokeCertificationTx
-type RevokeCertificationPayload struct {
-	CertificateHash []byte
-}
-
 //NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(RevokeCertificationPayload)
@@ -757,9 +671,9 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	s := b.state
 	//as := b.state.AccState()
-	cs := b.state.certificationState
+	cs := b.state.dataState.CertificationState
 
-	pbCert, err := s.Certification(tx.Hash)
+	pbCert, err := s.dataState.Certification(tx.Hash)
 	if err != nil {
 		return nil
 	}

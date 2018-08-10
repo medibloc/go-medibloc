@@ -39,7 +39,12 @@ type TxBuilder struct {
 
 func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
-	tx := defaultTransaction()
+
+	tx := &core.Transaction{}
+	tx.SetChainID(testutil.ChainID)
+	tx.SetValue(util.Uint128Zero())
+	tx.SetAlg(defaultSignAlg)
+
 	tx.SetTimestamp(bb.B.Timestamp())
 
 	return &TxBuilder{
@@ -47,15 +52,6 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 		bb: n,
 		tx: tx,
 	}
-}
-
-func defaultTransaction() *core.Transaction {
-	tx := &core.Transaction{}
-	tx.SetChainID(testutil.ChainID)
-	tx.SetValue(util.Uint128Zero())
-	tx.SetData(&corepb.Data{})
-	tx.SetAlg(defaultSignAlg)
-	return tx
 }
 
 func (tb *TxBuilder) copy() *TxBuilder {
@@ -112,7 +108,7 @@ func (tb *TxBuilder) Timestamp(ts int64) *TxBuilder {
 //Type sets type
 func (tb *TxBuilder) Type(txType string) *TxBuilder {
 	n := tb.copy()
-	n.tx.SetType(txType)
+	n.tx.SetTxType(txType)
 	return n
 }
 

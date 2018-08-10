@@ -1,0 +1,44 @@
+syntax = "proto3";
+package corepb;
+
+message AccountState {
+  bytes address = 1;
+  bytes balance = 2;
+  uint64 nonce = 3;
+
+  bytes vesting = 11;
+  bytes voted_root_hash = 12;
+
+  bytes collateral = 21;
+  bytes voters_root_hash = 22;
+  bytes vote_power = 23;
+
+  bytes records_root_hash = 31;
+  bytes certs_received_root_hash = 32;
+  bytes certs_issued_root_hash = 33;
+  bytes txs_from_root_hash = 34;
+  bytes txs_to_root_hash = 35;
+}
+
+message DataState {
+  bytes tx_state_root_hash = 1;
+  bytes record_state_root_hash = 2;
+  bytes certification_state_root_hash = 3;
+}
+
+message Record {
+  bytes record_hash = 1;
+  bytes owner = 2;
+  int64 timestamp = 3;
+}
+
+message Certification {
+  bytes certificate_hash = 1;
+
+  bytes issuer = 2;
+  bytes certified = 3;
+
+  int64 issue_time = 4;
+  int64 expiration_time = 5;
+  int64 revocation_time = 6;
+}

@@ -135,24 +135,26 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 	initialMessage := "Genesis block of MediBloc"
 
-	initialTx, err := NewTransaction(
-		conf.Meta.ChainId,
-		GenesisCoinbase, GenesisCoinbase,
-		util.Uint128Zero(), 1,
-		TxOpTransfer,
-		[]byte(initialMessage),
-	)
-	if err != nil {
-		return nil, err
+	initialTx := &Transaction{
+		hash:      nil,
+		txType:    TxOpTransfer,
+		from:      GenesisCoinbase,
+		to:        GenesisCoinbase,
+		value:     util.Uint128Zero(),
+		timestamp: GenesisTimestamp,
+		nonce:     1,
+		chainID:   conf.Meta.ChainId,
+		payload:   []byte(initialMessage),
+		alg:       genesisBlock.Alg(),
+		sign:      nil,
+		payerSign: nil,
 	}
-	initialTx.SetTimestamp(GenesisTimestamp)
 
 	hash, err := initialTx.CalcHash()
 	if err != nil {
 		return nil, err
 	}
 	initialTx.hash = hash
-	initialTx.alg = genesisBlock.Alg()
 
 	pbTx, err := initialTx.ToProto()
 	if err != nil {
@@ -165,7 +167,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 
 	genesisBlock.transactions = append(genesisBlock.transactions, initialTx)
-	if err := genesisBlock.state.PutTx(initialTx.hash, txBytes); err != nil {
+	if err := genesisBlock.state.dataState.PutTx(initialTx.hash, txBytes); err != nil {
 		return nil, err
 	}
 
@@ -173,13 +175,19 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		return nil, err
 	}
 
-	genesisBlock.accsRoot = genesisBlock.state.AccountsRoot()
-	genesisBlock.txsRoot = genesisBlock.state.TransactionsRoot()
-	genesisBlock.certificationRoot = genesisBlock.state.CertificationRoot()
-	genesisBlock.dposRoot, err = genesisBlock.state.DposState().RootBytes()
+	dataRoot, err := genesisBlock.state.dataState.RootBytes()
 	if err != nil {
 		return nil, err
 	}
+
+	dposRoot, err := genesisBlock.state.DposState().RootBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	genesisBlock.accStateRoot = genesisBlock.state.AccountsRoot()
+	genesisBlock.dataStateRoot = dataRoot
+	genesisBlock.dposRoot = dposRoot
 
 	genesisBlock.sealed = true
 

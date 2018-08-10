@@ -193,7 +193,7 @@ type SyncService interface {
 	IsDownloadActivated() bool
 }
 
-//TxFactory is a map for tx.Type() to NewTxFunc
+//TxFactory is a map for tx.TxType() to NewTxFunc
 type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 
 //ExecutableTx interface for execute transaction on state
