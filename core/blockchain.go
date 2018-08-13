@@ -240,7 +240,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	if bc.eventEmitter != nil {
 		event := &Event{
 			Topic: TopicLibBlock,
-			Data:  newLIB.GetBlockData().String(),
+			Data:  byteutils.Bytes2Hex(newLIB.Hash()),
 		}
 		bc.eventEmitter.Trigger(event)
 	}
@@ -300,7 +300,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	if bc.eventEmitter != nil {
 		event := &Event{
 			Topic: TopicNewTailBlock,
-			Data:  newTail.String(),
+			Data:  byteutils.Bytes2Hex(newTail.Hash()),
 		}
 		bc.eventEmitter.Trigger(event)
 	}

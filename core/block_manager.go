@@ -399,7 +399,7 @@ func (bm *BlockManager) revertBlocks(blocks []*Block, newBlocks []*Block) error 
 		if bm.bc.eventEmitter != nil {
 			event := &Event{
 				Topic: TopicRevertBlock,
-				Data:  block.String(),
+				Data:  byteutils.Bytes2Hex(block.Hash()),
 			}
 			bm.bc.eventEmitter.Trigger(event)
 		}

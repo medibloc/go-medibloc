@@ -27,7 +27,7 @@ import (
 var (
 	ttype   = flag.String("ttype", "", "Type admin or api")
 	address = flag.String("addr", "", "Address")
-	height  = flag.String("height", "1", "Height")
+	height  = flag.Uint64("height", 1, "Height")
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 	apiClient := rpcpb.NewApiServiceClient(conn)
 	switch *ttype {
 	case "accountstate":
-		res, err := apiClient.GetAccountState(context.Background(), &rpcpb.GetAccountStateRequest{
+		res, err := apiClient.GetAccount(context.Background(), &rpcpb.GetAccountRequest{
 			Address: *address,
 			Height:  *height,
 		})
@@ -48,7 +48,7 @@ func main() {
 		}
 		log.Println(res)
 	case "medstate":
-		res, err := apiClient.GetMedState(context.Background(), &rpcpb.NonParamsRequest{})
+		res, err := apiClient.GetMedState(context.Background(), &rpcpb.NonParamRequest{})
 		if err != nil {
 			log.Println(err)
 		} else {

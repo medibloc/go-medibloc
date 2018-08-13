@@ -918,7 +918,7 @@ func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 	for _, tx := range b.Transactions() {
 		event := &Event{
 			Topic: TopicTransactionExecutionResult,
-			Data:  tx.String(),
+			Data:  byteutils.Bytes2Hex(tx.Hash()),
 		}
 		emitter.Trigger(event)
 	}
