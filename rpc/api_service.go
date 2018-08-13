@@ -19,7 +19,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
@@ -30,138 +29,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-func candidate2rpcCandidate(candidate *core.Account) (*rpcpb.Candidate, error) {
-	return &rpcpb.Candidate{
-		Address:   candidate.Address.Hex(),
-		Collatral: candidate.Collateral.String(),
-		VotePower: candidate.VotePower.String(),
-	}, nil
-}
-func coreAcc2rpcAcc(acc *core.Account) (*rpcpb.GetAccountStateResponse, error) {
-	var txsFrom []string
-	var txsTo []string
-	for _, hash := range acc.TxsFromSlice() {
-		txsFrom = append(txsFrom, byteutils.Bytes2Hex(hash))
-	}
-	for _, hash := range acc.TxsToSlice() {
-		txsTo = append(txsTo, byteutils.Bytes2Hex(hash))
-	}
-	return &rpcpb.GetAccountStateResponse{
-		Address:       acc.Address.Hex(),
-		Balance:       acc.Balance.String(),
-		CertsIssued:   nil, // TODO @ggomma
-		CertsReceived: nil, // TODO @ggomma
-		Nonce:         acc.Nonce,
-		Records:       nil, // TODO @ggomma
-		Vesting:       acc.Vesting.String(),
-		//Voted:         byteutils.Bytes2Hex(acc.Voted),
-		TxsSend: txsFrom,
-		TxsGet:  txsTo,
-	}, nil
-}
-
-func corePbTx2rpcPbTx(pbTx *corepb.Transaction, executed bool) (*rpcpb.TransactionResponse, error) {
-	value, err := util.NewUint128FromFixedSizeByteSlice(pbTx.Value)
-	if err != nil {
-		return nil, err
-	}
-	return &rpcpb.TransactionResponse{
-		Hash:      byteutils.Bytes2Hex(pbTx.Hash),
-		From:      byteutils.Bytes2Hex(pbTx.From),
-		To:        byteutils.Bytes2Hex(pbTx.To),
-		Value:     value.String(),
-		Timestamp: pbTx.Timestamp,
-		Data: &rpcpb.TransactionData{
-			Type:    pbTx.TxType,
-			Payload: string(pbTx.Payload),
-		},
-		Nonce:     pbTx.Nonce,
-		ChainId:   pbTx.ChainId,
-		Alg:       pbTx.Alg,
-		Sign:      byteutils.Bytes2Hex(pbTx.Sign),
-		PayerSign: byteutils.Bytes2Hex(pbTx.PayerSign),
-		Executed:  executed,
-	}, nil
-}
-
-func corePbBlock2rpcPbBlock(pbBlock *corepb.Block) (*rpcpb.BlockResponse, error) {
-	var rpcPbTxs []*rpcpb.TransactionResponse
-	for _, pbTx := range pbBlock.GetTransactions() {
-		rpcPbTx, err := corePbTx2rpcPbTx(pbTx, true)
-		if err != nil {
-			return nil, err
-		}
-		rpcPbTxs = append(rpcPbTxs, rpcPbTx)
-	}
-
-	return &rpcpb.BlockResponse{
-		Hash:       byteutils.Bytes2Hex(pbBlock.Header.Hash),
-		ParentHash: byteutils.Bytes2Hex(pbBlock.Header.ParentHash),
-		Coinbase:   byteutils.Bytes2Hex(pbBlock.Header.Coinbase),
-		Timestamp:  pbBlock.Header.Timestamp,
-		ChainId:    pbBlock.Header.ChainId,
-		Alg:        pbBlock.Header.Alg,
-		Sign:       byteutils.Bytes2Hex(pbBlock.Header.Sign),
-		AccsRoot:   byteutils.Bytes2Hex(pbBlock.Header.AccStateRoot),
-		//TxsRoot:       byteutils.Bytes2Hex(pbBlock.Header.TxsRoot),
-		UsageRoot: byteutils.Bytes2Hex(pbBlock.Header.UsageRoot),
-		//RecordsRoot:   byteutils.Bytes2Hex(pbBlock.Header.RecordsRoot),
-		ConsensusRoot: byteutils.Bytes2Hex(pbBlock.Header.DposRoot),
-		Transactions:  rpcPbTxs,
-		Height:        pbBlock.Height,
-	}, nil
-}
-
-func generatePayloadBuf(txData *rpcpb.TransactionData) ([]byte, error) {
-	var addRecord *core.AddRecordPayload
-	var addCertification *core.AddCertificationPayload
-	var revokeCertification *core.RevokeCertificationPayload
-
-	switch txData.Type {
-	case core.TxOpTransfer:
-		return nil, nil
-	case core.TxOpAddRecord:
-		json.Unmarshal([]byte(txData.Payload), &addRecord)
-		payload := &core.AddRecordPayload{RecordHash: addRecord.RecordHash}
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpVest:
-		return nil, nil
-	case core.TxOpWithdrawVesting:
-		return nil, nil
-	case core.TxOpAddCertification:
-		json.Unmarshal([]byte(txData.Payload), &addCertification)
-		payload := &core.AddCertificationPayload{
-			IssueTime:       addCertification.IssueTime,
-			ExpirationTime:  addCertification.ExpirationTime,
-			CertificateHash: addCertification.CertificateHash,
-		}
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpRevokeCertification:
-		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
-		payload := core.NewRevokeCertificationPayload(revokeCertification.CertificateHash)
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case dpos.TxOpBecomeCandidate:
-		return nil, nil
-	case dpos.TxOpQuitCandidacy:
-		return nil, nil
-	case dpos.TxOpVote:
-		return nil, nil
-	}
-	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
-}
 
 // APIService is blockchain api rpc service.
 type APIService struct {
@@ -204,22 +71,10 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	}
 
 	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
-	if err != nil {
-		return coreAccount2rpcAccount(nil, req.Address), nil
+	if err != nil && err != trie.ErrNotFound {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	return coreAccount2rpcAccount(acc, req.Address), nil
-	return &rpcpb.GetAccountStateResponse{
-		Address: acc.Address.Hex(),
-		Balance: acc.Balance.String(),
-		//CertsIssued:   byteutils.BytesSlice2HexSlice(acc.CertsIssued()),
-		//CertsReceived: byteutils.BytesSlice2HexSlice(acc.CertsReceived()),
-		Nonce: acc.Nonce,
-		//Records:       byteutils.BytesSlice2HexSlice(acc.Records()),
-		Vesting: acc.Vesting.String(),
-		//Voted:         byteutils.Bytes2Hex(acc.Voted()),
-		//TxsSend:       byteutils.BytesSlice2HexSlice(acc.TxsFrom()),
-		//TxsGet:        byteutils.BytesSlice2HexSlice(acc.TxsTo()),
-	}, nil
 }
 
 // GetBlock returns block
@@ -272,8 +127,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
-		rpcCandidate, err := candidate2rpcCandidate(acc)
-		rpcCandidate, err := dposCandidate2rpcCandidate(candidate)
+		rpcCandidate, err := coreCandidate2rpcCandidate(acc)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
@@ -289,19 +143,13 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest)
 	var addresses []string
 
 	block := s.bm.TailBlock()
-
-	addrs, err := block.State().GetDynasty()
+	dynasty, err := block.State().GetDynasty()
 	if err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
-	for _, addr := range addrs {
+	for _, addr := range dynasty {
 		addresses = append(addresses, addr.Hex())
 	}
-		acc, err := block.State().GetAccount(addr)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-
 	return &rpcpb.GetDynastyResponse{
 		Addresses: addresses,
 	}, nil
@@ -327,47 +175,6 @@ func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonP
 
 	return &rpcpb.GetTransactionsResponse{
 		Transactions: rpcTxs,
-	for _, tx := range poolTxs {
-		corePbTx, err := tx.ToProto()
-		if err != nil {
-			continue
-		}
-		rpcPbTx, err := corePbTx2rpcPbTx(corePbTx.(*corepb.Transaction), false)
-		if err != nil {
-			continue
-		}
-		txs = append(txs, rpcPbTx)
-		// Add send transaction twice if the address of from is as same as the address of to
-		if tx.TxType() == core.TxOpTransfer && tx.From() == tx.To() {
-			txs = append(txs, rpcPbTx)
-		}
-	}
-
-	if tailBlock != nil {
-		acc, err := tailBlock.State().GetAccount(address)
-		if err == nil {
-			txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
-			for _, hash := range txList {
-				pbTx := new(corepb.Transaction)
-				pb, err := tailBlock.State().DataState().GetTx(hash)
-				if err != nil {
-					continue
-				}
-				err = proto.Unmarshal(pb, pbTx)
-				if err != nil {
-					continue
-				}
-				rpcPbTx, err := corePbTx2rpcPbTx(pbTx, true)
-				if err != nil {
-					continue
-				}
-				txs = append(txs, rpcPbTx)
-			}
-		}
-	}
-
-	return &rpcpb.TransactionsResponse{
-		Transactions: txs,
 	}, nil
 }
 
@@ -382,37 +189,30 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}
 
-	executed := true
 	tx := new(core.Transaction)
 	txHash := byteutils.Hex2Bytes(req.Hash)
-	pb, err := tailBlock.State().GetTx(txHash)
-	// If tx is in txPool
-
-	pbTx := new(corepb.Transaction)
 	pb, err := tailBlock.State().DataState().GetTx(txHash)
-	if err != nil {
-		if err != trie.ErrNotFound {
-			return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
-		}
+	if err != nil && err != trie.ErrNotFound {
+		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+	} else if err == trie.ErrNotFound { // tx is not in txsState
 		// Get tx from txPool (type *Transaction)
 		tx = s.tm.Get(txHash)
 		if tx == nil {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 		}
-		executed = false
-	} else { // If tx is already included in a block
-		pbTx := new(corepb.Transaction)
-		err = proto.Unmarshal(pb, pbTx)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-		}
-		err := tx.FromProto(pbTx)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-		}
+		return coreTx2rpcTx(tx, false), nil
+	}
+	// If tx is already included in a block
+	pbTx := new(corepb.Transaction)
+	err = proto.Unmarshal(pb, pbTx)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
+	}
+	if err := tx.FromProto(pbTx); err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
 	}
 
-	return coreTx2rpcTx(tx, executed), nil
+	return coreTx2rpcTx(tx, true), nil
 }
 
 // GetAccountTransactions returns transactions of the account
@@ -425,7 +225,7 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 	for _, tx := range poolTxs {
 		txs = append(txs, coreTx2rpcTx(tx, false))
 		// Add send transaction twice if the address of from is as same as the address of to
-		if tx.Type() == core.TxOpTransfer && tx.From() == tx.To() {
+		if tx.TxType() == core.TxOpTransfer && tx.From() == tx.To() {
 			txs = append(txs, coreTx2rpcTx(tx, false))
 		}
 	}
@@ -440,10 +240,10 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 	if acc != nil {
-		txList := append(acc.TxsTo(), acc.TxsFrom()...)
+		txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
 		for _, hash := range txList {
 			tx := new(core.Transaction)
-			pb, err := tailBlock.State().GetTx(hash)
+			pb, err := tailBlock.State().DataState().GetTx(hash)
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 			}

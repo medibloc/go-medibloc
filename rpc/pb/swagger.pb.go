@@ -305,7 +305,10 @@ const (
           "description": "Current vesting in unit of 1/(10^8) MED."
         },
         "voted": {
-          "type": "string",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "description": "Voted address."
         },
         "records": {
@@ -396,25 +399,17 @@ const (
           "type": "string",
           "title": "Root hash of accounts trie"
         },
-        "txs_root": {
+        "data_root": {
           "type": "string",
-          "title": "Root hash of transactions trie"
-        },
-        "usage_root": {
-          "type": "string",
-          "title": "Root hash of usage trie"
-        },
-        "records_root": {
-          "type": "string",
-          "title": "Root hash of records trie"
-        },
-        "certification_root": {
-          "type": "string",
-          "title": "Root hash of certification trie"
+          "title": "Root hash of data trie"
         },
         "dpos_root": {
           "type": "string",
           "title": "Root hash of dpos state trie"
+        },
+        "usage_root": {
+          "type": "string",
+          "title": "Root hash of usage trie"
         },
         "transactions": {
           "type": "array",

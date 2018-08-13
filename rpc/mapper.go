@@ -19,81 +19,53 @@ import (
 	"encoding/json"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc/pb"
-	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAccountResponse {
-	if account == nil {
-		return &rpcpb.GetAccountResponse{
-			Address:       address,
-			Balance:       "0",
-			Nonce:         0,
-			Vesting:       "0",
-			Voted:         "",
-			Records:       []string{},
-			CertsIssued:   []string{},
-			CertsReceived: []string{},
-			TxsFrom:       []string{},
-			TxsTo:         []string{},
-		}
-	}
 	return &rpcpb.GetAccountResponse{
 		Address:       address,
-		Balance:       account.Balance().String(),
-		Nonce:         account.Nonce(),
-		Vesting:       account.Vesting().String(),
-		Voted:         byteutils.Bytes2Hex(account.Voted()),
+		Balance:       account.Balance.String(),
+		Nonce:         account.Nonce,
+		Vesting:       account.Vesting.String(),
+		Voted:         nil, // TODO @drsleepytiger,
 		Records:       nil, // TODO @ggomma
 		CertsIssued:   nil, // TODO @ggomma
 		CertsReceived: nil, // TODO @ggomma
-		TxsFrom:       byteutils.BytesSlice2HexSlice(account.TxsFrom()),
-		TxsTo:         byteutils.BytesSlice2HexSlice(account.TxsTo()),
+		TxsFrom:       nil, // TODO @drsleepytiger,
+		TxsTo:         nil, // TODO @drsleepytiger,
 	}
 }
 
 func coreBlock2rpcBlock(block *core.Block) *rpcpb.GetBlockResponse {
 	return &rpcpb.GetBlockResponse{
-		Height:            block.Height(),
-		Hash:              byteutils.Bytes2Hex(block.Hash()),
-		ParentHash:        byteutils.Bytes2Hex(block.ParentHash()),
-		Coinbase:          block.Coinbase().Hex(),
-		Reward:            block.Reward().String(),
-		Supply:            block.Supply().String(),
-		Timestamp:         block.Timestamp(),
-		ChainId:           block.ChainID(),
-		Alg:               uint32(block.Alg()),
-		Sign:              byteutils.Bytes2Hex(block.Sign()),
-		AccsRoot:          byteutils.Bytes2Hex(block.AccsRoot()),
-		TxsRoot:           byteutils.Bytes2Hex(block.TxsRoot()),
-		UsageRoot:         byteutils.Bytes2Hex(block.UsageRoot()),
-		RecordsRoot:       byteutils.Bytes2Hex(block.RecordsRoot()),
-		CertificationRoot: byteutils.Bytes2Hex(block.CertificationRoot()),
-		DposRoot:          byteutils.Bytes2Hex(block.DposRoot()),
-		Transactions:      coreTxs2rpcTxs(block.Transactions(), true),
+		Height:       block.Height(),
+		Hash:         byteutils.Bytes2Hex(block.Hash()),
+		ParentHash:   byteutils.Bytes2Hex(block.ParentHash()),
+		Coinbase:     block.Coinbase().Hex(),
+		Reward:       block.Reward().String(),
+		Supply:       block.Supply().String(),
+		Timestamp:    block.Timestamp(),
+		ChainId:      block.ChainID(),
+		Alg:          uint32(block.Alg()),
+		Sign:         byteutils.Bytes2Hex(block.Sign()),
+		AccsRoot:     byteutils.Bytes2Hex(block.AccStateRoot()),
+		DataRoot:     byteutils.Bytes2Hex(block.DataStateRoot()),
+		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
+		UsageRoot:    byteutils.Bytes2Hex(block.UsageRoot()),
+		Transactions: coreTxs2rpcTxs(block.Transactions(), true),
 	}
 }
 
-func dposCandidate2rpcCandidate(candidate *dpospb.Candidate) (*rpcpb.Candidate, error) {
-	collatral, err := util.NewUint128FromFixedSizeByteSlice(candidate.Collatral)
-	if err != nil {
-		return nil, err
-	}
-
-	votePower, err := util.NewUint128FromFixedSizeByteSlice(candidate.VotePower)
-	if err != nil {
-		return nil, err
-	}
-
+func coreCandidate2rpcCandidate(candidate *core.Account) (*rpcpb.Candidate, error) {
 	return &rpcpb.Candidate{
-		Address:   byteutils.Bytes2Hex(candidate.Address),
-		Collatral: collatral.String(),
-		VotePower: votePower.String(),
+		Address:   candidate.Address.Hex(),
+		Collatral: candidate.Collateral.String(),
+		VotePower: candidate.VotePower.String(),
 	}, nil
 }
 
@@ -105,7 +77,7 @@ func coreTx2rpcTx(tx *core.Transaction, executed bool) *rpcpb.GetTransactionResp
 		Value:     tx.Value().String(),
 		Timestamp: tx.Timestamp(),
 		Data: &rpcpb.TransactionData{
-			Type:    tx.Type(),
+			Type:    tx.TxType(),
 			Payload: byteutils.Bytes2Hex(tx.Payload()),
 		},
 		Nonce:     tx.Nonce(),
@@ -134,7 +106,7 @@ func rpcPayload2payloadBuffer(txData *rpcpb.TransactionData) ([]byte, error) {
 	switch txData.Type {
 	case core.TxOpAddRecord:
 		json.Unmarshal([]byte(txData.Payload), &addRecord)
-		payload := core.NewAddRecordPayload(addRecord.Hash)
+		payload := &core.AddRecordPayload{RecordHash: addRecord.RecordHash}
 		payloadBuf, err := payload.ToBytes()
 		if err != nil {
 			return nil, err
@@ -142,8 +114,11 @@ func rpcPayload2payloadBuffer(txData *rpcpb.TransactionData) ([]byte, error) {
 		return payloadBuf, nil
 	case core.TxOpAddCertification:
 		json.Unmarshal([]byte(txData.Payload), &addCertification)
-		payload := core.NewAddCertificationPayload(addCertification.IssueTime,
-			addCertification.ExpirationTime, addCertification.CertificateHash)
+		payload := &core.AddCertificationPayload{
+			IssueTime:       addCertification.IssueTime,
+			ExpirationTime:  addCertification.ExpirationTime,
+			CertificateHash: addCertification.CertificateHash,
+		}
 		payloadBuf, err := payload.ToBytes()
 		if err != nil {
 			return nil, err

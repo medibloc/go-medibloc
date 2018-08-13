@@ -89,7 +89,7 @@ message GetAccountResponse {
 	string vesting = 4;
 
 	// Voted address.
-	string voted = 5;
+	repeated string voted = 5;
 
 	// List of record hash.
 	repeated string records = 6;
@@ -137,16 +137,12 @@ message GetBlockResponse {
 
 	// Root hash of accounts trie
 	string accs_root = 20;
-	// Root hash of transactions trie
-	string txs_root = 21;
-	// Root hash of usage trie
-	string usage_root = 22;
-	// Root hash of records trie
-	string records_root = 23;
-	// Root hash of certification trie
-	string certification_root = 24;
+	// Root hash of data trie
+	string data_root = 21;
 	// Root hash of dpos state trie
-	string dpos_root = 25;
+	string dpos_root = 22;
+	// Root hash of usage trie
+	string usage_root = 23;
 
 	// Transactions in block
 	repeated GetTransactionResponse transactions = 30;
