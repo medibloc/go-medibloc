@@ -18,7 +18,7 @@ package dpos
 import (
 	"encoding/json"
 
-		"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -196,10 +196,6 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 	ds := b.State().DposState()
 	as := b.State().AccState()
 
-	if len(tx.candidates) == 0 {
-		return ErrNoVote
-	}
-
 	maxVote := b.Consensus().DynastySize() // TODO: max number of vote @drsleepytiger
 	if len(tx.candidates) > maxVote {
 		return ErrOverMaxVote
@@ -219,6 +215,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 
 	for _, addrBytes := range oldVoted {
 		candidate := common.BytesToAddress(addrBytes)
+		as.SubVoters(candidate, tx.voter)
 		as.SubVotePower(candidate, myVesting)
 	}
 	acc.Voted.SetRootHash(nil)

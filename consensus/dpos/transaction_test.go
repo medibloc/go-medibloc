@@ -18,6 +18,7 @@ package dpos_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -94,13 +95,16 @@ func TestVote(t *testing.T) {
 	bb = bb.
 		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).SignPair(candidate).Execute().
-		Tx().Type(dpos.TxOpVote).Payload(&dpos.VotePayload{}).SignPair(voter).ExecuteErr(dpos.ErrNoVote).
 		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(dpos.ErrOverMaxVote).
 		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(dpos.ErrDuplicateVote).
 		Tx().Type(dpos.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
 	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
+
+	isCandidate, err := block.State().DposState().IsCandidate(candidate.Addr)
+	assert.NoError(t, err)
+	assert.Equal(t, true, isCandidate)
 
 	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
@@ -109,13 +113,35 @@ func TestVote(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	isCandidate, err := block.State().DposState().IsCandidate(candidate.Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, true, isCandidate)
-
 	for _, v := range candidates {
 		acc, err := block.State().GetAccount(v.Addr)
 		require.NoError(t, err)
 		assert.Equal(t, util.NewUint128FromUint(333), acc.VotePower)
+		_, err = acc.Voters.Get(voter.Addr.Bytes())
+		assert.NoError(t, err)
+
 	}
+
+	// Reset vote to nil
+	bb = bb.
+		Tx().Type(dpos.TxOpVote).Payload(&dpos.VotePayload{}).SignPair(voter).Execute()
+
+	block = bb.Build()
+
+	voterAcc, err = block.State().GetAccount(voter.Addr)
+	assert.NoError(t, err)
+	for _, v := range candidates {
+		_, err = voterAcc.Voted.Get(v.Addr.Bytes())
+		assert.Equal(t, trie.ErrNotFound, err)
+	}
+
+	for _, v := range candidates {
+		acc, err := block.State().GetAccount(v.Addr)
+		require.NoError(t, err)
+		assert.Equal(t, util.NewUint128FromUint(0), acc.VotePower)
+		_, err = acc.Voters.Get(voter.Addr.Bytes())
+		assert.Equal(t, trie.ErrNotFound, err)
+		assert.Equal(t, []byte(nil), acc.Voters.RootHash())
+	}
+
 }
