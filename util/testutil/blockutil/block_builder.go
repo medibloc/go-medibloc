@@ -284,9 +284,9 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.ExecuteTransaction(tx, defaultTxMap))
+	require.NoError(n.t, n.B.ExecuteTransaction(tx, DefaultTxMap))
 	require.NoError(n.t, n.B.AcceptTransaction(tx))
-	require.NoError(bb.t, n.B.Commit())
+	require.NoError(n.t, n.B.Commit())
 
 	return n
 }
@@ -296,14 +296,15 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 	n := bb.copy()
 
 	require.NoError(n.t, n.B.BeginBatch())
-	err := n.B.ExecuteTransaction(tx, defaultTxMap)
+	err := n.B.ExecuteTransaction(tx, DefaultTxMap)
 	if err != nil {
 		require.Equal(n.t, expected, err)
+		require.NoError(n.t, n.B.RollBack())
 		return n
 	}
 	err = n.B.AcceptTransaction(tx)
 	require.Equal(n.t, expected, err)
-	require.NoError(bb.t, n.B.Commit())
+	require.NoError(n.t, n.B.Commit())
 
 	return n
 }
@@ -391,7 +392,7 @@ func (bb *BlockBuilder) UpdateDynastyState(parent *core.Block) *BlockBuilder {
 	n.proposer = mintProposer
 
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.SetMintDposState(parent))
+	require.NoError(n.t, n.B.SetMintDynastyState(parent))
 	require.NoError(n.t, n.B.Commit())
 
 	return n

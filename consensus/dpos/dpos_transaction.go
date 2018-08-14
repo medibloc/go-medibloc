@@ -16,8 +16,9 @@
 package dpos
 
 import (
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/common/trie"
+	"encoding/json"
+
+		"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -38,14 +39,14 @@ func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 
 //Execute NewBecomeCandidateTx
 func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
-	cs := b.State().DposState().CandidateState()
 	as := b.State().AccState()
+	ds := b.State().DposState()
 
-	_, err := cs.Get(tx.candidateAddr.Bytes())
-	if err != nil && err != trie.ErrNotFound {
+	isCandidate, err := ds.IsCandidate(tx.candidateAddr)
+	if err != nil {
 		return err
 	}
-	if err == nil {
+	if isCandidate {
 		return ErrAlreadyCandidate
 	}
 
@@ -56,7 +57,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 
 	err = as.SetCollateral(tx.candidateAddr, tx.collateral)
 
-	return cs.Put(tx.candidateAddr.Bytes(), tx.candidateAddr.Bytes())
+	return ds.PutCandidate(tx.candidateAddr)
 }
 
 //QuitCandidateTx is a structure for quiting cadidate
@@ -73,11 +74,14 @@ func NewQuitCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 
 //Execute QuitCandidateTx
 func (tx *QuitCandidateTx) Execute(b *core.Block) error {
-	cs := b.State().DposState().CandidateState()
+	ds := b.State().DposState()
 	as := b.State().AccState()
 
-	_, err := cs.Get(tx.candidateAddr.Bytes())
+	isCandidate, err := ds.IsCandidate(tx.candidateAddr)
 	if err != nil {
+		return err
+	}
+	if !isCandidate {
 		return ErrNotCandidate
 	}
 
@@ -101,7 +105,7 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 
 	voters := acc.Voters
 	if voters.RootHash() == nil {
-		return cs.Delete(tx.candidateAddr.Bytes())
+		return ds.DelCandidate(tx.candidateAddr)
 	}
 
 	iter, err := voters.Iterator(nil)
@@ -129,50 +133,134 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		}
 	}
 
-	return cs.Delete(tx.candidateAddr.Bytes())
+	return ds.DelCandidate(tx.candidateAddr)
+}
+
+// VotePayload is payload type for VoteTx
+type VotePayload struct {
+	Candidates []common.Address
+}
+
+// FromBytes converts bytes to payload.
+func (payload *VotePayload) FromBytes(b []byte) error {
+	type tempType struct {
+		Candidates []string
+	}
+	temp := new(tempType)
+
+	if err := json.Unmarshal(b, temp); err != nil {
+		return core.ErrInvalidTxPayload
+	}
+	for _, v := range temp.Candidates {
+		payload.Candidates = append(payload.Candidates, common.HexToAddress(v))
+	}
+	return nil
+}
+
+// ToBytes returns marshaled RevokeCertificationPayload
+func (payload *VotePayload) ToBytes() ([]byte, error) {
+	type tempType struct {
+		Candidates []string
+	}
+	candidates := make([]string, 0)
+	for _, v := range payload.Candidates {
+		candidates = append(candidates, v.Hex())
+	}
+	temp := tempType{
+		Candidates: candidates,
+	}
+
+	return json.Marshal(temp)
 }
 
 //VoteTx is a structure for voting
 type VoteTx struct {
-	voter         common.Address
-	candidateAddr common.Address
+	voter      common.Address
+	candidates []common.Address
 }
 
 //NewVoteTx returns VoteTx
 func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
+	payload := new(VotePayload)
+	if err := payload.FromBytes(tx.Payload()); err != nil {
+		return nil, err
+	}
 	return &VoteTx{
-		voter:         tx.From(),
-		candidateAddr: tx.To(),
+		voter:      tx.From(),
+		candidates: payload.Candidates,
 	}, nil
 }
 
 //Execute VoteTx
 func (tx *VoteTx) Execute(b *core.Block) error {
-	cs := b.State().DposState().CandidateState()
+	ds := b.State().DposState()
 	as := b.State().AccState()
 
-	_, err := cs.Get(tx.candidateAddr.Bytes())
-	if err != nil {
-		return ErrNotCandidate
+	if len(tx.candidates) == 0 {
+		return ErrNoVote
 	}
 
-	voter, err := as.GetAccount(tx.voter)
+	maxVote := b.Consensus().DynastySize() // TODO: max number of vote @drsleepytiger
+	if len(tx.candidates) > maxVote {
+		return ErrOverMaxVote
+	}
+
+	if checkDuplicate(tx.candidates) {
+		return ErrDuplicateVote
+	}
+
+	acc, err := as.GetAccount(tx.voter)
 	if err != nil {
 		return err
 	}
 
-	// Add voter's addr to candidate's voters
-	if err := as.AddVoters(tx.candidateAddr, tx.voter); err != nil {
-		return err
+	myVesting := acc.Vesting
+	oldVoted := core.KeyTrieToSlice(acc.Voted)
+
+	for _, addrBytes := range oldVoted {
+		candidate := common.BytesToAddress(addrBytes)
+		as.SubVotePower(candidate, myVesting)
 	}
-	// Add voter's vesting to candidate's votePower
-	if err := as.AddVotePower(tx.candidateAddr, voter.Vesting); err != nil {
-		return err
+	acc.Voted.SetRootHash(nil)
+
+	for _, addr := range tx.candidates {
+		isCandidate, err := ds.IsCandidate(addr)
+		if err != nil {
+			return err
+		}
+		if !isCandidate {
+			return ErrNotCandidate
+		}
+
+		voter, err := as.GetAccount(tx.voter)
+		if err != nil {
+			return err
+		}
+
+		// Add voter's addr to candidate's voters
+		if err := as.AddVoters(addr, tx.voter); err != nil {
+			return err
+		}
+		// Add voter's vesting to candidate's votePower
+		if err := as.AddVotePower(addr, voter.Vesting); err != nil {
+			return err
+		}
 	}
 	// Add cadidate's addr to voter's voted
-	if err := as.SetVoted(tx.voter, []common.Address{tx.candidateAddr}); err != nil {
+	if err := as.SetVoted(tx.voter, tx.candidates); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func checkDuplicate(candidates []common.Address) bool {
+	temp := make(map[common.Address]bool, 0)
+	for _, v := range candidates {
+		temp[v] = true
+	}
+	if len(temp) != len(candidates) {
+		return true
+	}
+	return false
 }

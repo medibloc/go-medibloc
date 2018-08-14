@@ -62,13 +62,6 @@ type RevokeCertificationPayload struct {
 	CertificateHash []byte
 }
 
-// NewRevokeCertificationPayload generates a RevokeCertificationPayload
-func NewRevokeCertificationPayload(hash []byte) *RevokeCertificationPayload {
-	return &RevokeCertificationPayload{
-		CertificateHash: hash,
-	}
-}
-
 // FromBytes converts bytes to payload.
 func (payload *RevokeCertificationPayload) FromBytes(b []byte) error {
 	if err := json.Unmarshal(b, payload); err != nil {

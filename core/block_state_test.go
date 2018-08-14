@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -57,7 +58,7 @@ func TestCloneState(t *testing.T) {
 func TestDynastyState(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	actual, err := dpos.DynastyStateToDynasty(bb.Build().State().DposState().DynastyState())
+	actual, err := bb.Build().State().DposState().Dynasty()
 	assert.NoError(t, err)
 
 	for i, v := range actual {
@@ -174,7 +175,10 @@ func TestTxsFromTxsTo(t *testing.T) {
 		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(from).Execute().
-		Tx().Type(dpos.TxOpVote).To(from.Addr).SignPair(from).Execute().
+		Tx().Type(dpos.TxOpVote).
+		Payload(&dpos.VotePayload{
+			Candidates: []common.Address{from.Addr},
+		}).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(from).Execute()
 
 	block := bb.Build()
@@ -182,7 +186,7 @@ func TestTxsFromTxsTo(t *testing.T) {
 	accFrom, err := block.State().GetAccount(from.Addr)
 	require.NoError(t, err)
 	assert.Equal(t, 9, testutil.TrieLen(t, accFrom.TxsFrom))
-	assert.Equal(t, 1, testutil.TrieLen(t, accFrom.TxsTo))
+	assert.Equal(t, 0, testutil.TrieLen(t, accFrom.TxsTo))
 
 	accTo, err := block.State().GetAccount(to.Addr)
 	require.NoError(t, err)

@@ -18,7 +18,6 @@ package dpos_test
 import (
 	"testing"
 
-	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -42,11 +41,12 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
 
-	cs := block.State().DposState().CandidateState()
+	ds := block.State().DposState()
 	as := block.State().AccState()
 
-	_, err := cs.Get(candidate.Addr.Bytes())
+	isCandidate, err := ds.IsCandidate(candidate.Addr)
 	assert.NoError(t, err)
+	assert.Equal(t, true, isCandidate)
 
 	acc, err := as.GetAccount(candidate.Addr)
 	require.NoError(t, err)
@@ -59,7 +59,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	block = bb.Build()
 	as = block.State().AccState()
-	cs = block.State().DposState().CandidateState()
+	ds = block.State().DposState()
 
 	acc, err = as.GetAccount(candidate.Addr)
 	require.NoError(t, err)
@@ -68,8 +68,9 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	assert.Equal(t, 0, len(acc.VotersSlice()))
 	assert.Equal(t, util.NewUint128FromUint(0), acc.VotePower)
 
-	_, err = cs.Get(candidate.Addr.Bytes())
-	assert.Equal(t, trie.ErrNotFound, err)
+	isCandidate, err = ds.IsCandidate(candidate.Addr)
+	assert.NoError(t, err)
+	assert.Equal(t, false, isCandidate)
 }
 
 func TestVote(t *testing.T) {
@@ -78,24 +79,43 @@ func TestVote(t *testing.T) {
 	candidate := bb.TokenDist[testutil.DynastySize]
 	voter := bb.TokenDist[testutil.DynastySize+1]
 
+	votePayload := new(dpos.VotePayload)
+	overSizePayload := new(dpos.VotePayload)
+	duplicatePayload := new(dpos.VotePayload)
+	candidates := append(bb.TokenDist[1:testutil.DynastySize], candidate)
+	for _, v := range candidates {
+		votePayload.Candidates = append(votePayload.Candidates, v.Addr)
+		overSizePayload.Candidates = append(overSizePayload.Candidates, v.Addr)
+		duplicatePayload.Candidates = append(duplicatePayload.Candidates, v.Addr)
+	}
+	overSizePayload.Candidates = append(overSizePayload.Candidates, bb.TokenDist[0].Addr)
+	duplicatePayload.Candidates[0] = candidate.Addr
+
 	bb = bb.
-		Tx().Type(core.TxOpVest).Value(333).Nonce(1).SignPair(voter).Execute().
-		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).Nonce(1).SignPair(candidate).Execute().
-		Tx().Type(dpos.TxOpVote).To(candidate.Addr).Nonce(2).SignPair(voter).Execute()
+		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
+		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).SignPair(candidate).Execute().
+		Tx().Type(dpos.TxOpVote).Payload(&dpos.VotePayload{}).SignPair(voter).ExecuteErr(dpos.ErrNoVote).
+		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(dpos.ErrOverMaxVote).
+		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(dpos.ErrDuplicateVote).
+		Tx().Type(dpos.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
 	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
 	block := bb.Build()
 
 	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
-	assert.Equal(t, voterAcc.VotedSlice()[0], candidate.Addr.Bytes())
+	for _, v := range candidates {
+		_, err = voterAcc.Voted.Get(v.Addr.Bytes())
+		assert.NoError(t, err)
+	}
 
-	_, err = block.State().DposState().CandidateState().Get(candidate.Addr.Bytes())
+	isCandidate, err := block.State().DposState().IsCandidate(candidate.Addr)
 	assert.NoError(t, err)
+	assert.Equal(t, true, isCandidate)
 
-	acc, err := block.State().GetAccount(candidate.Addr)
-	require.NoError(t, err)
-
-	assert.Equal(t, util.NewUint128FromUint(333), acc.VotePower)
-
+	for _, v := range candidates {
+		acc, err := block.State().GetAccount(v.Addr)
+		require.NoError(t, err)
+		assert.Equal(t, util.NewUint128FromUint(333), acc.VotePower)
+	}
 }

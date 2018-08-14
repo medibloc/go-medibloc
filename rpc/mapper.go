@@ -126,7 +126,7 @@ func rpcPayload2payloadBuffer(txData *rpcpb.TransactionData) ([]byte, error) {
 		return payloadBuf, nil
 	case core.TxOpRevokeCertification:
 		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
-		payload := core.NewRevokeCertificationPayload(revokeCertification.CertificateHash)
+		payload := &core.RevokeCertificationPayload{CertificateHash: revokeCertification.CertificateHash}
 		payloadBuf, err := payload.ToBytes()
 		if err != nil {
 			return nil, err

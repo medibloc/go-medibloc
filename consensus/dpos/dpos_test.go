@@ -3,6 +3,7 @@ package dpos_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -16,14 +17,13 @@ func TestMakeNewDynasty(t *testing.T) {
 	b := bb.Build()
 
 	as := b.State().AccState()
-	cs := b.State().DposState().CandidateState()
-	ds := b.State().DposState().DynastyState()
+	ds := b.State().DposState()
 
-	genesisDynasty, err := dpos.DynastyStateToDynasty(ds)
+	genesisDynasty, err := ds.Dynasty()
 	require.NoError(t, err)
 	t.Log("genesis dynasty", genesisDynasty)
 
-	candidates, err := dpos.SortByVotePower(as, cs)
+	candidates, err := ds.SortByVotePower(as)
 	require.NoError(t, err)
 
 	newDynasty := dpos.MakeNewDynasty(candidates, testutil.DynastySize)
@@ -45,30 +45,46 @@ func TestChangeDynasty(t *testing.T) {
 	bb = bb.Child().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(newCandidate).Execute().
 		Tx().Type(core.TxOpVest).Value(10).SignPair(newCandidate).Execute().
-		Tx().Type(dpos.TxOpVote).To(newCandidate.Addr).SignPair(newCandidate).Execute().SignMiner()
+		Tx().Type(dpos.TxOpVote).
+		Payload(&dpos.VotePayload{
+			Candidates: []common.Address{newCandidate.Addr},
+		}).SignPair(newCandidate).Execute().SignMiner()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
-	ds := seed.Tail().State().DposState().DynastyState()
-	assert.Nil(t, testutil.KeyOf(t, ds, newCandidate.Addr.Bytes()))
+	ds := seed.Tail().State().DposState()
+	inDynasty, err := ds.InDynasty(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, false, inDynasty)
 
 	bb = bb.ChildNextDynasty().SignMiner()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
-	ds = seed.Tail().State().DposState().DynastyState()
-	assert.NotNil(t, testutil.KeyOf(t, ds, newCandidate.Addr.Bytes()))
+
+	ds = seed.Tail().State().DposState()
+	inDynasty, err = ds.InDynasty(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, true, inDynasty)
 
 	bb = bb.Child().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
 		SignMiner()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
-	ds = seed.Tail().State().DposState().DynastyState()
-	cs := seed.Tail().State().DposState().CandidateState()
-	assert.Nil(t, testutil.KeyOf(t, cs, newCandidate.Addr.Bytes()))
-	assert.NotNil(t, testutil.KeyOf(t, ds, newCandidate.Addr.Bytes()))
+
+	ds = seed.Tail().State().DposState()
+	isCandidate, err := ds.IsCandidate(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, false, isCandidate)
+	inDynasty, err = ds.InDynasty(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, true, inDynasty)
 
 	bb = bb.ChildNextDynasty().SignMiner()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
-	ds = seed.Tail().State().DposState().DynastyState()
-	cs = seed.Tail().State().DposState().CandidateState()
-	assert.Nil(t, testutil.KeyOf(t, ds, newCandidate.Addr.Bytes()))
-	assert.Nil(t, testutil.KeyOf(t, cs, newCandidate.Addr.Bytes()))
+
+	ds = seed.Tail().State().DposState()
+	isCandidate, err = ds.IsCandidate(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, false, isCandidate)
+	inDynasty, err = ds.InDynasty(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, false, inDynasty)
 
 }

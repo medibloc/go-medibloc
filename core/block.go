@@ -516,7 +516,7 @@ func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
 		return nil, err
 	}
 
-	if err := block.SetMintDposState(parent); err != nil {
+	if err := block.SetMintDynastyState(parent); err != nil {
 		block.RollBack()
 		return nil, err
 	}
@@ -887,10 +887,9 @@ func (b *Block) SignThis(signer signature.Signature) error {
 	return b.BlockData.SignThis(signer)
 }
 
-//SetMintDposState set mint dys
-func (b *Block) SetMintDposState(parent *Block) error {
-	d := b.consensus
-	return d.SetMintDynastyState(b.timestamp, parent, b)
+//SetMintDynastyState set mint dys
+func (b *Block) SetMintDynastyState(parent *Block) error {
+	return b.state.dposState.SetMintDynastyState(b.timestamp, parent, b.consensus.DynastySize())
 }
 
 // BeginBatch makes block state update possible

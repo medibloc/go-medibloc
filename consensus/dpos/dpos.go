@@ -159,8 +159,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	tail := bc.MainTailBlock()
 	cur := tail
 	confirmed := make(map[string]bool)
-	ds := tail.State().DposState().DynastyState()
-	members, err := DynastyStateToDynasty(ds)
+	members, err := tail.State().DposState().Dynasty()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":  err,
@@ -175,8 +174,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		if gen := d.dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
 			dynastyGen = gen
 			confirmed = make(map[string]bool)
-			ds := cur.State().DposState().DynastyState()
-			members, err = DynastyStateToDynasty(ds)
+			members, err = cur.State().DposState().Dynasty()
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"block": cur,
@@ -370,7 +368,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 
-	if err := block.SetMintDposState(tail); err != nil {
+	if err := block.SetMintDynastyState(tail); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")

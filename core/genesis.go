@@ -93,13 +93,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
-	for i, v := range conf.GetConsensus().GetDpos().GetDynasty() {
+	dynasty := make([]common.Address, 0)
+	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
 		member := common.HexToAddress(v)
-
-		genesisBlock.State().dposState.CandidateState().Put(member.Bytes(), member.Bytes())
-		genesisBlock.State().dposState.DynastyState().Put(byteutils.FromInt32(int32(i)), member.Bytes())
-
+		genesisBlock.State().dposState.PutCandidate(member)
+		dynasty = append(dynasty, member)
 	}
+	genesisBlock.State().dposState.SetDynasty(dynasty)
 
 	supply := util.NewUint128()
 	for _, dist := range conf.TokenDistribution {
@@ -219,28 +219,24 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to get accounts from block.")
+		}).Error("Failed to get accounts from genesis block.")
 		return false
 	}
 
-	ds := block.state.dposState.DynastyState()
-	iter, err := ds.Iterator(nil)
+	dynasty, err := block.state.dposState.Dynasty()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get dynasty from genesis block")
 		return false
 	}
-	exist, err := iter.Next()
-	dynastyCount := 0
-	for exist {
-		if err != nil {
-			return false
-		}
-		if byteutils.Bytes2Hex(iter.Value()) != genesis.Consensus.Dpos.Dynasty[dynastyCount] {
-			return false
-		}
 
-		dynastyCount++
-		exist, err = iter.Next()
+	for i, v := range dynasty {
+		if genesis.Consensus.Dpos.Dynasty[i] != v.Hex() {
+			return false
+		}
 	}
+	dynastyCount := len(dynasty)
 	if uint32(dynastyCount) != genesis.Meta.DynastySize {
 		return false
 	}

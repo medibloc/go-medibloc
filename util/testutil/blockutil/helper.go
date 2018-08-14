@@ -31,7 +31,8 @@ const (
 	dynastySize    = 3
 )
 
-var defaultTxMap = core.TxFactory{
+//DefaultTxMap is default txmap for block util
+var DefaultTxMap = core.TxFactory{
 	core.TxOpTransfer:            core.NewTransferTx,
 	core.TxOpAddRecord:           core.NewAddRecordTx,
 	core.TxOpVest:                core.NewVestTx,

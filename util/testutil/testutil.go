@@ -188,7 +188,7 @@ func FindRandomListenPorts(n int) (ports []string) {
 }
 
 //KeyOf find the key at which a given value can be found in the trie batch
-func KeyOf(t *testing.T, trie *trie.Batch, value []byte) []byte {
+func KeyOf(t *testing.T, trie *trie.Trie, value []byte) []byte {
 	iter, err := trie.Iterator(nil)
 	require.NoError(t, err)
 

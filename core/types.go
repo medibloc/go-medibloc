@@ -19,7 +19,6 @@ import (
 	"errors"
 
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 )
 
@@ -157,12 +156,13 @@ type Consensus interface {
 	NewConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 	LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 
+	DynastySize() int
+
 	ForkChoice(bc *BlockChain) (newTail *Block)
 	VerifyInterval(bd *BlockData, parent *Block) error
 	VerifyProposer(bd *BlockData, parent *Block) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
-	SetMintDynastyState(ts int64, parent *Block, block *Block) error
 }
 
 //DposState is an interface for dpos state
@@ -173,12 +173,17 @@ type DposState interface {
 	RollBack() error
 	RootBytes() ([]byte, error)
 
-	CandidateState() *trie.Batch
-	DynastyState() *trie.Batch
-
-	IsCandidate(addr common.Address) (bool, error)
 	Candidates() ([]common.Address, error)
+	IsCandidate(addr common.Address) (bool, error)
+	PutCandidate(addr common.Address) error
+	DelCandidate(addr common.Address) error
+
 	Dynasty() ([]common.Address, error)
+	InDynasty(addr common.Address) (bool, error)
+	SetDynasty(dynasty []common.Address) error
+	SetMintDynastyState(ts int64, parent *Block, dynastySize int) error
+
+	SortByVotePower(as *AccountState) ([]common.Address, error)
 }
 
 // Event structure
