@@ -85,7 +85,7 @@ func TestBlockManager_Forked(t *testing.T) {
 	var (
 		mainChainHeight   = 6
 		forkedChainHeight = 5
-		forkedHeight      = 3 // must higher than LIB height
+		forkedHeight      = 3 // must higher than LIB height of forkedHeight
 		mainChainBlocks   []*core.Block
 		forkedChainBlocks []*core.Block
 	)
@@ -107,27 +107,39 @@ func TestBlockManager_Forked(t *testing.T) {
 	}
 
 	tail = genesis
+	var txs []*core.Transaction
 	for i := 1; i < forkedChainHeight; i++ {
 		var mint *core.Block
 		if i+1 < forkedHeight {
 			mint = mainChainBlocks[i-1]
 		} else {
 			mint = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			txs = append(txs, mint.BlockData.Transactions()[0])
 		}
 		forkedChainBlocks = append(forkedChainBlocks, mint)
 		tail = mint
 	}
+
+	tm := seed.Med.TransactionManager()
+	for _, tx := range txs {
+		assert.NoError(t, tm.Push(tx))
+	}
+	assert.Equal(t, len(txs), len(tm.GetAll()))
 
 	bm := seed.Med.BlockManager()
 	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
 		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
 	}
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
+	assert.Equal(t, 0, len(tm.GetAll()))
+
 
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
 		assert.NoError(t, bm.PushBlockData(mainChainBlocks[i].BlockData))
 	}
 	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
+	assert.Equal(t, len(txs), len(tm.GetAll()))
+
 }
 
 func TestBlockManager_CircularParentLink(t *testing.T) {

@@ -28,7 +28,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-)
+	)
 
 var (
 	defaultBlockMessageChanSize = 128
@@ -273,12 +273,11 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		}).Error("Failed to set new tail block.")
 		return err
 	}
-	// REVERT
-	if len(revertBlocks) != 0 {
-		if err := bm.revertBlocks(revertBlocks, newBlocks); err != nil {
-			return nil
+	//if len(revertBlocks) != 0 {
+		if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
+			return err
 		}
-	}
+	//}
 
 	newLIB := bm.consensus.FindLIB(bm.bc)
 	err = bm.bc.SetLIB(newLIB)
@@ -377,21 +376,23 @@ func verifyBlockHeight(bd *BlockData, parent *Block) error {
 	return nil
 }
 
-func (bm *BlockManager) revertBlocks(blocks []*Block, newBlocks []*Block) error {
+func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []*Block) error {
 	var txs = make(map[*Transaction]bool)
 
 	for _, newBlock := range newBlocks {
 		for _, tx := range newBlock.Transactions() {
+			bm.tm.pool.Del(tx)
 			txs[tx] = true
 		}
 	}
 
-	for _, block := range blocks {
+	// revert block
+	for _, block := range revertBlock {
 		for _, tx := range block.Transactions() {
-			if txs[tx] != true {
+			if _, ok := txs[tx]; !ok {
 				// Return transactions
 				err := bm.tm.Push(tx)
-				if err != nil {
+				if err != nil && err != ErrDuplicatedTransaction {
 					return err
 				}
 			}
