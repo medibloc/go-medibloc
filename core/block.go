@@ -287,7 +287,7 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 // BlockData represents a block
 type BlockData struct {
 	*BlockHeader
-	transactions Transactions
+	transactions []*Transaction
 	height       uint64
 }
 
@@ -327,7 +327,7 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 			return err
 		}
 
-		bd.transactions = make(Transactions, len(msg.Transactions))
+		bd.transactions = make([]*Transaction, len(msg.Transactions))
 		for idx, v := range msg.Transactions {
 			tx := new(Transaction)
 			if err := tx.FromProto(v); err != nil {
@@ -367,12 +367,12 @@ func (bd *BlockData) SetHeight(height uint64) {
 }
 
 // Transactions returns txs in block
-func (bd *BlockData) Transactions() Transactions {
+func (bd *BlockData) Transactions() []*Transaction {
 	return bd.transactions
 }
 
 // SetTransactions sets transactions TO BE REMOVED: For test without block pool
-func (bd *BlockData) SetTransactions(txs Transactions) error {
+func (bd *BlockData) SetTransactions(txs []*Transaction) error {
 	bd.transactions = txs
 	return nil
 }
@@ -559,7 +559,7 @@ func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, e
 				timestamp:  time.Now().Unix(),
 				chainID:    chainID,
 			},
-			transactions: make(Transactions, 0),
+			transactions: make([]*Transaction, 0),
 			height:       parent.height + 1,
 		},
 		storage:   parent.storage,

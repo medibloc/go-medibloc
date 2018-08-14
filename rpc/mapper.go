@@ -89,7 +89,7 @@ func coreTx2rpcTx(tx *core.Transaction, executed bool) *rpcpb.GetTransactionResp
 	}
 }
 
-func coreTxs2rpcTxs(txs core.Transactions, executed bool) []*rpcpb.GetTransactionResponse {
+func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) []*rpcpb.GetTransactionResponse {
 	var rpcTxs []*rpcpb.GetTransactionResponse
 	for _, tx := range txs {
 		rpcTx := coreTx2rpcTx(tx, executed)

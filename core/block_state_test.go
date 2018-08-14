@@ -87,7 +87,7 @@ func TestUpdateUsage(t *testing.T) {
 	from := bb.TokenDist[0]
 	to := bb.TokenDist[1]
 
-	txs := core.Transactions{
+	txs := []*core.Transaction{
 		bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).Nonce(1).SignPair(from).Build(),
 		bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(20).Nonce(2).SignPair(from).Build(),
 		bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(20).Nonce(3).Timestamp(0).SignPair(from).Build(),

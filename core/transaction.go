@@ -228,9 +228,6 @@ func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
 	return false
 }
 
-// Transactions is just multiple txs
-type Transactions []*Transaction
-
 // CalcHash calculates transaction's hash.
 func (t *Transaction) CalcHash() ([]byte, error) {
 	hasher := sha3.New256()

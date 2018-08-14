@@ -170,7 +170,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 
 // GetPendingTransactions sends all transactions in the transaction pool
 func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetTransactionsResponse, error) {
-	txs := core.Transactions(s.tm.GetAll())
+	txs := s.tm.GetAll()
 	rpcTxs := coreTxs2rpcTxs(txs, false)
 
 	return &rpcpb.GetTransactionsResponse{

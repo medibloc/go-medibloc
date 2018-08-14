@@ -82,7 +82,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				timestamp:  GenesisTimestamp,
 				alg:        algorithm.SECP256K1,
 			},
-			transactions: make(Transactions, 0),
+			transactions: make([]*Transaction, 0),
 			height:       GenesisHeight,
 		},
 		storage:   sto,
