@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -51,6 +51,37 @@ const (
             "required": false,
             "type": "string",
             "format": "uint64"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
+    "/v1/account/{address}/transactions": {
+      "get": {
+        "operationId": "GetAccountTransactions",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetTransactionsResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "address",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "include_pending",
+            "description": "Whether or not to include pending transactions. Default is true.",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -236,40 +267,35 @@ const (
           "ApiService"
         ]
       }
-    },
-    "/v1/user/{address}/transactions": {
-      "get": {
-        "operationId": "GetAccountTransactions",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbGetTransactionsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "address",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "include_pending",
-            "description": "Whether or not to include pending transactions. Default is true.",
-            "in": "query",
-            "required": false,
-            "type": "string"
-          }
-        ],
-        "tags": [
-          "ApiService"
-        ]
-      }
     }
   },
   "definitions": {
+    "rpcpbAddCertificationPayload": {
+      "type": "object",
+      "properties": {
+        "issue_time": {
+          "type": "string",
+          "format": "int64"
+        },
+        "expiration_time": {
+          "type": "string",
+          "format": "int64"
+        },
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcpbAddRecordPayload": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "rpcpbCandidate": {
       "type": "object",
       "properties": {
@@ -283,6 +309,15 @@ const (
           "type": "string"
         }
       }
+    },
+    "rpcpbDefaultPayload": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      },
+      "title": "Transaction Payload"
     },
     "rpcpbGetAccountResponse": {
       "type": "object",
@@ -534,6 +569,15 @@ const (
         }
       }
     },
+    "rpcpbRevokeCertificationPayload": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
     "rpcpbSendTransactionRequest": {
       "type": "object",
       "properties": {
@@ -558,9 +602,9 @@ const (
           "format": "int64",
           "description": "Transaction timestamp."
         },
-        "data": {
-          "$ref": "#/definitions/rpcpbTransactionData",
-          "description": "Transaction Data type."
+        "tx_type": {
+          "type": "string",
+          "description": "Transaction type."
         },
         "nonce": {
           "type": "string",
@@ -571,6 +615,21 @@ const (
           "type": "integer",
           "format": "int64",
           "description": "Transaction chain ID."
+        },
+        "default_payload": {
+          "$ref": "#/definitions/rpcpbDefaultPayload"
+        },
+        "add_certification_payload": {
+          "$ref": "#/definitions/rpcpbAddCertificationPayload"
+        },
+        "add_record_payload": {
+          "$ref": "#/definitions/rpcpbAddRecordPayload"
+        },
+        "revoke_certification_payload": {
+          "$ref": "#/definitions/rpcpbRevokeCertificationPayload"
+        },
+        "vote_payload": {
+          "$ref": "#/definitions/rpcpbVotePayload"
         },
         "alg": {
           "type": "integer",
@@ -628,6 +687,18 @@ const (
         "payload": {
           "type": "string",
           "description": "Transaction data payload."
+        }
+      }
+    },
+    "rpcpbVotePayload": {
+      "type": "object",
+      "properties": {
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          }
         }
       }
     }

@@ -49,7 +49,7 @@ service ApiService {
 
 	rpc GetAccountTransactions (GetAccountTransactionsRequest) returns (GetTransactionsResponse) {
 		option (google.api.http) = {
-			get: "/v1/user/{address}/transactions"
+			get: "/v1/account/{address}/transactions"
 		};
 	}
 
@@ -237,18 +237,28 @@ message SendTransactionRequest {
 	string value = 4; // uint128, len=16
 	// Transaction timestamp.
 	int64 timestamp = 5;
-	// Transaction Data type.
-	TransactionData data = 6;
+	// Transaction type.
+	string tx_type = 6;
 	// Transaction nonce.
 	uint64 nonce = 7;
 	// Transaction chain ID.
 	uint32 chain_id = 8;
+
+	// Transaction payload
+	oneof payload {
+	  DefaultPayload default_payload = 20;
+    AddCertificationPayload add_certification_payload = 21;
+    AddRecordPayload add_record_payload = 22;
+    RevokeCertificationPayload revoke_certification_payload = 23;
+    VotePayload vote_payload = 24;
+	};
+
 	// Transaction algorithm.
-	uint32 alg = 9;
+	uint32 alg = 30;
 	// Transaction sign.
-	string sign = 10;
+	string sign = 31;
 	// Transaction payer's sign.
-	string payer_sign = 11;
+	string payer_sign = 32;
 }
 
 message SendTransactionResponse {
@@ -263,4 +273,27 @@ message SubscribeRequest {
 message SubscribeResponse {
 	string topic = 1;
 	string hash = 2;
+}
+
+// Transaction Payload
+message DefaultPayload {
+  string message = 1;
+}
+
+message VotePayload {
+  repeated bytes candidates = 1;
+}
+
+message AddCertificationPayload {
+  int64 issue_time = 1;
+  int64 expiration_time = 2;
+  bytes hash = 3;
+}
+
+message RevokeCertificationPayload {
+  bytes hash = 1;
+}
+
+message AddRecordPayload {
+  bytes hash = 1;
 }
