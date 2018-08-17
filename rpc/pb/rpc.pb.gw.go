@@ -534,7 +534,7 @@ var (
 
 	pattern_ApiService_GetTransaction_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "transaction"}, ""))
 
-	pattern_ApiService_GetAccountTransactions_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "user", "address", "transactions"}, ""))
+	pattern_ApiService_GetAccountTransactions_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2, 2, 3}, []string{"v1", "account", "address", "transactions"}, ""))
 
 	pattern_ApiService_SendTransaction_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"v1", "transaction"}, ""))
 
