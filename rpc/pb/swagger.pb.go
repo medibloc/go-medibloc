@@ -72,6 +72,7 @@ swagger = `{
         "parameters": [
           {
             "name": "address",
+            "description": "Hex string of the account addresss.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -270,32 +271,6 @@ swagger = `{
     }
   },
   "definitions": {
-    "rpcpbAddCertificationPayload": {
-      "type": "object",
-      "properties": {
-        "issue_time": {
-          "type": "string",
-          "format": "int64"
-        },
-        "expiration_time": {
-          "type": "string",
-          "format": "int64"
-        },
-        "hash": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
-    "rpcpbAddRecordPayload": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
     "rpcpbCandidate": {
       "type": "object",
       "properties": {
@@ -309,15 +284,6 @@ swagger = `{
           "type": "string"
         }
       }
-    },
-    "rpcpbDefaultPayload": {
-      "type": "object",
-      "properties": {
-        "message": {
-          "type": "string"
-        }
-      },
-      "title": "Transaction Payload"
     },
     "rpcpbGetAccountResponse": {
       "type": "object",
@@ -569,15 +535,6 @@ swagger = `{
         }
       }
     },
-    "rpcpbRevokeCertificationPayload": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string",
-          "format": "byte"
-        }
-      }
-    },
     "rpcpbSendTransactionRequest": {
       "type": "object",
       "properties": {
@@ -616,20 +573,9 @@ swagger = `{
           "format": "int64",
           "description": "Transaction chain ID."
         },
-        "default_payload": {
-          "$ref": "#/definitions/rpcpbDefaultPayload"
-        },
-        "add_certification_payload": {
-          "$ref": "#/definitions/rpcpbAddCertificationPayload"
-        },
-        "add_record_payload": {
-          "$ref": "#/definitions/rpcpbAddRecordPayload"
-        },
-        "revoke_certification_payload": {
-          "$ref": "#/definitions/rpcpbRevokeCertificationPayload"
-        },
-        "vote_payload": {
-          "$ref": "#/definitions/rpcpbVotePayload"
+        "payload": {
+          "type": "string",
+          "title": "Transaction payload"
         },
         "alg": {
           "type": "integer",
@@ -688,19 +634,8 @@ swagger = `{
           "type": "string",
           "description": "Transaction data payload."
         }
-      }
-    },
-    "rpcpbVotePayload": {
-      "type": "object",
-      "properties": {
-        "candidates": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "format": "byte"
-          }
-        }
-      }
+      },
+      "title": "TODO @ggomma Change transaction response structure"
     }
   }
 }
