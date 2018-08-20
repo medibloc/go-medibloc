@@ -185,6 +185,7 @@ message GetTransactionRequest {
 	string hash = 1;
 }
 
+// TODO @ggomma Change transaction response structure
 message TransactionData {
 	// Transaction data type.
 	string type = 1;
@@ -245,13 +246,7 @@ message SendTransactionRequest {
 	uint32 chain_id = 8;
 
 	// Transaction payload
-	oneof payload {
-	  DefaultPayload default_payload = 20;
-    AddCertificationPayload add_certification_payload = 21;
-    AddRecordPayload add_record_payload = 22;
-    RevokeCertificationPayload revoke_certification_payload = 23;
-    VotePayload vote_payload = 24;
-	};
+	string payload = 20;
 
 	// Transaction algorithm.
 	uint32 alg = 30;
@@ -273,27 +268,4 @@ message SubscribeRequest {
 message SubscribeResponse {
 	string topic = 1;
 	string hash = 2;
-}
-
-// Transaction Payload
-message DefaultPayload {
-  string message = 1;
-}
-
-message VotePayload {
-  repeated bytes candidates = 1;
-}
-
-message AddCertificationPayload {
-  int64 issue_time = 1;
-  int64 expiration_time = 2;
-  bytes hash = 3;
-}
-
-message RevokeCertificationPayload {
-  bytes hash = 1;
-}
-
-message AddRecordPayload {
-  bytes hash = 1;
 }
