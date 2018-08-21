@@ -27,12 +27,12 @@ func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAcc
 		Balance:       account.Balance.String(),
 		Nonce:         account.Nonce,
 		Vesting:       account.Vesting.String(),
-		Voted:         nil, // TODO @drsleepytiger,
-		Records:       nil, // TODO @ggomma
-		CertsIssued:   nil, // TODO @ggomma
-		CertsReceived: nil, // TODO @ggomma
-		TxsFrom:       nil, // TODO @drsleepytiger,
-		TxsTo:         nil, // TODO @drsleepytiger,
+		Voted:         byteutils.BytesSlice2HexSlice(account.VotedSlice()),
+		Records:       byteutils.BytesSlice2HexSlice(account.RecordsSlice()),
+		CertsIssued:   byteutils.BytesSlice2HexSlice(account.CertsIssuedSlice()),
+		CertsReceived: byteutils.BytesSlice2HexSlice(account.CertsReceivedSlice()),
+		TxsFrom:       byteutils.BytesSlice2HexSlice(account.TxsFromSlice()),
+		TxsTo:         byteutils.BytesSlice2HexSlice(account.TxsToSlice()),
 	}
 }
 
