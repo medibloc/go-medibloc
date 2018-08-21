@@ -16,14 +16,9 @@
 package rpc
 
 import (
-	"encoding/json"
-
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAccountResponse {
@@ -41,7 +36,12 @@ func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAcc
 	}
 }
 
-func coreBlock2rpcBlock(block *core.Block) *rpcpb.GetBlockResponse {
+func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
+	tx, err := coreTxs2rpcTxs(block.Transactions(), true)
+	if err != nil {
+		return nil, err
+	}
+
 	return &rpcpb.GetBlockResponse{
 		Height:       block.Height(),
 		Hash:         byteutils.Bytes2Hex(block.Hash()),
@@ -57,8 +57,8 @@ func coreBlock2rpcBlock(block *core.Block) *rpcpb.GetBlockResponse {
 		DataRoot:     byteutils.Bytes2Hex(block.DataStateRoot()),
 		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
 		UsageRoot:    byteutils.Bytes2Hex(block.UsageRoot()),
-		Transactions: coreTxs2rpcTxs(block.Transactions(), true),
-	}
+		Transactions: tx,
+	}, nil
 }
 
 func coreCandidate2rpcCandidate(candidate *core.Account) (*rpcpb.Candidate, error) {
@@ -69,72 +69,32 @@ func coreCandidate2rpcCandidate(candidate *core.Account) (*rpcpb.Candidate, erro
 	}, nil
 }
 
-func coreTx2rpcTx(tx *core.Transaction, executed bool) *rpcpb.GetTransactionResponse {
+func coreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionResponse, error) {
 	return &rpcpb.GetTransactionResponse{
 		Hash:      byteutils.Bytes2Hex(tx.Hash()),
 		From:      tx.From().Hex(),
 		To:        tx.To().Hex(),
 		Value:     tx.Value().String(),
 		Timestamp: tx.Timestamp(),
-		Data: &rpcpb.TransactionData{
-			Type:    tx.TxType(),
-			Payload: byteutils.Bytes2Hex(tx.Payload()),
-		},
+		TxType:    tx.TxType(),
 		Nonce:     tx.Nonce(),
 		ChainId:   tx.ChainID(),
+		Payload:   byteutils.Bytes2Hex(tx.Payload()),
 		Alg:       uint32(tx.Alg()),
 		Sign:      byteutils.Bytes2Hex(tx.Sign()),
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
 		Executed:  executed,
-	}
+	}, nil
 }
 
-func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) []*rpcpb.GetTransactionResponse {
+func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.GetTransactionResponse, error) {
 	var rpcTxs []*rpcpb.GetTransactionResponse
 	for _, tx := range txs {
-		rpcTx := coreTx2rpcTx(tx, executed)
+		rpcTx, err := coreTx2rpcTx(tx, executed)
+		if err != nil {
+			return nil, err
+		}
 		rpcTxs = append(rpcTxs, rpcTx)
 	}
-	return rpcTxs
-}
-
-func rpcPayload2payloadBuffer(txData *rpcpb.TransactionData) ([]byte, error) {
-	var addRecord *core.AddRecordPayload
-	var addCertification *core.AddCertificationPayload
-	var revokeCertification *core.RevokeCertificationPayload
-
-	switch txData.Type {
-	case core.TxOpAddRecord:
-		json.Unmarshal([]byte(txData.Payload), &addRecord)
-		payload := &core.AddRecordPayload{RecordHash: addRecord.RecordHash}
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpAddCertification:
-		json.Unmarshal([]byte(txData.Payload), &addCertification)
-		payload := &core.AddCertificationPayload{
-			IssueTime:       addCertification.IssueTime,
-			ExpirationTime:  addCertification.ExpirationTime,
-			CertificateHash: addCertification.CertificateHash,
-		}
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpRevokeCertification:
-		json.Unmarshal([]byte(txData.Payload), &revokeCertification)
-		payload := &core.RevokeCertificationPayload{CertificateHash: revokeCertification.CertificateHash}
-		payloadBuf, err := payload.ToBytes()
-		if err != nil {
-			return nil, err
-		}
-		return payloadBuf, nil
-	case core.TxOpTransfer, core.TxOpVest, core.TxOpWithdrawVesting, dpos.TxOpBecomeCandidate, dpos.TxOpQuitCandidacy, dpos.TxOpVote:
-		return nil, nil
-	default:
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidDataType)
-	}
+	return rpcTxs, nil
 }

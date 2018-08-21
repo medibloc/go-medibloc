@@ -1,7 +1,7 @@
-package rpcpb 
+package rpcpb
 
 const (
-swagger = `{
+	swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -490,9 +490,9 @@ swagger = `{
           "format": "int64",
           "description": "Transaction timestamp."
         },
-        "data": {
-          "$ref": "#/definitions/rpcpbTransactionData",
-          "description": "Transaction Data type."
+        "tx_type": {
+          "type": "string",
+          "description": "Transaction type."
         },
         "nonce": {
           "type": "string",
@@ -504,10 +504,14 @@ swagger = `{
           "format": "int64",
           "description": "Transaction chain ID."
         },
+        "payload": {
+          "type": "string",
+          "description": "Transaction payload."
+        },
         "alg": {
           "type": "integer",
           "format": "int64",
-          "description": "Transaction algorithm."
+          "title": "Transaction algorithm"
         },
         "sign": {
           "type": "string",
@@ -622,20 +626,6 @@ swagger = `{
           "type": "string"
         }
       }
-    },
-    "rpcpbTransactionData": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Transaction data type."
-        },
-        "payload": {
-          "type": "string",
-          "description": "Transaction data payload."
-        }
-      },
-      "title": "TODO @ggomma Change transaction response structure"
     }
   }
 }

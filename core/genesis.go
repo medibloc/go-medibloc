@@ -134,6 +134,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	genesisBlock.state.supply = supply.DeepCopy()
 
 	initialMessage := "Genesis block of MediBloc"
+	payload := &DefaultPayload{
+		Message: initialMessage,
+	}
+	payloadBuf, err := payload.ToBytes()
+	if err != nil {
+		return nil, err
+	}
 
 	initialTx := &Transaction{
 		hash:      nil,
@@ -144,7 +151,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		timestamp: GenesisTimestamp,
 		nonce:     1,
 		chainID:   conf.Meta.ChainId,
-		payload:   []byte(initialMessage),
+		payload:   payloadBuf,
 		alg:       genesisBlock.Alg(),
 		sign:      nil,
 		payerSign: nil,

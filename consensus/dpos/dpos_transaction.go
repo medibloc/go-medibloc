@@ -16,10 +16,10 @@
 package dpos
 
 import (
-	"encoding/json"
-
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/t/pb"
 	"github.com/medibloc/go-medibloc/util"
 )
 
@@ -143,34 +143,29 @@ type VotePayload struct {
 
 // FromBytes converts bytes to payload.
 func (payload *VotePayload) FromBytes(b []byte) error {
-	type tempType struct {
-		Candidates []string
+	payloadPb := &corepb.VotePayload{}
+	if err := proto.Unmarshal(b, payloadPb); err != nil {
+		return err
 	}
-	temp := new(tempType)
-
-	if err := json.Unmarshal(b, temp); err != nil {
-		return core.ErrInvalidTxPayload
+	var candidates []common.Address
+	for _, candidate := range payloadPb.Candidates {
+		candidates = append(candidates, common.BytesToAddress(candidate))
 	}
-	for _, v := range temp.Candidates {
-		payload.Candidates = append(payload.Candidates, common.HexToAddress(v))
-	}
+	payload.Candidates = candidates
 	return nil
 }
 
 // ToBytes returns marshaled RevokeCertificationPayload
 func (payload *VotePayload) ToBytes() ([]byte, error) {
-	type tempType struct {
-		Candidates []string
-	}
-	candidates := make([]string, 0)
-	for _, v := range payload.Candidates {
-		candidates = append(candidates, v.Hex())
-	}
-	temp := tempType{
-		Candidates: candidates,
+	candidates := make([][]byte, 0)
+	for _, candidate := range payload.Candidates {
+		candidates = append(candidates, candidate.Bytes())
 	}
 
-	return json.Marshal(temp)
+	payloadPb := &corepb.VotePayload{
+		Candidates: candidates,
+	}
+	return proto.Marshal(payloadPb)
 }
 
 //VoteTx is a structure for voting

@@ -185,14 +185,6 @@ message GetTransactionRequest {
 	string hash = 1;
 }
 
-// TODO @ggomma Change transaction response structure
-message TransactionData {
-	// Transaction data type.
-	string type = 1;
-	// Transaction data payload.
-	string payload = 2;
-}
-
 message GetTransactionResponse {
 	// Transaction hash
 	string hash = 1;
@@ -204,20 +196,25 @@ message GetTransactionResponse {
 	string value = 4; // uint128, len=16
 	// Transaction timestamp.
 	int64 timestamp = 5;
-	// Transaction Data type.
-	TransactionData data = 6;
+	// Transaction type.
+	string tx_type = 6;
 	// Transaction nonce.
 	uint64 nonce = 7;
 	// Transaction chain ID.
 	uint32 chain_id = 8;
 	// Transaction algorithm.
-	uint32 alg = 9;
+
+	// Transaction payload.
+	string payload = 20;
+
+	// Transaction algorithm
+	uint32 alg = 30;
 	// Transaction sign.
-	string sign = 10;
+	string sign = 31;
 	// Transaction payer's sign.
-	string payer_sign = 11;
+	string payer_sign = 32;
 	// If transaction is executed and included in the block, it returns true. otherwise, false.
-	bool executed = 12;
+	bool executed = 33;
 }
 
 message GetAccountTransactionsRequest {

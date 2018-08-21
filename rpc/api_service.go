@@ -16,6 +16,8 @@
 package rpc
 
 import (
+	"encoding/hex"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -87,7 +89,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
-		return coreBlock2rpcBlock(block), nil
+		return coreBlock2rpcBlock(block)
 	}
 
 	switch req.Type {
@@ -110,7 +112,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	return coreBlock2rpcBlock(block), nil
+	return coreBlock2rpcBlock(block)
 }
 
 // GetCandidates returns all candidates
@@ -171,7 +173,10 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 // GetPendingTransactions sends all transactions in the transaction pool
 func (s *APIService) GetPendingTransactions(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetTransactionsResponse, error) {
 	txs := s.tm.GetAll()
-	rpcTxs := coreTxs2rpcTxs(txs, false)
+	rpcTxs, err := coreTxs2rpcTxs(txs, false)
+	if err != nil {
+		return nil, err
+	}
 
 	return &rpcpb.GetTransactionsResponse{
 		Transactions: rpcTxs,
@@ -200,7 +205,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		if tx == nil {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 		}
-		return coreTx2rpcTx(tx, false), nil
+		return coreTx2rpcTx(tx, false)
 	}
 	// If tx is already included in a block
 	pbTx := new(corepb.Transaction)
@@ -212,7 +217,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
 	}
 
-	return coreTx2rpcTx(tx, true), nil
+	return coreTx2rpcTx(tx, true)
 }
 
 // GetAccountTransactions returns transactions of the account
@@ -223,10 +228,14 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 	address := common.HexToAddress(req.Address)
 	poolTxs := s.tm.GetByAddress(address)
 	for _, tx := range poolTxs {
-		txs = append(txs, coreTx2rpcTx(tx, false))
+		tx, err := coreTx2rpcTx(tx, false)
+		if err != nil {
+			return nil, err
+		}
+		txs = append(txs, tx)
 		// Add send transaction twice if the address of from is as same as the address of to
-		if tx.TxType() == core.TxOpTransfer && tx.From() == tx.To() {
-			txs = append(txs, coreTx2rpcTx(tx, false))
+		if tx.TxType == core.TxOpTransfer && tx.From == tx.To {
+			txs = append(txs, tx)
 		}
 	}
 
@@ -256,7 +265,11 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 			}
-			txs = append(txs, coreTx2rpcTx(tx, true))
+			rpcTx, err := coreTx2rpcTx(tx, true)
+			if err != nil {
+				return nil, err
+			}
+			txs = append(txs, rpcTx)
 		}
 	}
 
@@ -271,13 +284,13 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxValue)
 	}
-	payloadBuf, err := rpcPayload2payloadBuffer(req.Data)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxDataPayload)
-	}
-	var tx *core.Transaction
 
-	tx.SetTxType(req.Data.Type)
+	// TODO @ggomma handle empty payload string
+	payloadBuf, err := hex.DecodeString(req.Payload)
+
+	tx := &core.Transaction{}
+
+	tx.SetTxType(req.TxType)
 	tx.SetFrom(common.HexToAddress(req.From))
 	tx.SetTo(common.HexToAddress(req.To))
 	tx.SetValue(value)

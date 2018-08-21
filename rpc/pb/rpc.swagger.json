@@ -487,9 +487,9 @@
           "format": "int64",
           "description": "Transaction timestamp."
         },
-        "data": {
-          "$ref": "#/definitions/rpcpbTransactionData",
-          "description": "Transaction Data type."
+        "tx_type": {
+          "type": "string",
+          "description": "Transaction type."
         },
         "nonce": {
           "type": "string",
@@ -501,10 +501,14 @@
           "format": "int64",
           "description": "Transaction chain ID."
         },
+        "payload": {
+          "type": "string",
+          "description": "Transaction payload."
+        },
         "alg": {
           "type": "integer",
           "format": "int64",
-          "description": "Transaction algorithm."
+          "title": "Transaction algorithm"
         },
         "sign": {
           "type": "string",
@@ -619,20 +623,6 @@
           "type": "string"
         }
       }
-    },
-    "rpcpbTransactionData": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Transaction data type."
-        },
-        "payload": {
-          "type": "string",
-          "description": "Transaction data payload."
-        }
-      },
-      "title": "TODO @ggomma Change transaction response structure"
     }
   }
 }

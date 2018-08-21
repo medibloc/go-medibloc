@@ -35,7 +35,12 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
 	initialMessage := "Genesis block of MediBloc"
-	assert.Equalf(t, string(txs[0].Payload()), initialMessage, "Initial tx payload should equal '%s'", initialMessage)
+	defaultPayload := &core.DefaultPayload{
+		Message: initialMessage,
+	}
+	payloadBuf, err := defaultPayload.ToBytes()
+	assert.NoError(t, err)
+	assert.Equalf(t, txs[0].Payload(), payloadBuf, "Initial tx payload should equal '%s'", initialMessage)
 
 	accState := genesisBlock.State().AccState()
 
