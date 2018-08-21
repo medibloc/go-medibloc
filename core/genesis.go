@@ -102,6 +102,14 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	genesisBlock.State().dposState.SetDynasty(dynasty)
 
 	initialMessage := "Genesis block of MediBloc"
+	payload := &DefaultPayload{
+		Message: initialMessage,
+	}
+	payloadBuf, err := payload.ToBytes()
+	if err != nil {
+		return nil, err
+	}
+
 	initialTx := &Transaction{
 		txType:    TxTyGenesis,
 		from:      GenesisCoinbase,
@@ -110,7 +118,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		timestamp: GenesisTimestamp,
 		nonce:     1,
 		chainID:   conf.Meta.ChainId,
-		payload:   []byte(initialMessage),
+		payload:   payloadBuf,
 	}
 
 	hash, err := initialTx.CalcHash()
@@ -145,6 +153,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			if err := genesisBlock.RollBack(); err != nil {
 				return nil, err
 			}
+
+
+
+
 			return nil, err
 		}
 

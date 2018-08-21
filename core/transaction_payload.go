@@ -16,7 +16,8 @@
 package core
 
 import (
-	"encoding/json"
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/core/pb"
 )
 
 // AddRecordPayload is payload type for TxOpAddRecord
@@ -26,15 +27,20 @@ type AddRecordPayload struct {
 
 // FromBytes converts bytes to payload.
 func (payload *AddRecordPayload) FromBytes(b []byte) error {
-	if err := json.Unmarshal(b, payload); err != nil {
-		return ErrInvalidTxPayload
+	payloadPb := &corepb.AddRecordPayload{}
+	if err := proto.Unmarshal(b, payloadPb); err != nil {
+		return err
 	}
+	payload.RecordHash = payloadPb.Hash
 	return nil
 }
 
 // ToBytes returns marshaled AddRecordPayload
 func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
-	return json.Marshal(payload)
+	payloadPb := &corepb.AddRecordPayload{
+		Hash: payload.RecordHash,
+	}
+	return proto.Marshal(payloadPb)
 }
 
 // AddCertificationPayload is payload type for AddCertificationTx
@@ -46,15 +52,24 @@ type AddCertificationPayload struct {
 
 // FromBytes converts bytes to payload.
 func (payload *AddCertificationPayload) FromBytes(b []byte) error {
-	if err := json.Unmarshal(b, payload); err != nil {
-		return ErrInvalidTxPayload
+	payloadPb := &corepb.AddCertificationPayload{}
+	if err := proto.Unmarshal(b, payloadPb); err != nil {
+		return err
 	}
+	payload.IssueTime = payloadPb.IssueTime
+	payload.ExpirationTime = payloadPb.ExpirationTime
+	payload.CertificateHash = payloadPb.Hash
 	return nil
 }
 
 // ToBytes returns marshaled AddCertificationPayload
 func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
-	return json.Marshal(payload)
+	payloadPb := &corepb.AddCertificationPayload{
+		IssueTime:      payload.IssueTime,
+		ExpirationTime: payload.ExpirationTime,
+		Hash:           payload.CertificateHash,
+	}
+	return proto.Marshal(payloadPb)
 }
 
 // RevokeCertificationPayload is payload type for RevokeCertificationTx
@@ -64,13 +79,41 @@ type RevokeCertificationPayload struct {
 
 // FromBytes converts bytes to payload.
 func (payload *RevokeCertificationPayload) FromBytes(b []byte) error {
-	if err := json.Unmarshal(b, payload); err != nil {
-		return ErrInvalidTxPayload
+	payloadPb := &corepb.RevokeCertificationPayload{}
+	if err := proto.Unmarshal(b, payloadPb); err != nil {
+		return err
 	}
+	payload.CertificateHash = payloadPb.Hash
 	return nil
 }
 
 // ToBytes returns marshaled RevokeCertificationPayload
 func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
-	return json.Marshal(payload)
+	payloadPb := &corepb.RevokeCertificationPayload{
+		Hash: payload.CertificateHash,
+	}
+	return proto.Marshal(payloadPb)
+}
+
+// DefaultPayload is payload type for any type of message
+type DefaultPayload struct {
+	Message string
+}
+
+// FromBytes converts bytes to payload.
+func (payload *DefaultPayload) FromBytes(b []byte) error {
+	payloadPb := &corepb.DefaultPayload{}
+	if err := proto.Unmarshal(b, payloadPb); err != nil {
+		return err
+	}
+	payload.Message = payloadPb.Message
+	return nil
+}
+
+// ToBytes returns marshaled DefaultPayload
+func (payload *DefaultPayload) ToBytes() ([]byte, error) {
+	payloadPb := &corepb.DefaultPayload{
+		Message: payload.Message,
+	}
+	return proto.Marshal(payloadPb)
 }

@@ -1,8 +1,7 @@
 PB = $(wildcard *.proto)
 GO = $(PB:.proto=.pb.go)
 
-# all: $(GO) runscript mockgen
-all: $(GO) runscript
+all: $(GO) runscript mockgen
 
 %.pb.go: %.proto
 	protoc \

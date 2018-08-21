@@ -231,6 +231,7 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	txHashTarget := &corepb.TransactionHashTarget{
 		TxType:    t.txType,
 		From:      t.from.Bytes(),
