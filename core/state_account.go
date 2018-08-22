@@ -608,9 +608,6 @@ func (as *AccountState) Accounts() ([]*Account, error) {
 //KeyTrieToSlice generate slice from trie (slice of key)
 func KeyTrieToSlice(trie *trie.Trie) [][]byte {
 	var slice [][]byte
-	if trie.RootHash() == nil {
-		return slice
-	}
 	iter, err := trie.Iterator(nil)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{

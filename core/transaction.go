@@ -485,11 +485,7 @@ func (tx *VestTx) Execute(b *Block) error {
 	}
 
 	// Add user's vesting to candidates' votePower
-	candidates := account.Voted
-	if candidates.RootHash() == nil {
-		return nil
-	}
-	iter, err := candidates.Iterator(nil)
+	iter, err := account.Voted.Iterator(nil)
 	if err != nil {
 		return err
 	}
@@ -568,11 +564,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	}
 
 	// Add user's vesting to candidates' votePower
-	candidates := account.Voted
-	if candidates.RootHash() == nil {
-		return nil
-	}
-	iter, err := candidates.Iterator(nil)
+	iter, err := account.Voted.Iterator(nil)
 	if err != nil {
 		return err
 	}

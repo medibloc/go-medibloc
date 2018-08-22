@@ -103,12 +103,7 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		return err
 	}
 
-	voters := acc.Voters
-	if voters.RootHash() == nil {
-		return ds.DelCandidate(tx.candidateAddr)
-	}
-
-	iter, err := voters.Iterator(nil)
+	iter, err := acc.Voters.Iterator(nil)
 	if err != nil {
 		return err
 	}

@@ -415,18 +415,71 @@ func TestIterator(t *testing.T) {
 	tr, err := trie.NewTrie(nil, s)
 	assert.Nil(t, err)
 
+	iter, err := tr.Iterator(nil)
+	require.NoError(t, err)
+	exist, err := iter.Next()
+	require.NoError(t, err)
+	require.False(t, exist)
+
 	for _, pair := range testPairs {
 		putPairToTrie(t, tr, pair)
 	}
 
-	iter, err := tr.Iterator(trie.RouteToKey([]byte{0, 0, 1, 2}))
+	iter, err = tr.Iterator(trie.RouteToKey([]byte{5, 5, 5, 5}))
 	require.NoError(t, err)
+	exist, err = iter.Next()
+	require.NoError(t, err)
+	require.False(t, exist)
 
-	exist, err := iter.Next()
+	iter, err = tr.Iterator(trie.RouteToKey([]byte{0, 0, 1, 2}))
+	require.NoError(t, err)
+	exist, err = iter.Next()
 	require.NoError(t, err)
 	for exist {
 		t.Log(trie.KeyToRoute(iter.Key()), iter.Value())
 		exist, err = iter.Next()
 		require.NoError(t, err)
 	}
+
+	for _, pair := range testPairs {
+		err := tr.Delete(trie.RouteToKey(pair.route))
+		require.NoError(t, err)
+	}
+
+	iter, err = tr.Iterator(nil)
+	require.NoError(t, err)
+	exist, err = iter.Next()
+	require.NoError(t, err)
+	require.False(t, exist)
+
+}
+
+func TestGet_EmptyTrie(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+
+	tr, err := trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	_, err = tr.Get(nil)
+	assert.Equal(t, trie.ErrNotFound, err)
+	_, err = tr.Get([]byte{})
+	assert.Equal(t, trie.ErrNotFound, err)
+
+	key := []byte("key")
+	value := []byte("value")
+
+	err = tr.Put(key, value)
+	assert.NoError(t, err)
+
+	v, err := tr.Get(key)
+	assert.Equal(t, value, v)
+
+	_, err = tr.Get(nil)
+	assert.Equal(t, trie.ErrNotFound, err)
+	_, err = tr.Get([]byte{})
+	assert.Equal(t, trie.ErrNotFound, err)
+	_, err = tr.Get([]byte("wrongKey"))
+	assert.Equal(t, trie.ErrNotFound, err)
+
 }

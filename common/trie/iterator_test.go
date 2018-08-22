@@ -132,8 +132,11 @@ func TestIterator2(t *testing.T) {
 	}
 	tr.Put(keys[0], []byte(names[0]))
 
-	_, err1 := tr.Iterator([]byte{0x12, 0x34, 0x50, 0x12})
-	assert.NotNil(t, err1)
+	iter, err1 := tr.Iterator([]byte{0x12, 0x34, 0x50, 0x12})
+	assert.Nil(t, err1)
+	exist, err := iter.Next()
+	assert.Nil(t, err)
+	assert.False(t, exist)
 
 	it, err := tr.Iterator([]byte{0x12})
 	assert.Nil(t, err)
@@ -182,15 +185,4 @@ func TestIterator2(t *testing.T) {
 	next, err = it.Next()
 	assert.Nil(t, err)
 	assert.Equal(t, next, false)
-}
-
-func TestIteratorEmpty(t *testing.T) {
-	stor, _ := storage.NewMemoryStorage()
-	tr, _ := NewTrie(nil, stor)
-	iter, err := tr.Iterator([]byte("he"))
-	assert.Nil(t, iter)
-	assert.Equal(t, err, storage.ErrKeyNotFound)
-	iter, err = tr.Iterator(nil)
-	assert.Nil(t, iter)
-	assert.Equal(t, err, storage.ErrKeyNotFound)
 }

@@ -205,14 +205,10 @@ func KeyOf(t *testing.T, trie *trie.Trie, value []byte) []byte {
 
 //TrieLen counts the number of trie members
 func TrieLen(t *testing.T, trie *trie.Trie) int {
-	if trie.RootHash() == nil {
-		return 0
-	}
-
 	iter, err := trie.Iterator(nil)
 	require.NoError(t, err)
 
-	var cnt int
+	var cnt = 0
 	exist, err := iter.Next()
 	for exist {
 		require.NoError(t, err)

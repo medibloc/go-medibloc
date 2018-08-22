@@ -62,9 +62,18 @@ func validElementsInBranchNode(offset int, node *node) []int {
 // Iterator return an iterator
 func (t *Trie) Iterator(prefix []byte) (*Iterator, error) {
 	rootHash, curRoute, err := t.getSubTrieWithMaxCommonPrefix(prefix)
+	if len(rootHash) == 0 || err == ErrNotFound {
+		return &Iterator{
+			root:  t,
+			stack: nil,
+			value: nil,
+			key:   nil,
+		}, nil
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	node, err := t.fetchNode(rootHash)
 	if err != nil {
 		return nil, err
