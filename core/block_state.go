@@ -16,12 +16,8 @@
 package core
 
 import (
-	"sort"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -35,7 +31,6 @@ type states struct {
 	accState         *AccountState
 	dataState        *DataState
 	dposState        DposState
-	usageState       *trie.Batch
 	reservationQueue *ReservationQueue
 
 	storage storage.Storage
@@ -81,11 +76,6 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	usageState, err := trie.NewBatch(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-
 	reservationQueue := NewEmptyReservationQueue(stor)
 
 	return &states{
@@ -94,7 +84,6 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		accState:         accState,
 		dataState:        dataState,
 		dposState:        dposState,
-		usageState:       usageState,
 		reservationQueue: reservationQueue,
 		storage:          stor,
 	}, nil
@@ -120,11 +109,6 @@ func (s *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	usageState, err := trie.NewBatch(s.usageState.RootHash(), s.storage)
-	if err != nil {
-		return nil, err
-	}
-
 	reservationQueue, err := LoadReservationQueue(s.storage, s.reservationQueue.Hash())
 	if err != nil {
 		return nil, err
@@ -136,7 +120,6 @@ func (s *states) Clone() (*states, error) {
 		accState:         accState,
 		dataState:        dataState,
 		dposState:        dposState,
-		usageState:       usageState,
 		reservationQueue: reservationQueue,
 		storage:          s.storage,
 	}, nil
@@ -152,9 +135,6 @@ func (s *states) BeginBatch() error {
 	if err := s.DposState().BeginBatch(); err != nil {
 		return err
 	}
-	if err := s.usageState.BeginBatch(); err != nil {
-		return err
-	}
 	return s.reservationQueue.BeginBatch()
 }
 
@@ -166,9 +146,6 @@ func (s *states) Commit() error {
 		return err
 	}
 	if err := s.dposState.Commit(); err != nil {
-		return err
-	}
-	if err := s.usageState.Commit(); err != nil {
 		return err
 	}
 	return s.reservationQueue.Commit()
@@ -184,10 +161,6 @@ func (s *states) DataRoot() ([]byte, error) {
 
 func (s *states) DposRoot() ([]byte, error) {
 	return s.dposState.RootBytes()
-}
-
-func (s *states) UsageRoot() []byte {
-	return s.usageState.RootHash()
 }
 
 func (s *states) ReservationQueueHash() []byte {
@@ -209,15 +182,6 @@ func (s *states) LoadDataState(rootBytes []byte) error {
 		return err
 	}
 	s.dataState = dataState
-	return nil
-}
-
-func (s *states) LoadUsageRoot(rootHash []byte) error {
-	usageState, err := trie.NewBatch(rootHash, s.storage)
-	if err != nil {
-		return err
-	}
-	s.usageState = usageState
 	return nil
 }
 
@@ -252,93 +216,6 @@ func (s *states) SubBalance(address common.Address, amount *util.Uint128) error 
 
 func (s *states) incrementNonce(address common.Address) error {
 	return s.accState.IncrementNonce(address)
-}
-
-func (s *states) updateUsage(tx *Transaction, blockTime int64) error {
-	weekSec := int64(604800)
-
-	if tx.Timestamp() < blockTime-weekSec {
-		return ErrTooOldTransaction
-	}
-
-	payer, err := tx.recoverPayer()
-	if err == ErrPayerSignatureNotExist {
-		payer = tx.from
-	} else if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to recover payer address.")
-		return err
-	}
-
-	usageBytes, err := s.usageState.Get(payer.Bytes())
-	if err != nil && err != ErrNotFound {
-		logging.Console().WithFields(logrus.Fields{
-			"payer": payer.Hex(),
-			"err":   err,
-		}).Error("Failed to get usage from trie.")
-		return err
-	}
-
-	var pbUsage *corepb.Usage
-	if err != nil && err == ErrNotFound {
-		pbUsage = &corepb.Usage{
-			Timestamps: []*corepb.TxTimestamp{},
-		}
-	} else {
-		pbUsage = new(corepb.Usage)
-		if err := proto.Unmarshal(usageBytes, pbUsage); err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-				"pb":  pbUsage,
-			}).Error("Failed to unmarshal proto.")
-			return err
-		}
-	}
-
-	for i, ttx := range pbUsage.Timestamps {
-		if blockTime-weekSec > ttx.Timestamp {
-			pbUsage.Timestamps = pbUsage.Timestamps[i+1:]
-			break
-		}
-	}
-
-	pbUsage.Timestamps = append(pbUsage.Timestamps, &corepb.TxTimestamp{
-		Hash:      tx.Hash(),
-		Timestamp: tx.Timestamp(),
-	})
-
-	sort.Slice(pbUsage.Timestamps, func(i, j int) bool {
-		return pbUsage.Timestamps[i].Timestamp < pbUsage.Timestamps[j].Timestamp
-	})
-
-	pbBytes, err := proto.Marshal(pbUsage)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"pb":  pbUsage,
-		}).Error("Failed to marshal proto.")
-		return err
-	}
-
-	return s.usageState.Put(payer.Bytes(), pbBytes)
-}
-
-func (s *states) GetUsage(addr common.Address) ([]*corepb.TxTimestamp, error) {
-	usageBytes, err := s.usageState.Get(addr.Bytes())
-	switch err {
-	case nil:
-	case ErrNotFound:
-		return []*corepb.TxTimestamp{}, nil
-	default:
-		return nil, err
-	}
-
-	pbUsage := new(corepb.Usage)
-	if err := proto.Unmarshal(usageBytes, pbUsage); err != nil {
-		return nil, err
-	}
-	return pbUsage.Timestamps, nil
 }
 
 // GetReservedTasks returns reserved tasks in reservation queue
@@ -452,15 +329,6 @@ func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error 
 			"err": err,
 			"tx":  tx,
 		}).Error("Failed to put a transaction to account")
-		return err
-	}
-
-	if err := bs.updateUsage(tx, blockTime); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":       err,
-			"tx":        tx,
-			"blockTime": blockTime,
-		}).Error("Failed to update usage.")
 		return err
 	}
 

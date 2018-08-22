@@ -20,6 +20,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util"
 )
 
 // Transaction's string representation.
@@ -70,6 +71,7 @@ var (
 	ErrInvalidAmount                    = errors.New("invalid amount")
 	ErrNotBatching                      = errors.New("not batching")
 	ErrVestingNotEnough                 = errors.New("vesting is not enough")
+	ErrBandwidthLimitExceeded           = errors.New("bandwidth limit exceeded")
 	ErrCannotConvertTransaction         = errors.New("proto message cannot be converted into Transaction")
 	ErrCannotRevertLIB                  = errors.New("cannot revert latest irreversible block")
 	ErrCannotRemoveBlockOnCanonical     = errors.New("cannot remove block on canonical chain")
@@ -100,7 +102,6 @@ var (
 	ErrInvalidBlockSupply               = errors.New("invalid supply")
 	ErrInvalidBlockAccountsRoot         = errors.New("invalid account state root hash")
 	ErrInvalidBlockTxsRoot              = errors.New("invalid transactions state root hash")
-	ErrInvalidBlockUsageRoot            = errors.New("invalid usage state root hash")
 	ErrInvalidBlockRecordsRoot          = errors.New("invalid records state root hash")
 	ErrInvalidBlockCertificationRoot    = errors.New("invalid certification state root hash")
 	ErrInvalidBlockReservationQueueHash = errors.New("invalid reservation queue hash")
@@ -207,6 +208,7 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 //ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
+	Bandwidth() (*util.Uint128, error)
 }
 
 // TransactionPayload is an interface of transaction payload.

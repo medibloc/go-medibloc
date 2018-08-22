@@ -14,8 +14,7 @@ message BlockHeader {
   bytes acc_state_root = 21;
   bytes data_state_root = 22;
   bytes dpos_root = 23;
-  bytes usage_root = 24;
-  bytes reservation_queue_hash = 25;
+  bytes reservation_queue_hash = 24;
 }
 
 message Block {

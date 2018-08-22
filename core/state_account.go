@@ -34,6 +34,12 @@ type Account struct {
 	Vesting *util.Uint128  // vesting account's vesting(staking) amount
 	Voted   *trie.Trie     // voted candidates key: addr, value: addr
 
+	Bandwidth       *util.Uint128
+	LastBandwidthTs int64
+
+	Unstaking       *util.Uint128
+	LastUnstakingTs int64
+
 	Collateral *util.Uint128 // candidate collateral
 	Voters     *trie.Trie    // voters who voted to me
 	VotePower  *util.Uint128 // sum of voters' vesting
@@ -78,20 +84,24 @@ func newAccount(stor storage.Storage) (*Account, error) {
 	}
 
 	acc := &Account{
-		Address:       common.Address{},
-		Balance:       util.NewUint128(),
-		Nonce:         0,
-		Vesting:       util.NewUint128(),
-		Voted:         voted,
-		Collateral:    util.NewUint128(),
-		Voters:        voters,
-		VotePower:     util.NewUint128(),
-		Records:       records,
-		CertsReceived: certReceived,
-		CertsIssued:   certIssued,
-		TxsFrom:       TxsFrom,
-		TxsTo:         TxsTo,
-		Storage:       stor,
+		Address:         common.Address{},
+		Balance:         util.NewUint128(),
+		Nonce:           0,
+		Vesting:         util.NewUint128(),
+		Voted:           voted,
+		Bandwidth:       util.NewUint128(),
+		LastBandwidthTs: 0,
+		Unstaking:       util.NewUint128(),
+		LastUnstakingTs: 0,
+		Collateral:      util.NewUint128(),
+		Voters:          voters,
+		VotePower:       util.NewUint128(),
+		Records:         records,
+		CertsReceived:   certReceived,
+		CertsIssued:     certIssued,
+		TxsFrom:         TxsFrom,
+		TxsTo:           TxsTo,
+		Storage:         stor,
 	}
 
 	return acc, nil
@@ -111,6 +121,19 @@ func (acc *Account) fromProto(pbAcc *corepb.AccountState) error {
 		return err
 	}
 	acc.Voted.SetRootHash(pbAcc.VotedRootHash)
+
+	acc.Bandwidth, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Bandwidth)
+	if err != nil {
+		return err
+	}
+	acc.LastBandwidthTs = pbAcc.LastBandwidthTs
+
+	acc.Unstaking, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Unstaking)
+	if err != nil {
+		return err
+	}
+	acc.LastUnstakingTs = pbAcc.LastUnstakingTs
+
 	acc.Collateral, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Collateral)
 	if err != nil {
 		return err
@@ -161,6 +184,14 @@ func (acc *Account) toProto() (*corepb.AccountState, error) {
 	if err != nil {
 		return nil, err
 	}
+	bandwidth, err := acc.Bandwidth.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	unstaking, err := acc.Unstaking.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
 	collateral, err := acc.Collateral.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -175,6 +206,10 @@ func (acc *Account) toProto() (*corepb.AccountState, error) {
 		Nonce:                 acc.Nonce,
 		Vesting:               vesting,
 		VotedRootHash:         acc.Voted.RootHash(),
+		Bandwidth:             bandwidth,
+		LastBandwidthTs:       acc.LastBandwidthTs,
+		Unstaking:             unstaking,
+		LastUnstakingTs:       acc.LastUnstakingTs,
 		Collateral:            collateral,
 		VotersRootHash:        acc.Voters.RootHash(),
 		VotePower:             votePower,
@@ -383,6 +418,44 @@ func (as *AccountState) SubVoted(addr common.Address, candidate common.Address) 
 	if err != nil {
 		return err
 	}
+	return as.PutAccount(acc)
+}
+
+//SetBandwidth sets bandwidth.
+func (as *AccountState) SetBandwidth(addr common.Address, bandwidth *util.Uint128) error {
+	acc, err := as.GetAccount(addr)
+	if err != nil {
+		return err
+	}
+	acc.Bandwidth = bandwidth.DeepCopy()
+	return as.PutAccount(acc)
+}
+
+func (as *AccountState) SetLastBandwidthTs(addr common.Address, ts int64) error {
+	acc, err := as.GetAccount(addr)
+	if err != nil {
+		return err
+	}
+	acc.LastBandwidthTs = ts
+	return as.PutAccount(acc)
+}
+
+//SetUnstaking sets unstaking.
+func (as *AccountState) SetUnstaking(addr common.Address, unstaking *util.Uint128) error {
+	acc, err := as.GetAccount(addr)
+	if err != nil {
+		return err
+	}
+	acc.Unstaking = unstaking.DeepCopy()
+	return as.PutAccount(acc)
+}
+
+func (as *AccountState) SetLastUnstakingTs(addr common.Address, ts int64) error {
+	acc, err := as.GetAccount(addr)
+	if err != nil {
+		return err
+	}
+	acc.LastUnstakingTs = ts
 	return as.PutAccount(acc)
 }
 

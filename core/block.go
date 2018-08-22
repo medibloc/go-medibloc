@@ -41,7 +41,6 @@ type BlockHeader struct {
 	accStateRoot  []byte
 	dataStateRoot []byte
 	dposRoot      []byte
-	usageRoot     []byte
 
 	reservationQueueHash []byte
 
@@ -80,7 +79,6 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		AccStateRoot:         b.accStateRoot,
 		DataStateRoot:        b.dataStateRoot,
 		DposRoot:             b.dposRoot,
-		UsageRoot:            b.usageRoot,
 		ReservationQueueHash: b.reservationQueueHash,
 	}, nil
 }
@@ -92,7 +90,6 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.parentHash = msg.ParentHash
 		b.accStateRoot = msg.AccStateRoot
 		b.dataStateRoot = msg.DataStateRoot
-		b.usageRoot = msg.UsageRoot
 		b.dposRoot = msg.DposRoot
 		b.reservationQueueHash = msg.ReservationQueueHash
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
@@ -153,16 +150,6 @@ func (b *BlockHeader) DataStateRoot() []byte {
 //SetDataStateRoot set block header's txsRoot
 func (b *BlockHeader) SetDataStateRoot(dsRoot []byte) {
 	b.dataStateRoot = dsRoot
-}
-
-//UsageRoot returns block header's usageRoot
-func (b *BlockHeader) UsageRoot() []byte {
-	return b.usageRoot
-}
-
-//SetUsageRoot set block header's usageRoot
-func (b *BlockHeader) SetUsageRoot(usageRoot []byte) {
-	b.usageRoot = usageRoot
 }
 
 //DposRoot returns block header's dposRoot
@@ -427,7 +414,6 @@ func (bd *BlockData) VerifyIntegrity() error {
 
 // ExecuteOnParentBlock returns Block object with state after block execution
 func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
-
 	block, err := prepareExecution(bd, parent)
 	if err != nil {
 		return nil, err
@@ -481,14 +467,6 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	}
 	block.state.dposState = ds
 
-	if err = block.state.LoadUsageRoot(block.usageRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load usage root.")
-		return nil, err
-	}
-
 	if err := block.state.LoadReservationQueue(block.reservationQueueHash); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -506,7 +484,7 @@ func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("failed to make new block for prepareExcution")
+		}).Error("failed to make new block for prepareExecution")
 		return nil, err
 	}
 
@@ -636,7 +614,6 @@ func (b *Block) Seal() error {
 	b.accStateRoot = b.state.AccountsRoot()
 	b.dataStateRoot = dataRoot
 	b.dposRoot = dposRoot
-	b.usageRoot = b.state.UsageRoot()
 	b.reservationQueueHash = b.state.ReservationQueueHash()
 
 	hash := HashBlockData(b.BlockData)
@@ -654,7 +631,6 @@ func HashBlockData(bd *BlockData) []byte {
 	hasher.Write(bd.AccStateRoot())
 	hasher.Write(bd.DataStateRoot())
 	hasher.Write(bd.DposRoot())
-	hasher.Write(bd.UsageRoot())
 	hasher.Write(bd.ReservationQueueHash())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
@@ -666,11 +642,17 @@ func HashBlockData(bd *BlockData) []byte {
 	return hasher.Sum(nil)
 }
 
+const TxDelayLimit = 24 * 60 * 60
+
 // ExecuteTransaction on given block state
 func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
 	err := b.state.checkNonce(transaction)
 	if err != nil {
 		return err
+	}
+
+	if transaction.Timestamp() < b.Timestamp()-TxDelayLimit {
+		return ErrTooOldTransaction
 	}
 
 	newTxFunc, ok := txMap[transaction.TxType()]
@@ -682,7 +664,157 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 	if err != nil {
 		return err
 	}
+
+	payer, err := transaction.recoverPayer()
+	if err == ErrPayerSignatureNotExist {
+		payer = transaction.from
+	} else if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to recover a payer address.")
+		return err
+	}
+
+	err = b.regenerateBandwidth(payer)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to regenerate bandwidth.")
+		return err
+	}
+
+	usage, err := tx.Bandwidth()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to get bandwidth of a transaction.")
+		return err
+	}
+
+	err = b.updateBandwidth(payer, usage)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to update bandwidth.")
+		return err
+	}
+
 	return tx.Execute(b)
+}
+
+const BandwidthRegenarateDuration = 7 * 24 * time.Hour
+
+func (b *Block) updateBandwidth(addr common.Address, usage *util.Uint128) error {
+	acc, err := b.State().AccState().GetAccount(addr)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to get account.")
+		return err
+	}
+
+	avail, err := acc.Vesting.Sub(acc.Bandwidth)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to calculate available usage.")
+		return err
+	}
+	if avail.Cmp(usage) < 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Bandwidth limit exceeded.")
+		return ErrBandwidthLimitExceeded
+	}
+
+	updated, err := acc.Bandwidth.Add(usage)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to calculate bandwidth.")
+		return err
+	}
+	acc.Bandwidth = updated
+	acc.LastBandwidthTs = b.Timestamp()
+
+	err = b.State().AccState().PutAccount(acc)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to put account.")
+		return err
+	}
+	return nil
+}
+
+func (b *Block) regenerateBandwidth(addr common.Address) error {
+	curTs := b.Timestamp()
+
+	acc, err := b.State().AccState().GetAccount(addr)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":  err,
+			"addr": addr.Hex(),
+		}).Warn("Failed to get account.")
+		return err
+	}
+	vesting, bandwidth, lastTs := acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs
+
+	curBandwidth, err := currentBandwidth(vesting, bandwidth, lastTs, curTs)
+	if err != nil {
+		return err
+	}
+
+	acc.Bandwidth = curBandwidth
+	acc.LastBandwidthTs = curTs
+	err = b.State().AccState().PutAccount(acc)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to put account.")
+		return err
+	}
+	return nil
+}
+
+func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*util.Uint128, error) {
+	elapsed := curTs - lastTs
+	if time.Duration(elapsed)*time.Second >= BandwidthRegenarateDuration {
+		return util.NewUint128(), nil
+	}
+
+	if elapsed <= 0 {
+		return nil, ErrInvalidTimestamp
+	}
+
+	mul := util.NewUint128FromUint(uint64(elapsed))
+	div := util.NewUint128FromUint(uint64(BandwidthRegenarateDuration / time.Second))
+	v1, err := vesting.Mul(mul)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to multiply uint128.")
+		return nil, err
+	}
+	regen, err := v1.Div(div)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to divide uint128.")
+		return nil, err
+	}
+
+	if regen.Cmp(bandwidth) >= 0 {
+		return util.NewUint128(), nil
+	}
+	cur, err := bandwidth.Sub(regen)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to subtract uint128.")
+		return nil, err
+	}
+	return cur, nil
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
@@ -716,8 +848,6 @@ func (b *Block) VerifyExecution(txMap TxFactory) error {
 		return err
 	}
 
-	b.Commit()
-
 	if err := b.VerifyState(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -727,16 +857,15 @@ func (b *Block) VerifyExecution(txMap TxFactory) error {
 		return err
 	}
 
+	b.Commit()
 	return nil
 }
 
 // ExecuteAll executes all txs in block
 func (b *Block) ExecuteAll(txMap TxFactory) error {
-
 	for _, transaction := range b.transactions {
 		err := b.Execute(transaction, txMap)
 		if err != nil {
-			b.RollBack()
 			return err
 		}
 	}
@@ -746,7 +875,6 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
-
 	if err := b.ExecuteTransaction(tx, txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
@@ -853,13 +981,6 @@ func (b *Block) VerifyState() error {
 			"header": byteutils.Bytes2Hex(b.DataStateRoot()),
 		}).Warn("Failed to verify transactions root.")
 		return ErrInvalidBlockTxsRoot
-	}
-	if !byteutils.Equal(b.state.UsageRoot(), b.UsageRoot()) {
-		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.UsageRoot()),
-			"header": byteutils.Bytes2Hex(b.UsageRoot()),
-		}).Warn("Failed to verify usage root.")
-		return ErrInvalidBlockUsageRoot
 	}
 	if !byteutils.Equal(dposRoot, b.DposRoot()) {
 		logging.WithFields(logrus.Fields{

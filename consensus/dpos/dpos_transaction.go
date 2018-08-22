@@ -60,6 +60,11 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	return ds.PutCandidate(tx.candidateAddr)
 }
 
+//Bandwidth returns bandwidth.
+func (tx *BecomeCandidateTx) Bandwidth() (*util.Uint128, error) {
+	return core.TxBaseBandwidth, nil
+}
+
 //QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
 	candidateAddr common.Address
@@ -163,6 +168,11 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
+//Bandwidth returns bandwidth.
+func (tx *QuitCandidateTx) Bandwidth() (*util.Uint128, error) {
+	return core.TxBaseBandwidth, nil
+}
+
 //VoteTx is a structure for voting
 type VoteTx struct {
 	voter      common.Address
@@ -251,4 +261,9 @@ func checkDuplicate(candidates []common.Address) bool {
 		return true
 	}
 	return false
+}
+
+//Bandwidth returns bandwidth.
+func (tx *VoteTx) Bandwidth() (*util.Uint128, error) {
+	return core.TxBaseBandwidth, nil
 }

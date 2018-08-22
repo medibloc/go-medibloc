@@ -29,6 +29,8 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+var TxBaseBandwidth = util.NewUint128FromUint(100)
+
 // Transaction struct represents transaction
 type Transaction struct {
 	hash      []byte
@@ -423,6 +425,11 @@ func (tx *TransferTx) Execute(b *Block) error {
 	return as.AddBalance(tx.to, tx.value)
 }
 
+//Bandwidth returns bandwidth.
+func (tx *TransferTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
+}
+
 //AddRecordTx is a structure for adding record
 type AddRecordTx struct {
 	owner      common.Address
@@ -465,6 +472,11 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 	}
 
 	return rs.Put(tx.recordHash, recordBytes)
+}
+
+//Bandwidth returns bandwidth.
+func (tx *AddRecordTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
 }
 
 //VestTx is a structure for withdrawing vesting
@@ -520,6 +532,11 @@ func (tx *VestTx) Execute(b *Block) error {
 	}
 
 	return nil
+}
+
+//Bandwidth returns bandwidth.
+func (tx *VestTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
 }
 
 //WithdrawVestingTx is a structure for withdrawing vesting
@@ -600,6 +617,11 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	return nil
 }
 
+//Bandwidth returns bandwidth.
+func (tx *WithdrawVestingTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
+}
+
 //AddCertificationTx is a structure for adding certification
 type AddCertificationTx struct {
 	Issuer    common.Address
@@ -646,6 +668,11 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 		return err
 	}
 	return cs.Put(tx.Payload.CertificateHash, certificationBytes)
+}
+
+//Bandwidth returns bandwidth.
+func (tx *AddCertificationTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
 }
 
 //RevokeCertificationTx is a structure for revoking certification
@@ -699,4 +726,9 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	}
 
 	return cs.Put(tx.Hash, newBytesCertification)
+}
+
+//Bandwidth returns bandwidth.
+func (tx *RevokeCertificationTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
 }

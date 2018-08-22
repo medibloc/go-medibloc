@@ -9,6 +9,12 @@ message AccountState {  // TODO: to account
   bytes vesting = 11;
   bytes voted_root_hash = 12;
 
+  bytes bandwidth = 13;
+  int64 last_bandwidth_ts = 14;
+
+  bytes unstaking = 15;
+  int64 last_unstaking_ts = 16;
+
   bytes collateral = 21;
   bytes voters_root_hash = 22;
   bytes vote_power = 23;

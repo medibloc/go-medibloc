@@ -154,13 +154,6 @@ func (bb *BlockBuilder) DataRoot(root []byte) *BlockBuilder {
 	return n
 }
 
-// UsageRoot sets usage root.
-func (bb *BlockBuilder) UsageRoot(root []byte) *BlockBuilder {
-	n := bb.copy()
-	n.B.SetUsageRoot(root)
-	return n
-}
-
 // DposRoot sets dpos root.
 func (bb *BlockBuilder) DposRoot(root []byte) *BlockBuilder {
 	n := bb.copy()

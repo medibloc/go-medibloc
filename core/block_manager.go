@@ -314,7 +314,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
-			}).Warn("Failed to verifyBlockHeight")
+			}).Warn("Failed to verifyTimestamp")
 			continue
 		}
 
@@ -363,7 +363,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 	return all, tails, fails
 }
 func verifyTimestamp(bd *BlockData, parent *Block) error {
-	if bd.Timestamp() < parent.Timestamp() {
+	if bd.Timestamp() <= parent.Timestamp() {
 		return ErrInvalidTimestamp
 	}
 	return nil
