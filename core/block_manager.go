@@ -28,7 +28,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	)
+)
 
 var (
 	defaultBlockMessageChanSize = 128
@@ -274,9 +274,9 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 	//if len(revertBlocks) != 0 {
-		if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-			return err
-		}
+	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
+		return err
+	}
 	//}
 
 	newLIB := bm.consensus.FindLIB(bm.bc)

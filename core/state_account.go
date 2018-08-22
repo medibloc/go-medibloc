@@ -476,7 +476,7 @@ func (as *AccountState) AddRecord(addr common.Address, recordHash []byte) error 
 		return err
 	}
 
-	_, err = acc.Records.Get(addr.Bytes())
+	_, err = acc.Records.Get(recordHash)
 	if err != nil && err != ErrNotFound {
 		return err
 	}
@@ -495,7 +495,7 @@ func (as *AccountState) AddCertReceived(addr common.Address, certHash []byte) er
 	if err != nil {
 		return err
 	}
-	_, err = acc.CertsReceived.Get(addr.Bytes())
+	_, err = acc.CertsReceived.Get(certHash)
 	if err != nil && err != ErrNotFound {
 		return err
 	}
@@ -514,7 +514,7 @@ func (as *AccountState) AddCertIssued(addr common.Address, certHash []byte) erro
 	if err != nil {
 		return err
 	}
-	_, err = acc.CertsIssued.Get(addr.Bytes())
+	_, err = acc.CertsIssued.Get(certHash)
 	if err != nil && err != ErrNotFound {
 		return err
 	}

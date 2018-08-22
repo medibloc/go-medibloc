@@ -1,7 +1,7 @@
 syntax = "proto3";
 package corepb;
 
-message AccountState {
+message AccountState {  // TODO: to account
   bytes address = 1;
   bytes balance = 2;
   uint64 nonce = 3;

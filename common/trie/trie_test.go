@@ -19,9 +19,12 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"bytes"
+
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewTrie(t *testing.T) {
@@ -161,4 +164,269 @@ func TestTrie_Clone(t *testing.T) {
 		assert.Nil(t, err)
 	}
 	assert.Equal(t, tr1.RootHash(), tr2.RootHash())
+}
+
+type testPair struct {
+	route []byte // should be even number of elements
+	value string
+}
+
+func putPairToTrie(t *testing.T, tr *trie.Trie, pair *testPair) {
+	key := trie.RouteToKey(pair.route)
+	err := tr.Put(key, []byte(pair.value))
+	require.NoError(t, err)
+}
+
+func getAndEqual(t *testing.T, tr *trie.Trie, pair *testPair) {
+	key := trie.RouteToKey(pair.route)
+	v, err := tr.Get(key)
+	require.NoError(t, err)
+	require.Equal(t, 0, bytes.Compare([]byte(pair.value), v))
+	t.Log(string(v), ":", tr.ShowPath(trie.RouteToKey(pair.route)))
+
+}
+
+func TestTrieBuild(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+
+	testPairs := []*testPair{
+		{[]byte{0, 0, 1, 1, 0, 0}, "first node"},
+		{[]byte{0, 0, 1, 1}, "shorter node"},
+		{[]byte{0, 0, 1, 1, 0, 0, 1, 1}, "longer node"},
+	}
+
+	tr, err := trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	t.Log("Put first node")
+	putPairToTrie(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[0])
+
+	t.Log("Put shorter node")
+	putPairToTrie(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+
+	root0 := tr.RootHash()
+
+	t.Log("Put longer node")
+	putPairToTrie(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+
+	t.Log("Del longer node")
+	err = tr.Delete(trie.RouteToKey(testPairs[2].route))
+	require.NoError(t, err)
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+
+	_, err = tr.Get(trie.RouteToKey(testPairs[2].route))
+	require.Equal(t, trie.ErrNotFound, err)
+
+	assert.Equal(t, root0, tr.RootHash())
+}
+
+func TestUpdateExt(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+	tr, err := trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	testPairs := []*testPair{
+		{[]byte{0, 1, 2, 3, 4, 5, 6, 0}, "node0"},
+		{[]byte{0, 1, 2, 3, 5, 6, 7, 0}, "node1"},
+		{[]byte{0, 1, 2, 3}, "node2"},
+		{[]byte{0, 1}, "node3"},
+	}
+
+	t.Log("Make ext-branch-Two leafs")
+	putPairToTrie(t, tr, testPairs[0])
+	putPairToTrie(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+
+	t.Log("case matchLen == len(ext's path)")
+	putPairToTrie(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+
+	t.Log("case matchLen == len(route)")
+	putPairToTrie(t, tr, testPairs[3])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[3])
+
+	s, err = storage.NewMemoryStorage()
+	assert.Nil(t, err)
+	tr, err = trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	testPairs = []*testPair{
+		{[]byte{0, 1, 2, 3, 4, 5, 6, 0}, "node0"},
+		{[]byte{0, 1, 2, 3, 5, 6, 7, 0}, "node1"},
+		{[]byte{0, 1, 2, 4}, "node2"},
+		{[]byte{0, 2, 0, 0}, "node3"},
+	}
+
+	t.Log("Make ext-branch-Two leafs")
+	putPairToTrie(t, tr, testPairs[0])
+	putPairToTrie(t, tr, testPairs[1])
+	putPairToTrie(t, tr, testPairs[2])
+
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+
+	putPairToTrie(t, tr, testPairs[3])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[3])
+
+}
+
+func TestTrie_UpdateLeaf(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+	tr, err := trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	testPairs := []*testPair{
+		{[]byte{0, 1, 2, 3, 4, 5, 6, 0}, "oldLeaf"},
+		{[]byte{0, 1, 2, 3, 4, 5, 6, 0}, "newLeaf"},
+		{[]byte{0, 1}, "shorterLeaf"},
+		{[]byte{0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4}, "longerLeaf"},
+	}
+
+	t.Log("Make a leaf")
+	putPairToTrie(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[0])
+
+	putPairToTrie(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[1])
+
+	t.Log("Case: shorterLeaf")
+	putPairToTrie(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+
+	t.Log("Case: longerLeaf")
+	putPairToTrie(t, tr, testPairs[3])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[3])
+}
+
+func TestTrie_Delete(t *testing.T) {
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+
+	testPairs := []*testPair{
+		{[]byte{0, 0, 0, 1}, "node0"},
+		{[]byte{0, 0, 0, 1, 1, 2}, "node1"},
+		{[]byte{0, 0, 0, 1, 1, 3}, "node2"},
+		{[]byte{0, 0, 0, 1, 1, 5, 5, 5, 1, 0}, "node3"},
+		{[]byte{0, 0, 0, 1, 1, 5, 5, 5, 2, 0}, "node4"},
+	}
+
+	tr, err := trie.NewTrie(nil, s)
+	require.Nil(t, err)
+	putPairToTrie(t, tr, testPairs[0])
+	putPairToTrie(t, tr, testPairs[1])
+
+	t.Log("0,1 node")
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+
+	t.Log("Del notfound node - branch")
+	err = tr.Delete(trie.RouteToKey([]byte{0, 0, 0, 1, 2, 0}))
+	require.Equal(t, trie.ErrNotFound, err)
+
+	t.Log("Del notfound node - ext")
+	err = tr.Delete(trie.RouteToKey([]byte{0, 0}))
+	require.Equal(t, trie.ErrNotFound, err)
+
+	t.Log("0,1 node - 0 node")
+	err = tr.Delete(trie.RouteToKey(testPairs[0].route))
+	require.NoError(t, err)
+	_, err = tr.Get(trie.RouteToKey(testPairs[0].route))
+	require.Equal(t, trie.ErrNotFound, err)
+	getAndEqual(t, tr, testPairs[1])
+
+	t.Log("0,1 node - 1 node")
+	putPairToTrie(t, tr, testPairs[0])
+	err = tr.Delete(trie.RouteToKey(testPairs[1].route))
+	require.NoError(t, err)
+	getAndEqual(t, tr, testPairs[0])
+	_, err = tr.Get(trie.RouteToKey(testPairs[1].route))
+	require.Equal(t, trie.ErrNotFound, err)
+
+	t.Log("0,1,2 node")
+	putPairToTrie(t, tr, testPairs[1])
+	putPairToTrie(t, tr, testPairs[2])
+
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+
+	t.Log("0,1,2 node - 0 node")
+	err = tr.Delete(trie.RouteToKey(testPairs[0].route))
+	require.NoError(t, err)
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+	_, err = tr.Get(trie.RouteToKey(testPairs[0].route))
+	require.Equal(t, trie.ErrNotFound, err)
+
+	t.Log("1,2,3,4 node")
+	putPairToTrie(t, tr, testPairs[3])
+	putPairToTrie(t, tr, testPairs[4])
+
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[3])
+	getAndEqual(t, tr, testPairs[4])
+
+	t.Log("1,2,3,4 node - 1,2 node")
+	err = tr.Delete(trie.RouteToKey(testPairs[1].route))
+	require.NoError(t, err)
+	err = tr.Delete(trie.RouteToKey(testPairs[2].route))
+	require.NoError(t, err)
+
+	getAndEqual(t, tr, testPairs[3])
+	getAndEqual(t, tr, testPairs[4])
+}
+
+func TestIterator(t *testing.T) {
+	testPairs := []*testPair{
+		{[]byte{0, 0, 1, 2, 3, 4}, "1st node"},
+		{[]byte{0, 0, 1, 2, 3, 5, 6, 7}, "2nd node"},
+		{[]byte{0, 0, 1, 2, 3, 6}, "3rd node"},
+		{[]byte{0, 0, 1, 2}, "4th node"},
+		{[]byte{1, 0, 1, 1, 2, 3, 4, 5}, "5th node"},
+	}
+
+	s, err := storage.NewMemoryStorage()
+	assert.Nil(t, err)
+
+	tr, err := trie.NewTrie(nil, s)
+	assert.Nil(t, err)
+
+	for _, pair := range testPairs {
+		putPairToTrie(t, tr, pair)
+	}
+
+	iter, err := tr.Iterator(trie.RouteToKey([]byte{0, 0, 1, 2}))
+	require.NoError(t, err)
+
+	exist, err := iter.Next()
+	require.NoError(t, err)
+	for exist {
+		t.Log(trie.KeyToRoute(iter.Key()), iter.Value())
+		exist, err = iter.Next()
+		require.NoError(t, err)
+	}
 }

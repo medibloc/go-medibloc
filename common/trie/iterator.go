@@ -48,7 +48,11 @@ func validElementsInBranchNode(offset int, node *node) []int {
 		return valid
 	}
 	for i := offset; i < 16; i++ {
-		if node.Val[i] != nil && len(node.Val[i]) > 0 {
+		if i == -1 {
+			if node.Val[16] != nil && len(node.Val[16]) > 0 {
+				valid = append(valid, -1)
+			}
+		} else if node.Val[i] != nil && len(node.Val[i]) > 0 {
 			valid = append(valid, i)
 		}
 	}
@@ -67,7 +71,7 @@ func (t *Trie) Iterator(prefix []byte) (*Iterator, error) {
 	}
 
 	pos := -1
-	valid := validElementsInBranchNode(0, node)
+	valid := validElementsInBranchNode(-1, node)
 	if len(valid) > 0 {
 		pos = valid[0]
 	}
@@ -82,9 +86,9 @@ func (t *Trie) Iterator(prefix []byte) (*Iterator, error) {
 
 func (t *Trie) getSubTrieWithMaxCommonPrefix(prefix []byte) ([]byte, []byte, error) {
 	curRootHash := t.rootHash
-	curRoute := keyToRoute(prefix)
+	curRoute := KeyToRoute(prefix)
 
-	route := []byte{}
+	var route []byte
 	for len(curRoute) > 0 {
 		rootNode, err := t.fetchNode(curRootHash)
 		if err != nil {
@@ -159,7 +163,10 @@ func (it *Iterator) Next() (bool, error) {
 				//curRoute := append(route, []byte{byte(valid[1])}...)
 				it.push(node, valid[1], route)
 			}
-			route = append(route, []byte{byte(valid[0])}...)
+			if valid[0] == -1 {
+				valid[0] = 16
+			}
+			route = append(route, byte(valid[0]))
 			node, err = it.root.fetchNode(node.Val[valid[0]])
 			if err != nil {
 				return false, err
@@ -179,13 +186,13 @@ func (it *Iterator) Next() (bool, error) {
 		default:
 			return false, err
 		}
-		pos = 0
+		pos = -1
 	}
 }
 
 // Key return current leaf node's key
 func (it *Iterator) Key() []byte {
-	return routeToKey(it.key)
+	return RouteToKey(it.key)
 }
 
 // Value return current leaf node's value

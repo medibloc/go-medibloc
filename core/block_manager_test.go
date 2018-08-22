@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -133,7 +135,6 @@ func TestBlockManager_Forked(t *testing.T) {
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, 0, len(tm.GetAll()))
 
-
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
 		assert.NoError(t, bm.PushBlockData(mainChainBlocks[i].BlockData))
 	}
@@ -241,7 +242,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	blocks = append(blocks, b1)
 
 	b2 := bb.Block(b1).Child().
-		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{RecordHash: []byte("recordHash0")}).SignPair(bb.KeyPairs[0]).Execute().
 		SignMiner().Build()
 	blocks = append(blocks, b2)
 
@@ -249,8 +250,11 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	blocks = append(blocks, b3)
 
 	for i := 1; i < dynastySize+2; i++ {
+		recordPayload := &core.AddRecordPayload{
+			RecordHash: []byte(fmt.Sprintf("recordHash%v", i)),
+		}
 		block := bb.Block(blocks[i+1]).Child().
-			Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+			Tx().Type(core.TxOpAddRecord).Payload(recordPayload).SignPair(bb.KeyPairs[0]).Execute().
 			SignMiner().Build()
 		blocks = append(blocks, block)
 	}
@@ -302,11 +306,11 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		{999, core.ErrCannotExecuteOnParentBlock},
 		{4, nil},
 	}
-	for _, test := range tests {
+	for _, v := range tests {
 		block := bb.Block(parent).Child().
 			Tx().RandomTx().Execute().
-			Height(test.height).SignMiner().Build()
-		assert.Equal(t, test.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", test)
+			Height(v.height).SignMiner().Build()
+		assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
 	}
 }
 

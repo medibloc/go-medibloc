@@ -47,14 +47,14 @@ type Batch struct {
 }
 
 // NewBatch return new Batch instance
-func NewBatch(rootHash []byte, storage storage.Storage) (*Batch, error) {
-	t, err := NewTrie(rootHash, storage)
+func NewBatch(rootHash []byte, stor storage.Storage) (*Batch, error) {
+	t, err := NewTrie(rootHash, stor)
 	if err != nil {
 		return nil, err
 	}
 	return &Batch{
 		trie:    t,
-		storage: storage,
+		storage: stor,
 	}, nil
 }
 
