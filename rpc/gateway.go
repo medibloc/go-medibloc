@@ -89,6 +89,10 @@ func errorHandler(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Ma
 	if !ok {
 		s = status.New(codes.Unknown, err.Error())
 	}
+	if s.Code() == codes.Unimplemented {
+		s = status.New(codes.NotFound, "Page not found")
+	}
+
 	body := &errorBody{
 		Error: s.Message(),
 	}
