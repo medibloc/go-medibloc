@@ -115,6 +115,36 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	return coreBlock2rpcBlock(block)
 }
 
+// GetBlocks returns blocks
+func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest) (*rpcpb.GetBlocksResponse, error) {
+	var rpcBlocks []*rpcpb.GetBlockResponse
+
+	if req.From > req.To || req.From < 1 {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
+	}
+
+	if s.bm.TailBlock().Height() < req.To {
+		req.To = s.bm.TailBlock().Height()
+	}
+
+	for i := req.From; i <= req.To; i++ {
+		block, err := s.bm.BlockByHeight(i)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+		}
+
+		rpcBlock, err := coreBlock2rpcBlock(block)
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
+		}
+		rpcBlocks = append(rpcBlocks, rpcBlock)
+	}
+
+	return &rpcpb.GetBlocksResponse{
+		Blocks: rpcBlocks,
+	}, nil
+}
+
 // GetCandidates returns all candidates
 func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.GetCandidatesResponse, error) {
 	var rpcCandidates []*rpcpb.Candidate

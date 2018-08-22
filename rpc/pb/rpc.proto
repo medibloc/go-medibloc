@@ -17,6 +17,12 @@ service ApiService {
 		};
 	}
 
+	rpc GetBlocks (GetBlocksRequest) returns (GetBlocksResponse) {
+		option (google.api.http) = {
+			get: "/v1/blocks"
+		};
+	}
+
 	rpc GetCandidates (NonParamRequest) returns (GetCandidatesResponse) {
 		option (google.api.http) = {
 			get: "/v1/candidates"
@@ -146,6 +152,15 @@ message GetBlockResponse {
 
 	// Transactions in block
 	repeated GetTransactionResponse transactions = 30;
+}
+
+message GetBlocksRequest {
+	uint64 from = 1;
+	uint64 to = 2;
+}
+
+message GetBlocksResponse {
+	repeated GetBlockResponse blocks = 1;
 }
 
 message NonParamRequest {

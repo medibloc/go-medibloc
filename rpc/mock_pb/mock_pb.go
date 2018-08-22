@@ -91,6 +91,24 @@ func (mr *MockApiServiceClientMockRecorder) GetBlock(arg0, arg1 interface{}, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockApiServiceClient)(nil).GetBlock), varargs...)
 }
 
+// GetBlocks mocks base method
+func (m *MockApiServiceClient) GetBlocks(arg0 context.Context, arg1 *pb.GetBlocksRequest, arg2 ...grpc.CallOption) (*pb.GetBlocksResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetBlocks", varargs...)
+	ret0, _ := ret[0].(*pb.GetBlocksResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBlocks indicates an expected call of GetBlocks
+func (mr *MockApiServiceClientMockRecorder) GetBlocks(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlocks", reflect.TypeOf((*MockApiServiceClient)(nil).GetBlocks), varargs...)
+}
+
 // GetCandidates mocks base method
 func (m *MockApiServiceClient) GetCandidates(arg0 context.Context, arg1 *pb.NonParamRequest, arg2 ...grpc.CallOption) (*pb.GetCandidatesResponse, error) {
 	varargs := []interface{}{arg0, arg1}
@@ -386,6 +404,19 @@ func (m *MockApiServiceServer) GetBlock(arg0 context.Context, arg1 *pb.GetBlockR
 // GetBlock indicates an expected call of GetBlock
 func (mr *MockApiServiceServerMockRecorder) GetBlock(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockApiServiceServer)(nil).GetBlock), arg0, arg1)
+}
+
+// GetBlocks mocks base method
+func (m *MockApiServiceServer) GetBlocks(arg0 context.Context, arg1 *pb.GetBlocksRequest) (*pb.GetBlocksResponse, error) {
+	ret := m.ctrl.Call(m, "GetBlocks", arg0, arg1)
+	ret0, _ := ret[0].(*pb.GetBlocksResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBlocks indicates an expected call of GetBlocks
+func (mr *MockApiServiceServerMockRecorder) GetBlocks(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlocks", reflect.TypeOf((*MockApiServiceServer)(nil).GetBlocks), arg0, arg1)
 }
 
 // GetCandidates mocks base method
