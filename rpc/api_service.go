@@ -285,12 +285,12 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxValue)
 	}
 
-	// TODO @ggomma handle empty payload string
 	payloadBuf, err := hex.DecodeString(req.Payload)
 
 	tx := &core.Transaction{}
 
 	tx.SetTxType(req.TxType)
+	tx.SetHash(byteutils.Hex2Bytes(req.Hash))
 	tx.SetFrom(common.HexToAddress(req.From))
 	tx.SetTo(common.HexToAddress(req.To))
 	tx.SetValue(value)
