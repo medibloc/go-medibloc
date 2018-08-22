@@ -130,6 +130,38 @@ const (
         ]
       }
     },
+    "/v1/blocks": {
+      "get": {
+        "operationId": "GetBlocks",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetBlocksResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/candidates": {
       "get": {
         "operationId": "GetCandidates",
@@ -418,6 +450,17 @@ const (
             "$ref": "#/definitions/rpcpbGetTransactionResponse"
           },
           "title": "Transactions in block"
+        }
+      }
+    },
+    "rpcpbGetBlocksResponse": {
+      "type": "object",
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbGetBlockResponse"
+          }
         }
       }
     },

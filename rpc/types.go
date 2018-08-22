@@ -44,4 +44,5 @@ const (
 	ErrMsgInvalidTxDataPayload       = "invalid transaction data payload"
 	ErrMsgTransactionNotFound        = "transaction not found"
 	ErrMsgUnmarshalTransactionFailed = "cannot unmarshal transaction"
+	ErrMsgInvalidRequest             = "invalid request"
 )
