@@ -389,7 +389,10 @@ func (t *Transaction) Clone() (*Transaction, error) {
 
 //TransferTx is a structure for sending MED
 type TransferTx struct {
-	*Transaction
+	from    common.Address
+	to      common.Address
+	value   *util.Uint128
+	payload *DefaultPayload
 }
 
 //NewTransferTx returns TransferTx
@@ -397,7 +400,24 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	if tx.value.Cmp(util.Uint128Zero()) == 0 {
 		return nil, ErrVoidTransaction
 	}
-	return &TransferTx{tx}, nil
+	payload := new(DefaultPayload)
+	if err := payload.FromBytes(tx.Payload()); err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	bytes, err := payload.ToBytes()
+	if err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	if byteutils.Bytes2Hex(bytes) != byteutils.Bytes2Hex(tx.Payload()) {
+		return nil, ErrInvalidTxPayload
+	}
+
+	return &TransferTx{
+		from:    tx.From(),
+		to:      tx.To(),
+		value:   tx.Value(),
+		payload: payload,
+	}, nil
 }
 
 //Execute TransferTx
@@ -420,9 +440,17 @@ type AddRecordTx struct {
 //NewAddRecordTx returns AddRecordTx
 func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(AddRecordPayload)
-	if err := payload.FromBytes(tx.payload); err != nil {
+	if err := payload.FromBytes(tx.Payload()); err != nil {
 		return nil, err
 	}
+	bytes, err := payload.ToBytes()
+	if err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	if byteutils.Bytes2Hex(bytes) != byteutils.Bytes2Hex(tx.Payload()) {
+		return nil, ErrInvalidTxPayload
+	}
+
 	return &AddRecordTx{
 		owner:      tx.From(),
 		timestamp:  tx.Timestamp(),
@@ -596,10 +624,17 @@ type AddCertificationTx struct {
 //NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(AddCertificationPayload)
-	err := payload.FromBytes(tx.Payload())
+	if err := payload.FromBytes(tx.Payload()); err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	bytes, err := payload.ToBytes()
 	if err != nil {
 		return nil, ErrInvalidTxPayload
 	}
+	if byteutils.Bytes2Hex(bytes) != byteutils.Bytes2Hex(tx.Payload()) {
+		return nil, ErrInvalidTxPayload
+	}
+
 	//TODO: certification payload Verify: drsleepytiger
 	return &AddCertificationTx{
 		Issuer:    tx.From(),
@@ -644,9 +679,17 @@ type RevokeCertificationTx struct {
 //NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	payload := new(RevokeCertificationPayload)
-	if err := payload.FromBytes(tx.Payload()); err != nil {
+	if err := payload.FromBytes(tx.payload); err != nil {
 		return nil, ErrInvalidTxPayload
 	}
+	bytes, err := payload.ToBytes()
+	if err != nil {
+		return nil, ErrInvalidTxPayload
+	}
+	if byteutils.Bytes2Hex(bytes) != byteutils.Bytes2Hex(tx.payload) {
+		return nil, ErrInvalidTxPayload
+	}
+
 	//TODO: certification payload Verify: drsleepytiger
 	return &RevokeCertificationTx{
 		Revoker:        tx.From(),

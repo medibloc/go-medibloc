@@ -21,6 +21,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/t/pb"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // BecomeCandidateTx is a structure for quiting cadidate
@@ -175,6 +176,14 @@ func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if err := payload.FromBytes(tx.Payload()); err != nil {
 		return nil, err
 	}
+	bytes, err := payload.ToBytes()
+	if err != nil {
+		return nil, core.ErrInvalidTxPayload
+	}
+	if byteutils.Bytes2Hex(bytes) != byteutils.Bytes2Hex(tx.Payload()) {
+		return nil, core.ErrInvalidTxPayload
+	}
+
 	return &VoteTx{
 		voter:      tx.From(),
 		candidates: payload.Candidates,
