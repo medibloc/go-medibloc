@@ -61,12 +61,12 @@ func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
 	}, nil
 }
 
-func coreCandidate2rpcCandidate(candidate *core.Account) (*rpcpb.Candidate, error) {
+func coreCandidate2rpcCandidate(candidate *core.Account) *rpcpb.Candidate {
 	return &rpcpb.Candidate{
 		Address:   candidate.Address.Hex(),
 		Collatral: candidate.Collateral.String(),
 		VotePower: candidate.VotePower.String(),
-	}, nil
+	}
 }
 
 func coreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionResponse, error) {
