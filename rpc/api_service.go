@@ -159,11 +159,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
-		rpcCandidate, err := coreCandidate2rpcCandidate(acc)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
-		}
-		rpcCandidates = append(rpcCandidates, rpcCandidate)
+		rpcCandidates = append(rpcCandidates, coreCandidate2rpcCandidate(acc))
 	}
 	return &rpcpb.GetCandidatesResponse{
 		Candidates: rpcCandidates,
