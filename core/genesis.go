@@ -154,9 +154,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				return nil, err
 			}
 
-
-
-
 			return nil, err
 		}
 
