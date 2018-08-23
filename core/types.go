@@ -24,6 +24,7 @@ import (
 
 // Transaction's string representation.
 const (
+	TxTyGenesis             = "genesis"
 	TxOpTransfer            = "transfer"
 	TxOpAddRecord           = "add_record"
 	TxOpVest                = "vest"

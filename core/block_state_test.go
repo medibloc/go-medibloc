@@ -186,7 +186,7 @@ func TestTxsFromTxsTo(t *testing.T) {
 	accFrom, err := block.State().GetAccount(from.Addr)
 	require.NoError(t, err)
 	assert.Equal(t, 9, testutil.TrieLen(t, accFrom.TxsFrom))
-	assert.Equal(t, 0, testutil.TrieLen(t, accFrom.TxsTo))
+	assert.Equal(t, 1, testutil.TrieLen(t, accFrom.TxsTo)) // tx from Genesis
 
 	accTo, err := block.State().GetAccount(to.Addr)
 	require.NoError(t, err)

@@ -101,8 +101,33 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	genesisBlock.State().dposState.SetDynasty(dynasty)
 
+	initialMessage := "Genesis block of MediBloc"
+	initialTx := &Transaction{
+		txType:    TxTyGenesis,
+		from:      GenesisCoinbase,
+		to:        GenesisCoinbase,
+		value:     util.Uint128Zero(),
+		timestamp: GenesisTimestamp,
+		nonce:     1,
+		chainID:   conf.Meta.ChainId,
+		payload:   []byte(initialMessage),
+	}
+
+	hash, err := initialTx.CalcHash()
+	if err != nil {
+		return nil, err
+	}
+	initialTx.hash = hash
+
+	// Insert initial transaction
+	err = genesisBlock.AcceptTransaction(initialTx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Token distribution
 	supply := util.NewUint128()
-	for _, dist := range conf.TokenDistribution {
+	for i, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Value)
 		if err != nil {
@@ -122,6 +147,27 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 			return nil, err
 		}
+
+		tx := &Transaction{
+			txType:    TxTyGenesis,
+			from:      GenesisCoinbase,
+			to:        addr,
+			value:     balance,
+			timestamp: GenesisTimestamp,
+			nonce:     2 + uint64(i),
+			chainID:   conf.Meta.ChainId,
+		}
+		hash, err = tx.CalcHash()
+		if err != nil {
+			return nil, err
+		}
+		tx.hash = hash
+
+		err = genesisBlock.AcceptTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+
 		supply, err = supply.Add(balance)
 		if err != nil {
 			if err := genesisBlock.RollBack(); err != nil {
@@ -132,44 +178,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	genesisBlock.supply = supply
 	genesisBlock.state.supply = supply.DeepCopy()
-
-	initialMessage := "Genesis block of MediBloc"
-
-	initialTx := &Transaction{
-		hash:      nil,
-		txType:    TxOpTransfer,
-		from:      GenesisCoinbase,
-		to:        GenesisCoinbase,
-		value:     util.Uint128Zero(),
-		timestamp: GenesisTimestamp,
-		nonce:     1,
-		chainID:   conf.Meta.ChainId,
-		payload:   []byte(initialMessage),
-		alg:       genesisBlock.Alg(),
-		sign:      nil,
-		payerSign: nil,
-	}
-
-	hash, err := initialTx.CalcHash()
-	if err != nil {
-		return nil, err
-	}
-	initialTx.hash = hash
-
-	pbTx, err := initialTx.ToProto()
-	if err != nil {
-		return nil, err
-	}
-
-	txBytes, err := proto.Marshal(pbTx)
-	if err != nil {
-		return nil, err
-	}
-
-	genesisBlock.transactions = append(genesisBlock.transactions, initialTx)
-	if err := genesisBlock.state.dataState.PutTx(initialTx.hash, txBytes); err != nil {
-		return nil, err
-	}
 
 	if err := genesisBlock.Commit(); err != nil {
 		return nil, err
@@ -242,7 +250,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts) != len(tokenDist) {
+	if len(accounts)-1 != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
 			"accountCount": len(accounts),
 			"tokenCount":   len(tokenDist),
@@ -251,6 +259,9 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	for _, account := range accounts {
+		if account.Address == GenesisCoinbase {
+			continue
+		}
 		contains := false
 		for _, token := range tokenDist {
 			if token.Address == account.Address.Hex() {

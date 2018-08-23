@@ -85,12 +85,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 		t.nonce = msg.Nonce
 		t.chainID = msg.ChainId
 		t.payload = msg.Payload
-		alg := algorithm.Algorithm(msg.Alg)
-		err = crypto.CheckAlgorithm(alg)
-		if err != nil {
-			return err
-		}
-		t.alg = alg
+		t.alg = algorithm.Algorithm(msg.Alg)
 		t.sign = msg.Sign
 		t.payerSign = msg.PayerSign
 
@@ -335,6 +330,9 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 }
 
 func (t *Transaction) verifySign() error {
+	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+		return err
+	}
 	signer, err := t.recoverSigner()
 	if err != nil {
 		return err

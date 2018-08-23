@@ -22,7 +22,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
@@ -30,21 +30,43 @@ import (
 )
 
 func TestNewGenesisBlock(t *testing.T) {
-	genesisBlock, dynasties, _ := testutil.NewTestGenesisBlock(t, 21)
+	genesisBlock, dynasties, dist := testutil.NewTestGenesisBlock(t, 21)
 
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
 	initialMessage := "Genesis block of MediBloc"
 	assert.Equalf(t, string(txs[0].Payload()), initialMessage, "Initial tx payload should equal '%s'", initialMessage)
 
+	t.Log(len(txs[0].Hash()))
+	t.Log(len(txs[1].Hash()))
+
+	for i, tx := range txs[1:] {
+		t.Log(byteutils.Bytes2Hex(tx.Hash()))
+		assert.True(t, dist[i].Addr.Equals(tx.To()))
+		assert.Equal(t, "1000000000", tx.Value().String())
+	}
+
+	dposState := genesisBlock.State().DposState()
+	for _, dynasty := range dynasties {
+		addr := dynasty.Addr
+
+		isCandidate, err := dposState.IsCandidate(addr)
+		require.NoError(t, err)
+		assert.True(t, isCandidate)
+		inDynasty, err := dposState.InDynasty(addr)
+		require.NoError(t, err)
+		assert.True(t, inDynasty)
+	}
+
 	accState := genesisBlock.State().AccState()
+	for _, holder := range dist {
+		addr := holder.Addr
+		acc, err := accState.GetAccount(addr)
+		assert.NoError(t, err)
 
-	addr := dynasties[0].Addr
-	acc, err := accState.GetAccount(addr)
-	assert.NoError(t, err)
-
-	expectedBalance, _ := util.NewUint128FromString("1000000000")
-	assert.Zerof(t, acc.Balance.Cmp(expectedBalance), "Balance of new account in genesis block should equal to %s", expectedBalance.String())
+		assert.Equal(t, "1000000000", acc.Balance.String())
+		assert.Equal(t, 1, len(acc.TxsToSlice()))
+	}
 }
 
 func TestCheckGenesisBlock(t *testing.T) {
