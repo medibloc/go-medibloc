@@ -33,7 +33,7 @@ func TestMakeNewDynasty(t *testing.T) {
 func TestChangeDynasty(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+	//testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()

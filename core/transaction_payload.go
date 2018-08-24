@@ -18,6 +18,7 @@ package core
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // AddRecordPayload is payload type for TxOpAddRecord
@@ -116,4 +117,19 @@ func (payload *DefaultPayload) ToBytes() ([]byte, error) {
 		Message: payload.Message,
 	}
 	return proto.Marshal(payloadPb)
+}
+
+// BytesToTransactionPayload convert byte slice to TransactionPayload
+func BytesToTransactionPayload(bytes []byte, payload TransactionPayload) error {
+	if err := payload.FromBytes(bytes); err != nil {
+		return ErrFailedToUnmarshalPayload
+	}
+	b, err := payload.ToBytes()
+	if err != nil {
+		return ErrFailedToMarshalPayload
+	}
+	if !byteutils.Equal(bytes, b) {
+		return ErrCheckPayloadIntegrity
+	}
+	return nil
 }

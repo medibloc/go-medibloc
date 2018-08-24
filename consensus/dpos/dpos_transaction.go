@@ -19,9 +19,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/t/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // BecomeCandidateTx is a structure for quiting cadidate
@@ -61,7 +60,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	return ds.PutCandidate(tx.candidateAddr)
 }
 
-//QuitCandidateTx is a structure for quiting cadidate
+//QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
 	candidateAddr common.Address
 }
@@ -173,15 +172,8 @@ type VoteTx struct {
 //NewVoteTx returns VoteTx
 func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	payload := new(VotePayload)
-	if err := payload.FromBytes(tx.Payload()); err != nil {
+	if err := core.BytesToTransactionPayload(tx.Payload(), payload); err != nil {
 		return nil, err
-	}
-	bytes, err := payload.ToBytes()
-	if err != nil {
-		return nil, core.ErrInvalidTxPayload
-	}
-	if byteutils.Bytes2Hex(bytes) != byteutils.Bytes2Hex(tx.Payload()) {
-		return nil, core.ErrInvalidTxPayload
 	}
 
 	return &VoteTx{
