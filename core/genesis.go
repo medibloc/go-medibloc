@@ -259,7 +259,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts)-1 != len(tokenDist) {
+	if len(accounts) != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
 			"accountCount": len(accounts),
 			"tokenCount":   len(tokenDist),
