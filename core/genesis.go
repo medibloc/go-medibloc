@@ -36,7 +36,8 @@ var (
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
-	GenesisCoinbase = common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	//GenesisCoinbase = common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
+	GenesisCoinbase = common.HexToAddress("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	// GenesisHeight is height of genesis block
 	GenesisHeight = uint64(1)
 )
@@ -259,7 +260,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts) != len(tokenDist) {
+	if len(accounts)-1 != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
 			"accountCount": len(accounts),
 			"tokenCount":   len(tokenDist),
