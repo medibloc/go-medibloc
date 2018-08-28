@@ -1,7 +1,7 @@
-package rpcpb 
+package rpcpb
 
 const (
-swagger = `{
+	swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -82,7 +82,8 @@ swagger = `{
             "description": "Whether or not to include pending transactions. Default is true.",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "boolean",
+            "format": "boolean"
           }
         ],
         "tags": [

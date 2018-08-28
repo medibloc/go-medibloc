@@ -234,7 +234,7 @@ message GetAccountTransactionsRequest {
 	// Hex string of the account addresss.
 	string address = 1;
 	// Whether or not to include pending transactions. Default is true.
-	string include_pending = 2;
+	bool include_pending = 2;
 }
 
 message SendTransactionRequest {

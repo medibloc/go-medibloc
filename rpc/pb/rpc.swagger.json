@@ -79,7 +79,8 @@
             "description": "Whether or not to include pending transactions. Default is true.",
             "in": "query",
             "required": false,
-            "type": "string"
+            "type": "boolean",
+            "format": "boolean"
           }
         ],
         "tags": [

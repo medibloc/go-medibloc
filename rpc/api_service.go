@@ -252,16 +252,19 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 	var txs []*rpcpb.GetTransactionResponse
 
 	address := common.HexToAddress(req.Address)
-	poolTxs := s.tm.GetByAddress(address)
-	for _, tx := range poolTxs {
-		tx, err := coreTx2rpcTx(tx, false)
-		if err != nil {
-			return nil, err
-		}
-		txs = append(txs, tx)
-		// Add send transaction twice if the address of from is as same as the address of to
-		if tx.TxType == core.TxOpTransfer && tx.From == tx.To {
+
+	if req.IncludePending {
+		poolTxs := s.tm.GetByAddress(address)
+		for _, tx := range poolTxs {
+			tx, err := coreTx2rpcTx(tx, false)
+			if err != nil {
+				return nil, err
+			}
 			txs = append(txs, tx)
+			// Add send transaction twice if the address of from is as same as the address of to
+			if tx.TxType == core.TxOpTransfer && tx.From == tx.To {
+				txs = append(txs, tx)
+			}
 		}
 	}
 
