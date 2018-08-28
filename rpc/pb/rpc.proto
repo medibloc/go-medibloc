@@ -147,8 +147,6 @@ message GetBlockResponse {
 	string data_root = 21;
 	// Root hash of dpos state trie
 	string dpos_root = 22;
-	// Root hash of usage trie
-	string usage_root = 23;
 
 	// Transactions in block
 	repeated GetTransactionResponse transactions = 30;

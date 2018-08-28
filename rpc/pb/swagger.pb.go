@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -439,10 +439,6 @@ const (
         "dpos_root": {
           "type": "string",
           "title": "Root hash of dpos state trie"
-        },
-        "usage_root": {
-          "type": "string",
-          "title": "Root hash of usage trie"
         },
         "transactions": {
           "type": "array",

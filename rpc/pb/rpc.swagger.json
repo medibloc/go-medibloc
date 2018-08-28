@@ -437,10 +437,6 @@
           "type": "string",
           "title": "Root hash of dpos state trie"
         },
-        "usage_root": {
-          "type": "string",
-          "title": "Root hash of usage trie"
-        },
         "transactions": {
           "type": "array",
           "items": {
