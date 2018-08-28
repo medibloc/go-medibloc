@@ -118,16 +118,8 @@ func (t *Trie) getSubTrieWithMaxCommonPrefix(prefix []byte) ([]byte, []byte, err
 			route = append(route, path...)
 			curRootHash = next
 			curRoute = curRoute[matchLen:]
-		case leaf:
-			path := rootNode.Val[0]
-			matchLen := prefixLen(path, curRoute)
-			if matchLen != len(path) && matchLen != len(curRoute) {
-				return nil, nil, ErrNotFound
-			}
-			// TODO
-			//curRootHash = rootNode.Hash
-			curRoute = curRoute[matchLen:]
-			if len(curRoute) > 0 {
+		case val:
+			if len(curRoute) != 0 {
 				return nil, nil, ErrNotFound
 			}
 		default:
@@ -188,9 +180,9 @@ func (it *Iterator) Next() (bool, error) {
 				return false, err
 			}
 			ty = node.Type
-		case leaf:
-			it.value = node.Val[1]
-			it.key = append(route, node.Val[0]...)
+		case val:
+			it.value = node.Val[0]
+			it.key = route
 			return true, nil
 		default:
 			return false, err

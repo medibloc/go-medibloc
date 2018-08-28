@@ -18,7 +18,6 @@ package trie
 import (
 	"errors"
 
-	"bytes"
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
@@ -42,7 +41,7 @@ const (
 	unknown ty = iota
 	branch
 	ext
-	leaf
+	val
 )
 
 // Node in trie, three kinds,
@@ -51,7 +50,8 @@ const (
 // Leaf Node [flag, encodedPath, value]
 type node struct {
 	Type ty
-	// Val branch: [17 children], ext: [path, next], leaf: [path, value]
+	Hash []byte
+	// val branch: [17 children], ext: [path, next], value: [value]
 	Val [][]byte
 }
 
@@ -153,7 +153,7 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 	}
 	var hash []byte
 	switch n.Type {
-	case branch:
+	case branch: //Todo: DeRef.(기존 branch)
 		if len(route) == 0 {
 			n.Val[16] = nil
 			if hash, err = t.saveNode(n); err != nil {
@@ -178,7 +178,7 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 		}
 
 		// branch has only one child node
-		if childrenCnt < 2 {
+		if childrenCnt < 2 { //Todo: DeRef.(기존 branch, 기존 childNode)
 			childNode, err := t.fetchNode(n.Val[childIndex])
 			if err != nil {
 				return nil, err
@@ -189,17 +189,16 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 				return t.saveNode(newExt)
 			case ext: // compress branch to ext
 				childNode.Val[0] = append([]byte{byte(childIndex)}, childNode.Val[0]...)
-				return t.saveNode(childNode)
-			case leaf: // compress branch to leaf
+				return t.saveNode(childNode) //
+			case val: // compress branch to leaf
 				if childIndex == 16 {
 					return n.Val[16], nil
 				}
-				childNode.Val[0] = append([]byte{byte(childIndex)}, childNode.Val[0]...)
-				return t.saveNode(childNode)
+				newExt := newExtNode([]byte{byte(childIndex)}, n.Val[childIndex])
+				return t.saveNode(newExt)
 			}
 		}
-
-		return t.saveNode(n)
+		return t.saveNode(n) //Todo: DeRef.(기존 branch)
 	case ext:
 		path := n.Val[0]
 		next := n.Val[1]
@@ -210,23 +209,23 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 		if hash, err = t.delete(next, route[matchLen:]); err != nil {
 			return nil, err
 		}
+		if hash == nil {
+			return nil, nil
+		}
+
 		childNode, err := t.fetchNode(hash)
 		if err != nil {
 			return nil, err
 		}
-		switch childNode.Type {
-		case branch: // change next hash to new branch hash
-			n.Val[1] = hash
-			return t.saveNode(n)
-		case ext: // compress ext + ext to ext
+		if childNode.Type == ext { // compress ext + ext to ext
 			childNode.Val[0] = append(n.Val[0], childNode.Val[0]...)
-			return t.saveNode(childNode)
-		case leaf: // compress ext + leaf to leaf
-			childNode.Val[0] = append(n.Val[0], childNode.Val[0]...)
-			return t.saveNode(childNode)
+			return t.saveNode(childNode) //Todo: DeRef.(기존 ext 지우기)
 		}
-	case leaf:
-		return nil, nil
+		n.Val[1] = hash
+		return t.saveNode(n) //Todo: DeRef.(기존 ext)
+
+	case val:
+		return nil, nil //Todo: DeRef.(기존 val)
 	}
 	return nil, ErrInvalidNodeType
 }
@@ -244,9 +243,10 @@ func (t *Trie) fetchNode(hash []byte) (*node, error) {
 	if err := n.fromProto(pb); err != nil {
 		return nil, err
 	}
-	if n.Type < branch || n.Type > leaf {
+	if n.Type < branch || n.Type > val {
 		return nil, ErrInvalidNodeType
 	}
+	n.Hash = hash
 	return n, nil
 }
 
@@ -275,12 +275,11 @@ func (t *Trie) get(root []byte, route []byte) ([]byte, error) {
 			}
 			curRootHash = next
 			curRoute = curRoute[matchLen:]
-		case leaf:
-			path := rootNode.Val[0]
-			if !bytes.Equal(path, curRoute) {
+		case val:
+			if len(curRoute) != 0 {
 				return nil, ErrNotFound
 			}
-			return rootNode.Val[1], nil
+			return rootNode.Val[0], nil
 		default:
 			return nil, ErrInvalidNodeType
 		}
@@ -300,13 +299,22 @@ func (t *Trie) saveNode(n *node) ([]byte, error) {
 	hash256 := sha3.Sum256(b)
 	hash := hash256[:]
 	t.storage.Put(hash, b)
+	n.Hash = hash
 	return hash, nil
 }
 
 func (t *Trie) update(root []byte, route []byte, value []byte) ([]byte, error) {
-	if root == nil || len(root) == 0 {
-		leaf := newLeafNode(route, value)
-		hash, err := t.saveNode(leaf)
+	if len(root) == 0 {
+		val := newValNode(value)
+		hash, err := t.saveNode(val)
+		if err != nil {
+			return nil, err
+		}
+		if len(route) == 0 {
+			return hash, nil
+		}
+		ext := newExtNode(route, hash)
+		hash, err = t.saveNode(ext)
 		if err != nil {
 			return nil, err
 		}
@@ -321,8 +329,8 @@ func (t *Trie) update(root []byte, route []byte, value []byte) ([]byte, error) {
 		return t.updateBranch(n, route, value)
 	case ext:
 		return t.updateExt(n, route, value)
-	case leaf:
-		return t.updateLeaf(n, route, value)
+	case val:
+		return t.updateVal(n, route, value)
 	default:
 		return nil, ErrInvalidNodeType
 	}
@@ -333,8 +341,8 @@ func (t *Trie) updateBranch(n *node, route []byte, value []byte) ([]byte, error)
 	var err error
 
 	if len(route) == 0 {
-		leaf := newLeafNode([]byte{}, value)
-		if hash, err = t.saveNode(leaf); err != nil {
+		val := newValNode(value) // Todo: DeRef.(기존 value node 있으면)
+		if hash, err = t.saveNode(val); err != nil {
 			return nil, err
 		}
 		n.Val[16] = hash
@@ -346,7 +354,7 @@ func (t *Trie) updateBranch(n *node, route []byte, value []byte) ([]byte, error)
 		n.Val[route[0]] = hash
 	}
 
-	if hash, err = t.saveNode(n); err != nil {
+	if hash, err = t.saveNode(n); err != nil { // Todo: DeRef.
 		return nil, err
 	}
 	return hash, nil
@@ -356,18 +364,22 @@ func (t *Trie) updateExt(n *node, route []byte, value []byte) ([]byte, error) {
 	path := n.Val[0]
 	next := n.Val[1]
 	matchLen := prefixLen(path, route)
-	var hash []byte
-	var err error
+
+	var (
+		hash []byte
+		err  error
+	)
+
 	if matchLen == len(path) { // this value will add to next branch's [16] slot
 		if hash, err = t.update(next, route[matchLen:], value); err != nil {
 			return nil, err
 		}
 		n.Val[1] = hash
-		return t.saveNode(n)
+		return t.saveNode(n) // Todo: DeRef.
 	}
 
 	branch := emptyBranchNode()
-	if matchLen+1 == len(path) {
+	if matchLen+1 == len(path) { // Todo: DeRef. (기존 ext 노드 삭제)
 		branch.Val[path[matchLen]] = next
 	} else {
 		n.Val[0] = path[matchLen+1:]
@@ -377,15 +389,17 @@ func (t *Trie) updateExt(n *node, route []byte, value []byte) ([]byte, error) {
 		branch.Val[path[matchLen]] = hash
 	}
 
+	val := newValNode(value)
+	if hash, err = t.saveNode(val); err != nil {
+		return nil, err
+	}
 	if matchLen == len(route) {
-		leaf := newLeafNode([]byte{}, value)
-		if hash, err = t.saveNode(leaf); err != nil {
-			return nil, err
-		}
 		branch.Val[16] = hash
+	} else if matchLen+1 == len(route) {
+		branch.Val[route[matchLen]] = hash
 	} else {
-		leaf := newLeafNode(route[matchLen+1:], value)
-		if hash, err = t.saveNode(leaf); err != nil {
+		ext := newExtNode(route[matchLen+1:], hash)
+		if hash, err = t.saveNode(ext); err != nil {
 			return nil, err
 		}
 		branch.Val[route[matchLen]] = hash
@@ -397,51 +411,32 @@ func (t *Trie) updateExt(n *node, route []byte, value []byte) ([]byte, error) {
 	return t.addExtToBranch(hash, path[:matchLen])
 }
 
-func (t *Trie) updateLeaf(n *node, route []byte, value []byte) ([]byte, error) {
-	path := n.Val[0]
-	matchLen := prefixLen(path, route)
-
-	if matchLen == len(route) && len(path) == len(route) { // same key
-		n.Val[1] = value
-		return t.saveNode(n)
-	}
-
-	var hash []byte
-	var err error
-	branch := emptyBranchNode()
-
-	if matchLen == len(path) {
-		leaf := newLeafNode([]byte{}, n.Val[1])
-		if hash, err = t.saveNode(leaf); err != nil {
-			return nil, err
-		}
-		branch.Val[16] = hash
-	} else {
-		n.Val[0] = path[matchLen+1:]
-		if hash, err = t.saveNode(n); err != nil {
-			return nil, err
-		}
-		branch.Val[path[matchLen]] = hash
-	}
-
-	if matchLen == len(route) {
-		leaf := newLeafNode([]byte{}, value)
-		if hash, err = t.saveNode(leaf); err != nil {
-			return nil, err
-		}
-		branch.Val[16] = hash
-	} else {
-		leaf := newLeafNode(route[matchLen+1:], value)
-		if hash, err = t.saveNode(leaf); err != nil {
-			return nil, err
-		}
-		branch.Val[route[matchLen]] = hash
-	}
-
-	if hash, err = t.saveNode(branch); err != nil {
+func (t *Trie) updateVal(n *node, route []byte, value []byte) ([]byte, error) {
+	newVal := newValNode(value)
+	hash, err := t.saveNode(newVal)
+	if err != nil {
 		return nil, err
 	}
-	return t.addExtToBranch(hash, path[:matchLen])
+
+	// Todo: DeRef.
+	if len(route) == 0 { // same key
+		return hash, err // Todo: DeRef.
+	}
+
+	branch := emptyBranchNode()
+	branch.Val[16] = n.Hash
+
+	if len(route) == 1 {
+		branch.Val[route[0]] = hash
+	} else {
+		newExt := newExtNode(route[1:], hash)
+		hash, err = t.saveNode(newExt)
+		if err != nil {
+			return nil, err
+		}
+		branch.Val[route[0]] = hash
+	}
+	return t.saveNode(branch)
 }
 
 func emptyBranchNode() *node {
@@ -472,27 +467,20 @@ func RouteToKey(route []byte) []byte {
 	return key
 }
 
-func isBranchEmpty(n *node) bool {
-	for _, v := range n.Val {
-		if v != nil && len(v) > 0 {
-			return false
-		}
-	}
-	return true
-}
-
 func newExtNode(path []byte, next []byte) *node {
+	if len(path) == 0 {
+		panic("nil path ext node cannot be generated")
+	}
 	return &node{
 		Type: ext,
 		Val:  [][]byte{path, next},
 	}
 }
 
-func newLeafNode(path []byte, value []byte) *node {
+func newValNode(value []byte) *node {
 	return &node{
-		Type: leaf,
-		Val:  [][]byte{path, value},
-		//refCnt: 1,
+		Type: val,
+		Val:  [][]byte{value},
 	}
 }
 
@@ -531,10 +519,10 @@ func (t *Trie) showPath(rootHash []byte, route []byte) ([]string, error) {
 		switch rootNode.Type {
 		case branch:
 			if len(curRoute) == 0 {
-				pathToValue = append(pathToValue, fmt.Sprintf("Branch(-)"))
+				pathToValue = append(pathToValue, fmt.Sprintf("branch(-)"))
 				curRootHash = rootNode.Val[16]
 			} else {
-				pathToValue = append(pathToValue, fmt.Sprintf("Branch(%v)", curRoute[0]))
+				pathToValue = append(pathToValue, fmt.Sprintf("branch(%v)", curRoute[0]))
 				curRootHash = rootNode.Val[curRoute[0]]
 				curRoute = curRoute[1:]
 			}
@@ -543,17 +531,16 @@ func (t *Trie) showPath(rootHash []byte, route []byte) ([]string, error) {
 			next := rootNode.Val[1]
 			matchLen := prefixLen(path, curRoute)
 			if matchLen != len(path) {
-				return append(pathToValue, "Ext-NotFound"), ErrNotFound
+				return append(pathToValue, "ext-NotFound"), ErrNotFound
 			}
-			pathToValue = append(pathToValue, fmt.Sprintf("Ext(%v)", curRoute[:matchLen]))
+			pathToValue = append(pathToValue, fmt.Sprintf("ext(%v)", curRoute[:matchLen]))
 			curRootHash = next
 			curRoute = curRoute[matchLen:]
-		case leaf:
-			path := rootNode.Val[0]
-			if !bytes.Equal(path, curRoute) {
-				return append(pathToValue, "Leaf-NotFound"), ErrNotFound
+		case val:
+			if len(curRoute) != 0 {
+				return append(pathToValue, "val-NotFound"), ErrNotFound
 			}
-			return append(pathToValue, fmt.Sprintf("Leaf(%v)", curRoute)), nil
+			return append(pathToValue, fmt.Sprintf("val")), nil
 		default:
 			return nil, ErrInvalidNodeType
 		}

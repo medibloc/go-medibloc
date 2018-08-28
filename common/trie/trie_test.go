@@ -76,7 +76,7 @@ func TestTrie_Operations(t *testing.T) {
 	val1 := []byte("leafmedi1")
 	err = tr.Put(key1, val1)
 	assert.Nil(t, err)
-	curRootHash := []byte{0xe5, 0xa2, 0x8b, 0x11, 0x2e, 0x6f, 0x65, 0x91, 0xbd, 0xa4, 0x37, 0xd3, 0x86, 0xa9, 0x19, 0xd9, 0xb3, 0x5d, 0x9d, 0x86, 0x3d, 0x6e, 0xd6, 0x5b, 0x19, 0x3, 0x6c, 0x7, 0x6f, 0x25, 0xd4, 0x85}
+	curRootHash := []byte{0x32, 0xf8, 0xb7, 0x8a, 0x2f, 0x2f, 0x59, 0xa8, 0xf6, 0x75, 0xda, 0x29, 0x29, 0xc0, 0x46, 0xfc, 0x8b, 0x35, 0x38, 0x6c, 0xa3, 0x19, 0xa5, 0x94, 0xaf, 0x66, 0xbf, 0xd3, 0x88, 0xd1, 0xc8, 0x56}
 	assert.Equal(t, curRootHash, tr.RootHash())
 
 	val2, err := tr.Get(key1)
@@ -101,8 +101,6 @@ func TestTrie_Operations(t *testing.T) {
 	val2, err = tr.Get(key1)
 	assert.Nil(t, err)
 	assert.Equal(t, val2, val1)
-	// TODO make it same topology after put & delete
-	// assert.Equal(t, curRootHash, tr.RootHash())
 
 	err = tr.Delete(key1)
 	assert.Nil(t, err)
@@ -181,8 +179,8 @@ func getAndEqual(t *testing.T, tr *trie.Trie, pair *testPair) {
 	key := trie.RouteToKey(pair.route)
 	v, err := tr.Get(key)
 	require.NoError(t, err)
-	require.Equal(t, 0, bytes.Compare([]byte(pair.value), v))
 	t.Log(string(v), ":", tr.ShowPath(trie.RouteToKey(pair.route)))
+	require.Equal(t, 0, bytes.Compare([]byte(pair.value), v))
 
 }
 
@@ -194,6 +192,7 @@ func TestTrieBuild(t *testing.T) {
 		{[]byte{0, 0, 1, 1, 0, 0}, "first node"},
 		{[]byte{0, 0, 1, 1}, "shorter node"},
 		{[]byte{0, 0, 1, 1, 0, 0, 1, 1}, "longer node"},
+		{[]byte{0, 0, 1, 1, 0, 0, 1, 2}, "longer node2"},
 	}
 
 	tr, err := trie.NewTrie(nil, s)
@@ -216,8 +215,17 @@ func TestTrieBuild(t *testing.T) {
 	getAndEqual(t, tr, testPairs[1])
 	getAndEqual(t, tr, testPairs[2])
 
+	t.Log("Put longer node2")
+	putPairToTrie(t, tr, testPairs[3])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
+	getAndEqual(t, tr, testPairs[2])
+	getAndEqual(t, tr, testPairs[3])
+
 	t.Log("Del longer node")
 	err = tr.Delete(trie.RouteToKey(testPairs[2].route))
+	require.NoError(t, err)
+	err = tr.Delete(trie.RouteToKey(testPairs[3].route))
 	require.NoError(t, err)
 	getAndEqual(t, tr, testPairs[0])
 	getAndEqual(t, tr, testPairs[1])
@@ -300,6 +308,7 @@ func TestTrie_UpdateLeaf(t *testing.T) {
 		{[]byte{0, 1, 2, 3, 4, 5, 6, 0}, "newLeaf"},
 		{[]byte{0, 1}, "shorterLeaf"},
 		{[]byte{0, 1, 2, 3, 4, 5, 6, 0, 1, 2, 3, 4}, "longerLeaf"},
+		{[]byte{0, 1, 2, 3, 4, 5, 6, 0}, "longerLeaf with no ext"},
 	}
 
 	t.Log("Make a leaf")
@@ -319,6 +328,7 @@ func TestTrie_UpdateLeaf(t *testing.T) {
 	getAndEqual(t, tr, testPairs[1])
 	getAndEqual(t, tr, testPairs[2])
 	getAndEqual(t, tr, testPairs[3])
+
 }
 
 func TestTrie_Delete(t *testing.T) {
@@ -351,6 +361,8 @@ func TestTrie_Delete(t *testing.T) {
 	require.Equal(t, trie.ErrNotFound, err)
 
 	t.Log("0,1 node - 0 node")
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
 	err = tr.Delete(trie.RouteToKey(testPairs[0].route))
 	require.NoError(t, err)
 	_, err = tr.Get(trie.RouteToKey(testPairs[0].route))
@@ -359,6 +371,8 @@ func TestTrie_Delete(t *testing.T) {
 
 	t.Log("0,1 node - 1 node")
 	putPairToTrie(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[0])
+	getAndEqual(t, tr, testPairs[1])
 	err = tr.Delete(trie.RouteToKey(testPairs[1].route))
 	require.NoError(t, err)
 	getAndEqual(t, tr, testPairs[0])
