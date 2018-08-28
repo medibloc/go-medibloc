@@ -21,6 +21,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -45,7 +46,12 @@ func TestService_Start(t *testing.T) {
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist)
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		b := bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		var b *core.Block
+		if i == 1 {
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+		} else {
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
 
@@ -117,7 +123,12 @@ func TestForkResistance(t *testing.T) {
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		b := bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		var b *core.Block
+		if i == 1 {
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+		} else {
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 
 		for _, n := range majorNodes {
@@ -143,7 +154,12 @@ func TestForkResistance(t *testing.T) {
 	//Generate diff blocks and push to minor tester
 	for i := 1; i < nBlocks; i++ {
 		tail := minorNodes[0].Tail()
-		b := bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		var b *core.Block
+		if i == 1 {
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+		} else {
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		}
 
 		for _, n := range minorNodes {
 			require.NoError(t, n.Med.BlockManager().PushBlockData(b.BlockData))
@@ -222,7 +238,12 @@ func TestForAutoActivation(t *testing.T) {
 	// generate blocks (height:2~nBlocks-1) on seedTester
 	for i := 1; i < nBlocks-1; i++ {
 		tail := seed.Tail()
-		b := bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		var b *core.Block
+		if i == 1 {
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+		} else {
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
 	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
@@ -330,7 +351,12 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		b := bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		var b *core.Block
+		if i == 1 {
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+		} else {
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
 

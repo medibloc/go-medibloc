@@ -42,8 +42,6 @@ type BlockHeader struct {
 	dataStateRoot []byte
 	dposRoot      []byte
 
-	reservationQueueHash []byte
-
 	coinbase  common.Address
 	reward    *util.Uint128
 	supply    *util.Uint128
@@ -67,19 +65,18 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	}
 
 	return &corepb.BlockHeader{
-		Hash:                 b.hash,
-		ParentHash:           b.parentHash,
-		Coinbase:             b.coinbase.Bytes(),
-		Reward:               reward,
-		Supply:               supply,
-		Timestamp:            b.timestamp,
-		ChainId:              b.chainID,
-		Alg:                  uint32(b.alg),
-		Sign:                 b.sign,
-		AccStateRoot:         b.accStateRoot,
-		DataStateRoot:        b.dataStateRoot,
-		DposRoot:             b.dposRoot,
-		ReservationQueueHash: b.reservationQueueHash,
+		Hash:          b.hash,
+		ParentHash:    b.parentHash,
+		Coinbase:      b.coinbase.Bytes(),
+		Reward:        reward,
+		Supply:        supply,
+		Timestamp:     b.timestamp,
+		ChainId:       b.chainID,
+		Alg:           uint32(b.alg),
+		Sign:          b.sign,
+		AccStateRoot:  b.accStateRoot,
+		DataStateRoot: b.dataStateRoot,
+		DposRoot:      b.dposRoot,
 	}, nil
 }
 
@@ -91,7 +88,6 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.accStateRoot = msg.AccStateRoot
 		b.dataStateRoot = msg.DataStateRoot
 		b.dposRoot = msg.DposRoot
-		b.reservationQueueHash = msg.ReservationQueueHash
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		reward, err := util.NewUint128FromFixedSizeByteSlice(msg.Reward)
 		if err != nil {
@@ -160,16 +156,6 @@ func (b *BlockHeader) DposRoot() []byte {
 //SetDposRoot set block header's dposRoot
 func (b *BlockHeader) SetDposRoot(dposRoot []byte) {
 	b.dposRoot = dposRoot
-}
-
-//ReservationQueueHash returns block header's reservationQueHash
-func (b *BlockHeader) ReservationQueueHash() []byte {
-	return b.reservationQueueHash
-}
-
-//SetReservationQueueHash set block header's reservationQueHash
-func (b *BlockHeader) SetReservationQueueHash(reservationQueueHash []byte) {
-	b.reservationQueueHash = reservationQueueHash
 }
 
 //Coinbase returns coinbase
@@ -467,13 +453,6 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	}
 	block.state.dposState = ds
 
-	if err := block.state.LoadReservationQueue(block.reservationQueueHash); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load reservation queue.")
-		return nil, err
-	}
 	block.storage = storage
 	return block, nil
 }
@@ -596,11 +575,6 @@ func (b *Block) Seal() error {
 		return ErrBlockAlreadySealed
 	}
 
-	// all reserved tasks should have timestamps greater than block's timestamp
-	head := b.state.PeekHeadReservedTask()
-	if head != nil && head.Timestamp() < b.Timestamp() {
-		return ErrReservedTaskNotProcessed
-	}
 	dataRoot, err := b.state.DataRoot()
 	if err != nil {
 		return err
@@ -614,7 +588,6 @@ func (b *Block) Seal() error {
 	b.accStateRoot = b.state.AccountsRoot()
 	b.dataStateRoot = dataRoot
 	b.dposRoot = dposRoot
-	b.reservationQueueHash = b.state.ReservationQueueHash()
 
 	hash := HashBlockData(b.BlockData)
 	b.hash = hash
@@ -631,7 +604,6 @@ func HashBlockData(bd *BlockData) []byte {
 	hasher.Write(bd.AccStateRoot())
 	hasher.Write(bd.DataStateRoot())
 	hasher.Write(bd.DposRoot())
-	hasher.Write(bd.ReservationQueueHash())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
@@ -641,8 +613,6 @@ func HashBlockData(bd *BlockData) []byte {
 
 	return hasher.Sum(nil)
 }
-
-const TxDelayLimit = 24 * 60 * 60
 
 // ExecuteTransaction on given block state
 func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
@@ -683,6 +653,19 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
+	err = b.updateUnstaking(transaction)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to update staking.")
+		return err
+	}
+
+	err = tx.Execute(b)
+	if err != nil {
+		return err
+	}
+
 	usage, err := tx.Bandwidth()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -691,20 +674,58 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
-	err = b.updateBandwidth(payer, usage)
+	err = b.consumeBandwidth(payer, usage)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to update bandwidth.")
 		return err
 	}
-
-	return tx.Execute(b)
+	return nil
 }
 
-const BandwidthRegenarateDuration = 7 * 24 * time.Hour
+func (b *Block) updateUnstaking(tx *Transaction) error {
+	addr := tx.From()
+	acc, err := b.State().AccState().GetAccount(addr)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to get account.")
+		return err
+	}
 
-func (b *Block) updateBandwidth(addr common.Address, usage *util.Uint128) error {
+	if acc.LastUnstakingTs == 0 {
+		return nil
+	}
+
+	elapsed := b.Timestamp() - acc.LastUnstakingTs
+	if time.Duration(elapsed)*time.Second < UnstakingWaitDuration {
+		return nil
+	}
+
+	acc.Balance, err = acc.Balance.Add(acc.Unstaking)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to add to balance.")
+		return err
+	}
+
+	acc.Unstaking = util.NewUint128()
+	acc.LastUnstakingTs = 0
+
+	err = b.State().AccState().PutAccount(acc)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to put account.")
+		return err
+	}
+
+	return nil
+}
+
+func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error {
 	acc, err := b.State().AccState().GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -779,16 +800,20 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 
 func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*util.Uint128, error) {
 	elapsed := curTs - lastTs
-	if time.Duration(elapsed)*time.Second >= BandwidthRegenarateDuration {
+	if time.Duration(elapsed)*time.Second >= BandwidthRegenerateDuration {
 		return util.NewUint128(), nil
 	}
 
-	if elapsed <= 0 {
+	if elapsed < 0 {
 		return nil, ErrInvalidTimestamp
 	}
 
+	if elapsed == 0 {
+		return bandwidth.DeepCopy(), nil
+	}
+
 	mul := util.NewUint128FromUint(uint64(elapsed))
-	div := util.NewUint128FromUint(uint64(BandwidthRegenarateDuration / time.Second))
+	div := util.NewUint128FromUint(uint64(BandwidthRegenerateDuration / time.Second))
 	v1, err := vesting.Mul(mul)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -820,15 +845,6 @@ func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*u
 // VerifyExecution executes txs in block and verify root hashes using block header
 func (b *Block) VerifyExecution(txMap TxFactory) error {
 	b.BeginBatch()
-
-	if err := b.ExecuteReservedTasks(); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": b,
-		}).Warn("Failed to execute reserved tasks.")
-		b.RollBack()
-		return err
-	}
 
 	if err := b.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -891,17 +907,6 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 			"block":       b,
 		}).Warn("Failed to accept a transaction.")
 		return err
-	}
-	return nil
-}
-
-// ExecuteReservedTasks processes reserved tasks with timestamp before block's timestamp
-func (b *Block) ExecuteReservedTasks() error {
-	tasks := b.state.PopReservedTasks(b.Timestamp())
-	for _, t := range tasks {
-		if err := t.ExecuteOnState(b.state); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -988,13 +993,6 @@ func (b *Block) VerifyState() error {
 			"header": byteutils.Bytes2Hex(b.DposRoot()),
 		}).Warn("Failed to get state of candidate root.")
 		return ErrInvalidBlockDposRoot
-	}
-	if !byteutils.Equal(b.state.ReservationQueueHash(), b.ReservationQueueHash()) {
-		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.ReservationQueueHash()),
-			"header": byteutils.Bytes2Hex(b.ReservationQueueHash()),
-		}).Warn("Failed to verify reservation queue hash.")
-		return ErrInvalidBlockReservationQueueHash
 	}
 	return nil
 }

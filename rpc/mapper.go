@@ -56,7 +56,6 @@ func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
 		AccsRoot:     byteutils.Bytes2Hex(block.AccStateRoot()),
 		DataRoot:     byteutils.Bytes2Hex(block.DataStateRoot()),
 		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
-		UsageRoot:    byteutils.Bytes2Hex(block.UsageRoot()),
 		Transactions: tx,
 	}, nil
 }

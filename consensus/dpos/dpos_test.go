@@ -42,7 +42,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
 
-	bb = bb.Child().
+	bb = bb.Child().Stake().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(newCandidate).Execute().
 		Tx().Type(core.TxOpVest).Value(10).SignPair(newCandidate).Execute().
 		Tx().Type(dpos.TxOpVote).

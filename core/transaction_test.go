@@ -34,11 +34,13 @@ func TestSend(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	bb.
+		Tx().StakeTx(from, 10000).Execute().
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1000000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
-		Balance(from.Addr, 1000000000-10)
+		Balance(from.Addr, 1000000000-10-10000).
+		Vesting(from.Addr, 10000)
 
 }
 
@@ -50,7 +52,8 @@ func TestAddRecord(t *testing.T) {
 	owner := bb.TokenDist[0]
 
 	block := bb.
-		Tx().Type(core.TxOpAddRecord).Payload(payload).Nonce(1).SignPair(owner).Execute().
+		Tx().StakeTx(owner, 100000).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(payload).Nonce(2).SignPair(owner).Execute().
 		Build()
 
 	record, err := block.State().DataState().GetRecord(recordHash)
@@ -82,34 +85,20 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb = bb.
 		Tx().Type(core.TxOpWithdrawVesting).Value(withdrawAmount).SignPair(from).Execute()
 
-	bb.Expect().Vesting(from.Addr, vestingAmount-withdrawAmount)
-
-	block := bb.Build()
-	reservedTasks := block.State().GetReservedTasks()
-	assert.Equal(t, core.RtWithdrawNum, len(reservedTasks))
-	for i := 0; i < len(reservedTasks); i++ {
-		t.Logf("No.%v ts:%v, payload:%v", i, reservedTasks[i].Timestamp(), reservedTasks[i].Payload())
-		assert.Equal(t, core.RtWithdrawType, reservedTasks[i].TaskType())
-		assert.Equal(t, from.Addr, reservedTasks[i].From())
-		assert.Equal(t, bb.B.Timestamp()+int64(i+1)*core.RtWithdrawInterval, reservedTasks[i].Timestamp())
-	}
+	bb.Expect().
+		Balance(from.Addr, uint64(1000000000-vestingAmount)).
+		Vesting(from.Addr, vestingAmount-withdrawAmount).
+		Unstaking(from.Addr, withdrawAmount)
 
 	acc, err := bb.B.State().GetAccount(from.Addr)
 	require.NoError(t, err)
 	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance)
 
-	for i := 0; i < len(reservedTasks)+5; i++ {
-		bb = bb.SignMiner().
-			ChildWithTimestamp(bb.B.Timestamp() + core.RtWithdrawInterval)
-
-		acc, err := bb.B.State().GetAccount(from.Addr)
-		require.NoError(t, err)
-		reservedTasks = bb.B.State().GetReservedTasks()
-		t.Logf("ts:%v, balance: %v, remain tasks: %v", bb.B.Timestamp(), acc.Balance, len(reservedTasks))
-	}
-
-	bb.Expect().Balance(from.Addr, 1000000000-vestingAmount+withdrawAmount)
-	assert.Equal(t, 0, len(reservedTasks))
+	bb = bb.SignMiner().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
+		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(from).Execute()
+	bb.Expect().
+		Balance(from.Addr, 1000000000-vestingAmount+withdrawAmount).
+		Unstaking(from.Addr, 0)
 }
 
 func TestAddAndRevokeCertification(t *testing.T) {
@@ -129,8 +118,8 @@ func TestAddAndRevokeCertification(t *testing.T) {
 		CertificateHash: hash,
 	}
 
-	bb = bb.
-		Tx().Nonce(1).Type(core.TxOpAddCertification).From(issuer.Addr).To(certified.Addr).Payload(addPayload).CalcHash().SignKey(issuer.PrivKey).Execute()
+	bb = bb.Stake().
+		Tx().Nonce(3).Type(core.TxOpAddCertification).From(issuer.Addr).To(certified.Addr).Payload(addPayload).CalcHash().SignKey(issuer.PrivKey).Execute()
 
 	block := bb.PayReward().Seal().Build()
 
@@ -168,10 +157,10 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb = bb.
-		Tx().Nonce(1).Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(wrongRevoker).ExecuteErr(core.ErrInvalidCertificationRevoker).
-		Tx().Nonce(2).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
-		Tx().Nonce(2).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
-		Tx().Nonce(3).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
+		Tx().Nonce(3).Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(wrongRevoker).ExecuteErr(core.ErrInvalidCertificationRevoker).
+		Tx().Nonce(4).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
+		Tx().Nonce(4).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
+		Tx().Nonce(5).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
 		ExecuteErr(core.ErrCertAlreadyRevoked)
 	block = bb.Build()
 

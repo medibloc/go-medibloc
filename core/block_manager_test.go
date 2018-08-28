@@ -103,7 +103,12 @@ func TestBlockManager_Forked(t *testing.T) {
 	genesis := seed.Tail()
 	tail := genesis
 	for i := 1; i < mainChainHeight; i++ {
-		mint := bb.Block(tail).Child().SignMiner().Build()
+		var mint *core.Block
+		if i == 1 {
+			mint = bb.Block(tail).Child().Stake().SignMiner().Build()
+		} else {
+			mint = bb.Block(tail).Child().SignMiner().Build()
+		}
 		mainChainBlocks = append(mainChainBlocks, mint)
 		tail = mint
 	}
@@ -184,8 +189,12 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 
 	blocks := make([]*core.Block, 0)
 	for i := 0; i < dynastySize+2; i++ {
-		block := bb.Block(tail).Child().
-			SignMiner().Build()
+		var block *core.Block
+		if i == 0 {
+			block = bb.Block(tail).Child().Stake().SignMiner().Build()
+		} else {
+			block = bb.Block(tail).Child().SignMiner().Build()
+		}
 		blocks = append(blocks, block)
 		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
 		tail = block
@@ -238,7 +247,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 
 	blocks := make([]*core.Block, 0)
 
-	b1 := bb.Block(tail).Child().SignMiner().Build()
+	b1 := bb.Block(tail).Child().Stake().SignMiner().Build()
 	blocks = append(blocks, b1)
 
 	b2 := bb.Block(b1).Child().
@@ -282,9 +291,16 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
 	for i := 0; i < 6; i++ {
-		block := bb.Block(tail).Child().
-			Tx().RandomTx().Execute().
-			SignMiner().Build()
+		var block *core.Block
+		if i == 0 {
+			block = bb.Block(tail).Child().Stake().
+				Tx().RandomTx().Execute().
+				SignMiner().Build()
+		} else {
+			block = bb.Block(tail).Child().
+				Tx().RandomTx().Execute().
+				SignMiner().Build()
+		}
 		err := bm.PushBlockData(block.GetBlockData())
 		tail = block
 		assert.NoError(t, err)
@@ -481,7 +497,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 
 	from := seed.Config.TokenDist[0]
 	to := seed.Config.TokenDist[1]
-	bb = bb.Block(genesis).Child().
+	bb = bb.Block(genesis).Child().Stake().
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddRecord).
 		Payload(&core.AddRecordPayload{
@@ -517,15 +533,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.UsageRoot(hash([]byte("invalid usage root"))).CalcHash().SignKey(miner.PrivKey).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
-
 	block = bb.DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(miner.PrivKey).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
-
-	block = bb.ReservationQueueRoot(hash([]byte("invalid reservation queue root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 

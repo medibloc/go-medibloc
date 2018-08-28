@@ -431,6 +431,7 @@ func (as *AccountState) SetBandwidth(addr common.Address, bandwidth *util.Uint12
 	return as.PutAccount(acc)
 }
 
+//SetLastBandwidthTs sets last update time of bandwidth.
 func (as *AccountState) SetLastBandwidthTs(addr common.Address, ts int64) error {
 	acc, err := as.GetAccount(addr)
 	if err != nil {
@@ -450,6 +451,7 @@ func (as *AccountState) SetUnstaking(addr common.Address, unstaking *util.Uint12
 	return as.PutAccount(acc)
 }
 
+//SetLastUnstakingTs sets last update time of unstaking.
 func (as *AccountState) SetLastUnstakingTs(addr common.Address, ts int64) error {
 	acc, err := as.GetAccount(addr)
 	if err != nil {

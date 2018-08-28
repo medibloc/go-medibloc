@@ -67,13 +67,6 @@ func (bb *BlockBuilder) copy() *BlockBuilder {
 		require.NoError(bb.t, err)
 	}
 
-	//dynasties, err := copystructure.Copy(bb.Dynasties)
-	//require.NoError(bb.t, err)
-	//tokenDist, err := copystructure.Copy(bb.TokenDist)
-	//require.NoError(bb.t, err)
-	//keyPairs, err := copystructure.Copy(bb.KeyPairs)
-	//require.NoError(bb.t, err)
-
 	return &BlockBuilder{
 		t:           bb.t,
 		B:           b,
@@ -104,6 +97,15 @@ func (bb *BlockBuilder) Block(block *core.Block) *BlockBuilder {
 
 	n.B = block
 	n.proposer = proposer
+	return n
+}
+
+//Stake executes stake transactions.
+func (bb *BlockBuilder) Stake() *BlockBuilder {
+	n := bb.copy()
+	for _, pair := range bb.KeyPairs {
+		n = n.Tx().StakeTx(pair, 1000000).Execute()
+	}
 	return n
 }
 
@@ -158,13 +160,6 @@ func (bb *BlockBuilder) DataRoot(root []byte) *BlockBuilder {
 func (bb *BlockBuilder) DposRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetDposRoot(root)
-	return n
-}
-
-// ReservationQueueRoot sets reservation queue root.
-func (bb *BlockBuilder) ReservationQueueRoot(root []byte) *BlockBuilder {
-	n := bb.copy()
-	n.B.SetReservationQueueHash(root)
 	return n
 }
 
@@ -361,7 +356,7 @@ func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
 	parent := bb.B
 	n.B.SetTransactions(make([]*core.Transaction, 0))
-	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState(parent).ExecuteReservedTasks()
+	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState(parent)
 }
 
 //ChildNextDynasty create first child block of next dynasty
@@ -394,15 +389,4 @@ func (bb *BlockBuilder) UpdateDynastyState(parent *core.Block) *BlockBuilder {
 //Expect return expect
 func (bb *BlockBuilder) Expect() *Expect {
 	return NewExpect(bb.t, bb.Build())
-}
-
-//ExecuteReservedTasks execute reserved tasks
-func (bb *BlockBuilder) ExecuteReservedTasks() *BlockBuilder {
-	n := bb.copy()
-
-	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.ExecuteReservedTasks())
-	require.NoError(bb.t, n.B.Commit())
-
-	return n
 }

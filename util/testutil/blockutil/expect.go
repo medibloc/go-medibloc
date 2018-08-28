@@ -57,6 +57,13 @@ func (e *Expect) Vesting(addr common.Address, vest uint64) *Expect {
 	return e
 }
 
+//Unstaking compares unstaking of account to expected value
+func (e *Expect) Unstaking(addr common.Address, unstake uint64) *Expect {
+	acc := e.account(addr)
+	require.Equal(e.t, acc.Unstaking.Uint64(), unstake)
+	return e
+}
+
 //Nonce compare nonce of account to expected value
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	acc := e.account(addr)

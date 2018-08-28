@@ -73,7 +73,7 @@ func TestBlock_PayReward(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 	parent := bb.Build()
 
-	bb = bb.Child().Tx().RandomTx().Execute()
+	bb = bb.Child().Stake().Tx().RandomTx().Execute()
 	miner := bb.FindMiner()
 
 	// wrong reward value (calculate reward based on wrong supply)

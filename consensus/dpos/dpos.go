@@ -375,11 +375,6 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		return nil, err
 	}
 
-	if err := block.ExecuteReservedTasks(); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to execute reserved task")
-	}
 	if err := block.Commit(); err != nil {
 		return nil, err
 	}

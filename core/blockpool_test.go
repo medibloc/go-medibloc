@@ -136,7 +136,7 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 	genesis := bb.Build()
 
-	bb = bb.Child().SignMiner()
+	bb = bb.Child().Stake().SignMiner()
 	grandParent := bb.Build()
 	bb = bb.Child().SignMiner()
 	parent := bb.Build()

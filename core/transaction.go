@@ -26,10 +26,10 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
-
-var TxBaseBandwidth = util.NewUint128FromUint(100)
 
 // Transaction struct represents transaction
 type Transaction struct {
@@ -562,35 +562,45 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		return err
 	}
 
-	if err := as.SubVesting(tx.user, tx.amount); err != nil {
-		return err
+	if account.Vesting.Cmp(tx.amount) < 0 {
+		return ErrVestingNotEnough
 	}
-
-	splitAmount, err := tx.amount.Div(util.NewUint128FromUint(RtWithdrawNum))
+	account.Vesting, err = account.Vesting.Sub(tx.amount)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to subtract vesting.")
 		return err
 	}
 
-	amountLeft := tx.amount.DeepCopy()
+	account.Unstaking, err = account.Unstaking.Add(tx.amount)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to add unstaking.")
+		return err
+	}
+	account.LastUnstakingTs = b.Timestamp()
 
-	payload := new(RtWithdraw)
-	for i := 0; i < RtWithdrawNum; i++ {
-		if i == RtWithdrawNum-1 {
-			payload, err = NewRtWithdraw(amountLeft)
-			if err != nil {
-				return err
-			}
-		} else {
-			payload, err = NewRtWithdraw(splitAmount)
-			if err != nil {
-				return err
-			}
-		}
-		task := NewReservedTask(RtWithdrawType, tx.user, payload, b.Timestamp()+int64(i+1)*RtWithdrawInterval)
-		if err := b.state.AddReservedTask(task); err != nil {
+	// Update bandwidth
+	if tx.amount.Cmp(account.Bandwidth) >= 0 {
+		account.Bandwidth = util.NewUint128()
+	} else {
+		account.Bandwidth, err = account.Bandwidth.Sub(tx.amount)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Warn("Failed to subtract bandwidth.")
 			return err
 		}
-		amountLeft, _ = amountLeft.Sub(splitAmount)
+	}
+
+	err = as.PutAccount(account)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to put account.")
+		return err
 	}
 
 	// Add user's vesting to candidates' votePower

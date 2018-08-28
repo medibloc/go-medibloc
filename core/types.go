@@ -18,6 +18,8 @@ package core
 import (
 	"errors"
 
+	"time"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -34,6 +36,13 @@ const (
 	TxOpRevokeCertification = "revoke_certification"
 )
 
+// Transaction related defaults
+const (
+	TxDelayLimit                = 24 * 60 * 60
+	UnstakingWaitDuration       = 7 * 24 * time.Hour
+	BandwidthRegenerateDuration = 7 * 24 * time.Hour
+)
+
 // Transaction's message types.
 const (
 	MessageTypeNewTx = "newtx"
@@ -46,21 +55,13 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
-// type of ReservedTask
-const (
-	RtWithdrawType = "withdraw"
-)
-
-// consts for reserved task-related values
-const (
-	RtWithdrawNum      = 3
-	RtWithdrawInterval = int64(3000)
-)
-
 const (
 	rateNum     = "464"
 	rateDecimal = "100000000000"
 )
+
+// TxBaseBandwidth is base bandwidth value of transactions.
+var TxBaseBandwidth = util.NewUint128FromUint(100)
 
 // Error types of core package.
 var (
@@ -104,7 +105,6 @@ var (
 	ErrInvalidBlockTxsRoot              = errors.New("invalid transactions state root hash")
 	ErrInvalidBlockRecordsRoot          = errors.New("invalid records state root hash")
 	ErrInvalidBlockCertificationRoot    = errors.New("invalid certification state root hash")
-	ErrInvalidBlockReservationQueueHash = errors.New("invalid reservation queue hash")
 	ErrInvalidBlockDposRoot             = errors.New("invalid block dpos root hash")
 	ErrTooOldTransaction                = errors.New("transaction timestamp is too old")
 	ErrFailedToUnmarshalPayload         = errors.New("cannot unmarshal tx payload")
@@ -118,13 +118,6 @@ var (
 	ErrCertAlreadyExpired               = errors.New("cert to revoke has already been expired")
 	ErrInvalidCertificationRevoker      = errors.New("only issuer of the cert can revoke it")
 	ErrTxIsNotFromRecordOwner           = errors.New("adding record reader should be done by record owner")
-	ErrCannotConvertResevedTask         = errors.New("proto message cannot be converted into ResevedTask")
-	ErrCannotConvertResevedTasks        = errors.New("proto message cannot be converted into ResevedTasks")
-	ErrInvalidReservationQueueHash      = errors.New("hash of reservation queue invalid")
-	ErrReservationQueueNotBatching      = errors.New("reservation queue is not in batch mode")
-	ErrReservationQueueAlreadyBatching  = errors.New("reservation queue is already in batch mode")
-	ErrReservedTaskNotProcessed         = errors.New("there are reservation task(s) to be processed in the block")
-	ErrInvalidReservedTaskType          = errors.New("type of reserved task is invalid")
 	ErrAlreadyInCandidacy               = errors.New("account is already a candidate")
 	ErrAlreadyVoted                     = errors.New("account has already voted for the candidate")
 	ErrNotVotedYet                      = errors.New("account has not voted for anyone")

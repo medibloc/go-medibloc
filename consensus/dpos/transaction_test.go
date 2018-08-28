@@ -35,11 +35,15 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	txType := dpos.TxOpBecomeCandidate
 	bb = bb.
-		Tx().Type(txType).Value(1000000001).Nonce(1).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
-		Tx().Type(txType).Value(10).Nonce(1).SignPair(candidate).Execute().
-		Tx().Type(txType).Value(10).Nonce(2).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
+		Tx().StakeTx(candidate, 10000).Execute().
+		Tx().Type(txType).Value(1000000001).Nonce(2).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().Type(txType).Value(10).Nonce(2).SignPair(candidate).Execute().
+		Tx().Type(txType).Value(10).Nonce(3).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
 
-	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
+	bb.Expect().
+		Balance(candidate.Addr, 1000000000-10-10000).
+		Vesting(candidate.Addr, 10000)
+
 	block := bb.Build()
 
 	ds := block.State().DposState()
@@ -55,8 +59,8 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	assert.Equal(t, util.NewUint128FromUint(10), acc.Collateral)
 
 	bb = bb.
-		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(2).SignPair(candidate).Execute().
-		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(3).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
+		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(3).SignPair(candidate).Execute().
+		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(4).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
 
 	block = bb.Build()
 	as = block.State().AccState()
@@ -94,12 +98,13 @@ func TestVote(t *testing.T) {
 
 	bb = bb.
 		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
+		Tx().StakeTx(candidate, 10000).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).SignPair(candidate).Execute().
 		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(dpos.ErrOverMaxVote).
 		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(dpos.ErrDuplicateVote).
 		Tx().Type(dpos.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
-	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10))
+	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10-10000))
 	block := bb.Build()
 
 	isCandidate, err := block.State().DposState().IsCandidate(candidate.Addr)

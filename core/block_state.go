@@ -28,10 +28,9 @@ type states struct {
 	reward *util.Uint128
 	supply *util.Uint128
 
-	accState         *AccountState
-	dataState        *DataState
-	dposState        DposState
-	reservationQueue *ReservationQueue
+	accState  *AccountState
+	dataState *DataState
+	dposState DposState
 
 	storage storage.Storage
 }
@@ -76,16 +75,13 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	reservationQueue := NewEmptyReservationQueue(stor)
-
 	return &states{
-		reward:           util.NewUint128(),
-		supply:           util.NewUint128(),
-		accState:         accState,
-		dataState:        dataState,
-		dposState:        dposState,
-		reservationQueue: reservationQueue,
-		storage:          stor,
+		reward:    util.NewUint128(),
+		supply:    util.NewUint128(),
+		accState:  accState,
+		dataState: dataState,
+		dposState: dposState,
+		storage:   stor,
 	}, nil
 }
 
@@ -109,19 +105,13 @@ func (s *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	reservationQueue, err := LoadReservationQueue(s.storage, s.reservationQueue.Hash())
-	if err != nil {
-		return nil, err
-	}
-
 	return &states{
-		reward:           s.reward.DeepCopy(),
-		supply:           s.supply.DeepCopy(),
-		accState:         accState,
-		dataState:        dataState,
-		dposState:        dposState,
-		reservationQueue: reservationQueue,
-		storage:          s.storage,
+		reward:    s.reward.DeepCopy(),
+		supply:    s.supply.DeepCopy(),
+		accState:  accState,
+		dataState: dataState,
+		dposState: dposState,
+		storage:   s.storage,
 	}, nil
 }
 
@@ -135,7 +125,7 @@ func (s *states) BeginBatch() error {
 	if err := s.DposState().BeginBatch(); err != nil {
 		return err
 	}
-	return s.reservationQueue.BeginBatch()
+	return nil
 }
 
 func (s *states) Commit() error {
@@ -148,7 +138,7 @@ func (s *states) Commit() error {
 	if err := s.dposState.Commit(); err != nil {
 		return err
 	}
-	return s.reservationQueue.Commit()
+	return nil
 }
 
 func (s *states) AccountsRoot() []byte {
@@ -161,10 +151,6 @@ func (s *states) DataRoot() ([]byte, error) {
 
 func (s *states) DposRoot() ([]byte, error) {
 	return s.dposState.RootBytes()
-}
-
-func (s *states) ReservationQueueHash() []byte {
-	return s.reservationQueue.Hash()
 }
 
 func (s *states) LoadAccountState(rootHash []byte) error {
@@ -182,15 +168,6 @@ func (s *states) LoadDataState(rootBytes []byte) error {
 		return err
 	}
 	s.dataState = dataState
-	return nil
-}
-
-func (s *states) LoadReservationQueue(hash []byte) error {
-	rq, err := LoadReservationQueue(s.storage, hash)
-	if err != nil {
-		return err
-	}
-	s.reservationQueue = rq
 	return nil
 }
 
@@ -216,25 +193,6 @@ func (s *states) SubBalance(address common.Address, amount *util.Uint128) error 
 
 func (s *states) incrementNonce(address common.Address) error {
 	return s.accState.IncrementNonce(address)
-}
-
-// GetReservedTasks returns reserved tasks in reservation queue
-func (s *states) GetReservedTasks() []*ReservedTask {
-	return s.reservationQueue.Tasks()
-}
-
-// AddReservedTask adds a reserved task in reservation queue
-func (s *states) AddReservedTask(task *ReservedTask) error {
-	return s.reservationQueue.AddTask(task)
-}
-
-// PopReservedTasks pops reserved tasks which should be processed before 'before'
-func (s *states) PopReservedTasks(before int64) []*ReservedTask {
-	return s.reservationQueue.PopTasksBefore(before)
-}
-
-func (s *states) PeekHeadReservedTask() *ReservedTask {
-	return s.reservationQueue.Peek()
 }
 
 // BlockState possesses every states a block should have
