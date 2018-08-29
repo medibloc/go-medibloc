@@ -33,6 +33,20 @@ var (
 	metricsMedstartGauge = metrics.GetOrRegisterGauge("med.start", nil)
 )
 
+//DefaultTxMap is default map of transactions.
+var DefaultTxMap = core.TxFactory{
+	core.TxOpTransfer:            core.NewTransferTx,
+	core.TxOpAddRecord:           core.NewAddRecordTx,
+	core.TxOpVest:                core.NewVestTx,
+	core.TxOpWithdrawVesting:     core.NewWithdrawVestingTx,
+	core.TxOpAddCertification:    core.NewAddCertificationTx,
+	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
+
+	dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
+	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
+	dpos.TxOpVote:            dpos.NewVoteTx,
+}
+
 // Medlet manages blockchain services.
 type Medlet struct {
 	config             *medletpb.Config
@@ -132,20 +146,7 @@ func (m *Medlet) Setup() error {
 	m.blockManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectTransactionManager(m.transactionManager)
 
-	txMap := core.TxFactory{
-		core.TxOpTransfer:            core.NewTransferTx,
-		core.TxOpAddRecord:           core.NewAddRecordTx,
-		core.TxOpVest:                core.NewVestTx,
-		core.TxOpWithdrawVesting:     core.NewWithdrawVestingTx,
-		core.TxOpAddCertification:    core.NewAddCertificationTx,
-		core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
-
-		dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
-		dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
-		dpos.TxOpVote:            dpos.NewVoteTx,
-	}
-
-	m.blockManager.SetTxMap(txMap)
+	m.blockManager.SetTxMap(DefaultTxMap)
 
 	m.blockManager.InjectSyncService(m.syncService)
 	m.syncService.Setup(m.netService, m.blockManager)

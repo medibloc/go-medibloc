@@ -64,9 +64,30 @@ func (e *Expect) Unstaking(addr common.Address, unstake uint64) *Expect {
 	return e
 }
 
+//LastUnstakingTs compares last update time of unstaking
+func (e *Expect) LastUnstakingTs(addr common.Address, ts int64) *Expect {
+	acc := e.account(addr)
+	require.Equal(e.t, acc.LastUnstakingTs, ts)
+	return e
+}
+
 //Nonce compare nonce of account to expected value
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.Nonce, nonce)
+	return e
+}
+
+//Bandwidth compares bandwidth of account to expected value
+func (e *Expect) Bandwidth(addr common.Address, bandwidth uint64) *Expect {
+	acc := e.account(addr)
+	require.Equal(e.t, acc.Bandwidth.Uint64(), bandwidth)
+	return e
+}
+
+//LastBandwidthTs compares last update time of bandwidth
+func (e *Expect) LastBandwidthTs(addr common.Address, ts int64) *Expect {
+	acc := e.account(addr)
+	require.Equal(e.t, acc.LastBandwidthTs, ts)
 	return e
 }

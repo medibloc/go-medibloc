@@ -18,11 +18,11 @@ package blockutil
 import (
 	"testing"
 
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,22 +32,20 @@ const (
 )
 
 //DefaultTxMap is default txmap for block util
-var DefaultTxMap = core.TxFactory{
-	core.TxOpTransfer:            core.NewTransferTx,
-	core.TxOpAddRecord:           core.NewAddRecordTx,
-	core.TxOpVest:                core.NewVestTx,
-	core.TxOpWithdrawVesting:     core.NewWithdrawVestingTx,
-	core.TxOpAddCertification:    core.NewAddCertificationTx,
-	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
-
-	dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
-	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
-	dpos.TxOpVote:            dpos.NewVoteTx,
-}
+var DefaultTxMap = medlet.DefaultTxMap
 
 func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	signer, err := crypto.NewSignature(defaultSignAlg)
 	require.NoError(t, err)
 	signer.InitSign(key)
 	return signer
+}
+
+//Bandwidth returns bandwidth usage of a transaction.
+func Bandwidth(t *testing.T, tx *core.Transaction) uint64 {
+	execTx, err := DefaultTxMap[tx.TxType()](tx)
+	require.NoError(t, err)
+	bw, err := execTx.Bandwidth()
+	require.NoError(t, err)
+	return bw.Uint64()
 }
