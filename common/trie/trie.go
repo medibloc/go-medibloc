@@ -420,7 +420,7 @@ func (t *Trie) updateVal(n *node, route []byte, value []byte) ([]byte, error) {
 
 	// Todo: DeRef.
 	if len(route) == 0 { // same key
-		return hash, err // Todo: DeRef.
+		return hash, nil // Todo: DeRef.
 	}
 
 	branch := emptyBranchNode()

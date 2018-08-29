@@ -26,13 +26,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Prefixes for Account's Data trie
+const (
+	RecordsPrefix      = "r_"  // records
+	CertReceivedPrefix = "cr_" // certs received
+	CertIssuedPrefix   = "ci_" // certs issued
+)
+
 // Account default item in state
 type Account struct {
 	Address common.Address // address account key
 	Balance *util.Uint128  // balance account's coin amount
 	Nonce   uint64         // nonce account sequential number
 	Vesting *util.Uint128  // vesting account's vesting(staking) amount
-	Voted   *trie.Trie     // voted candidates key: addr, value: addr
+	Voted   *trie.Batch    // voted candidates key: addr, value: addr
 
 	Bandwidth       *util.Uint128
 	LastBandwidthTs int64
@@ -41,44 +48,35 @@ type Account struct {
 	LastUnstakingTs int64
 
 	Collateral *util.Uint128 // candidate collateral
-	Voters     *trie.Trie    // voters who voted to me
+	Voters     *trie.Batch   // voters who voted to me
 	VotePower  *util.Uint128 // sum of voters' vesting
 
-	Records       *trie.Trie // records
-	CertsReceived *trie.Trie // certs received by a certifier
-	CertsIssued   *trie.Trie // certs issued as a certifier
-	TxsFrom       *trie.Trie // transaction sent from account
-	TxsTo         *trie.Trie // transaction sent to account
+	TxsFrom *trie.Batch // transaction sent from account
+	TxsTo   *trie.Batch // transaction sent to account
+
+	Data *trie.Batch // contain records, certReceived, certIssued
 
 	Storage storage.Storage
 }
 
 func newAccount(stor storage.Storage) (*Account, error) {
-	voted, err := trie.NewTrie(nil, stor)
+	voted, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
-	voters, err := trie.NewTrie(nil, stor)
+	voters, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
-	records, err := trie.NewTrie(nil, stor)
+	TxsFrom, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
-	certReceived, err := trie.NewTrie(nil, stor)
+	TxsTo, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
-	certIssued, err := trie.NewTrie(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-	TxsFrom, err := trie.NewTrie(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-	TxsTo, err := trie.NewTrie(nil, stor)
+	data, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -96,18 +94,16 @@ func newAccount(stor storage.Storage) (*Account, error) {
 		Collateral:      util.NewUint128(),
 		Voters:          voters,
 		VotePower:       util.NewUint128(),
-		Records:         records,
-		CertsReceived:   certReceived,
-		CertsIssued:     certIssued,
 		TxsFrom:         TxsFrom,
 		TxsTo:           TxsTo,
+		Data:            data,
 		Storage:         stor,
 	}
 
 	return acc, nil
 }
 
-func (acc *Account) fromProto(pbAcc *corepb.AccountState) error {
+func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 	var err error
 
 	acc.Address = common.BytesToAddress(pbAcc.Address)
@@ -120,7 +116,10 @@ func (acc *Account) fromProto(pbAcc *corepb.AccountState) error {
 	if err != nil {
 		return err
 	}
-	acc.Voted.SetRootHash(pbAcc.VotedRootHash)
+	acc.Voted, err = trie.NewBatch(pbAcc.VotedRootHash, acc.Storage)
+	if err != nil {
+		return err
+	}
 
 	acc.Bandwidth, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Bandwidth)
 	if err != nil {
@@ -138,44 +137,34 @@ func (acc *Account) fromProto(pbAcc *corepb.AccountState) error {
 	if err != nil {
 		return err
 	}
-	acc.Voters.SetRootHash(pbAcc.VotersRootHash)
+	acc.Voters, err = trie.NewBatch(pbAcc.VotersRootHash, acc.Storage)
+	if err != nil {
+		return err
+	}
 	acc.VotePower, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.VotePower)
 	if err != nil {
 		return err
 	}
-	acc.Records.SetRootHash(pbAcc.RecordsRootHash)
-	acc.CertsReceived.SetRootHash(pbAcc.CertsReceivedRootHash)
-	acc.CertsIssued.SetRootHash(pbAcc.CertsIssuedRootHash)
-	acc.TxsFrom.SetRootHash(pbAcc.TxsFromRootHash)
-	acc.TxsTo.SetRootHash(pbAcc.TxsToRootHash)
 
-	return nil
-}
-
-func (acc *Account) fromBytes(accountBytes []byte) error {
-	pbAccount := new(corepb.AccountState)
-	if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
-		return err
-	}
-	if err := acc.fromProto(pbAccount); err != nil {
-		return err
-	}
-	return nil
-}
-
-//LoadAccount returns account from accountBytes and storage
-func LoadAccount(accountBytes []byte, stor storage.Storage) (*Account, error) {
-	acc, err := newAccount(stor)
+	acc.TxsFrom, err = trie.NewBatch(pbAcc.TxsFromRootHash, acc.Storage)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := acc.fromBytes(accountBytes); err != nil {
-		return nil, err
+
+	acc.TxsTo, err = trie.NewBatch(pbAcc.TxsToRootHash, acc.Storage)
+	if err != nil {
+		return err
 	}
-	return acc, nil
+
+	acc.Data, err = trie.NewBatch(pbAcc.DataRootHash, acc.Storage)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (acc *Account) toProto() (*corepb.AccountState, error) {
+func (acc *Account) toProto() (*corepb.Account, error) {
 	balance, err := acc.Balance.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -200,24 +189,22 @@ func (acc *Account) toProto() (*corepb.AccountState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &corepb.AccountState{
-		Address:               acc.Address.Bytes(),
-		Balance:               balance,
-		Nonce:                 acc.Nonce,
-		Vesting:               vesting,
-		VotedRootHash:         acc.Voted.RootHash(),
-		Bandwidth:             bandwidth,
-		LastBandwidthTs:       acc.LastBandwidthTs,
-		Unstaking:             unstaking,
-		LastUnstakingTs:       acc.LastUnstakingTs,
-		Collateral:            collateral,
-		VotersRootHash:        acc.Voters.RootHash(),
-		VotePower:             votePower,
-		RecordsRootHash:       acc.Records.RootHash(),
-		CertsReceivedRootHash: acc.CertsReceived.RootHash(),
-		CertsIssuedRootHash:   acc.CertsIssued.RootHash(),
-		TxsFromRootHash:       acc.TxsFrom.RootHash(),
-		TxsToRootHash:         acc.TxsTo.RootHash(),
+	return &corepb.Account{
+		Address:         acc.Address.Bytes(),
+		Balance:         balance,
+		Nonce:           acc.Nonce,
+		Vesting:         vesting,
+		VotedRootHash:   acc.Voted.RootHash(),
+		Bandwidth:       bandwidth,
+		LastBandwidthTs: acc.LastBandwidthTs,
+		Unstaking:       unstaking,
+		LastUnstakingTs: acc.LastUnstakingTs,
+		Collateral:      collateral,
+		VotersRootHash:  acc.Voters.RootHash(),
+		VotePower:       votePower,
+		TxsFromRootHash: acc.TxsFrom.RootHash(),
+		TxsToRootHash:   acc.TxsTo.RootHash(),
+		DataRootHash:    acc.Data.RootHash(),
 	}, nil
 }
 
@@ -239,21 +226,6 @@ func (acc *Account) VotersSlice() [][]byte {
 	return KeyTrieToSlice(acc.Voters)
 }
 
-//RecordsSlice returns slice converted from Records trie
-func (acc *Account) RecordsSlice() [][]byte {
-	return KeyTrieToSlice(acc.Records)
-}
-
-//CertsReceivedSlice returns slice converted from CertsReceived trie
-func (acc *Account) CertsReceivedSlice() [][]byte {
-	return KeyTrieToSlice(acc.CertsReceived)
-}
-
-//CertsIssuedSlice returns slice converted from CertsIssued trie
-func (acc *Account) CertsIssuedSlice() [][]byte {
-	return KeyTrieToSlice(acc.CertsIssued)
-}
-
 //TxsFromSlice returns slice converted from TxsFrom trie
 func (acc *Account) TxsFromSlice() [][]byte {
 	return KeyTrieToSlice(acc.TxsFrom)
@@ -262,6 +234,16 @@ func (acc *Account) TxsFromSlice() [][]byte {
 //TxsToSlice returns slice converted from TxsTo trie
 func (acc *Account) TxsToSlice() [][]byte {
 	return KeyTrieToSlice(acc.TxsTo)
+}
+
+//GetData returns value in account's data trie
+func (acc *Account) GetData(prefix string, key []byte) ([]byte, error) {
+	return acc.Data.Get(append([]byte(prefix), key...))
+}
+
+//PutData put value to account's data trie
+func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
+	return acc.Data.Put(append([]byte(prefix), key...), value)
 }
 
 //AccountState is a struct for account state
@@ -285,12 +267,12 @@ func NewAccountState(rootHash []byte, stor storage.Storage) (*AccountState, erro
 
 //GetAccount returns account
 func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
+	acc, err := newAccount(as.storage)
+	if err != nil {
+		return nil, err
+	}
 	accountBytes, err := as.Get(addr.Bytes())
 	if err == ErrNotFound {
-		acc, err := newAccount(as.storage)
-		if err != nil {
-			return nil, err
-		}
 		acc.Address = addr
 		return acc, nil
 	}
@@ -298,7 +280,15 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 		return nil, err
 	}
 
-	return LoadAccount(accountBytes, as.storage)
+	pbAccount := new(corepb.Account)
+	if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
+		return nil, err
+	}
+	if err := acc.fromProto(pbAccount); err != nil {
+		return nil, err
+	}
+
+	return acc, nil
 }
 
 //PutAccount put account to trie batch
@@ -317,107 +307,6 @@ func (as *AccountState) IncrementNonce(addr common.Address) error {
 		return err
 	}
 	acc.Nonce++
-	return as.PutAccount(acc)
-}
-
-// AddBalance add balance
-func (as *AccountState) AddBalance(addr common.Address, amount *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	balance, err := acc.Balance.Add(amount)
-	if err != nil {
-		return err
-	}
-	acc.Balance = balance
-
-	return as.PutAccount(acc)
-}
-
-// SubBalance subtract balance
-func (as *AccountState) SubBalance(addr common.Address, amount *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	if amount.Cmp(acc.Balance) > 0 {
-		return ErrBalanceNotEnough
-	}
-	balance, err := acc.Balance.Sub(amount)
-	if err != nil {
-		return err
-	}
-	acc.Balance = balance
-	return as.PutAccount(acc)
-}
-
-// AddVesting increases vesting
-func (as *AccountState) AddVesting(addr common.Address, amount *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	vesting, err := acc.Vesting.Add(amount)
-	if err != nil {
-		return err
-	}
-	acc.Vesting = vesting
-	return as.PutAccount(acc)
-}
-
-// SubVesting decreases vesting
-func (as *AccountState) SubVesting(addr common.Address, amount *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	if amount.Cmp(acc.Vesting) > 0 {
-		return ErrVestingNotEnough
-	}
-	vesting, err := acc.Vesting.Sub(amount)
-	if err != nil {
-		return err
-	}
-	acc.Vesting = vesting
-	return as.PutAccount(acc)
-}
-
-//SetVoted sets voted trie
-func (as *AccountState) SetVoted(addr common.Address, candidates []common.Address) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-
-	acc.Voted.SetRootHash(nil)
-	for _, c := range candidates {
-		err := acc.Voted.Put(c.Bytes(), c.Bytes())
-		if err != nil {
-			return err
-		}
-	}
-	return as.PutAccount(acc)
-}
-
-//SubVoted subtracts candidate from voted trie
-func (as *AccountState) SubVoted(addr common.Address, candidate common.Address) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	_, err = acc.Voted.Get(candidate.Bytes())
-	if err != nil || err == ErrNotFound {
-		return err
-	}
-	if err != nil {
-		return ErrNotVotedYet
-	}
-
-	err = acc.Voted.Delete(candidate.Bytes())
-	if err != nil {
-		return err
-	}
 	return as.PutAccount(acc)
 }
 
@@ -461,176 +350,56 @@ func (as *AccountState) SetLastUnstakingTs(addr common.Address, ts int64) error 
 	return as.PutAccount(acc)
 }
 
-//SetCollateral sets collateral
-func (as *AccountState) SetCollateral(addr common.Address, collateral *util.Uint128) error {
+// addTxsFrom add transaction in TxsFrom
+func (as *AccountState) addTxsFrom(addr common.Address, txHash []byte) error {
 	acc, err := as.GetAccount(addr)
 	if err != nil {
 		return err
 	}
-	acc.Collateral = collateral
+	err = acc.TxsFrom.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = acc.TxsFrom.Put(txHash, txHash)
+	if err != nil {
+		return err
+	}
+	err = acc.TxsFrom.Commit()
+	if err != nil {
+		return err
+	}
 	return as.PutAccount(acc)
 }
 
-//AddVotePower adds vote power
-func (as AccountState) AddVotePower(addr common.Address, amount *util.Uint128) error {
+// addTxsTo add transaction in TxsFrom
+func (as *AccountState) addTxsTo(addr common.Address, txHash []byte) error {
 	acc, err := as.GetAccount(addr)
 	if err != nil {
 		return err
 	}
-	acc.VotePower, err = acc.VotePower.Add(amount)
+	err = acc.TxsTo.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = acc.TxsTo.Put(txHash, txHash)
+	if err != nil {
+		return err
+	}
+	err = acc.TxsTo.Commit()
 	if err != nil {
 		return err
 	}
 	return as.PutAccount(acc)
 }
 
-//SubVotePower subtracts vote power
-func (as AccountState) SubVotePower(addr common.Address, amount *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
+//PutTx add transaction to account state
+func (as *AccountState) PutTx(tx *Transaction) error {
+	if err := as.addTxsFrom(tx.From(), tx.Hash()); err != nil {
 		return err
 	}
-	acc.VotePower, err = acc.VotePower.Sub(amount)
-	if err != nil {
+	if err := as.addTxsTo(tx.To(), tx.Hash()); err != nil {
 		return err
 	}
-	return as.PutAccount(acc)
-}
-
-//AddVoters adds voter's addr to candidate's voters trie
-func (as AccountState) AddVoters(candidate common.Address, voter common.Address) error {
-	acc, err := as.GetAccount(candidate)
-	if err != nil {
-		return err
-	}
-	_, err = acc.Voters.Get(voter.Bytes())
-	if err != nil && err != ErrNotFound {
-		return err
-	}
-	if err == nil {
-		return ErrAlreadyInVoters
-	}
-
-	err = acc.Voters.Put(voter.Bytes(), voter.Bytes())
-	if err != nil {
-		return err
-	}
-
-	as.PutAccount(acc)
-	acc, _ = as.GetAccount(candidate)
-
-	return nil
-}
-
-//SubVoters subtracts voter's addr to candidate's voters trie
-func (as AccountState) SubVoters(candidate common.Address, voter common.Address) error {
-	acc, err := as.GetAccount(candidate)
-	if err != nil {
-		return err
-	}
-	_, err = acc.Voters.Get(voter.Bytes())
-	if err == ErrNotFound {
-		return ErrNotInVoters
-	}
-	if err != nil {
-		return err
-	}
-
-	err = acc.Voters.Delete(voter.Bytes())
-	if err != nil {
-		return err
-	}
-	return as.PutAccount(acc)
-}
-
-// AddRecord adds a record hash in account's records list
-func (as *AccountState) AddRecord(addr common.Address, recordHash []byte) error {
-	var err error
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-
-	_, err = acc.Records.Get(recordHash)
-	if err != nil && err != ErrNotFound {
-		return err
-	}
-	if err == nil {
-		return ErrRecordAlreadyAdded
-	}
-
-	acc.Records.Put(recordHash, recordHash)
-	return as.PutAccount(acc)
-}
-
-// AddCertReceived adds a cert hash in certReceived
-func (as *AccountState) AddCertReceived(addr common.Address, certHash []byte) error {
-
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	_, err = acc.CertsReceived.Get(certHash)
-	if err != nil && err != ErrNotFound {
-		return err
-	}
-	if err == nil {
-		return ErrCertReceivedAlreadyAdded
-	}
-
-	acc.CertsReceived.Put(certHash, certHash)
-	return as.PutAccount(acc)
-}
-
-// AddCertIssued adds a cert hash info in certIssued
-func (as *AccountState) AddCertIssued(addr common.Address, certHash []byte) error {
-
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	_, err = acc.CertsIssued.Get(certHash)
-	if err != nil && err != ErrNotFound {
-		return err
-	}
-	if err == nil {
-		return ErrCertIssuedAlreadyAdded
-	}
-
-	acc.CertsIssued.Put(certHash, certHash)
-	return as.PutAccount(acc)
-}
-
-// AddTxsFrom add transaction in TxsFrom
-func (as *AccountState) AddTxsFrom(addr common.Address, txHash []byte) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	acc.TxsFrom.Put(txHash, txHash)
-	return as.PutAccount(acc)
-}
-
-// AddTxsTo add transaction in TxsFrom
-func (as *AccountState) AddTxsTo(addr common.Address, txHash []byte) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	acc.TxsTo.Put(txHash, txHash)
-	return as.PutAccount(acc)
-}
-
-//AddTxs add transaction to account state
-func (as *AccountState) AddTxs(tx *Transaction) error {
-	if err := as.AddTxsFrom(tx.From(), tx.Hash()); err != nil {
-		return err
-	}
-
-	if err := as.AddTxsTo(tx.To(), tx.Hash()); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -660,7 +429,7 @@ func (as *AccountState) Accounts() ([]*Account, error) {
 		}
 		accountBytes := iter.Value()
 
-		pbAccount := new(corepb.AccountState)
+		pbAccount := new(corepb.Account)
 		if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
 			return nil, err
 		}
@@ -681,7 +450,7 @@ func (as *AccountState) Accounts() ([]*Account, error) {
 }
 
 //KeyTrieToSlice generate slice from trie (slice of key)
-func KeyTrieToSlice(trie *trie.Trie) [][]byte {
+func KeyTrieToSlice(trie *trie.Batch) [][]byte {
 	var slice [][]byte
 	iter, err := trie.Iterator(nil)
 	if err != nil {

@@ -124,7 +124,6 @@ func TestVote(t *testing.T) {
 		assert.Equal(t, util.NewUint128FromUint(333), acc.VotePower)
 		_, err = acc.Voters.Get(voter.Addr.Bytes())
 		assert.NoError(t, err)
-
 	}
 
 	// Reset vote to nil

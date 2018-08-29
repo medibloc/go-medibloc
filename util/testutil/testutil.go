@@ -204,7 +204,7 @@ func KeyOf(t *testing.T, trie *trie.Trie, value []byte) []byte {
 }
 
 //TrieLen counts the number of trie members
-func TrieLen(t *testing.T, trie *trie.Trie) int {
+func TrieLen(t *testing.T, trie *trie.Batch) int {
 	iter, err := trie.Iterator(nil)
 	require.NoError(t, err)
 

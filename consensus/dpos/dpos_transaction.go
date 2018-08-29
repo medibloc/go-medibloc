@@ -18,6 +18,7 @@ package dpos
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
@@ -39,9 +40,8 @@ func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 
 //Execute NewBecomeCandidateTx
 func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
-	as := b.State().AccState()
+	// Add to candidate list
 	ds := b.State().DposState()
-
 	isCandidate, err := ds.IsCandidate(tx.candidateAddr)
 	if err != nil {
 		return err
@@ -49,15 +49,25 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	if isCandidate {
 		return ErrAlreadyCandidate
 	}
-
-	err = as.SubBalance(tx.candidateAddr, tx.collateral)
+	err = ds.PutCandidate(tx.candidateAddr)
 	if err != nil {
 		return err
 	}
+	// Set collateral to account's balance, and subtract from balance
+	acc, err := b.State().GetAccount(tx.candidateAddr)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Sub(tx.collateral)
+	if err == util.ErrUint128Underflow {
+		return core.ErrBalanceNotEnough
+	}
+	if err != nil {
+		return err
+	}
+	acc.Collateral = tx.collateral
 
-	err = as.SetCollateral(tx.candidateAddr, tx.collateral)
-
-	return ds.PutCandidate(tx.candidateAddr)
+	return b.State().PutAccount(acc)
 }
 
 //Bandwidth returns bandwidth.
@@ -80,8 +90,8 @@ func NewQuitCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 //Execute QuitCandidateTx
 func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 	ds := b.State().DposState()
-	as := b.State().AccState()
 
+	// Subtract from candidate list
 	isCandidate, err := ds.IsCandidate(tx.candidateAddr)
 	if err != nil {
 		return err
@@ -90,25 +100,25 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		return ErrNotCandidate
 	}
 
+	ds.DelCandidate(tx.candidateAddr)
+
 	// Refund collateral
-	acc, err := as.GetAccount(tx.candidateAddr)
+	candidate, err := b.State().GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
 	}
 
-	if err := as.AddBalance(tx.candidateAddr, acc.Collateral); err != nil {
+	candidate.Balance, err = candidate.Balance.Add(candidate.Collateral)
+	if err != nil {
+		return err
+	}
+	candidate.Collateral = util.NewUint128FromUint(0)
+	candidate.VotePower, err = candidate.VotePower.Sub(candidate.VotePower)
+	if err != nil {
 		return err
 	}
 
-	if err := as.SetCollateral(tx.candidateAddr, util.NewUint128FromUint(0)); err != nil {
-		return err
-	}
-
-	if err := as.SubVotePower(tx.candidateAddr, acc.VotePower); err != nil {
-		return err
-	}
-
-	iter, err := acc.Voters.Iterator(nil)
+	iter, err := candidate.Voters.Iterator(nil)
 	if err != nil {
 		return err
 	}
@@ -117,23 +127,36 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		return err
 	}
 	for exist {
-		voterAddr := common.BytesToAddress(iter.Key())
-		err = as.SubVoted(voterAddr, tx.candidateAddr)
+		voter, err := b.State().GetAccount(common.BytesToAddress(iter.Key()))
 		if err != nil {
 			return err
 		}
-		err = as.SubVoters(tx.candidateAddr, voterAddr)
+		err = voter.Voted.BeginBatch()
 		if err != nil {
 			return err
 		}
-
+		err = voter.Voted.Delete(tx.candidateAddr.Bytes())
+		if err != nil {
+			return err
+		}
+		err = voter.Voted.Commit()
+		if err != nil {
+			return err
+		}
+		err = b.State().PutAccount(voter)
+		if err != nil {
+			return err
+		}
 		exist, err = iter.Next()
 		if err != nil {
 			return err
 		}
 	}
-
-	return ds.DelCandidate(tx.candidateAddr)
+	candidate.Voters, err = trie.NewBatch(nil, candidate.Storage)
+	if err != nil {
+		return err
+	}
+	return b.State().PutAccount(candidate)
 }
 
 // VotePayload is payload type for VoteTx
@@ -195,7 +218,6 @@ func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 //Execute VoteTx
 func (tx *VoteTx) Execute(b *core.Block) error {
 	ds := b.State().DposState()
-	as := b.State().AccState()
 
 	maxVote := b.Consensus().DynastySize() // TODO: max number of vote @drsleepytiger
 	if len(tx.candidates) > maxVote {
@@ -206,50 +228,90 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		return ErrDuplicateVote
 	}
 
-	acc, err := as.GetAccount(tx.voter)
+	acc, err := b.State().GetAccount(tx.voter)
 	if err != nil {
 		return err
 	}
 
 	myVesting := acc.Vesting
-	oldVoted := core.KeyTrieToSlice(acc.Voted)
+	oldVoted := acc.VotedSlice()
 
 	for _, addrBytes := range oldVoted {
-		candidate := common.BytesToAddress(addrBytes)
-		as.SubVoters(candidate, tx.voter)
-		as.SubVotePower(candidate, myVesting)
+		candidate, err := b.State().GetAccount(common.BytesToAddress(addrBytes))
+		if err != nil {
+			return err
+		}
+		candidate.VotePower, err = candidate.VotePower.Sub(myVesting)
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.BeginBatch()
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.Delete(tx.voter.Bytes())
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.Commit()
+		if err != nil {
+			return err
+		}
+		err = b.State().PutAccount(candidate)
+		if err != nil {
+			return err
+		}
 	}
-	acc.Voted.SetRootHash(nil)
 
-	for _, addr := range tx.candidates {
-		isCandidate, err := ds.IsCandidate(addr)
+	acc.Voted, err = trie.NewBatch(nil, acc.Storage)
+	if err != nil {
+		return err
+	}
+	err = acc.Voted.BeginBatch()
+	if err != nil {
+		return err
+	}
+	for _, c := range tx.candidates {
+		isCandidate, err := ds.IsCandidate(c)
 		if err != nil {
 			return err
 		}
 		if !isCandidate {
 			return ErrNotCandidate
 		}
-
-		voter, err := as.GetAccount(tx.voter)
+		// Add candidate to voters voted
+		err = acc.Voted.Put(c.Bytes(), c.Bytes())
 		if err != nil {
 			return err
 		}
 
-		// Add voter's addr to candidate's voters
-		if err := as.AddVoters(addr, tx.voter); err != nil {
+		candidate, err := b.State().GetAccount(c)
+		if err != nil {
 			return err
 		}
-		// Add voter's vesting to candidate's votePower
-		if err := as.AddVotePower(addr, voter.Vesting); err != nil {
+		candidate.VotePower, err = candidate.VotePower.Add(myVesting)
+		if err != nil {
 			return err
 		}
-	}
-	// Add cadidate's addr to voter's voted
-	if err := as.SetVoted(tx.voter, tx.candidates); err != nil {
-		return err
+		err = candidate.Voters.BeginBatch()
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.Put(tx.voter.Bytes(), tx.voter.Bytes())
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.Commit()
+		if err != nil {
+			return err
+		}
+		err = b.State().PutAccount(candidate)
+		if err != nil {
+			return err
+		}
 	}
 
-	return nil
+	return b.State().PutAccount(acc)
 }
 
 func checkDuplicate(candidates []common.Address) bool {

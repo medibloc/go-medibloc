@@ -18,11 +18,9 @@ package rpc
 import (
 	"encoding/hex"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
@@ -155,7 +153,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, candidate := range candidates {
-		acc, err := block.State().AccState().GetAccount(candidate)
+		acc, err := block.State().GetAccount(candidate)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
 		}
@@ -220,9 +218,8 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}
 
-	tx := new(core.Transaction)
 	txHash := byteutils.Hex2Bytes(req.Hash)
-	pb, err := tailBlock.State().DataState().GetTx(txHash)
+	tx, err := tailBlock.State().GetTx(txHash)
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
 	} else if err == trie.ErrNotFound { // tx is not in txsState
@@ -234,15 +231,6 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		return coreTx2rpcTx(tx, false)
 	}
 	// If tx is already included in a block
-	pbTx := new(corepb.Transaction)
-	err = proto.Unmarshal(pb, pbTx)
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-	}
-	if err := tx.FromProto(pbTx); err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-	}
-
 	return coreTx2rpcTx(tx, true)
 }
 
@@ -280,17 +268,7 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 	if acc != nil {
 		txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
 		for _, hash := range txList {
-			tx := new(core.Transaction)
-			pb, err := tailBlock.State().DataState().GetTx(hash)
-			if err != nil {
-				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
-			}
-			pbTx := new(corepb.Transaction)
-			err = proto.Unmarshal(pb, pbTx)
-			if err != nil {
-				return nil, status.Error(codes.Internal, ErrMsgUnmarshalTransactionFailed)
-			}
-			err = tx.FromProto(pbTx)
+			tx, err := tailBlock.State().GetTx(hash)
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 			}

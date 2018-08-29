@@ -149,10 +149,10 @@ func (bb *BlockBuilder) AccountRoot(root []byte) *BlockBuilder {
 	return n
 }
 
-// DataRoot sets data state root.
-func (bb *BlockBuilder) DataRoot(root []byte) *BlockBuilder {
+// TxRoot sets data state root.
+func (bb *BlockBuilder) TxRoot(root []byte) *BlockBuilder {
 	n := bb.copy()
-	n.B.SetDataStateRoot(root)
+	n.B.SetTxStateRoot(root)
 	return n
 }
 

@@ -145,8 +145,11 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 			return nil, err
 		}
-
-		err = genesisBlock.state.AddBalance(addr, balance)
+		acc, err := genesisBlock.state.GetAccount(addr)
+		if err != nil {
+			return nil, err
+		}
+		acc.Balance, err = acc.Balance.Add(balance)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
@@ -154,7 +157,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			if err := genesisBlock.RollBack(); err != nil {
 				return nil, err
 			}
-
+			return nil, err
+		}
+		if err := genesisBlock.state.PutAccount(acc); err != nil {
 			return nil, err
 		}
 
@@ -193,18 +198,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		return nil, err
 	}
 
-	dataRoot, err := genesisBlock.state.dataState.RootBytes()
-	if err != nil {
-		return nil, err
-	}
-
 	dposRoot, err := genesisBlock.state.DposState().RootBytes()
 	if err != nil {
 		return nil, err
 	}
 
 	genesisBlock.accStateRoot = genesisBlock.state.AccountsRoot()
-	genesisBlock.dataStateRoot = dataRoot
+	genesisBlock.txStateRoot = genesisBlock.state.TxsRoot()
 	genesisBlock.dposRoot = dposRoot
 
 	genesisBlock.sealed = true

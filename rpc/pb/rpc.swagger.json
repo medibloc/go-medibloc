@@ -69,7 +69,6 @@
         "parameters": [
           {
             "name": "address",
-            "description": "Hex string of the account addresss.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -342,33 +341,18 @@
           },
           "description": "Voted address."
         },
-        "records": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "List of record hash."
+        "bandwidth": {
+          "type": "string"
         },
-        "certs_received": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Account addresses that have certificated the account."
-        },
-        "certs_issued": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Account addresses certificated by the account."
+        "unstaking": {
+          "type": "string"
         },
         "txs_from": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "title": "Transactions sent from account"
+          "title": "// List of record hash.\n\trepeated string records = 6;\n\t// Account addresses that have certificated the account.\n\trepeated string certs_received = 7;\n\t// Account addresses certificated by the account.\n\trepeated string certs_issued = 8;\nTransactions sent from account"
         },
         "txs_to": {
           "type": "array",
@@ -430,9 +414,9 @@
           "type": "string",
           "title": "Root hash of accounts trie"
         },
-        "data_root": {
+        "txs_root": {
           "type": "string",
-          "title": "Root hash of data trie"
+          "title": "Root hash of txs trie"
         },
         "dpos_root": {
           "type": "string",

@@ -411,7 +411,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 				"err": err,
 				"tx":  transaction,
 			}).Error("Failed to execute transaction.")
-
+			// TODO : handle failed transaction (event?, or accept & write on receipt)
 			err = block.RollBack()
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{

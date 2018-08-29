@@ -16,7 +16,6 @@
 package core
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -29,7 +28,7 @@ type states struct {
 	supply *util.Uint128
 
 	accState  *AccountState
-	dataState *DataState
+	txState   *TransactionState
 	dposState DposState
 
 	storage storage.Storage
@@ -65,7 +64,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	dataState, err := NewDataState(nil, stor)
+	txState, err := NewTransactionState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		reward:    util.NewUint128(),
 		supply:    util.NewUint128(),
 		accState:  accState,
-		dataState: dataState,
+		txState:   txState,
 		dposState: dposState,
 		storage:   stor,
 	}, nil
@@ -91,11 +90,7 @@ func (s *states) Clone() (*states, error) {
 		return nil, err
 	}
 
-	dsBytes, err := s.dataState.RootBytes()
-	if err != nil {
-		return nil, err
-	}
-	dataState, err := NewDataState(dsBytes, s.storage)
+	txState, err := NewTransactionState(s.txState.RootHash(), s.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +104,7 @@ func (s *states) Clone() (*states, error) {
 		reward:    s.reward.DeepCopy(),
 		supply:    s.supply.DeepCopy(),
 		accState:  accState,
-		dataState: dataState,
+		txState:   txState,
 		dposState: dposState,
 		storage:   s.storage,
 	}, nil
@@ -119,7 +114,7 @@ func (s *states) BeginBatch() error {
 	if err := s.accState.BeginBatch(); err != nil {
 		return err
 	}
-	if err := s.dataState.BeginBatch(); err != nil {
+	if err := s.txState.BeginBatch(); err != nil {
 		return err
 	}
 	if err := s.DposState().BeginBatch(); err != nil {
@@ -132,7 +127,7 @@ func (s *states) Commit() error {
 	if err := s.accState.Commit(); err != nil {
 		return err
 	}
-	if err := s.dataState.Commit(); err != nil {
+	if err := s.txState.Commit(); err != nil {
 		return err
 	}
 	if err := s.dposState.Commit(); err != nil {
@@ -145,8 +140,8 @@ func (s *states) AccountsRoot() []byte {
 	return s.accState.RootHash()
 }
 
-func (s *states) DataRoot() ([]byte, error) {
-	return s.dataState.RootBytes()
+func (s *states) TxsRoot() []byte {
+	return s.txState.RootHash()
 }
 
 func (s *states) DposRoot() ([]byte, error) {
@@ -162,37 +157,68 @@ func (s *states) LoadAccountState(rootHash []byte) error {
 	return nil
 }
 
-func (s *states) LoadDataState(rootBytes []byte) error {
-	dataState, err := NewDataState(rootBytes, s.storage)
+func (s *states) LoadTransactionState(rootBytes []byte) error {
+	txState, err := NewTransactionState(rootBytes, s.storage)
 	if err != nil {
 		return err
 	}
-	s.dataState = dataState
+	s.txState = txState
 	return nil
-}
-
-func (s *states) DataState() *DataState {
-	return s.dataState
 }
 
 func (s *states) GetAccount(addr common.Address) (*Account, error) {
 	return s.accState.GetAccount(addr)
 }
 
+func (s *states) PutAccount(acc *Account) error {
+	return s.accState.PutAccount(acc)
+}
+
 func (s *states) GetAccounts() ([]*Account, error) {
 	return s.accState.Accounts()
 }
 
-func (s *states) AddBalance(address common.Address, amount *util.Uint128) error {
-	return s.accState.AddBalance(address, amount)
-}
-
-func (s *states) SubBalance(address common.Address, amount *util.Uint128) error {
-	return s.accState.SubBalance(address, amount)
+func (s *states) GetTx(txHash []byte) (*Transaction, error) {
+	return s.txState.Get(txHash)
 }
 
 func (s *states) incrementNonce(address common.Address) error {
 	return s.accState.IncrementNonce(address)
+}
+
+func (s *states) acceptTransaction(tx *Transaction, blockTime int64) error {
+	if err := s.txState.Put(tx); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"tx":  tx,
+		}).Error("Failed to put a transaction to transaction state.")
+		return err
+	}
+
+	if err := s.accState.PutTx(tx); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+			"tx":  tx,
+		}).Error("Failed to put a transaction to account")
+		return err
+	}
+
+	return s.incrementNonce(tx.from)
+}
+
+func (s *states) checkNonce(tx *Transaction) error {
+	fromAcc, err := s.GetAccount(tx.from)
+	if err != nil {
+		return err
+	}
+
+	expectedNonce := fromAcc.Nonce + 1
+	if tx.nonce > expectedNonce {
+		return ErrLargeTransactionNonce
+	} else if tx.nonce < expectedNonce {
+		return ErrSmallTransactionNonce
+	}
+	return nil
 }
 
 // BlockState possesses every states a block should have
@@ -251,59 +277,5 @@ func (bs *BlockState) Commit() error {
 		return err
 	}
 	bs.snapshot = nil
-	return nil
-}
-
-// AcceptTransaction and update internal txsStates
-func (bs *BlockState) AcceptTransaction(tx *Transaction, blockTime int64) error {
-	pbTx, err := tx.ToProto()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"tx":  tx,
-		}).Error("Failed to convert a transaction to proto.")
-		return err
-	}
-
-	txBytes, err := proto.Marshal(pbTx)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"pb":  pbTx,
-		}).Error("Failed to marshal proto.")
-		return err
-	}
-
-	if err := bs.dataState.PutTx(tx.hash, txBytes); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"tx":  tx,
-		}).Error("Failed to put a transaction to transaction state.")
-		return err
-	}
-
-	if err := bs.accState.AddTxs(tx); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"tx":  tx,
-		}).Error("Failed to put a transaction to account")
-		return err
-	}
-
-	return bs.incrementNonce(tx.from)
-}
-
-func (bs *BlockState) checkNonce(tx *Transaction) error {
-	fromAcc, err := bs.AccState().GetAccount(tx.from)
-	if err != nil {
-		return err
-	}
-
-	expectedNonce := fromAcc.Nonce + 1
-	if tx.nonce > expectedNonce {
-		return ErrLargeTransactionNonce
-	} else if tx.nonce < expectedNonce {
-		return ErrSmallTransactionNonce
-	}
 	return nil
 }

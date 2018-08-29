@@ -529,7 +529,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.DataRoot(hash([]byte("invalid data root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 

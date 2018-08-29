@@ -134,6 +134,7 @@ var (
 	ErrTypecastFailed                   = errors.New("failed to typecast")
 	ErrAlreadyInVoters                  = errors.New("voter is already in voters")
 	ErrNotInVoters                      = errors.New("voter is not in voters")
+	ErrCannotUseZeroValue               = errors.New("value should be larger than zero")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

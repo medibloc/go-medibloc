@@ -38,9 +38,9 @@ type BlockHeader struct {
 	hash       []byte
 	parentHash []byte
 
-	accStateRoot  []byte
-	dataStateRoot []byte
-	dposRoot      []byte
+	accStateRoot []byte
+	txStateRoot  []byte
+	dposRoot     []byte
 
 	coinbase  common.Address
 	reward    *util.Uint128
@@ -65,18 +65,18 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	}
 
 	return &corepb.BlockHeader{
-		Hash:          b.hash,
-		ParentHash:    b.parentHash,
-		Coinbase:      b.coinbase.Bytes(),
-		Reward:        reward,
-		Supply:        supply,
-		Timestamp:     b.timestamp,
-		ChainId:       b.chainID,
-		Alg:           uint32(b.alg),
-		Sign:          b.sign,
-		AccStateRoot:  b.accStateRoot,
-		DataStateRoot: b.dataStateRoot,
-		DposRoot:      b.dposRoot,
+		Hash:         b.hash,
+		ParentHash:   b.parentHash,
+		Coinbase:     b.coinbase.Bytes(),
+		Reward:       reward,
+		Supply:       supply,
+		Timestamp:    b.timestamp,
+		ChainId:      b.chainID,
+		Alg:          uint32(b.alg),
+		Sign:         b.sign,
+		AccStateRoot: b.accStateRoot,
+		TxStateRoot:  b.txStateRoot,
+		DposRoot:     b.dposRoot,
 	}, nil
 }
 
@@ -86,7 +86,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.hash = msg.Hash
 		b.parentHash = msg.ParentHash
 		b.accStateRoot = msg.AccStateRoot
-		b.dataStateRoot = msg.DataStateRoot
+		b.txStateRoot = msg.TxStateRoot
 		b.dposRoot = msg.DposRoot
 		b.coinbase = common.BytesToAddress(msg.Coinbase)
 		reward, err := util.NewUint128FromFixedSizeByteSlice(msg.Reward)
@@ -138,14 +138,14 @@ func (b *BlockHeader) SetAccStateRoot(accStateRoot []byte) {
 	b.accStateRoot = accStateRoot
 }
 
-//DataStateRoot returns block header's txsRoot
-func (b *BlockHeader) DataStateRoot() []byte {
-	return b.dataStateRoot
+//TxStateRoot returns block header's txsRoot
+func (b *BlockHeader) TxStateRoot() []byte {
+	return b.txStateRoot
 }
 
-//SetDataStateRoot set block header's txsRoot
-func (b *BlockHeader) SetDataStateRoot(dsRoot []byte) {
-	b.dataStateRoot = dsRoot
+//SetTxStateRoot set block header's txsRoot
+func (b *BlockHeader) SetTxStateRoot(txStateRoot []byte) {
+	b.txStateRoot = txStateRoot
 }
 
 //DposRoot returns block header's dposRoot
@@ -435,7 +435,7 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		}).Error("Failed to load accounts root.")
 		return nil, err
 	}
-	if err = block.state.LoadDataState(block.dataStateRoot); err != nil {
+	if err = block.state.LoadTransactionState(block.txStateRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -575,10 +575,6 @@ func (b *Block) Seal() error {
 		return ErrBlockAlreadySealed
 	}
 
-	dataRoot, err := b.state.DataRoot()
-	if err != nil {
-		return err
-	}
 	dposRoot, err := b.state.dposState.RootBytes()
 	if err != nil {
 		return err
@@ -586,7 +582,7 @@ func (b *Block) Seal() error {
 	b.reward = b.state.Reward()
 	b.supply = b.state.Supply()
 	b.accStateRoot = b.state.AccountsRoot()
-	b.dataStateRoot = dataRoot
+	b.txStateRoot = b.state.TxsRoot()
 	b.dposRoot = dposRoot
 
 	hash := HashBlockData(b.BlockData)
@@ -602,7 +598,7 @@ func HashBlockData(bd *BlockData) []byte {
 	hasher.Write(bd.ParentHash())
 	hasher.Write(bd.Coinbase().Bytes())
 	hasher.Write(bd.AccStateRoot())
-	hasher.Write(bd.DataStateRoot())
+	hasher.Write(bd.TxStateRoot())
 	hasher.Write(bd.DposRoot())
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
@@ -686,7 +682,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 
 func (b *Block) updateUnstaking(tx *Transaction) error {
 	addr := tx.From()
-	acc, err := b.State().AccState().GetAccount(addr)
+	acc, err := b.State().GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -726,7 +722,7 @@ func (b *Block) updateUnstaking(tx *Transaction) error {
 }
 
 func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error {
-	acc, err := b.State().AccState().GetAccount(addr)
+	acc, err := b.State().GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -771,7 +767,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 func (b *Block) regenerateBandwidth(addr common.Address) error {
 	curTs := b.Timestamp()
 
-	acc, err := b.State().AccState().GetAccount(addr)
+	acc, err := b.State().GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":  err,
@@ -900,7 +896,7 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return err
 	}
 
-	if err := b.state.AcceptTransaction(tx, b.Timestamp()); err != nil {
+	if err := b.state.acceptTransaction(tx, b.Timestamp()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
@@ -918,7 +914,16 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 		return err
 	}
 
-	if err := b.state.accState.AddBalance(coinbase, reward); err != nil {
+	acc, err := b.state.GetAccount(coinbase)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Add(reward)
+	if err != nil {
+		return err
+	}
+	err = b.state.PutAccount(acc)
+	if err != nil {
 		return err
 	}
 
@@ -935,7 +940,7 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 
 // AcceptTransaction adds tx in block state
 func (b *Block) AcceptTransaction(tx *Transaction) error {
-	if err := b.state.AcceptTransaction(tx, b.Timestamp()); err != nil {
+	if err := b.state.acceptTransaction(tx, b.Timestamp()); err != nil {
 		return err
 	}
 	b.transactions = append(b.transactions, tx)
@@ -959,13 +964,6 @@ func (b *Block) VerifyState() error {
 		return ErrInvalidBlockSupply
 	}
 
-	dataRoot, err := b.state.DataRoot()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get data state's root bytes.")
-		return err
-	}
 	dposRoot, err := b.state.DposState().RootBytes()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -980,10 +978,10 @@ func (b *Block) VerifyState() error {
 		}).Warn("Failed to verify accounts root.")
 		return ErrInvalidBlockAccountsRoot
 	}
-	if !byteutils.Equal(dataRoot, b.DataStateRoot()) {
+	if !byteutils.Equal(b.state.TxsRoot(), b.TxStateRoot()) {
 		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(dataRoot),
-			"header": byteutils.Bytes2Hex(b.DataStateRoot()),
+			"state":  byteutils.Bytes2Hex(b.state.TxsRoot()),
+			"header": byteutils.Bytes2Hex(b.TxStateRoot()),
 		}).Warn("Failed to verify transactions root.")
 		return ErrInvalidBlockTxsRoot
 	}

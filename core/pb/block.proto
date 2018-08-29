@@ -12,7 +12,7 @@ message BlockHeader {
   uint32 alg = 11;
   bytes sign = 12;
   bytes acc_state_root = 21;
-  bytes data_state_root = 22;
+  bytes tx_state_root = 22;
   bytes dpos_root = 23;
 }
 

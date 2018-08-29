@@ -23,16 +23,15 @@ import (
 
 func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAccountResponse {
 	return &rpcpb.GetAccountResponse{
-		Address:       address,
-		Balance:       account.Balance.String(),
-		Nonce:         account.Nonce,
-		Vesting:       account.Vesting.String(),
-		Voted:         byteutils.BytesSlice2HexSlice(account.VotedSlice()),
-		Records:       byteutils.BytesSlice2HexSlice(account.RecordsSlice()),
-		CertsIssued:   byteutils.BytesSlice2HexSlice(account.CertsIssuedSlice()),
-		CertsReceived: byteutils.BytesSlice2HexSlice(account.CertsReceivedSlice()),
-		TxsFrom:       byteutils.BytesSlice2HexSlice(account.TxsFromSlice()),
-		TxsTo:         byteutils.BytesSlice2HexSlice(account.TxsToSlice()),
+		Address:   address,
+		Balance:   account.Balance.String(),
+		Nonce:     account.Nonce,
+		Vesting:   account.Vesting.String(),
+		Voted:     byteutils.BytesSlice2HexSlice(account.VotedSlice()),
+		Bandwidth: account.Bandwidth.String(),
+		Unstaking: account.Unstaking.String(),
+		TxsFrom:   byteutils.BytesSlice2HexSlice(account.TxsFromSlice()),
+		TxsTo:     byteutils.BytesSlice2HexSlice(account.TxsToSlice()),
 	}
 }
 
@@ -54,7 +53,7 @@ func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
 		Alg:          uint32(block.Alg()),
 		Sign:         byteutils.Bytes2Hex(block.Sign()),
 		AccsRoot:     byteutils.Bytes2Hex(block.AccStateRoot()),
-		DataRoot:     byteutils.Bytes2Hex(block.DataStateRoot()),
+		TxsRoot:      byteutils.Bytes2Hex(block.TxStateRoot()),
 		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
 		Transactions: tx,
 	}, nil

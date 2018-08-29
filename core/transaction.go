@@ -417,12 +417,37 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 
 //Execute TransferTx
 func (tx *TransferTx) Execute(b *Block) error {
-	as := b.state.AccState()
-
-	if err := as.SubBalance(tx.from, tx.value); err != nil {
+	// subtract balance from sender's account
+	sender, err := b.state.GetAccount(tx.from)
+	if err != nil {
 		return err
 	}
-	return as.AddBalance(tx.to, tx.value)
+	sender.Balance, err = sender.Balance.Sub(tx.value)
+	if err == util.ErrUint128Underflow {
+		return ErrBalanceNotEnough
+	}
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(sender)
+	if err != nil {
+		return err
+	}
+
+	// add balance to receiver's account
+	receiver, err := b.state.GetAccount(tx.to)
+	if err != nil {
+		return err
+	}
+	receiver.Balance, err = receiver.Balance.Add(tx.value)
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(receiver)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //Bandwidth returns bandwidth.
@@ -453,12 +478,18 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 
 //Execute AddRecordTx
 func (tx *AddRecordTx) Execute(b *Block) error {
-	rs := b.state.dataState.RecordsState
-	as := b.state.accState
-
-	//Account state 변경 로직 추가
-	if err := as.AddRecord(tx.owner, tx.recordHash); err != nil {
+	var err error
+	acc, err := b.State().GetAccount(tx.owner)
+	if err != nil {
 		return err
+	}
+
+	_, err = acc.GetData(RecordsPrefix, tx.recordHash)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	if err == nil {
+		return ErrRecordAlreadyAdded
 	}
 
 	pbRecord := &corepb.Record{
@@ -470,8 +501,20 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
+	err = acc.Data.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = acc.PutData(RecordsPrefix, tx.recordHash, recordBytes)
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Commit()
+	if err != nil {
+		return err
+	}
 
-	return rs.Put(tx.recordHash, recordBytes)
+	return b.State().PutAccount(acc)
 }
 
 //Bandwidth returns bandwidth.
@@ -487,6 +530,9 @@ type VestTx struct {
 
 //NewVestTx returns NewTx
 func NewVestTx(tx *Transaction) (ExecutableTx, error) {
+	if tx.Value().Cmp(util.Uint128Zero()) == 0 {
+		return nil, ErrCannotUseZeroValue
+	}
 	return &VestTx{
 		user:   tx.From(),
 		amount: tx.Value(),
@@ -495,22 +541,25 @@ func NewVestTx(tx *Transaction) (ExecutableTx, error) {
 
 //Execute VestTx
 func (tx *VestTx) Execute(b *Block) error {
-	as := b.state.AccState()
 
-	if err := as.SubBalance(tx.user, tx.amount); err != nil {
+	user, err := b.State().GetAccount(tx.user)
+	if err != nil {
 		return err
 	}
-	if err := as.AddVesting(tx.user, tx.amount); err != nil {
+	user.Balance, err = user.Balance.Sub(tx.amount)
+	if err == util.ErrUint128Underflow {
+		return ErrBalanceNotEnough
+	}
+	if err != nil {
 		return err
 	}
-
-	account, err := as.GetAccount(tx.user)
+	user.Vesting, err = user.Vesting.Add(tx.amount)
 	if err != nil {
 		return err
 	}
 
 	// Add user's vesting to candidates' votePower
-	iter, err := account.Voted.Iterator(nil)
+	iter, err := user.Voted.Iterator(nil)
 	if err != nil {
 		return err
 	}
@@ -520,8 +569,16 @@ func (tx *VestTx) Execute(b *Block) error {
 		return err
 	}
 	for exist {
-		addr := common.BytesToAddress(iter.Key())
-		if err := as.AddVotePower(addr, tx.amount); err != nil {
+		candidate, err := b.State().GetAccount(common.BytesToAddress(iter.Key()))
+		if err != nil {
+			return err
+		}
+		candidate.VotePower, err = candidate.VotePower.Add(tx.amount)
+		if err != nil {
+			return err
+		}
+		err = b.State().PutAccount(candidate)
+		if err != nil {
 			return err
 		}
 
@@ -531,7 +588,7 @@ func (tx *VestTx) Execute(b *Block) error {
 		}
 	}
 
-	return nil
+	return b.State().PutAccount(user)
 }
 
 //Bandwidth returns bandwidth.
@@ -555,9 +612,7 @@ func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
 
 //Execute WithdrawVestingTx
 func (tx *WithdrawVestingTx) Execute(b *Block) error {
-	as := b.state.AccState()
-
-	account, err := as.GetAccount(tx.user)
+	account, err := b.State().GetAccount(tx.user)
 	if err != nil {
 		return err
 	}
@@ -595,7 +650,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		}
 	}
 
-	err = as.PutAccount(account)
+	err = b.State().PutAccount(account)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -614,11 +669,18 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		return err
 	}
 	for exist {
-		addr := common.BytesToAddress(iter.Key())
-		if err := as.SubVotePower(addr, tx.amount); err != nil {
+		candidate, err := b.State().GetAccount(common.BytesToAddress(iter.Key()))
+		if err != nil {
 			return err
 		}
-
+		candidate.VotePower, err = candidate.VotePower.Sub(tx.amount)
+		if err != nil {
+			return err
+		}
+		err = b.State().PutAccount(candidate)
+		if err != nil {
+			return err
+		}
 		exist, err = iter.Next()
 		if err != nil {
 			return err
@@ -636,7 +698,10 @@ func (tx *WithdrawVestingTx) Bandwidth() (*util.Uint128, error) {
 type AddCertificationTx struct {
 	Issuer    common.Address
 	Certified common.Address
-	Payload   *AddCertificationPayload
+
+	CertificateHash []byte
+	IssueTime       int64
+	ExpirationTime  int64
 }
 
 //NewAddCertificationTx returns AddCertificationTx
@@ -646,38 +711,91 @@ func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 		return nil, err
 	}
 
-	//TODO: certification payload Verify: drsleepytiger
 	return &AddCertificationTx{
-		Issuer:    tx.From(),
-		Certified: tx.To(),
-		Payload:   payload,
+		Issuer:          tx.From(),
+		Certified:       tx.To(),
+		CertificateHash: payload.CertificateHash,
+		IssueTime:       payload.IssueTime,
+		ExpirationTime:  payload.ExpirationTime,
 	}, nil
 }
 
 //Execute AddCertificationTx
 func (tx *AddCertificationTx) Execute(b *Block) error {
-	as := b.state.AccState()
-	cs := b.state.dataState.CertificationState
+	certified, err := b.State().GetAccount(tx.Certified)
+	if err != nil {
+		return err
+	}
+	_, err = certified.GetData(CertReceivedPrefix, tx.CertificateHash)
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	if err == nil {
+		return ErrCertReceivedAlreadyAdded
+	}
 
-	if err := as.AddCertReceived(tx.Certified, tx.Payload.CertificateHash); err != nil {
+	issuer, err := b.State().GetAccount(tx.Issuer)
+	if err != nil {
 		return err
 	}
-	if err := as.AddCertIssued(tx.Issuer, tx.Payload.CertificateHash); err != nil {
+	_, err = issuer.GetData(CertIssuedPrefix, tx.CertificateHash)
+	if err != nil && err != ErrNotFound {
 		return err
 	}
+	if err == nil {
+		return ErrCertIssuedAlreadyAdded
+	}
+
+	//TODO: certification payload Verify: drsleepytiger
+
 	pbCertification := &corepb.Certification{
-		CertificateHash: tx.Payload.CertificateHash,
+		CertificateHash: tx.CertificateHash,
 		Issuer:          tx.Issuer.Bytes(),
 		Certified:       tx.Certified.Bytes(),
-		IssueTime:       tx.Payload.IssueTime,
-		ExpirationTime:  tx.Payload.ExpirationTime,
+		IssueTime:       tx.IssueTime,
+		ExpirationTime:  tx.ExpirationTime,
 		RevocationTime:  int64(-1),
 	}
 	certificationBytes, err := proto.Marshal(pbCertification)
 	if err != nil {
 		return err
 	}
-	return cs.Put(tx.Payload.CertificateHash, certificationBytes)
+
+	// Add certification to certified's account state
+	if err := certified.Data.BeginBatch(); err != nil {
+		return err
+	}
+	if err := certified.PutData(CertReceivedPrefix, tx.CertificateHash, certificationBytes); err != nil {
+		if err := certified.Data.RollBack(); err != nil {
+			return err
+		}
+		return err
+	}
+	if err := certified.Data.Commit(); err != nil {
+		return err
+	}
+	if err := b.State().PutAccount(certified); err != nil {
+		return err
+	}
+
+	// Add certification to issuer's account state
+	if err := issuer.Data.BeginBatch(); err != nil {
+		return err
+	}
+	if err := issuer.PutData(CertIssuedPrefix, tx.CertificateHash, certificationBytes); err != nil {
+		if err := issuer.Data.RollBack(); err != nil {
+			return err
+		}
+		return err
+	}
+	if err := issuer.Data.Commit(); err != nil {
+		return err
+	}
+	if err := b.State().PutAccount(issuer); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //Bandwidth returns bandwidth.
@@ -687,9 +805,9 @@ func (tx *AddCertificationTx) Bandwidth() (*util.Uint128, error) {
 
 //RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
-	Revoker        common.Address
-	Hash           []byte
-	RevocationTime int64
+	Revoker         common.Address
+	CertificateHash []byte
+	RevocationTime  int64
 }
 
 //NewRevokeCertificationTx returns RevokeCertificationTx
@@ -698,27 +816,31 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
-
-	//TODO: certification payload Verify: drsleepytiger
 	return &RevokeCertificationTx{
-		Revoker:        tx.From(),
-		Hash:           payload.CertificateHash,
-		RevocationTime: tx.timestamp,
+		Revoker:         tx.From(),
+		CertificateHash: payload.CertificateHash,
+		RevocationTime:  tx.timestamp,
 	}, nil
 }
 
 //Execute RevokeCertificationTx
 func (tx *RevokeCertificationTx) Execute(b *Block) error {
-	s := b.state
-	//as := b.state.AccState()
-	cs := b.state.dataState.CertificationState
-
-	pbCert, err := s.dataState.Certification(tx.Hash)
+	issuer, err := b.State().GetAccount(tx.Revoker)
 	if err != nil {
-		return nil
+		return err
+	}
+	certBytes, err := issuer.GetData(CertIssuedPrefix, tx.CertificateHash)
+	if err != nil {
+		return err
 	}
 
-	if common.BytesToAddress(pbCert.Issuer) != tx.Revoker {
+	pbCert := new(corepb.Certification)
+	err = proto.Unmarshal(certBytes, pbCert)
+	if err != nil {
+		return err
+	}
+	// verify transaction
+	if !byteutils.Equal(pbCert.Issuer, tx.Revoker.Bytes()) {
 		return ErrInvalidCertificationRevoker
 	}
 	if pbCert.RevocationTime > int64(-1) {
@@ -729,13 +851,45 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	}
 
 	pbCert.RevocationTime = tx.RevocationTime
-
-	newBytesCertification, err := proto.Marshal(pbCert)
+	newCertBytes, err := proto.Marshal(pbCert)
 	if err != nil {
 		return err
 	}
-
-	return cs.Put(tx.Hash, newBytesCertification)
+	// change cert on issuer's cert issued List
+	err = issuer.Data.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = issuer.PutData(CertIssuedPrefix, tx.CertificateHash, newCertBytes)
+	if err != nil {
+		return err
+	}
+	err = issuer.Data.Commit()
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(issuer)
+	if err != nil {
+		return err
+	}
+	// change cert on certified's cert received list
+	certified, err := b.State().GetAccount(common.BytesToAddress(pbCert.Certified))
+	if err != nil {
+		return err
+	}
+	err = certified.Data.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = certified.PutData(CertReceivedPrefix, tx.CertificateHash, newCertBytes)
+	if err != nil {
+		return err
+	}
+	err = certified.Data.Commit()
+	if err != nil {
+		return err
+	}
+	return b.State().PutAccount(certified)
 }
 
 //Bandwidth returns bandwidth.

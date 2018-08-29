@@ -19,7 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -56,16 +58,15 @@ func TestAddRecord(t *testing.T) {
 		Tx().Type(core.TxOpAddRecord).Payload(payload).Nonce(2).SignPair(owner).Execute().
 		Build()
 
-	record, err := block.State().DataState().GetRecord(recordHash)
-	assert.NoError(t, err)
-	assert.Equal(t, recordHash, record.RecordHash)
-
 	acc, err := block.State().GetAccount(owner.Addr)
 	assert.NoError(t, err)
 
-	recordHashOnAccount, err := acc.Records.Get(recordHash)
+	recordBytes, err := acc.GetData(core.RecordsPrefix, recordHash)
 	assert.NoError(t, err)
-	assert.Equal(t, recordHash, recordHashOnAccount)
+
+	pbRecord := new(corepb.Record)
+	assert.NoError(t, proto.Unmarshal(recordBytes, pbRecord))
+	assert.Equal(t, recordHash, pbRecord.RecordHash)
 }
 
 func TestVestAndWithdraw(t *testing.T) {
@@ -128,36 +129,29 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	certifiedAcc, err := block.State().GetAccount(certified.Addr)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, testutil.TrieLen(t, issuerAcc.CertsIssued))
-	assert.Equal(t, 1, testutil.TrieLen(t, certifiedAcc.CertsReceived))
-
-	_, err = issuerAcc.CertsIssued.Get(hash)
+	certBytes0, err := issuerAcc.GetData(core.CertIssuedPrefix, hash)
 	assert.NoError(t, err)
-	_, err = certifiedAcc.CertsReceived.Get(hash)
+	certBytes1, err := certifiedAcc.GetData(core.CertReceivedPrefix, hash)
 	assert.NoError(t, err)
+	require.True(t, byteutils.Equal(certBytes0, certBytes1))
 
-	cert, err := block.State().DataState().Certification(hash)
-	assert.NoError(t, err)
+	certBytes := certBytes0
+	pbCert := new(corepb.Certification)
+	require.NoError(t, proto.Unmarshal(certBytes, pbCert))
 
-	dataRoot, err := block.State().DataState().RootBytes()
-	assert.NoError(t, err)
-	assert.Equal(t, dataRoot, block.DataStateRoot())
-
-	assert.Equal(t, cert.CertificateHash, hash)
-	assert.Equal(t, cert.Issuer, issuer.Addr.Bytes())
-	assert.Equal(t, cert.Certified, certified.Addr.Bytes())
-	assert.Equal(t, cert.IssueTime, issueTime)
-	assert.Equal(t, cert.ExpirationTime, expirationTime)
-	assert.Equal(t, cert.RevocationTime, int64(-1))
+	assert.Equal(t, pbCert.CertificateHash, hash)
+	assert.Equal(t, pbCert.Issuer, issuer.Addr.Bytes())
+	assert.Equal(t, pbCert.Certified, certified.Addr.Bytes())
+	assert.Equal(t, pbCert.IssueTime, issueTime)
+	assert.Equal(t, pbCert.ExpirationTime, expirationTime)
+	assert.Equal(t, pbCert.RevocationTime, int64(-1))
 	t.Logf("Add certification test complete")
 
 	// Revoke certification Test
-	wrongRevoker := bb.TokenDist[2]
 	revokeTime := time.Now().Unix() + int64(50000)
 	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb = bb.
-		Tx().Nonce(3).Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(wrongRevoker).ExecuteErr(core.ErrInvalidCertificationRevoker).
 		Tx().Nonce(4).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
 		Tx().Nonce(4).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
 		Tx().Nonce(5).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
@@ -169,10 +163,17 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	certifiedAcc, err = block.State().GetAccount(certified.Addr)
 	require.NoError(t, err)
 
-	cert, err = block.State().DataState().Certification(hash)
-	require.NoError(t, err)
+	certBytes0, err = issuerAcc.GetData(core.CertIssuedPrefix, hash)
+	assert.NoError(t, err)
+	certBytes1, err = certifiedAcc.GetData(core.CertReceivedPrefix, hash)
+	assert.NoError(t, err)
+	require.True(t, byteutils.Equal(certBytes0, certBytes1))
 
-	assert.Equal(t, cert.RevocationTime, revokeTime)
+	certBytes = certBytes0
+	pbCert = new(corepb.Certification)
+	require.NoError(t, proto.Unmarshal(certBytes, pbCert))
+
+	assert.Equal(t, pbCert.RevocationTime, revokeTime)
 	t.Logf("Revoke certification test complete")
 
 }
