@@ -176,9 +176,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 			return nil, err
 		}
-		if err := genesisBlock.state.PutAccount(acc); err != nil {
-			return nil, err
-		}
+
 
 		total, err := balance.Add(vesting)
 		if err != nil {
@@ -192,18 +190,29 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		if err != nil {
 			return nil, err
 		}
-		for _, voted := range dist.Vote {
-			candAddr := common.HexToAddress(voted)
+		for _, v := range dist.Vote {
+			candAddr := common.HexToAddress(v)
+			err = acc.Voted.Put(candAddr.Bytes(), candAddr.Bytes())
+			if err != nil {
+				return nil, err
+			}
+		}
+		err = acc.Voted.Commit()
+		if err != nil {
+			return nil, err
+		}
+		if err := genesisBlock.state.PutAccount(acc); err != nil {
+			return nil, err
+		}
+
+		for _, v := range dist.Vote {
+			candAddr := common.HexToAddress(v)
 			isCandidate, err := genesisBlock.state.DposState().IsCandidate(candAddr)
 			if err != nil {
 				return nil, err
 			}
 			if !isCandidate {
 				return nil, ErrCandidateNotFound
-			}
-			err = acc.Voted.Put(candAddr.Bytes(), candAddr.Bytes())
-			if err != nil {
-				return nil, err
 			}
 			candAcc, err := genesisBlock.state.GetAccount(addr)
 			if err != nil {
@@ -229,10 +238,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			if err != nil {
 				return nil, err
 			}
-		}
-		err = acc.Voted.Commit()
-		if err != nil {
-			return nil, err
 		}
 
 		tx := &Transaction{

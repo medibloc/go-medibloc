@@ -117,17 +117,18 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
+	oldVoters := candidate.VotersSlice()
+	candidate.Voters, err = trie.NewBatch(nil, candidate.Storage)
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(candidate)
+	if err != nil {
+		return err
+	}
 
-	iter, err := candidate.Voters.Iterator(nil)
-	if err != nil {
-		return err
-	}
-	exist, err := iter.Next()
-	if err != nil {
-		return err
-	}
-	for exist {
-		voter, err := b.State().GetAccount(common.BytesToAddress(iter.Key()))
+	for _, v := range oldVoters {
+		voter, err := b.State().GetAccount(common.BytesToAddress(v))
 		if err != nil {
 			return err
 		}
@@ -147,16 +148,8 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		if err != nil {
 			return err
 		}
-		exist, err = iter.Next()
-		if err != nil {
-			return err
-		}
 	}
-	candidate.Voters, err = trie.NewBatch(nil, candidate.Storage)
-	if err != nil {
-		return err
-	}
-	return b.State().PutAccount(candidate)
+	return nil
 }
 
 // VotePayload is payload type for VoteTx
@@ -232,9 +225,32 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
-
 	myVesting := acc.Vesting
 	oldVoted := acc.VotedSlice()
+
+	acc.Voted, err = trie.NewBatch(nil, acc.Storage)
+	if err != nil {
+		return err
+	}
+	err = acc.Voted.BeginBatch()
+	if err != nil {
+		return err
+	}
+	for _, c := range tx.candidates {
+		// Add candidate to voters voted
+		err = acc.Voted.Put(c.Bytes(), c.Bytes())
+		if err != nil {
+			return err
+		}
+	}
+	err = acc.Voted.Commit()
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(acc)
+	if err != nil {
+		return err
+	}
 
 	for _, addrBytes := range oldVoted {
 		candidate, err := b.State().GetAccount(common.BytesToAddress(addrBytes))
@@ -261,30 +277,6 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	acc.Voted, err = trie.NewBatch(nil, acc.Storage)
-	if err != nil {
-		return err
-	}
-	err = acc.Voted.BeginBatch()
-	if err != nil {
-		return err
-	}
-	for _, c := range tx.candidates {
-		// Add candidate to voters voted
-		err = acc.Voted.Put(c.Bytes(), c.Bytes())
-		if err != nil {
-			return err
-		}
-	}
-	err = acc.Voted.Commit()
-	if err != nil {
-		return err
-	}
-	err = b.State().PutAccount(acc)
-	if err != nil {
-		return err
 	}
 
 	for _, c := range tx.candidates {

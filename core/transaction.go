@@ -557,19 +557,16 @@ func (tx *VestTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
+	voted := user.VotedSlice()
+
+	err = b.State().PutAccount(user)
+	if err != nil {
+		return err
+	}
 
 	// Add user's vesting to candidates' votePower
-	iter, err := user.Voted.Iterator(nil)
-	if err != nil {
-		return err
-	}
-
-	exist, err := iter.Next()
-	if err != nil {
-		return err
-	}
-	for exist {
-		candidate, err := b.State().GetAccount(common.BytesToAddress(iter.Key()))
+	for _, v := range voted {
+		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
 		if err != nil {
 			return err
 		}
@@ -581,14 +578,8 @@ func (tx *VestTx) Execute(b *Block) error {
 		if err != nil {
 			return err
 		}
-
-		exist, err = iter.Next()
-		if err != nil {
-			return err
-		}
 	}
-
-	return b.State().PutAccount(user)
+	return nil
 }
 
 //Bandwidth returns bandwidth.
@@ -650,6 +641,8 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		}
 	}
 
+	voted := account.VotedSlice()
+
 	err = b.State().PutAccount(account)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -659,17 +652,8 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	}
 
 	// Add user's vesting to candidates' votePower
-	iter, err := account.Voted.Iterator(nil)
-	if err != nil {
-		return err
-	}
-
-	exist, err := iter.Next()
-	if err != nil {
-		return err
-	}
-	for exist {
-		candidate, err := b.State().GetAccount(common.BytesToAddress(iter.Key()))
+	for _, v := range voted{
+		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
 		if err != nil {
 			return err
 		}
@@ -678,10 +662,6 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 			return err
 		}
 		err = b.State().PutAccount(candidate)
-		if err != nil {
-			return err
-		}
-		exist, err = iter.Next()
 		if err != nil {
 			return err
 		}
@@ -779,6 +759,11 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 	}
 
 	// Add certification to issuer's account state
+	issuer, err = b.State().GetAccount(tx.Issuer)
+	if err != nil {
+		return err
+	}
+
 	if err := issuer.Data.BeginBatch(); err != nil {
 		return err
 	}
