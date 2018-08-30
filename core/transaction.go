@@ -652,7 +652,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	}
 
 	// Add user's vesting to candidates' votePower
-	for _, v := range voted{
+	for _, v := range voted {
 		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
 		if err != nil {
 			return err

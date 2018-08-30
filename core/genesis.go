@@ -177,7 +177,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			return nil, err
 		}
 
-
 		total, err := balance.Add(vesting)
 		if err != nil {
 			if err := genesisBlock.RollBack(); err != nil {
