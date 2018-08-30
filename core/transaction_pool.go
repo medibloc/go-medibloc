@@ -37,6 +37,8 @@ type TransactionPool struct {
 	buckets    *hashheap.HashedHeap
 	all        map[string]*Transaction
 
+	counter uint64
+
 	eventEmitter *EventEmitter
 }
 
@@ -175,7 +177,8 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	// replace candidate
 	candidate := bkt.peekFirst()
 	pool.candidates.Del(from)
-	pool.candidates.Set(from, &sortable{candidate})
+	pool.candidates.Set(from, &sortable{Transaction: candidate, ordering: pool.counter})
+	pool.counter++
 
 	return nil
 }
@@ -211,7 +214,8 @@ func (pool *TransactionPool) del(tx *Transaction) {
 
 	// Replace candidate
 	candidate := bkt.peekFirst()
-	pool.candidates.Set(from, &sortable{candidate})
+	pool.candidates.Set(from, &sortable{Transaction: candidate, ordering: pool.counter})
+	pool.counter++
 }
 
 func (pool *TransactionPool) evict() {
@@ -239,9 +243,12 @@ type comparable struct{ *Transaction }
 
 func (tx *comparable) Less(o interface{}) bool { return tx.nonce < o.(*comparable).nonce }
 
-type sortable struct{ *Transaction }
+type sortable struct {
+	*Transaction
+	ordering uint64
+}
 
-func (tx *sortable) Less(o interface{}) bool { return tx.timestamp < o.(*sortable).timestamp }
+func (tx *sortable) Less(o interface{}) bool { return tx.ordering < o.(*sortable).ordering }
 
 // transactions is sortable slice of comparable transactions.
 type transactions []*comparable

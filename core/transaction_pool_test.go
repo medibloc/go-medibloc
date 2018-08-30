@@ -22,6 +22,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransactionGetDel(t *testing.T) {
@@ -91,4 +92,62 @@ func TestEmptyPool(t *testing.T) {
 	assert.Nil(t, pool.Pop())
 	assert.Nil(t, pool.Get(tx.Hash()))
 	pool.Del(tx)
+}
+
+func TestInfiniteLoop(t *testing.T) {
+	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	from1 := testutil.NewAddrKeyPair(t)
+	from2 := testutil.NewAddrKeyPair(t)
+	to := testutil.NewAddrKeyPair(t)
+
+	from1Nonce2 := tb.Type(core.TxOpTransfer).Timestamp(1000).Value(10).To(to.Addr).From(from1.Addr).
+		Nonce(2).CalcHash().SignKey(from1.PrivKey).Build()
+	from2Nonce1 := tb.Type(core.TxOpTransfer).Timestamp(1200).Value(10).To(to.Addr).From(from2.Addr).
+		Nonce(1).CalcHash().SignKey(from2.PrivKey).Build()
+	from2Nonce2 := tb.Type(core.TxOpTransfer).Timestamp(1100).Value(10).To(to.Addr).From(from2.Addr).
+		Nonce(2).CalcHash().SignKey(from2.PrivKey).Build()
+
+	pool := core.NewTransactionPool(128)
+	err := pool.Push(from1Nonce2)
+	require.NoError(t, err)
+	err = pool.Push(from2Nonce2)
+	require.NoError(t, err)
+	err = pool.Push(from2Nonce1)
+	require.NoError(t, err)
+
+	tx := pool.Pop()
+	require.Equal(t, int64(1000), tx.Timestamp())
+	require.Equal(t, uint64(2), tx.Nonce())
+	require.Equal(t, from1.Addr, tx.From())
+	pool.Push(tx)
+
+	tx = pool.Pop()
+	require.Equal(t, int64(1200), tx.Timestamp())
+	require.Equal(t, uint64(1), tx.Nonce())
+	require.Equal(t, from2.Addr, tx.From())
+	pool.Push(tx)
+
+	tx = pool.Pop()
+	require.Equal(t, int64(1000), tx.Timestamp())
+	require.Equal(t, uint64(2), tx.Nonce())
+	require.Equal(t, from1.Addr, tx.From())
+	pool.Push(tx)
+
+	tx = pool.Pop()
+	require.Equal(t, int64(1200), tx.Timestamp())
+	require.Equal(t, uint64(1), tx.Nonce())
+	require.Equal(t, from2.Addr, tx.From())
+
+	tx = pool.Pop()
+	require.Equal(t, int64(1000), tx.Timestamp())
+	require.Equal(t, uint64(2), tx.Nonce())
+	require.Equal(t, from1.Addr, tx.From())
+
+	tx = pool.Pop()
+	require.Equal(t, int64(1100), tx.Timestamp())
+	require.Equal(t, uint64(2), tx.Nonce())
+	require.Equal(t, from2.Addr, tx.From())
+
+	tx = pool.Pop()
+	require.Nil(t, tx)
 }
