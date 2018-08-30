@@ -55,6 +55,9 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
+//DecimalCount is decimal count of balance
+const DecimalCount = "1000000000000"
+
 const (
 	rateNum     = "464"
 	rateDecimal = "100000000000"

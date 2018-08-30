@@ -136,9 +136,11 @@ func (bb *BlockBuilder) Reward(reward uint64) *BlockBuilder {
 }
 
 // Supply sets supply.
-func (bb *BlockBuilder) Supply(supply uint64) *BlockBuilder {
+func (bb *BlockBuilder) Supply(supply string) *BlockBuilder {
 	n := bb.copy()
-	n.B.SetSupply(util.NewUint128FromUint(supply))
+	sp, err := util.NewUint128FromString(supply)
+	require.NoError(n.t, err)
+	n.B.SetSupply(sp)
 	return n
 }
 

@@ -519,14 +519,8 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	miner := bb.FindMiner()
 	bb = bb.Coinbase(miner.Addr).PayReward()
 
-	block := bb.PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	block := bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
-
-	bb = bb.Seal()
-
-	block = bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
-	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
 	block = bb.TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(miner.PrivKey).Build()
@@ -536,10 +530,6 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	block = bb.DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
-
-	block = bb.Coinbase(to.Addr).CalcHash().SignKey(miner.PrivKey).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	require.NoError(t, err)
 
 	block = bb.Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
@@ -553,6 +543,9 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
+	block = bb.Coinbase(to.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	err = bm.PushBlockData(block.GetBlockData())
+	require.NoError(t, err)
 }
 
 func foundInLog(hook *test.Hook, s string) bool {

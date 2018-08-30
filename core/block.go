@@ -1072,6 +1072,17 @@ func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 		return nil, err
 	}
 
+	roundDecimal, err := util.NewUint128FromString(DecimalCount)
+	if err != nil {
+		return nil, err
+	}
+	reward, err = reward.Div(roundDecimal)
+	if err != nil {
+		return nil, err
+	}
+	reward, err = reward.Mul(roundDecimal)
+	if err != nil {
+		return nil, err
+	}
 	return reward, nil
-
 }
