@@ -123,7 +123,9 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		dynasty = append(dynasty, keypair.Addr.Hex())
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
 			Address: keypair.Addr.Hex(),
-			Value:   "1000000000",
+			Balance: "1000000000",
+			Vesting: "0",
+			//			Vote:    []string{keypair.Addr.Hex()},
 		})
 
 		dynasties = append(dynasties, keypair)
@@ -134,7 +136,9 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		keypair := NewAddrKeyPair(t)
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
 			Address: keypair.Addr.Hex(),
-			Value:   "1000000000",
+			Balance: "1000000000",
+			Vesting: "0",
+			Vote:    []string{},
 		})
 		distributed = append(distributed, keypair)
 	}

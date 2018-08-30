@@ -310,6 +310,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 			return err
 		}
 	}
+	err = acc.Voted.Commit()
+	if err != nil {
+		return err
+	}
 
 	return b.State().PutAccount(acc)
 }

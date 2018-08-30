@@ -138,7 +138,14 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	supply := util.NewUint128()
 	for i, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
-		balance, err := util.NewUint128FromString(dist.Value)
+		balance, err := util.NewUint128FromString(dist.Balance)
+		if err != nil {
+			if err := genesisBlock.RollBack(); err != nil {
+				return nil, err
+			}
+			return nil, err
+		}
+		vesting, err := util.NewUint128FromString(dist.Vesting)
 		if err != nil {
 			if err := genesisBlock.RollBack(); err != nil {
 				return nil, err
@@ -159,7 +166,72 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 			return nil, err
 		}
+		acc.Vesting, err = acc.Vesting.Add(vesting)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Info("add vesting failed at newGenesis")
+			if err := genesisBlock.RollBack(); err != nil {
+				return nil, err
+			}
+			return nil, err
+		}
 		if err := genesisBlock.state.PutAccount(acc); err != nil {
+			return nil, err
+		}
+
+		total, err := balance.Add(vesting)
+		if err != nil {
+			if err := genesisBlock.RollBack(); err != nil {
+				return nil, err
+			}
+			return nil, err
+		}
+
+		err = acc.Voted.BeginBatch()
+		if err != nil {
+			return nil, err
+		}
+		for _, voted := range dist.Vote {
+			candAddr := common.HexToAddress(voted)
+			isCandidate, err := genesisBlock.state.DposState().IsCandidate(candAddr)
+			if err != nil {
+				return nil, err
+			}
+			if !isCandidate {
+				return nil, ErrCandidateNotFound
+			}
+			err = acc.Voted.Put(candAddr.Bytes(), candAddr.Bytes())
+			if err != nil {
+				return nil, err
+			}
+			candAcc, err := genesisBlock.state.GetAccount(addr)
+			if err != nil {
+				return nil, err
+			}
+			candAcc.VotePower, err = candAcc.VotePower.Add(acc.Vesting)
+			if err != nil {
+				return nil, err
+			}
+			err = candAcc.Voters.BeginBatch()
+			if err != nil {
+				return nil, err
+			}
+			err = candAcc.Voters.Put(acc.Address.Bytes(), acc.Address.Bytes())
+			if err != nil {
+				return nil, err
+			}
+			err = candAcc.Voters.Commit()
+			if err != nil {
+				return nil, err
+			}
+			err = genesisBlock.state.PutAccount(candAcc)
+			if err != nil {
+				return nil, err
+			}
+		}
+		err = acc.Voted.Commit()
+		if err != nil {
 			return nil, err
 		}
 
@@ -167,7 +239,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			txType:    TxTyGenesis,
 			from:      GenesisCoinbase,
 			to:        addr,
-			value:     balance,
+			value:     total,
 			timestamp: GenesisTimestamp,
 			nonce:     2 + uint64(i),
 			chainID:   conf.Meta.ChainId,
@@ -183,7 +255,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			return nil, err
 		}
 
-		supply, err = supply.Add(balance)
+		supply, err = supply.Add(total)
 		if err != nil {
 			if err := genesisBlock.RollBack(); err != nil {
 				return nil, err
@@ -275,7 +347,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		contains := false
 		for _, token := range tokenDist {
 			if token.Address == account.Address.Hex() {
-				balance, err := util.NewUint128FromString(token.Value)
+				balance, err := util.NewUint128FromString(token.Balance)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -288,6 +360,21 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 						"balanceInConf":  balance,
 						"account":        account.Address.Hex(),
 					}).Error("Genesis's token balance does not match.")
+					return false
+				}
+				vesting, err := util.NewUint128FromString(token.Vesting)
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("Failed to convert vesting from string to uint128.")
+					return false
+				}
+				if vesting.Cmp(account.Vesting) != 0 {
+					logging.Console().WithFields(logrus.Fields{
+						"vestingInBlock": account.Vesting,
+						"vestingInConf":  vesting,
+						"account":        account.Address.Hex(),
+					}).Error("Genesis's token vesting does not match.")
 					return false
 				}
 				contains = true

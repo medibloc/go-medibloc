@@ -31,5 +31,7 @@ message GenesisConsensusDpos {
 
 message GenesisTokenDistribution {
     string address = 1;
-    string value = 2;
+    string balance = 2;
+    string vesting = 3;
+    repeated string vote = 4;
 }

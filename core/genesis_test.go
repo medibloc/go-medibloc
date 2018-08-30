@@ -110,10 +110,10 @@ func TestCheckGenesisBlock(t *testing.T) {
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.TokenDistribution[3].Value = "989898"
+	modified.TokenDistribution[3].Balance = "989898"
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.TokenDistribution[4].Value = "Wrong Value"
+	modified.TokenDistribution[4].Balance = "Wrong Value"
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 }
