@@ -272,17 +272,28 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		return err
 	}
 	for _, c := range tx.candidates {
+		// Add candidate to voters voted
+		err = acc.Voted.Put(c.Bytes(), c.Bytes())
+		if err != nil {
+			return err
+		}
+	}
+	err = acc.Voted.Commit()
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(acc)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range tx.candidates {
 		isCandidate, err := ds.IsCandidate(c)
 		if err != nil {
 			return err
 		}
 		if !isCandidate {
 			return ErrNotCandidate
-		}
-		// Add candidate to voters voted
-		err = acc.Voted.Put(c.Bytes(), c.Bytes())
-		if err != nil {
-			return err
 		}
 
 		candidate, err := b.State().GetAccount(c)
@@ -310,12 +321,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 			return err
 		}
 	}
-	err = acc.Voted.Commit()
-	if err != nil {
-		return err
-	}
-
-	return b.State().PutAccount(acc)
+	return nil
 }
 
 func checkDuplicate(candidates []common.Address) bool {
