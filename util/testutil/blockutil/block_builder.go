@@ -104,7 +104,7 @@ func (bb *BlockBuilder) Block(block *core.Block) *BlockBuilder {
 func (bb *BlockBuilder) Stake() *BlockBuilder {
 	n := bb.copy()
 	for _, pair := range bb.KeyPairs {
-		n = n.Tx().StakeTx(pair, 1000000).Execute()
+		n = n.Tx().StakeTx(pair, 100000000000000000).Execute()
 	}
 	return n
 }

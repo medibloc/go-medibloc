@@ -61,7 +61,7 @@ const (
 )
 
 // TxBaseBandwidth is base bandwidth value of transactions.
-var TxBaseBandwidth = util.NewUint128FromUint(100)
+var TxBaseBandwidth = util.NewUint128FromUint(100000000000000)
 
 // Error types of core package.
 var (

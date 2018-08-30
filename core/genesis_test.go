@@ -48,7 +48,7 @@ func TestNewGenesisBlock(t *testing.T) {
 	for i, tx := range txs[1:] {
 		t.Log(byteutils.Bytes2Hex(tx.Hash()))
 		assert.True(t, dist[i].Addr.Equals(tx.To()))
-		assert.Equal(t, "1000000000", tx.Value().String())
+		assert.Equal(t, "1000000000000000000", tx.Value().String())
 	}
 
 	dposState := genesisBlock.State().DposState()
@@ -69,7 +69,7 @@ func TestNewGenesisBlock(t *testing.T) {
 		acc, err := accState.GetAccount(addr)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "1000000000", acc.Balance.String())
+		assert.Equal(t, "1000000000000000000", acc.Balance.String())
 		assert.Equal(t, 1, len(acc.TxsToSlice()))
 	}
 }

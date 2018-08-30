@@ -65,7 +65,7 @@ func TestNonceCheck(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	bb = bb.
-		Tx().StakeTx(from, 1000000).Execute().
+		Tx().StakeTx(from, 100000000000000000).Execute().
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).From(from.Addr).CalcHash().SignKey(from.PrivKey).ExecuteErr(core.ErrSmallTransactionNonce).
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).SignPair(from).Execute().
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(4).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
@@ -80,10 +80,10 @@ func TestUpdateBandwidth(t *testing.T) {
 	from := bb.TokenDist[0]
 	to := bb.TokenDist[1]
 
-	tx := bb.Tx().StakeTx(from, 200).Build()
+	tx := bb.Tx().StakeTx(from, 200000000000000).Build()
 	consumed := blockutil.Bandwidth(t, tx)
 	bb = bb.ExecuteTx(tx)
-	bb.Expect().Balance(from.Addr, 1000000000-200).Vesting(from.Addr, 200)
+	bb.Expect().Balance(from.Addr, 1000000000000000000-200000000000000).Vesting(from.Addr, 200000000000000)
 
 	tx = bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed += blockutil.Bandwidth(t, tx)
@@ -110,7 +110,7 @@ func TestUpdatePayerBandwidth(t *testing.T) {
 	}
 
 	txs := []*core.Transaction{
-		bb.Tx().StakeTx(payer, 10000).Build(),
+		bb.Tx().StakeTx(payer, 10000000000000000).Build(),
 		bb.Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(user).SignPayerKey(payer.PrivKey).Build(),
 	}
 
@@ -127,14 +127,14 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 	from := bb.TokenDist[0]
 	to := bb.TokenDist[1]
 
-	bb.Tx().StakeTx(from, 10000).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(10000).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
-		Tx().Type(core.TxOpWithdrawVesting).Value(9900).SignPair(from).Execute().
-		Tx().Type(core.TxOpTransfer).Value(10000).To(to.Addr).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
+	bb.Tx().StakeTx(from, 10000000000000000).SignPair(from).Execute().
+		Tx().Type(core.TxOpWithdrawVesting).Value(10000000000000000).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
+		Tx().Type(core.TxOpWithdrawVesting).Value(9900000000000000).SignPair(from).Execute().
+		Tx().Type(core.TxOpTransfer).Value(10000000000000000).To(to.Addr).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
 		Expect().
-		Bandwidth(from.Addr, 100).
-		Unstaking(from.Addr, 9900).
-		Vesting(from.Addr, 100)
+		Bandwidth(from.Addr, 100000000000000).
+		Unstaking(from.Addr, 9900000000000000).
+		Vesting(from.Addr, 100000000000000)
 }
 
 func TestTxsFromTxsTo(t *testing.T) {
@@ -159,8 +159,8 @@ func TestTxsFromTxsTo(t *testing.T) {
 		Payload(&core.RevokeCertificationPayload{
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpVest).Value(100000000000000).SignPair(from).Execute().
+		Tx().Type(core.TxOpWithdrawVesting).Value(100000000000000).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpVote).
 		Payload(&dpos.VotePayload{

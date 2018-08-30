@@ -35,14 +35,14 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	txType := dpos.TxOpBecomeCandidate
 	bb = bb.
-		Tx().StakeTx(candidate, 10000).Execute().
-		Tx().Type(txType).Value(1000000001).Nonce(2).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().StakeTx(candidate, 100000000000000000).Execute().
+		Tx().Type(txType).Value(10000000000000000000).Nonce(2).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
 		Tx().Type(txType).Value(10).Nonce(2).SignPair(candidate).Execute().
 		Tx().Type(txType).Value(10).Nonce(3).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
 
 	bb.Expect().
-		Balance(candidate.Addr, 1000000000-10-10000).
-		Vesting(candidate.Addr, 10000)
+		Balance(candidate.Addr, 1000000000000000000-10-100000000000000000).
+		Vesting(candidate.Addr, 100000000000000000)
 
 	block := bb.Build()
 
@@ -97,14 +97,14 @@ func TestVote(t *testing.T) {
 	duplicatePayload.Candidates[0] = candidate.Addr
 
 	bb = bb.
-		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
-		Tx().StakeTx(candidate, 10000).Execute().
+		Tx().Type(core.TxOpVest).Value(333000000000000).SignPair(voter).Execute().
+		Tx().StakeTx(candidate, 10000000000000000).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).SignPair(candidate).Execute().
 		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(dpos.ErrOverMaxVote).
 		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(dpos.ErrDuplicateVote).
 		Tx().Type(dpos.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
-	bb.Expect().Balance(candidate.Addr, uint64(1000000000-10-10000))
+	bb.Expect().Balance(candidate.Addr, uint64(1000000000000000000-10-10000000000000000))
 	block := bb.Build()
 
 	isCandidate, err := block.State().DposState().IsCandidate(candidate.Addr)
@@ -121,7 +121,7 @@ func TestVote(t *testing.T) {
 	for _, v := range candidates {
 		acc, err := block.State().GetAccount(v.Addr)
 		require.NoError(t, err)
-		assert.Equal(t, util.NewUint128FromUint(333), acc.VotePower)
+		assert.Equal(t, util.NewUint128FromUint(333000000000000), acc.VotePower)
 		_, err = acc.Voters.Get(voter.Addr.Bytes())
 		assert.NoError(t, err)
 	}
@@ -147,5 +147,4 @@ func TestVote(t *testing.T) {
 		assert.Equal(t, trie.ErrNotFound, err)
 		assert.Equal(t, []byte(nil), acc.Voters.RootHash())
 	}
-
 }

@@ -36,13 +36,13 @@ func TestSend(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	bb.
-		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1000000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().StakeTx(from, 10000000000000000).Execute().
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1000001000000000000).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
-		Balance(from.Addr, 1000000000-10-10000).
-		Vesting(from.Addr, 10000)
+		Balance(from.Addr, 1000000000000000000-10-10000000000000000).
+		Vesting(from.Addr, 10000000000000000)
 
 }
 
@@ -54,7 +54,7 @@ func TestAddRecord(t *testing.T) {
 	owner := bb.TokenDist[0]
 
 	block := bb.
-		Tx().StakeTx(owner, 100000).Execute().
+		Tx().StakeTx(owner, 10000000000000000).Execute().
 		Tx().Type(core.TxOpAddRecord).Payload(payload).Nonce(2).SignPair(owner).Execute().
 		Build()
 
@@ -73,21 +73,21 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	from := bb.TokenDist[testutil.DynastySize]
-	vestingAmount := uint64(1000)
+	vestingAmount := uint64(1000000000000000)
 	withdrawAmount := uint64(301)
 
 	bb = bb.
 		Tx().Type(core.TxOpVest).Value(vestingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000-vestingAmount)).
+		Balance(from.Addr, uint64(1000000000000000000-vestingAmount)).
 		Vesting(from.Addr, uint64(vestingAmount))
 
 	bb = bb.
 		Tx().Type(core.TxOpWithdrawVesting).Value(withdrawAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000-vestingAmount)).
+		Balance(from.Addr, uint64(1000000000000000000-vestingAmount)).
 		Vesting(from.Addr, vestingAmount-withdrawAmount).
 		Unstaking(from.Addr, withdrawAmount)
 
@@ -98,7 +98,7 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb = bb.SignMiner().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(from).Execute()
 	bb.Expect().
-		Balance(from.Addr, 1000000000-vestingAmount+withdrawAmount).
+		Balance(from.Addr, 1000000000000000000-vestingAmount+withdrawAmount).
 		Unstaking(from.Addr, 0)
 }
 
