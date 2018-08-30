@@ -172,14 +172,10 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 		bkt = newBucket()
 	}
 	bkt.push(tx)
+
+	pool.replaceCandidate(bkt, from)
+
 	pool.buckets.Set(from, bkt)
-
-	// replace candidate
-	candidate := bkt.peekFirst()
-	pool.candidates.Del(from)
-	pool.candidates.Set(from, &sortable{Transaction: candidate, ordering: pool.counter})
-	pool.counter++
-
 	return nil
 }
 
@@ -203,18 +199,27 @@ func (pool *TransactionPool) del(tx *Transaction) {
 	bkt := v.(*bucket)
 	bkt.del(tx)
 
-	// Remove from candidates
-	pool.candidates.Del(from)
+	pool.replaceCandidate(bkt, from)
 
-	// Remove bucket if empty
 	if bkt.isEmpty() {
 		return
 	}
 	pool.buckets.Set(from, bkt)
+}
 
-	// Replace candidate
-	candidate := bkt.peekFirst()
-	pool.candidates.Set(from, &sortable{Transaction: candidate, ordering: pool.counter})
+func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {
+	cand := bkt.peekFirst()
+	if cand == nil {
+		pool.candidates.Del(addr)
+		return
+	}
+
+	v := pool.candidates.Get(addr)
+	if v != nil && byteutils.Equal(cand.Hash(), v.(*sortable).Transaction.Hash()) {
+		return
+	}
+	pool.candidates.Del(addr)
+	pool.candidates.Set(addr, &sortable{Transaction: cand, ordering: pool.counter})
 	pool.counter++
 }
 
