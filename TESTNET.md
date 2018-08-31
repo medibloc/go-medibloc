@@ -7,11 +7,8 @@
     * https://github.com/medibloc/explorer
 
 ## Wallet
-* Screenshot
-
-* Download
-    * Windows : 
-    * Mac : 
+* Web Wallet
+    * https://wallet.medibloc.org/
 
 ## Claim Testnet Coin
 * [Claim](https://goo.gl/forms/UjbYcGzA9YvjiEiI3)
