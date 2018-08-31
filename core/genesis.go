@@ -245,7 +245,27 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			to:        addr,
 			value:     total,
 			timestamp: GenesisTimestamp,
-			nonce:     2 + uint64(i),
+			nonce:     2 + uint64(i)*2,
+			chainID:   conf.Meta.ChainId,
+		}
+		hash, err = tx.CalcHash()
+		if err != nil {
+			return nil, err
+		}
+		tx.hash = hash
+
+		err = genesisBlock.AcceptTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+
+		tx = &Transaction{
+			txType:    TxTyGenesisVesting,
+			from:      addr,
+			to:        nil,
+			value:     vesting,
+			timestamp: GenesisTimestamp,
+			nonce:     2 + uint64(i)*2 + 1,
 			chainID:   conf.Meta.ChainId,
 		}
 		hash, err = tx.CalcHash()
