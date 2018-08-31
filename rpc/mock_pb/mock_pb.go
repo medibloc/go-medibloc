@@ -199,6 +199,24 @@ func (mr *MockApiServiceClientMockRecorder) GetTransaction(arg0, arg1 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransaction", reflect.TypeOf((*MockApiServiceClient)(nil).GetTransaction), varargs...)
 }
 
+// HealthCheck mocks base method
+func (m *MockApiServiceClient) HealthCheck(arg0 context.Context, arg1 *pb.NonParamRequest, arg2 ...grpc.CallOption) (*pb.HealthCheckResponse, error) {
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "HealthCheck", varargs...)
+	ret0, _ := ret[0].(*pb.HealthCheckResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HealthCheck indicates an expected call of HealthCheck
+func (mr *MockApiServiceClientMockRecorder) HealthCheck(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HealthCheck", reflect.TypeOf((*MockApiServiceClient)(nil).HealthCheck), varargs...)
+}
+
 // SendTransaction mocks base method
 func (m *MockApiServiceClient) SendTransaction(arg0 context.Context, arg1 *pb.SendTransactionRequest, arg2 ...grpc.CallOption) (*pb.SendTransactionResponse, error) {
 	varargs := []interface{}{arg0, arg1}
@@ -482,6 +500,19 @@ func (m *MockApiServiceServer) GetTransaction(arg0 context.Context, arg1 *pb.Get
 // GetTransaction indicates an expected call of GetTransaction
 func (mr *MockApiServiceServerMockRecorder) GetTransaction(arg0, arg1 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransaction", reflect.TypeOf((*MockApiServiceServer)(nil).GetTransaction), arg0, arg1)
+}
+
+// HealthCheck mocks base method
+func (m *MockApiServiceServer) HealthCheck(arg0 context.Context, arg1 *pb.NonParamRequest) (*pb.HealthCheckResponse, error) {
+	ret := m.ctrl.Call(m, "HealthCheck", arg0, arg1)
+	ret0, _ := ret[0].(*pb.HealthCheckResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HealthCheck indicates an expected call of HealthCheck
+func (mr *MockApiServiceServerMockRecorder) HealthCheck(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HealthCheck", reflect.TypeOf((*MockApiServiceServer)(nil).HealthCheck), arg0, arg1)
 }
 
 // SendTransaction mocks base method

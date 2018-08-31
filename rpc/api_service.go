@@ -347,3 +347,10 @@ func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiServ
 		}
 	}
 }
+
+// HealthCheck returns success.
+func (s *APIService) HealthCheck(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.HealthCheckResponse, error) {
+	return &rpcpb.HealthCheckResponse{
+		Ok: true,
+	}, nil
+}

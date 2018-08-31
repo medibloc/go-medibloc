@@ -72,6 +72,12 @@ service ApiService {
 			body: "*"
 		};
   }
+
+  rpc HealthCheck (NonParamRequest) returns (HealthCheckResponse) {
+    option (google.api.http) = {
+			get: "/v1/healthcheck"
+		};
+  }
 }
 
 message GetAccountRequest {
@@ -281,4 +287,8 @@ message SubscribeRequest {
 message SubscribeResponse {
   string topic = 1;
   string hash = 2;
+}
+
+message HealthCheckResponse {
+  bool ok = 1;
 }

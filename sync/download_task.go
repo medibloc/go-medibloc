@@ -134,8 +134,10 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 	rootHash := generateHashTrie(downloadedHashes).RootHash()
 	if !byteutils.Equal(rootHash, byteutils.Hex2Bytes(dt.rootHash)) {
 		logging.WithFields(logrus.Fields{
-			"err":     err,
-			"msgFrom": message.MessageFrom(),
+			"err":         err,
+			"rootHash":    byteutils.Bytes2Hex(rootHash),
+			"dt.rootHash": dt.rootHash,
+			"msgFrom":     message.MessageFrom(),
 		}).Error("BlockChunks root hash is not matched.")
 		return ErrFailVerification
 	}

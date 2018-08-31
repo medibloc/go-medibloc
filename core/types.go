@@ -42,7 +42,7 @@ const (
 	TxDelayLimit                = 24 * 60 * 60
 	UnstakingWaitDuration       = 7 * 24 * time.Hour
 	BandwidthRegenerateDuration = 7 * 24 * time.Hour
-	MaxPayloadSize              = 1024
+	MaxPayloadSize              = 4096
 )
 
 // Transaction's message types.

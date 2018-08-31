@@ -69,6 +69,7 @@
         "parameters": [
           {
             "name": "address",
+            "description": "Hex string of the account addresss.",
             "in": "path",
             "required": true,
             "type": "string"
@@ -183,6 +184,22 @@
             "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetDynastyResponse"
+            }
+          }
+        },
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
+    "/v1/healthcheck": {
+      "get": {
+        "operationId": "HealthCheck",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbHealthCheckResponse"
             }
           }
         },
@@ -557,6 +574,15 @@
           "items": {
             "$ref": "#/definitions/rpcpbGetTransactionResponse"
           }
+        }
+      }
+    },
+    "rpcpbHealthCheckResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "format": "boolean"
         }
       }
     },
