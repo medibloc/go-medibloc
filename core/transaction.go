@@ -399,6 +399,9 @@ type TransferTx struct {
 
 //NewTransferTx returns TransferTx
 func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.payload) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
 	if tx.value.Cmp(util.Uint128Zero()) == 0 {
 		return nil, ErrVoidTransaction
 	}
@@ -464,6 +467,9 @@ type AddRecordTx struct {
 
 //NewAddRecordTx returns AddRecordTx
 func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.payload) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
 	payload := new(AddRecordPayload)
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
@@ -530,6 +536,9 @@ type VestTx struct {
 
 //NewVestTx returns NewTx
 func NewVestTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.payload) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
 	if tx.Value().Cmp(util.Uint128Zero()) == 0 {
 		return nil, ErrCannotUseZeroValue
 	}
@@ -595,6 +604,9 @@ type WithdrawVestingTx struct {
 
 //NewWithdrawVestingTx returns WithdrawVestingTx
 func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.payload) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
 	return &WithdrawVestingTx{
 		user:   tx.From(),
 		amount: tx.Value(),
@@ -686,6 +698,9 @@ type AddCertificationTx struct {
 
 //NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.payload) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
 	payload := new(AddCertificationPayload)
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
@@ -797,6 +812,9 @@ type RevokeCertificationTx struct {
 
 //NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.payload) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
 	payload := new(RevokeCertificationPayload)
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err

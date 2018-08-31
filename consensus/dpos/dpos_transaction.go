@@ -32,6 +32,9 @@ type BecomeCandidateTx struct {
 
 //NewBecomeCandidateTx returns BecomeCandidateTx
 func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
+	if len(tx.Payload()) > core.MaxPayloadSize {
+		return nil, core.ErrTooLargePayload
+	}
 	return &BecomeCandidateTx{
 		candidateAddr: tx.From(),
 		collateral:    tx.Value(),
@@ -82,6 +85,9 @@ type QuitCandidateTx struct {
 
 //NewQuitCandidateTx returns QuitCandidateTx
 func NewQuitCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
+	if len(tx.Payload()) > core.MaxPayloadSize {
+		return nil, core.ErrTooLargePayload
+	}
 	return &QuitCandidateTx{
 		candidateAddr: tx.From(),
 	}, nil
@@ -197,6 +203,9 @@ type VoteTx struct {
 
 //NewVoteTx returns VoteTx
 func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
+	if len(tx.Payload()) > core.MaxPayloadSize {
+		return nil, core.ErrTooLargePayload
+	}
 	payload := new(VotePayload)
 	if err := core.BytesToTransactionPayload(tx.Payload(), payload); err != nil {
 		return nil, err

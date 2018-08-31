@@ -42,6 +42,7 @@ const (
 	TxDelayLimit                = 24 * 60 * 60
 	UnstakingWaitDuration       = 7 * 24 * time.Hour
 	BandwidthRegenerateDuration = 7 * 24 * time.Hour
+	MaxPayloadSize              = 1024
 )
 
 // Transaction's message types.
@@ -114,6 +115,7 @@ var (
 	ErrFailedToUnmarshalPayload         = errors.New("cannot unmarshal tx payload")
 	ErrFailedToMarshalPayload           = errors.New("cannot marshal tx payload to bytes")
 	ErrCheckPayloadIntegrity            = errors.New("payload has invalid elements")
+	ErrTooLargePayload                  = errors.New("too large payload")
 	ErrRecordAlreadyAdded               = errors.New("record hash already added")
 	ErrRecordReaderAlreadyAdded         = errors.New("record reader hash already added")
 	ErrCertReceivedAlreadyAdded         = errors.New("hash of received cert already added")
