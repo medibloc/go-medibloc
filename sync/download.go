@@ -31,6 +31,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
+	"github.com/medibloc/go-medibloc/core"
 )
 
 type download struct {
@@ -127,6 +128,7 @@ func (d *download) subscribeLoop() {
 	logging.Console().Info("Sync: Download manager is started.")
 
 	intervalTicker := time.NewTicker(d.interval)
+	timeoutTimerStart := time.Now()
 	timeoutTimer := time.NewTimer(d.timeout)
 	prevEstablishedPeersCount := int32(0)
 
@@ -139,11 +141,12 @@ func (d *download) subscribeLoop() {
 				d.sendMetaQuery()
 				prevEstablishedPeersCount = d.netService.Node().EstablishedPeersCount()
 			}
-			logging.WithFields(logrus.Fields{
+			logging.Console().WithFields(logrus.Fields{
 				"taskQueue":         d.taskQueue,
 				"runningTasks":      d.runningTasks,
 				"finishedTasks":     d.finishedTasks,
 				"currentTailHeight": d.bm.TailBlock().Height(),
+				"timeout":           time.Now().Sub(timeoutTimerStart),
 			}).Info("Sync: download service status")
 
 			if len(d.runningTasks) > 0 {
@@ -179,6 +182,7 @@ func (d *download) subscribeLoop() {
 		if !timeoutTimer.Stop() {
 			<-timeoutTimer.C
 		}
+		timeoutTimerStart = time.Now()
 		timeoutTimer.Reset(d.timeout)
 	}
 }
@@ -356,10 +360,15 @@ func (d *download) pushBlockDataChunk() error {
 		}
 		blocks := task.blocks
 		for _, b := range blocks {
-			if d.bm.BlockByHash(b.Hash()) != nil {
+			err := d.bm.PushBlockData(b)
+			if err == core.ErrDuplicatedBlock {
+				logging.Console().WithFields(logrus.Fields{
+					"hash":   b.Hash(),
+					"height": b.Height(),
+				}).Infof("Block height (%d) is already pushed", b.Height())
 				continue
 			}
-			if err := d.bm.PushBlockData(b); err != nil {
+			if err != nil {
 				return err
 			}
 		}
@@ -380,10 +389,20 @@ func (d *download) majorityCheck(n int) bool {
 	return true
 }
 
+func (d *download) flush() {
+	d.pidRootHashesMap = make(map[string][]string)
+	d.rootHashPIDsMap = make(map[string]map[string]struct{})
+	d.taskQueue = make([]*downloadTask, 0)
+	d.runningTasks = make(map[uint64]*downloadTask)
+	d.respondingPeers = make(map[string]struct{})
+}
+
 func (d *download) deregisterSubscriber() {
 	d.mu.Lock()
 	d.activated = false
 	d.mu.Unlock()
+	d.flush()
+
 	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 }
