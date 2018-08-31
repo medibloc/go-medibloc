@@ -35,3 +35,13 @@ var medjs = Medjs.init(['https://node.medibloc.org']);
 ```
 "/ip4/13.209.235.191/tcp/9910/ipfs/12D3KooWMfq99SzYn5cjHr5ZPD9PWRMfNHoyWMv2m9mNAEwVFjaY"
 ```
+* Running
+```
+cd $GOPATH/src/github.com/medibloc/go-medibloc
+
+# Build a medi binary
+make build
+
+# Run
+build/medi conf/testnet/public.conf
+```
