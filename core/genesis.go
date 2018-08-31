@@ -245,7 +245,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			to:        addr,
 			value:     total,
 			timestamp: GenesisTimestamp,
-			nonce:     2 + uint64(i)*2,
+			nonce:     2 + uint64(i),
 			chainID:   conf.Meta.ChainId,
 		}
 		hash, err = tx.CalcHash()
@@ -262,10 +262,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		tx = &Transaction{
 			txType:    TxTyGenesisVesting,
 			from:      addr,
-			to:        nil,
+			to:        common.Address{},
 			value:     vesting,
 			timestamp: GenesisTimestamp,
-			nonce:     2 + uint64(i)*2 + 1,
+			nonce:     1,
 			chainID:   conf.Meta.ChainId,
 		}
 		hash, err = tx.CalcHash()
@@ -356,7 +356,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts)-1 != len(tokenDist) {
+	if len(accounts)-2 != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
 			"accountCount": len(accounts),
 			"tokenCount":   len(tokenDist),
@@ -365,7 +365,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	for _, account := range accounts {
-		if account.Address == GenesisCoinbase {
+		if account.Address == GenesisCoinbase || account.Address == common.HexToAddress("") {
 			continue
 		}
 		contains := false

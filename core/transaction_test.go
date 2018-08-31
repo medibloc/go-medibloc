@@ -55,7 +55,7 @@ func TestAddRecord(t *testing.T) {
 
 	block := bb.
 		Tx().StakeTx(owner, 10000000000000000).Execute().
-		Tx().Type(core.TxOpAddRecord).Payload(payload).Nonce(2).SignPair(owner).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(owner).Execute().
 		Build()
 
 	acc, err := block.State().GetAccount(owner.Addr)
@@ -120,7 +120,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	}
 
 	bb = bb.Stake().
-		Tx().Nonce(3).Type(core.TxOpAddCertification).From(issuer.Addr).To(certified.Addr).Payload(addPayload).CalcHash().SignKey(issuer.PrivKey).Execute()
+		Tx().Type(core.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
 
 	block := bb.PayReward().Seal().Build()
 
@@ -152,9 +152,9 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb = bb.
-		Tx().Nonce(4).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
-		Tx().Nonce(4).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
-		Tx().Nonce(5).Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
+		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
+		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
+		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
 		ExecuteErr(core.ErrCertAlreadyRevoked)
 	block = bb.Build()
 

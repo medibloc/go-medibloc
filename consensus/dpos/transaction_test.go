@@ -36,9 +36,9 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	txType := dpos.TxOpBecomeCandidate
 	bb = bb.
 		Tx().StakeTx(candidate, 100000000000000000).Execute().
-		Tx().Type(txType).Value(10000000000000000000).Nonce(2).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
-		Tx().Type(txType).Value(10).Nonce(2).SignPair(candidate).Execute().
-		Tx().Type(txType).Value(10).Nonce(3).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
+		Tx().Type(txType).Value(10000000000000000000).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().Type(txType).Value(10).SignPair(candidate).Execute().
+		Tx().Type(txType).Value(10).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
 
 	bb.Expect().
 		Balance(candidate.Addr, 1000000000000000000-10-100000000000000000).
@@ -59,8 +59,8 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	assert.Equal(t, util.NewUint128FromUint(10), acc.Collateral)
 
 	bb = bb.
-		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(3).SignPair(candidate).Execute().
-		Tx().Type(dpos.TxOpQuitCandidacy).Nonce(4).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
+		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).Execute().
+		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
 
 	block = bb.Build()
 	as = block.State().AccState()

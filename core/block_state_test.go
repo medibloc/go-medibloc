@@ -67,8 +67,8 @@ func TestNonceCheck(t *testing.T) {
 	bb = bb.
 		Tx().StakeTx(from, 100000000000000000).Execute().
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).From(from.Addr).CalcHash().SignKey(from.PrivKey).ExecuteErr(core.ErrSmallTransactionNonce).
-		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).SignPair(from).Execute().
-		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(4).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(5).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute()
 }
@@ -172,7 +172,7 @@ func TestTxsFromTxsTo(t *testing.T) {
 
 	accFrom, err := block.State().GetAccount(from.Addr)
 	require.NoError(t, err)
-	assert.Equal(t, 10, testutil.TrieLen(t, accFrom.TxsFrom))
+	assert.Equal(t, 11, testutil.TrieLen(t, accFrom.TxsFrom))
 	assert.Equal(t, 1, testutil.TrieLen(t, accFrom.TxsTo)) // tx from Genesis
 
 	accTo, err := block.State().GetAccount(to.Addr)

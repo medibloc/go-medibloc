@@ -22,7 +22,6 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
@@ -45,10 +44,9 @@ func TestNewGenesisBlock(t *testing.T) {
 	t.Log(len(txs[0].Hash()))
 	t.Log(len(txs[1].Hash()))
 
-	for i, tx := range txs[1:] {
-		t.Log(byteutils.Bytes2Hex(tx.Hash()))
-		assert.True(t, dist[i].Addr.Equals(tx.To()))
-		assert.Equal(t, "1000000000000000000", tx.Value().String())
+	for i := 0; i < len(dist); i++ {
+		assert.True(t, dist[i].Addr.Equals(txs[1+2*i].To()))
+		assert.Equal(t, "1000000000000000000", txs[1+2*i].Value().String())
 	}
 
 	dposState := genesisBlock.State().DposState()
