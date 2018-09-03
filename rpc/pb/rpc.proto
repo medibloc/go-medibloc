@@ -112,10 +112,10 @@ message GetAccountResponse {
   //	repeated string certs_received = 7;
   //	// Account addresses certificated by the account.
   //	repeated string certs_issued = 8;
-  // Transactions sent from account
-  repeated string txs_from = 9;
-  // Transactions sent to account
-  repeated string txs_to = 10;
+  //  // Transactions sent from account
+  //  repeated string txs_from = 9;
+  //  // Transactions sent to account
+  //  repeated string txs_to = 10;
 }
 
 message GetBlockRequest {

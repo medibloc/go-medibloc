@@ -30,8 +30,8 @@ func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAcc
 		Voted:     byteutils.BytesSlice2HexSlice(account.VotedSlice()),
 		Bandwidth: account.Bandwidth.String(),
 		Unstaking: account.Unstaking.String(),
-		TxsFrom:   byteutils.BytesSlice2HexSlice(account.TxsFromSlice()),
-		TxsTo:     byteutils.BytesSlice2HexSlice(account.TxsToSlice()),
+		//TxsFrom:   byteutils.BytesSlice2HexSlice(account.TxsFromSlice()),
+		//TxsTo:     byteutils.BytesSlice2HexSlice(account.TxsToSlice()),
 	}
 }
 
