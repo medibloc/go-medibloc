@@ -18,8 +18,6 @@ package core
 import (
 	"sync"
 
-	"sort"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/hashheap"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -146,7 +144,7 @@ func (pool *TransactionPool) Pop() *Transaction {
 	if cmpTx == nil {
 		return nil
 	}
-	tx := cmpTx.(*sortable).Transaction
+	tx := cmpTx.(*ordered).Transaction
 
 	pool.del(tx)
 
@@ -172,10 +170,10 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 		bkt = newBucket()
 	}
 	bkt.push(tx)
+	pool.buckets.Set(from, bkt)
 
 	pool.replaceCandidate(bkt, from)
 
-	pool.buckets.Set(from, bkt)
 	return nil
 }
 
@@ -196,15 +194,14 @@ func (pool *TransactionPool) del(tx *Transaction) {
 		}).Error("Unable to find the bucket containing the transaction.")
 		return
 	}
+	pool.buckets.Del(from)
 	bkt := v.(*bucket)
 	bkt.del(tx)
+	if !bkt.isEmpty() {
+		pool.buckets.Set(from, bkt)
+	}
 
 	pool.replaceCandidate(bkt, from)
-
-	if bkt.isEmpty() {
-		return
-	}
-	pool.buckets.Set(from, bkt)
 }
 
 func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {
@@ -215,11 +212,11 @@ func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {
 	}
 
 	v := pool.candidates.Get(addr)
-	if v != nil && byteutils.Equal(cand.Hash(), v.(*sortable).Transaction.Hash()) {
+	if v != nil && byteutils.Equal(cand.Hash(), v.(*ordered).Transaction.Hash()) {
 		return
 	}
 	pool.candidates.Del(addr)
-	pool.candidates.Set(addr, &sortable{Transaction: cand, ordering: pool.counter})
+	pool.candidates.Set(addr, &ordered{Transaction: cand, ordering: pool.counter})
 	pool.counter++
 }
 
@@ -243,71 +240,65 @@ func (pool *TransactionPool) evict() {
 	pool.del(tx)
 }
 
-// comparable assigns a sequence to the transaction.
-type comparable struct{ *Transaction }
-
-func (tx *comparable) Less(o interface{}) bool { return tx.nonce < o.(*comparable).nonce }
-
-type sortable struct {
+type ordered struct {
 	*Transaction
 	ordering uint64
 }
 
-func (tx *sortable) Less(o interface{}) bool { return tx.ordering < o.(*sortable).ordering }
+func (tx *ordered) Less(o interface{}) bool { return tx.ordering < o.(*ordered).ordering }
 
-// transactions is sortable slice of comparable transactions.
-type transactions []*comparable
+// minNonce assigns a sequence by nonce to the transaction.
+type minNonce struct{ *Transaction }
 
-func (t transactions) Len() int { return len(t) }
+func (tx *minNonce) Less(o interface{}) bool { return tx.nonce < o.(*minNonce).nonce }
 
-func (t transactions) Less(i, j int) bool { return t[i].Less(t[j]) }
+type maxNonce struct{ *Transaction }
 
-func (t transactions) Swap(i, j int) { t[i], t[j] = t[j], t[i] }
+func (tx *maxNonce) Less(o interface{}) bool { return tx.nonce > o.(*maxNonce).nonce }
 
 // bucket is a set of transactions for each account.
 type bucket struct {
-	txs transactions
+	minTxs *hashheap.HashedHeap
+	maxTxs *hashheap.HashedHeap
 }
 
 func newBucket() *bucket {
 	return &bucket{
-		txs: make(transactions, 0),
+		minTxs: hashheap.New(),
+		maxTxs: hashheap.New(),
 	}
 }
 
 func (b *bucket) Less(o interface{}) bool {
-	return len(b.txs) > len(o.(*bucket).txs)
+	return b.minTxs.Len() > o.(*bucket).minTxs.Len()
 }
 
 func (b *bucket) isEmpty() bool {
-	return len(b.txs) == 0
+	return b.minTxs.Len() == 0
 }
 
 func (b *bucket) push(tx *Transaction) {
-	cmpTx := &comparable{tx}
-	b.txs = append(b.txs, cmpTx)
-	sort.Sort(b.txs)
+	minTx := &minNonce{tx}
+	maxTx := &maxNonce{tx}
+	b.minTxs.Set(byteutils.Bytes2Hex(tx.Hash()), minTx)
+	b.maxTxs.Set(byteutils.Bytes2Hex(tx.Hash()), maxTx)
 }
 
 func (b *bucket) peekFirst() *Transaction {
-	if len(b.txs) == 0 {
+	if b.minTxs.Len() == 0 {
 		return nil
 	}
-	return b.txs[0].Transaction
+	return b.minTxs.Peek().(*minNonce).Transaction
 }
 
 func (b *bucket) peekLast() *Transaction {
-	if len(b.txs) == 0 {
+	if b.maxTxs.Len() == 0 {
 		return nil
 	}
-	return b.txs[len(b.txs)-1].Transaction
+	return b.maxTxs.Peek().(*maxNonce).Transaction
 }
 
 func (b *bucket) del(tx *Transaction) {
-	for i, tt := range b.txs {
-		if byteutils.Equal(tt.Transaction.Hash(), tx.Hash()) {
-			b.txs = append(b.txs[:i], b.txs[i+1:]...)
-			return
-		}
-	}
+	b.minTxs.Del(byteutils.Bytes2Hex(tx.Hash()))
+	b.maxTxs.Del(byteutils.Bytes2Hex(tx.Hash()))
 }

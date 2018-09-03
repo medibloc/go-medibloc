@@ -88,6 +88,11 @@ func (h *HashedHeap) Peek() (value Comparable) {
 	return e.value
 }
 
+// Len returns length.
+func (h *HashedHeap) Len() int {
+	return h.pq.Len()
+}
+
 type entry struct {
 	key   string
 	value Comparable

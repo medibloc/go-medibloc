@@ -65,10 +65,14 @@ func TestTransactionPoolEvict(t *testing.T) {
 		poolSize     = 3
 	)
 
-	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	from := bb.KeyPairs[0]
+	to := testutil.NewAddrKeyPair(t)
+
+	tb := bb.Tx()
 	var txs []*core.Transaction
 	for i := 0; i < nTransaction; i++ {
-		tx := tb.RandomTx().Build()
+		tx := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(uint64(i + 1)).SignPair(from).Build()
 		txs = append(txs, tx)
 	}
 
