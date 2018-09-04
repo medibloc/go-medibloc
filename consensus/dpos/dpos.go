@@ -38,9 +38,10 @@ import (
 type Dpos struct {
 	dynastySize int
 
-	coinbase common.Address
-	miner    common.Address
-	minerKey signature.PrivateKey
+	startMine bool
+	coinbase  common.Address
+	miner     common.Address
+	minerKey  signature.PrivateKey
 
 	bm *core.BlockManager
 	tm *core.TransactionManager
@@ -86,6 +87,7 @@ func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (c
 // Setup sets up dpos.
 func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
 	// Setup miner
+	d.startMine = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
 		d.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
 		d.miner = common.HexToAddress(cfg.Chain.Miner)
@@ -116,11 +118,17 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 
 // Start starts miner.
 func (d *Dpos) Start() {
+	if !d.startMine {
+		return
+	}
 	go d.loop()
 }
 
 // Stop stops miner.
 func (d *Dpos) Stop() {
+	if !d.startMine {
+		return
+	}
 	d.quitCh <- 0
 }
 
