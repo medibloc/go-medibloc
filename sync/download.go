@@ -52,7 +52,6 @@ type download struct {
 	runningTasks      map[uint64]*downloadTask
 	finishedTasks     *taskList
 	taskAddCh         chan *downloadTask
-	taskDoneCh        chan *downloadTask
 	maxRunningTask    uint32
 	chunkCacheSize    uint64
 	minimumPeersCount uint32
@@ -84,7 +83,6 @@ func newDownload(config *medletpb.SyncConfig) *download {
 		runningTasks:      make(map[uint64]*downloadTask),
 		finishedTasks:     nil,
 		taskAddCh:         make(chan *downloadTask, 2),
-		taskDoneCh:        make(chan *downloadTask),
 		maxRunningTask:    config.DownloadMaxConcurrentTasks,
 		chunkCacheSize:    config.DownloadChunkCacheSize,
 		minimumPeersCount: config.MinimumPeers,
@@ -281,7 +279,7 @@ func (d *download) checkMajorMeta() {
 				logging.Infof("Major RootHash was found from %v", d.from+uint64(i)*d.chunkSize)
 				//createDownloadTask
 				majorNotFound = false
-				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHashHex], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHashHex, d.taskDoneCh, d.interval)
+				t := newDownloadTask(d.netService, d.rootHashPIDsMap[rootHashHex], d.from+uint64(i)*d.chunkSize, d.chunkSize, rootHashHex, d.interval)
 				d.taskQueue = append(d.taskQueue, t)
 				d.runNextTask()
 				break

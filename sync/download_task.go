@@ -46,12 +46,11 @@ type downloadTask struct {
 	endTime             time.Time
 	blockChunkMessageCh chan net.Message
 	quitCh              chan bool
-	doneCh              chan *downloadTask
 	pid                 string
 	interval            time.Duration
 }
 
-func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash string, doneCh chan *downloadTask, interval time.Duration) *downloadTask {
+func newDownloadTask(netService net.Service, peers map[string]struct{}, from uint64, chunkSize uint64, rootHash string, interval time.Duration) *downloadTask {
 	dt := &downloadTask{
 		netService:          netService,
 		query:               nil,
@@ -65,7 +64,6 @@ func newDownloadTask(netService net.Service, peers map[string]struct{}, from uin
 		endTime:             time.Time{},
 		blockChunkMessageCh: make(chan net.Message, 1),
 		quitCh:              make(chan bool, 2),
-		doneCh:              doneCh,
 		pid:                 "",
 		interval:            interval,
 	}
@@ -145,7 +143,6 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 	dt.blocks = blocks
 	dt.endTime = time.Now()
 	dt.pid = message.MessageFrom()
-	//dt.doneCh <- dt
 	return nil
 }
 
