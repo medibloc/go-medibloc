@@ -16,10 +16,8 @@
 package dpos
 
 import (
-	"sort"
-	"time"
-
 	"bytes"
+	"sort"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -184,8 +182,8 @@ func MakeNewDynasty(sortedCandidates []common.Address, dynastySize int) []common
 }
 
 func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
-	parentDynastyIndex := int(time.Duration(parentTimestamp) * time.Second / d.DynastyInterval())
-	curDynastyIndex := int(time.Duration(curTimestamp) * time.Second / d.DynastyInterval())
+	parentDynastyIndex := d.calcDynastyIndex(parentTimestamp)
+	curDynastyIndex := d.calcDynastyIndex(curTimestamp)
 
 	return curDynastyIndex > parentDynastyIndex
 }
@@ -212,7 +210,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 	if err != nil {
 		return common.Address{}, err
 	}
-	proposerIndex := int(mintTs) % int(d.DynastyInterval().Seconds()) / int(BlockInterval.Seconds())
+	proposerIndex := d.calcProposerIndex(mintTs)
 	return dynasty[proposerIndex], nil
 }
 

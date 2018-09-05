@@ -18,6 +18,8 @@ package dpos
 import (
 	"time"
 
+	"bytes"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
@@ -29,7 +31,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -165,49 +166,15 @@ func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
 func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	lib := bc.LIB()
 	tail := bc.MainTailBlock()
+	tailDynastyIndex := d.calcDynastyIndex(tail.Timestamp())
+
 	cur := tail
-	confirmed := make(map[string]bool)
-	members, err := tail.State().DposState().Dynasty()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":  err,
-			"tail": tail,
-			"lib":  lib,
-		}).Error("Failed to get members of dynasty.")
-		return lib
-	}
-	dynastyGen := int64(-1)
+	confirmed := make(map[int]bool)
 
-	for !byteutils.Equal(cur.Hash(), lib.Hash()) {
-		if gen := d.dynastyGenByTime(cur.Timestamp()); dynastyGen != gen {
-			dynastyGen = gen
-			confirmed = make(map[string]bool)
-			members, err = cur.State().DposState().Dynasty()
-			if err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"block": cur,
-					"err":   err,
-				}).Error("Failed to get members of dynasty.")
-				return lib
-			}
-		}
+	for d.calcDynastyIndex(cur.Timestamp()) == tailDynastyIndex && !bytes.Equal(cur.Hash(), lib.Hash()) {
+		proposerIndex := d.calcProposerIndex(cur.Timestamp())
+		confirmed[proposerIndex] = true
 
-		if cur.Height()-lib.Height() < uint64(d.consensusSize()-len(confirmed)) {
-			return lib
-		}
-
-		proposer, err := cur.Proposer()
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"block":     cur,
-				"timestamp": cur.Timestamp(),
-				"members":   members,
-				"err":       err,
-			}).Error("Failed to find a block proposer.")
-			return lib
-		}
-
-		confirmed[proposer.Hex()] = true
 		if len(confirmed) >= d.consensusSize() {
 			return cur
 		}
@@ -215,18 +182,12 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 		cur = bc.BlockByHash(cur.ParentHash())
 		if cur == nil {
 			logging.Console().WithFields(logrus.Fields{
-				"tail": tail,
-				"lib":  lib,
+				"cur": cur,
 			}).Error("Failed to find a parent block.")
 			return lib
 		}
 	}
 	return lib
-}
-
-func (d *Dpos) dynastyGenByTime(ts int64) int64 {
-	now := time.Duration(ts) * time.Second
-	return int64(now / d.DynastyInterval())
 }
 
 // VerifyInterval verifies block interval.
@@ -520,4 +481,12 @@ func (d *Dpos) loop() {
 			return
 		}
 	}
+}
+
+func (d *Dpos) calcDynastyIndex(ts int64) int {
+	return int(ts / int64(d.DynastyInterval().Seconds()))
+}
+
+func (d *Dpos) calcProposerIndex(ts int64) int {
+	return (int(ts) / int(BlockInterval.Seconds())) % d.dynastySize
 }
