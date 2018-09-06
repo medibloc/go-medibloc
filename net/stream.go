@@ -26,8 +26,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	netpb "github.com/medibloc/go-medibloc/net/pb"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
@@ -230,7 +230,6 @@ func (s *Stream) Write(data []byte) error {
 	defer s.syncMutex.Unlock()
 
 	if s.stream == nil {
-		s.Close(ErrStreamIsNotConnected)
 		return ErrStreamIsNotConnected
 	}
 
@@ -245,7 +244,6 @@ func (s *Stream) Write(data []byte) error {
 			"err":    err,
 			"stream": s.String(),
 		}).Warn("Failed to send message to peer.")
-		s.Close(err)
 		return err
 	}
 	s.latestWriteAt = time.Now().Unix()
@@ -263,6 +261,14 @@ func (s *Stream) WriteMedMessage(message *MedMessage) error {
 	metricsPacketsOutByMessageName(message.MessageName(), message.Length())
 
 	err := s.Write(message.Content())
+	if err != nil {
+		s.Close(err)
+		logging.Console().WithFields(logrus.Fields{
+			"stream":    s.String(),
+			"handshake": s.IsHandshakeSucceed(),
+			"err":       err,
+		}).Info("Failed to write message on stream")
+	}
 	message.FlagWriteMessageAt()
 
 	/*

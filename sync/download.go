@@ -340,9 +340,10 @@ func (d *download) sendMetaQuery() error {
 	}
 	filter := new(net.ChainSyncPeersFilter)
 	filter.SetExcludedPIDs(d.respondingPeers)
-	d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, filter)
-	logging.WithFields(logrus.Fields{
+	peers := d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, filter)
+	logging.Console().WithFields(logrus.Fields{
 		"mq":                       mq,
+		"peers":                    peers,
 		"sendData":                 sendData,
 		"numberOfPeers":            d.netService.Node().PeersCount(),
 		"numberOfEstablishedPeers": d.netService.Node().EstablishedPeersCount(),
@@ -379,7 +380,7 @@ func (d *download) pushBlockDataChunk() error {
 }
 
 func (d *download) majorityCheck(n int) bool {
-	numberOfPeers := float64(d.netService.Node().PeersCount())
+	numberOfPeers := float64(d.netService.Node().EstablishedPeersCount())
 	majorTh := int(math.Ceil(numberOfPeers / 2.0))
 	if n < majorTh || n < int(d.minimumPeersCount) {
 		return false
