@@ -8,7 +8,7 @@ Official implementation of the medibloc blockchain.
 ## How to Build
 ### Build Requirements
 * Golang v1.10 or higher
-    * [Golang.org](Golang.org)
+    * [Golang.org](https://Golang.org)
 * dep
 ```bash
 go get -u github.com/golang/dep/cmd/dep
