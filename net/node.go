@@ -93,7 +93,7 @@ func NewNode(config *Config) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	logging.WithFields(logrus.Fields{
+	logging.Console().WithFields(logrus.Fields{
 		"id":          node.id.Pretty(),
 		"network_key": networkKeyString,
 		"listen_port": config.Listen,
