@@ -57,6 +57,9 @@ func medi(ctx *cli.Context) error {
 		}).Error("Failed to load config.")
 		return err
 	}
+
+	log.Init(conf.App.LogFile, conf.App.LogLevel, conf.App.LogAge)
+
 	m, err := medlet.New(conf)
 	if err != nil {
 		log.Console().WithFields(logrus.Fields{
@@ -64,9 +67,7 @@ func medi(ctx *cli.Context) error {
 		}).Error("Failed to create medlet.")
 		return err
 	}
-
-	log.Init(m.Config().App.LogFile, m.Config().App.LogLevel, m.Config().App.LogAge)
-
+	//log.Init(m.Config().App.LogFile, m.Config().App.LogLevel, m.Config().App.LogAge)
 	return runMedi(ctx, m)
 }
 
