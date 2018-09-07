@@ -20,7 +20,9 @@ import (
 	"encoding/base64"
 	"io/ioutil"
 
-	crypto "github.com/libp2p/go-libp2p-crypto"
+	"github.com/libp2p/go-libp2p-crypto"
+	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 // LoadNetworkKeyFromFile load network priv key from file.
@@ -35,8 +37,12 @@ func LoadNetworkKeyFromFile(path string) (crypto.PrivKey, error) {
 // LoadNetworkKeyFromFileOrCreateNew load network priv key from file or create new one.
 func LoadNetworkKeyFromFileOrCreateNew(path string) (crypto.PrivKey, error) {
 	if path == "" {
+		logging.Info("Generate New Network Key")
 		return GenerateEd25519Key()
 	}
+	logging.Console().WithFields(logrus.Fields{
+		"path": path,
+	}).Info("Load Network Key from file")
 	return LoadNetworkKeyFromFile(path)
 }
 
