@@ -89,9 +89,13 @@ func NewNode(config *Config) (*Node, error) {
 		return nil, err
 	}
 
+	networkKeyString, err := MarshalNetworkKey(node.networkKey)
+	if err != nil {
+		return nil, err
+	}
 	logging.WithFields(logrus.Fields{
 		"id":          node.id.Pretty(),
-		"network_key": MarshalNetworkKey(node.networkKey),
+		"network_key": networkKeyString,
 		"listen_port": config.Listen,
 	}).Info("Make new node")
 
