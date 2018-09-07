@@ -35,4 +35,4 @@ data/
 logs/
 
 # custom network key
-conf/network/customkey
+network.key
