@@ -288,10 +288,10 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	logging.Console().WithFields(logrus.Fields{
-		"block": bd,
-		"ts":    time.Unix(bd.Timestamp(), 0),
-		"tail":  newTail,
-		"lib_height":   newLIB.Height(),
+		"block":      bd,
+		"ts":         time.Unix(bd.Timestamp(), 0),
+		"tail":       newTail,
+		"lib_height": newLIB.Height(),
 	}).Info("Block pushed.")
 
 	return nil
