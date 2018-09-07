@@ -33,3 +33,6 @@ vendor/
 # execution output
 data/
 logs/
+
+# custom network key
+conf/network/customkey
