@@ -291,7 +291,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		"block": bd,
 		"ts":    time.Unix(bd.Timestamp(), 0),
 		"tail":  newTail,
-		"lib":   newLIB,
+		"lib_height":   newLIB.Height(),
 	}).Info("Block pushed.")
 
 	return nil
