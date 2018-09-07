@@ -89,16 +89,6 @@ func NewNode(config *Config) (*Node, error) {
 		return nil, err
 	}
 
-	networkKeyString, err := MarshalNetworkKey(node.networkKey)
-	if err != nil {
-		return nil, err
-	}
-	logging.Console().WithFields(logrus.Fields{
-		"id":          node.id.Pretty(),
-		"network_key": networkKeyString,
-		"listen_port": config.Listen,
-	}).Info("Make new node")
-
 	return node, nil
 }
 
@@ -205,7 +195,7 @@ func (node *Node) RouteTable() *RouteTable {
 
 func initP2PNetworkKey(config *Config, node *Node) {
 	// init p2p network key.
-	networkKey, err := LoadNetworkKeyFromFileOrCreateNew(config.PrivateKeyPath)
+	networkKey, err := LoadNetworkKeyFromFileOrCreateNew(config)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":        err,

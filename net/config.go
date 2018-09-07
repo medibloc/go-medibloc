@@ -30,6 +30,7 @@ const ( // TODO delete redundant vars
 	DefaultBucketCapacity               = 64
 	DefaultRoutingTableMaxLatency       = 10
 	DefaultPrivateKeyPath               = "conf/network.key"
+	DefaultPrivateKeyCachePath          = "data/network.key"
 	DefaultMaxSyncNodes                 = 64
 	DefaultChainID                      = 1
 	DefaultRoutingTableDir              = ""
@@ -52,6 +53,7 @@ type Config struct {
 	Latency                      time.Duration
 	BootNodes                    []multiaddr.Multiaddr
 	PrivateKeyPath               string
+	PrivateKeyCachePath          string
 	Listen                       []string
 	MaxSyncNodes                 int
 	ChainID                      uint32
@@ -86,7 +88,7 @@ func NewP2PConfig(cfg *medletpb.Config) *Config {
 		panic(fmt.Sprintf("The network private key path %s is not exist.", networkConf.PrivateKey))
 	}
 	config.PrivateKeyPath = networkConf.PrivateKey
-
+	config.PrivateKeyCachePath = fmt.Sprintf("%v/network.key", cfg.Global.Datadir)
 	// Chain ID.
 	config.ChainID = globalConf.ChainId
 
@@ -145,6 +147,7 @@ func NewConfigFromDefaults() *Config {
 		DefaultRoutingTableMaxLatency,
 		[]multiaddr.Multiaddr{},
 		DefaultPrivateKeyPath,
+		DefaultPrivateKeyCachePath,
 		DefaultListen,
 		DefaultMaxSyncNodes,
 		DefaultChainID,

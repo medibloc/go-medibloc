@@ -20,6 +20,8 @@ import (
 	"encoding/base64"
 	"io/ioutil"
 
+	"os"
+
 	"github.com/libp2p/go-libp2p-crypto"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -35,15 +37,34 @@ func LoadNetworkKeyFromFile(path string) (crypto.PrivKey, error) {
 }
 
 // LoadNetworkKeyFromFileOrCreateNew load network priv key from file or create new one.
-func LoadNetworkKeyFromFileOrCreateNew(path string) (crypto.PrivKey, error) {
-	if path == "" {
-		logging.Info("Generate New Network Key")
-		return GenerateEd25519Key()
+func LoadNetworkKeyFromFileOrCreateNew(cfg *Config) (crypto.PrivKey, error) {
+	if cfg.PrivateKeyPath == "" {
+		if _, err := os.Stat(cfg.PrivateKeyCachePath); err == nil {
+			logging.Console().WithFields(logrus.Fields{
+				"privateKeyPath": cfg.PrivateKeyCachePath,
+			}).Info("Load Network Key from cache file")
+			return LoadNetworkKeyFromFile(cfg.PrivateKeyCachePath)
+		}
+		key, err := GenerateEd25519Key()
+		if err != nil {
+			return nil, err
+		}
+		if cfg.PrivateKeyCachePath != "" {
+			keyString, _ := MarshalNetworkKey(key)
+			err = ioutil.WriteFile(cfg.PrivateKeyCachePath, []byte(keyString), 400)
+			if err != nil {
+				return nil, err
+			}
+			logging.Console().WithFields(logrus.Fields{
+				"privateKeyPath": cfg.PrivateKeyCachePath,
+			}).Info("Generate New Network Key")
+		}
+		return key, err
 	}
 	logging.Console().WithFields(logrus.Fields{
-		"path": path,
+		"privateKeyPath": cfg.PrivateKeyPath,
 	}).Info("Load Network Key from file")
-	return LoadNetworkKeyFromFile(path)
+	return LoadNetworkKeyFromFile(cfg.PrivateKeyPath)
 }
 
 // UnmarshalNetworkKey unmarshal network key.

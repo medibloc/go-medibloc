@@ -282,6 +282,7 @@ func makeNewTestP2PConfig(privateKeyPath string) *Config {
 		TestRoutingTableMaxLatency,
 		[]ma.Multiaddr{},
 		privateKeyPath,
+		"",
 		randomListen,
 		TestMaxSyncNodes,
 		TestChainID,
