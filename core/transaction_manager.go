@@ -25,6 +25,7 @@ import (
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 var defaultTransactionkMessageChanSize = 128
@@ -156,6 +157,9 @@ func (mgr *TransactionManager) PushAndRelay(tx *Transaction) error {
 		return err
 	}
 	mgr.Relay(tx)
+	logging.Console().WithFields(logrus.Fields{
+		"hash": byteutils.Bytes2Hex(tx.hash),
+	}).Info("Transaction is pushed")
 	return nil
 }
 
