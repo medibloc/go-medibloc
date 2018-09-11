@@ -45,17 +45,22 @@ type AddrKeyPair struct {
 	PrivKey signature.PrivateKey
 }
 
-// NewAddrKeyPair creates a pair of address and private key.
-func NewAddrKeyPair(t *testing.T) *AddrKeyPair {
-	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
-	require.NoError(t, err)
-
+// NewAddrKeyPairPrivKey creates a pair from private key.
+func NewAddrKeyPairFromPrivKey(t *testing.T, privKey signature.PrivateKey) *AddrKeyPair {
 	addr, err := common.PublicKeyToAddress(privKey.PublicKey())
 	require.NoError(t, err)
 	return &AddrKeyPair{
 		Addr:    addr,
 		PrivKey: privKey,
 	}
+}
+
+// NewAddrKeyPair creates a pair of address and private key.
+func NewAddrKeyPair(t *testing.T) *AddrKeyPair {
+	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
+	require.NoError(t, err)
+
+	return NewAddrKeyPairFromPrivKey(t, privKey)
 }
 
 // Address returns address.

@@ -320,6 +320,8 @@ func (d *Dpos) mintBlock(now time.Time) error {
 }
 
 func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, error) {
+	logging.Console().Info("Start to make mint block.")
+
 	block, err := core.NewBlock(tail.ChainID(), d.miner, tail)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
