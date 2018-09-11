@@ -305,7 +305,10 @@ func (d *download) checkMajorMeta() {
 			}
 		}
 		if majorNotFound {
-			logging.Infof("Major RootHash was not found at %v", d.from+uint64(i)*d.chunkSize)
+			logging.Console().WithFields(logrus.Fields{
+				"peerCounter": peerCounter,
+				"established": d.netService.Node().EstablishedPeersCount(),
+			}).Infof("Major RootHash was not found at %v", d.from+uint64(i)*d.chunkSize)
 			break
 		}
 		i++
