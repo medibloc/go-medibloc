@@ -46,7 +46,7 @@ const (
 )
 
 const (
-	handShakeTimeout = 15		// Todo: move to config? @drsleepytiger
+	handShakeTimeout = 15 // Todo: move to config? @drsleepytiger
 )
 
 // Stream Status
