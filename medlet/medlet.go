@@ -16,6 +16,11 @@
 package medlet
 
 import (
+	goNet "net"
+	"net/http"
+	_ "net/http/pprof"
+	"time"
+
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -152,6 +157,29 @@ func (m *Medlet) Setup() error {
 	m.syncService.Setup(m.netService, m.blockManager)
 
 	logging.Console().Info("Set up Medlet.")
+	return nil
+}
+
+// StartPprof start pprof http listen
+func (m *Medlet) StartPprof(listen string) error {
+	if len(listen) > 0 {
+		conn, err := goNet.DialTimeout("tcp", listen, time.Second*1)
+		if err == nil {
+			logging.Console().WithFields(logrus.Fields{
+				"listen": listen,
+				"err":    err,
+			}).Error("Failed to start pprof")
+			conn.Close()
+			return err
+		}
+
+		go func() {
+			logging.Console().WithFields(logrus.Fields{
+				"listen": listen,
+			}).Info("Starting pprof...")
+			http.ListenAndServe(listen, nil)
+		}()
+	}
 	return nil
 }
 

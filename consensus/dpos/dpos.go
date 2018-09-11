@@ -309,12 +309,11 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	//err = d.bm.PushBlockData(block.GetBlockData())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"block":    block,
-			"err":      err,
+			"block": block,
+			"err":   err,
 		}).Error("Failed to push block to blockchain.")
 		return err
 	}
-
 
 	d.bm.BroadCast(block.GetBlockData())
 
