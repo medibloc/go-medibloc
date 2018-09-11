@@ -240,7 +240,11 @@ func (d *download) updateMeta(message net.Message) {
 	d.setPIDRootHashesMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.setRootHashPIDsMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.checkMajorMeta()
-	logging.Infof("RootHash Meta is updated. (%v/%v)", len(d.pidRootHashesMap), d.netService.Node().PeersCount())
+	logging.WithFields(logrus.Fields{
+		"peer" : message.MessageFrom(),
+		"RespondingPeers": len(d.pidRootHashesMap),
+		"EstablishedPeers": d.netService.Node().EstablishedPeersCount(),
+	}).Info("RootHash Meta is updated")
 }
 
 func (d *download) setPIDRootHashesMap(pid string, rootHashesByte [][]byte) {
