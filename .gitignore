@@ -36,3 +36,6 @@ logs/
 
 # custom network key
 network.key
+
+# custom priv key
+private.key
