@@ -256,8 +256,8 @@ func (d *download) updateMeta(message net.Message) {
 	d.setRootHashPIDsMap(message.MessageFrom(), rootHashMeta.RootHashes)
 	d.checkMajorMeta()
 	logging.WithFields(logrus.Fields{
-		"peer" : message.MessageFrom(),
-		"RespondingPeers": len(d.pidRootHashesMap),
+		"peer":             message.MessageFrom(),
+		"RespondingPeers":  len(d.pidRootHashesMap),
 		"EstablishedPeers": d.netService.Node().EstablishedPeersCount(),
 	}).Info("RootHash Meta is updated")
 }

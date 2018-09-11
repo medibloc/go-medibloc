@@ -164,7 +164,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	}
 
 	tailHeight := s.bm.TailBlock().Height()
-	if q.From+q.ChunkSize-1 > tailHeight || q.To > tailHeight{
+	if q.From+q.ChunkSize-1 > tailHeight || q.To > tailHeight {
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
 			"from":       q.From,

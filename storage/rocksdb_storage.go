@@ -111,7 +111,7 @@ func (storage *RocksStorage) Put(key []byte, value []byte) error {
 	return storage.db.Put(storage.wo, key, value)
 }
 
-// Del delete the key in Storage.
+// Delete delete the key in Storage.
 func (storage *RocksStorage) Delete(key []byte) error {
 	if storage.enableBatch {
 		storage.mutex.Lock()
