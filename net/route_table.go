@@ -32,12 +32,13 @@ import (
 
 	"sync/atomic"
 
+	"sync"
+
 	"github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multiaddr"
-	"sync"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 // Route Table Errors

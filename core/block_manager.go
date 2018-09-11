@@ -195,6 +195,57 @@ func (bm *BlockManager) PushBlockData(bd *BlockData) error {
 	return bm.push(bd)
 }
 
+// PushCreatedBlock push block to block chain without execution and verification
+func (bm *BlockManager) PushCreatedBlock(b *Block) error {
+	return bm.directPush(b)
+}
+
+func (bm *BlockManager) directPush(b *Block) error {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+
+	// Parent block doesn't exist in blockchain.
+	parentOnChain := bm.bc.BlockByHash(b.ParentHash())
+	if parentOnChain == nil {
+		return ErrFailedToDirectPush
+	}
+
+	if err := bm.bc.PutVerifiedNewBlocks(parentOnChain, []*Block{b}, []*Block{b}); err != nil {
+		return ErrFailedToDirectPush
+	}
+
+	newTail := bm.consensus.ForkChoice(bm.bc)
+	revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to set new tail block.")
+		return err
+	}
+	//if len(revertBlocks) != 0 {
+	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
+		return err
+	}
+	//}
+
+	newLIB := bm.consensus.FindLIB(bm.bc)
+	err = bm.bc.SetLIB(newLIB)
+	if err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to set LIB.")
+	}
+
+	logging.Console().WithFields(logrus.Fields{
+		"block":       b,
+		"ts":          time.Unix(b.Timestamp(), 0),
+		"tail_height": newTail.Height(),
+		"lib_height":  newLIB.Height(),
+	}).Info("Block is directly pushed.")
+
+	return nil
+}
+
 func (bm *BlockManager) push(bd *BlockData) error {
 	bm.mu.Lock()
 	defer bm.mu.Unlock()

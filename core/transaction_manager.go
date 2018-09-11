@@ -23,12 +23,12 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
-var defaultTransactionkMessageChanSize = 128
+var defaultTransactionMessageChanSize = 128
 
 // TransactionManager manages transactions' pool and network service.
 type TransactionManager struct {
@@ -45,7 +45,7 @@ type TransactionManager struct {
 func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 	return &TransactionManager{
 		chainID:           cfg.Global.ChainId,
-		receivedMessageCh: make(chan net.Message, defaultTransactionkMessageChanSize),
+		receivedMessageCh: make(chan net.Message, defaultTransactionMessageChanSize),
 		quitCh:            make(chan int, 1),
 		pool:              NewTransactionPool(int(cfg.Chain.TransactionPoolSize)),
 	}
