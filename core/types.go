@@ -199,7 +199,7 @@ type Event struct {
 
 //SyncService interface for sync
 type SyncService interface {
-	ActiveDownload() error
+	ActiveDownload(targetHeight uint64) error
 	IsDownloadActivated() bool
 }
 

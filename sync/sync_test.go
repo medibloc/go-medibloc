@@ -63,7 +63,7 @@ func TestService_Start(t *testing.T) {
 	receiver := testNetwork.NewNode()
 	receiver.Start()
 
-	receiver.Med.SyncService().ActiveDownload()
+	receiver.Med.SyncService().ActiveDownload(seed.Tail().Height())
 	count := 0
 	prevSize := uint64(0)
 	for {
@@ -182,7 +182,7 @@ func TestForkResistance(t *testing.T) {
 
 	testNetwork.WaitForEstablished()
 
-	newbie.Med.SyncService().ActiveDownload()
+	newbie.Med.SyncService().ActiveDownload(seed.Tail().Height())
 
 	count := 0
 	prevSize := uint64(0)
@@ -469,7 +469,7 @@ func TestForUnmarshalFailedMsg(t *testing.T) {
 	abuseNodes[0].Med.NetService().SendMessageToPeer(net.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedID)
 	abuseNodes[1].Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedID)
 
-	seed.Med.SyncService().ActiveDownload()
+	seed.Med.SyncService().ActiveDownload(100)
 	abuseNodes[2].Med.NetService().SendMessageToPeer(net.SyncMeta, dummyData, net.MessagePriorityLow, seedID)
 	abuseNodes[3].Med.NetService().SendMessageToPeer(net.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedID)
 

@@ -45,6 +45,7 @@ type download struct {
 
 	downloadStart     bool
 	from              uint64
+	to                uint64
 	chunkSize         uint64
 	pidRootHashesMap  map[string][]string
 	rootHashPIDsMap   map[string]map[string]struct{}
@@ -97,11 +98,16 @@ func (d *download) setup(netService net.Service, bm BlockManager) {
 	d.bm = bm
 }
 
-func (d *download) start() {
+func (d *download) start(targetHeight uint64) {
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
 
 	d.from = d.bm.LIB().Height()
+	if targetHeight-d.from+1 > maxNumberOfBlocks {
+		d.to = maxNumberOfBlocks + d.from - 1
+	} else {
+		d.to = targetHeight
+	}
 	d.finishedTasks = &taskList{
 		tasks:     make([]*downloadTask, 0),
 		offset:    d.from,
@@ -133,6 +139,13 @@ func (d *download) subscribeLoop() {
 	for {
 		select {
 		case <-intervalTicker.C:
+			if d.bm.TailBlock().Height() >= d.to {
+				logging.Console().WithFields(logrus.Fields{
+					"targetHeight":      d.to,
+					"currentTailHeight": d.bm.TailBlock().Height(),
+				}).Info("Sync: Download manager is stopped.")
+				return
+			}
 			hasWork := false
 			if prevEstablishedPeersCount < d.netService.Node().EstablishedPeersCount() {
 				hasWork = true
@@ -143,6 +156,7 @@ func (d *download) subscribeLoop() {
 				"taskQueue":         d.taskQueue,
 				"runningTasks":      d.runningTasks,
 				"finishedTasks":     d.finishedTasks,
+				"targetHeight":      d.to,
 				"currentTailHeight": d.bm.TailBlock().Height(),
 				"timeout":           time.Now().Sub(timeoutTimerStart),
 			}).Info("Sync: download service status")
@@ -159,8 +173,9 @@ func (d *download) subscribeLoop() {
 
 		case <-timeoutTimer.C:
 			logging.Console().WithFields(logrus.Fields{
-				"from": d.from,
-				"to":   d.bm.TailBlock().Height(),
+				"from":      d.from,
+				"to":        d.bm.TailBlock().Height(),
+				"timeLimit": d.timeout,
 			}).Info("Sync: Download manager is stopped by timeout")
 			return
 		case <-d.quitCh:
@@ -328,6 +343,7 @@ func (d *download) findTaskForBlockChunk(message net.Message) {
 func (d *download) sendMetaQuery() error {
 	mq := new(syncpb.MetaQuery)
 	mq.From = d.from
+	mq.To = d.to
 	mq.Hash = d.bm.LIB().Hash()
 	mq.ChunkSize = d.chunkSize
 
