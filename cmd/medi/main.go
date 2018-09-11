@@ -75,10 +75,19 @@ func runMedi(ctx *cli.Context, m *medlet.Medlet) error {
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt, os.Kill)
 
+	// start net pprof if config.App.Pprof.HttpListen configured
+	err := m.StartPprof(m.Config().App.Pprof.HttpListen)
+	if err != nil {
+		log.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Start pprof failed.")
+		return err
+	}
+
 	// Run Node
 	log.Console().Info("Start medibloc...")
 
-	err := m.Setup()
+	err = m.Setup()
 	if err != nil {
 		log.Console().WithFields(logrus.Fields{
 			"err": err,
