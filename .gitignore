@@ -34,8 +34,7 @@ vendor/
 data/
 logs/
 
-# custom network key
+# custom key and settings
 network.key
-
-# custom priv key
 private.key
+custom.conf
