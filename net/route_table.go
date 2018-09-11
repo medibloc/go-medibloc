@@ -27,16 +27,17 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	netpb "github.com/medibloc/go-medibloc/net/pb"
+	"github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 
 	"sync/atomic"
 
-	kbucket "github.com/libp2p/go-libp2p-kbucket"
-	peer "github.com/libp2p/go-libp2p-peer"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p-kbucket"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
-	multiaddr "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multiaddr"
+	"sync"
 )
 
 // Route Table Errors
@@ -49,6 +50,7 @@ type RouteTable struct {
 	quitCh                   chan bool
 	peerStore                peerstore.Peerstore
 	routeTable               *kbucket.RoutingTable
+	unverifiedPeers          *sync.Map
 	maxPeersCountForSyncResp int
 	maxPeersCountToSync      int
 	cacheFilePath            string
@@ -65,6 +67,7 @@ func NewRouteTable(config *Config, node *Node) *RouteTable {
 	table := &RouteTable{
 		quitCh:                   make(chan bool, 1),
 		peerStore:                peerstore.NewPeerstore(),
+		unverifiedPeers:          new(sync.Map),
 		maxPeersCountForSyncResp: MaxPeersCountForSyncResp,
 		maxPeersCountToSync:      config.MaxSyncNodes,
 		cacheFilePath:            path.Join(config.RoutingTableDir, RouteTableCacheFileName),
@@ -162,10 +165,12 @@ func (table *RouteTable) AddPeerInfo(prettyID string, addrStr []string) error {
 
 	if table.routeTable.Find(pid) != "" {
 		table.peerStore.SetAddrs(pid, addrs, peerstore.PermanentAddrTTL)
+		table.unverifiedPeers.Store(pid, addrs)
 	} else {
 		table.peerStore.AddAddrs(pid, addrs, peerstore.PermanentAddrTTL)
+		table.routeTable.Update(pid)
 	}
-	table.routeTable.Update(pid)
+
 	table.onRouteTableChange()
 
 	return nil
@@ -334,6 +339,13 @@ func (table *RouteTable) SyncRouteTable() {
 
 	// random peer selection.
 	peers := table.routeTable.ListPeers()
+
+	table.unverifiedPeers.Range(func(key, value interface{}) bool {
+		pid, _ := key.(peer.ID)
+		peers = append(peers, pid)
+		return true
+	})
+
 	peersCount := len(peers)
 	if peersCount <= 1 {
 		return
@@ -376,6 +388,7 @@ func (table *RouteTable) SyncWithPeer(pid peer.ID) {
 	if stream == nil {
 		stream = NewStreamFromPID(pid, table.node)
 		table.streamManager.AddStream(stream)
+		return
 	}
 
 	stream.SyncRoute()

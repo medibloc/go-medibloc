@@ -45,6 +45,10 @@ const (
 	RECVEDMSG     = "recvedmsg"
 )
 
+const (
+	handShakeTimeout = 15		// Todo: move to config? @drsleepytiger
+)
+
 // Stream Status
 const (
 	streamStatusInit = iota
@@ -427,7 +431,7 @@ func (s *Stream) readLoop() {
 
 func (s *Stream) writeLoop() {
 	// waiting for handshake succeed.
-	handshakeTimeoutTicker := time.NewTicker(30 * time.Second)
+	handshakeTimeoutTicker := time.NewTicker(handShakeTimeout * time.Second)
 	select {
 	case <-s.handshakeSucceedCh:
 		// handshake succeed.
@@ -440,7 +444,7 @@ func (s *Stream) writeLoop() {
 		logging.WithFields(logrus.Fields{
 			"stream": s.String(),
 		}).Debug("Handshaking Stream timeout, quiting.")
-		s.Close(errors.New("Handshake timeout"))
+		s.Close(errors.New("handshake timeout"))
 		return
 	}
 
@@ -674,7 +678,13 @@ func (s *Stream) onRouteTable(message *MedMessage) error {
 		return ErrShouldCloseConnectionAndExitLoop
 	}
 
-	s.node.routeTable.AddPeers(s.node.ID(), peers)
+	logging.Console().WithFields(logrus.Fields{
+		"len_peers": len(peers.Peers),
+		"peers":     peers.Peers,
+		"from":      s.pid.Pretty(),
+	}).Info("Route sync table received.")
+
+	s.node.routeTable.AddPeers(s.PID(), peers)
 
 	return nil
 }
@@ -699,6 +709,12 @@ func (s *Stream) finishHandshake() {
 	s.syncMutex.Lock()
 	s.status = streamStatusHandshakeSucceed
 	s.syncMutex.Unlock()
+
+	if _, ok := s.node.routeTable.unverifiedPeers.Load(s.pid); ok {
+		s.node.routeTable.unverifiedPeers.Delete(s.pid)
+		s.node.routeTable.routeTable.Update(s.pid)
+	}
+
 	s.handshakeSucceedCh <- true
 }
 
