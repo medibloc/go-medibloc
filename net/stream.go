@@ -266,12 +266,12 @@ func (s *Stream) WriteMedMessage(message *MedMessage) error {
 
 	err := s.Write(message.Content())
 	if err != nil {
-		s.Close(err)
 		logging.Console().WithFields(logrus.Fields{
 			"stream":    s.String(),
 			"handshake": s.IsHandshakeSucceed(),
 			"err":       err,
 		}).Info("Failed to write message on stream")
+		s.Close(err)
 	}
 	message.FlagWriteMessageAt()
 

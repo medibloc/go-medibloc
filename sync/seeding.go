@@ -30,6 +30,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const maxNumberOfBlocks = 3600 // number of blocks for 3 hours
+
 type seeding struct {
 	netService net.Service
 	bm         BlockManager
@@ -121,7 +123,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	q := new(syncpb.MetaQuery)
 	err := proto.Unmarshal(message.Data(), q)
 	if err != nil {
-		logging.WithFields(logrus.Fields{
+		logging.Console().WithFields(logrus.Fields{
 			"err":     err,
 			"msgFrom": message.MessageFrom(),
 		}).Warn("Fail to unmarshal SyncQuery message.")
@@ -129,9 +131,10 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		return
 	}
 
-	logging.WithFields(logrus.Fields{
+	logging.Console().WithFields(logrus.Fields{
 		"peerID":    message.MessageFrom(),
 		"from":      q.From,
+		"to":        q.To,
 		"chunkSize": q.ChunkSize,
 	}).Info("Sync: Seeding manager received hashMeta request.")
 
@@ -161,10 +164,11 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	}
 
 	tailHeight := s.bm.TailBlock().Height()
-	if q.From+q.ChunkSize-1 > tailHeight {
+	if q.From+q.ChunkSize-1 > tailHeight || q.To > tailHeight{
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
 			"from":       q.From,
+			"to":         q.To,
 			"chunkSize":  q.ChunkSize,
 			"tailHeight": tailHeight,
 			"msgFrom":    message.MessageFrom(),
@@ -172,8 +176,29 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		return
 	}
 
-	allHashes := make([][]byte, tailHeight-q.From+1)
-	for i := q.From; i <= tailHeight; i++ {
+	numberOfBlocks := q.To - q.From + 1
+
+	if numberOfBlocks > maxNumberOfBlocks {
+		logging.WithFields(logrus.Fields{
+			"requester":         message.MessageFrom(),
+			"from":              q.From,
+			"to":                q.To,
+			"maxNumberOfBlocks": maxNumberOfBlocks,
+		}).Warn("Block is too many to crawling at once")
+		return
+	}
+
+	if numberOfBlocks < 0 {
+		logging.WithFields(logrus.Fields{
+			"requester": message.MessageFrom(),
+			"from":      q.From,
+			"to":        q.To,
+		}).Warn("to is lower than from ")
+		return
+	}
+
+	allHashes := make([][]byte, numberOfBlocks)
+	for i := q.From; i <= q.To; i++ {
 		block, err = s.bm.BlockByHeight(i)
 		if err != nil {
 			logging.WithFields(logrus.Fields{
@@ -186,7 +211,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		allHashes[i-q.From] = block.Hash()
 	}
 
-	n := (tailHeight - q.From + 1) / q.ChunkSize
+	n := numberOfBlocks / q.ChunkSize
 	rootHashes := make([][]byte, n)
 
 	for i := uint64(0); i < n; i++ {

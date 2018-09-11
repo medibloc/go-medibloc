@@ -18,7 +18,7 @@ package syncpb
 import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import corepb1 "github.com/medibloc/go-medibloc/core/pb"
+import corepb "github.com/medibloc/go-medibloc/core/pb"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -33,9 +33,9 @@ const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 // Request HashMeta
 type MetaQuery struct {
-	// LIB hash or tail block hash
+	// LIB hash
 	Hash []byte `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	// LIB height or tail block height
+	// LIB height
 	From      uint64 `protobuf:"varint,2,opt,name=From,proto3" json:"From,omitempty"`
 	To        uint64 `protobuf:"varint,3,opt,name=To,proto3" json:"To,omitempty"`
 	ChunkSize uint64 `protobuf:"varint,4,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
@@ -134,8 +134,8 @@ func (m *BlockChunkQuery) GetChunkSize() uint64 {
 
 // Response BlockChunk
 type BlockChunk struct {
-	From   uint64           `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
-	Blocks []*corepb1.Block `protobuf:"bytes,3,rep,name=Blocks" json:"Blocks,omitempty"`
+	From   uint64          `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
+	Blocks []*corepb.Block `protobuf:"bytes,3,rep,name=Blocks" json:"Blocks,omitempty"`
 }
 
 func (m *BlockChunk) Reset()                    { *m = BlockChunk{} }
@@ -150,7 +150,7 @@ func (m *BlockChunk) GetFrom() uint64 {
 	return 0
 }
 
-func (m *BlockChunk) GetBlocks() []*corepb1.Block {
+func (m *BlockChunk) GetBlocks() []*corepb.Block {
 	if m != nil {
 		return m.Blocks
 	}

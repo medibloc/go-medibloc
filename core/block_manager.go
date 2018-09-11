@@ -576,7 +576,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 		return false
 	}
 
-	if err := bm.syncService.ActiveDownload(); err != nil {
+	if err := bm.syncService.ActiveDownload(bd.Height()); err != nil {
 		logging.WithFields(logrus.Fields{
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),

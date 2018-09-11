@@ -16,11 +16,6 @@
 package medlet
 
 import (
-	goNet "net"
-	"net/http"
-	_ "net/http/pprof"	// To use pprof
-	"time"
-
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"

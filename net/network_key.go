@@ -59,7 +59,7 @@ func LoadNetworkKeyFromFileOrCreateNew(cfg *Config) (crypto.PrivKey, error) {
 				"privateKeyPath": cfg.PrivateKeyCachePath,
 			}).Info("Generate New Network Key")
 		}
-		return key, err
+		return key, nil
 	}
 	logging.Console().WithFields(logrus.Fields{
 		"privateKeyPath": cfg.PrivateKeyPath,
