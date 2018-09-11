@@ -45,7 +45,7 @@ type AddrKeyPair struct {
 	PrivKey signature.PrivateKey
 }
 
-// NewAddrKeyPairPrivKey creates a pair from private key.
+// NewAddrKeyPairFromPrivKey creates a pair from private key.
 func NewAddrKeyPairFromPrivKey(t *testing.T, privKey signature.PrivateKey) *AddrKeyPair {
 	addr, err := common.PublicKeyToAddress(privKey.PublicKey())
 	require.NoError(t, err)
