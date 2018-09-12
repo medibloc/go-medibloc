@@ -176,6 +176,13 @@ func (bm *BlockManager) LIB() *Block {
 	return bm.bc.LIB()
 }
 
+//ForceLIB set LIB force
+func (bm *BlockManager) ForceLIB(b *Block) error {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+	return bm.bc.SetLIB(b)
+}
+
 // Relay relays BlockData to network.
 func (bm *BlockManager) Relay(bd *BlockData) {
 	bm.ns.Relay(MessageTypeNewBlock, bd, net.MessagePriorityHigh)

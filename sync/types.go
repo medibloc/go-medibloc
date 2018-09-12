@@ -32,6 +32,7 @@ type BlockManager interface {
 	BlockByHeight(height uint64) (*core.Block, error)
 	BlockByHash(hash []byte) *core.Block
 	LIB() *core.Block
+	ForceLIB(b *core.Block) error
 	TailBlock() *core.Block
 	PushBlockData(block *core.BlockData) error
 	BroadCast(block *core.BlockData)

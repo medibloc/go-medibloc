@@ -140,12 +140,17 @@ func (d *download) subscribeLoop() {
 		select {
 		case <-intervalTicker.C:
 			logging.Console().WithFields(logrus.Fields{
-				"taskQueue":         d.taskQueue,
-				"runningTasks":      d.runningTasks,
-				"finishedTasks":     d.finishedTasks,
-				"targetHeight":      d.to,
-				"currentTailHeight": d.bm.TailBlock().Height(),
-				"timeout":           time.Now().Sub(timeoutTimerStart),
+				"from":                        d.from,
+				"to":                          d.to,
+				"chunkSize":                   d.chunkSize,
+				"taskQueue":                   d.taskQueue,
+				"runningTasks":                d.runningTasks,
+				"finishedTasks":               d.finishedTasks,
+				"targetHeight":                d.to,
+				"currentTailHeight":           d.bm.TailBlock().Height(),
+				"prevEstablishedPeersCount":   prevEstablishedPeersCount,
+				"currentEstablishedPeerCount": d.netService.Node().EstablishedPeersCount(),
+				"timeout":                     time.Now().Sub(timeoutTimerStart),
 			}).Info("Sync: download service status")
 
 			if d.bm.TailBlock().Height() >= ((d.to-d.from+1)/d.chunkSize)*d.chunkSize+d.from-1 {
@@ -401,6 +406,14 @@ func (d *download) pushBlockDataChunk() error {
 				return err
 			}
 		}
+
+		if err := d.bm.ForceLIB(d.bm.TailBlock()); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to force set LIB")
+			return err
+		}
+
 		logging.Console().WithFields(logrus.Fields{
 			"taskFrom": task.from,
 		}).Infof("Pushing blockChunk from %d is completed!!", task.from)
