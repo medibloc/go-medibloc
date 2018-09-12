@@ -139,8 +139,18 @@ func (d *download) subscribeLoop() {
 	for {
 		select {
 		case <-intervalTicker.C:
-			if d.bm.TailBlock().Height() >= d.to {
+			logging.Console().WithFields(logrus.Fields{
+				"taskQueue":         d.taskQueue,
+				"runningTasks":      d.runningTasks,
+				"finishedTasks":     d.finishedTasks,
+				"targetHeight":      d.to,
+				"currentTailHeight": d.bm.TailBlock().Height(),
+				"timeout":           time.Now().Sub(timeoutTimerStart),
+			}).Info("Sync: download service status")
+
+			if d.bm.TailBlock().Height() >= ((d.to-d.from+1)/d.chunkSize)*d.chunkSize+d.from-1 {
 				logging.Console().WithFields(logrus.Fields{
+					"chunkSize":         d.chunkSize,
 					"targetHeight":      d.to,
 					"currentTailHeight": d.bm.TailBlock().Height(),
 				}).Info("Sync: Download manager is stopped.")
@@ -152,14 +162,6 @@ func (d *download) subscribeLoop() {
 				d.sendMetaQuery()
 				prevEstablishedPeersCount = d.netService.Node().EstablishedPeersCount()
 			}
-			logging.Console().WithFields(logrus.Fields{
-				"taskQueue":         d.taskQueue,
-				"runningTasks":      d.runningTasks,
-				"finishedTasks":     d.finishedTasks,
-				"targetHeight":      d.to,
-				"currentTailHeight": d.bm.TailBlock().Height(),
-				"timeout":           time.Now().Sub(timeoutTimerStart),
-			}).Info("Sync: download service status")
 
 			if len(d.runningTasks) > 0 {
 				hasWork = true
