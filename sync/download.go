@@ -282,19 +282,22 @@ func (d *download) setRootHashPIDsMap(pid string, rootHashesByte [][]byte) {
 
 func (d *download) checkMajorMeta() {
 	if !d.majorityCheck(len(d.pidRootHashesMap)) {
+		logging.Console().WithFields(logrus.Fields{
+			"peersCnt": len(d.pidRootHashesMap),
+		}).Info("Responding peer is not enough yet.")
 		return
 	}
 	i := len(d.runningTasks) + d.finishedTasks.Len() + len(d.taskQueue)
 	for {
-		peerCounter := make(map[string]int)
-		for _, rootHashes := range d.pidRootHashesMap {
+		peerCounter := make(map[string][]string)
+		for pid, rootHashes := range d.pidRootHashesMap {
 			if len(rootHashes) > i {
-				peerCounter[rootHashes[i]]++
+				peerCounter[rootHashes[i]] = append(peerCounter[rootHashes[i]], pid)
 			}
 		}
 		majorNotFound := true
-		for rootHashHex, nPeers := range peerCounter {
-			if d.majorityCheck(nPeers) {
+		for rootHashHex, peers := range peerCounter {
+			if d.majorityCheck(len(peers)) {
 				logging.Infof("Major RootHash was found from %v", d.from+uint64(i)*d.chunkSize)
 				//createDownloadTask
 				majorNotFound = false
@@ -306,8 +309,10 @@ func (d *download) checkMajorMeta() {
 		}
 		if majorNotFound {
 			logging.Console().WithFields(logrus.Fields{
-				"peerCounter": peerCounter,
-				"established": d.netService.Node().EstablishedPeersCount(),
+				"peerCounter":       peerCounter,
+				"established":       d.netService.Node().EstablishedPeersCount(),
+				"indexOfChunk":      i,
+				"startBlockHeight:": d.from + uint64(i)*d.chunkSize,
 			}).Infof("Major RootHash was not found at %v", d.from+uint64(i)*d.chunkSize)
 			break
 		}

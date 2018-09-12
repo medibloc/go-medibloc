@@ -241,8 +241,8 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 
 	logging.WithFields(logrus.Fields{
 		"numberOfRootHashes": len(meta.RootHashes),
-		"meta":               meta,
-		"myInfo":             s.netService.Node().ID(),
+		//"meta":               meta,
+		"myInfo": s.netService.Node().ID(),
 	}).Info("RootHashMeta response succeeded")
 }
 
