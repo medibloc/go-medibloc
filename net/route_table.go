@@ -220,6 +220,7 @@ func (table *RouteTable) AddPeerStream(s *Stream) {
 // RemovePeerStream remove peerStream from peerStore.
 func (table *RouteTable) RemovePeerStream(s *Stream) {
 	table.peerStore.AddAddr(s.pid, s.addr, 0)
+	table.unverifiedPeers.Delete(s.pid)
 	table.routeTable.Remove(s.pid)
 	table.onRouteTableChange()
 }
