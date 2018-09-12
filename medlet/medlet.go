@@ -17,6 +17,7 @@ package medlet
 
 import (
 	goNet "net"
+
 	"net/http"
 	_ "net/http/pprof" // add pprof
 	"time"
@@ -87,7 +88,8 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 
 	rpc := rpc.New(cfg)
 
-	stor, err := storage.NewLeveldbStorage(cfg.Global.Datadir)
+	//stor, err := storage.NewLeveldbStorage(cfg.Global.Datadir)
+	stor, err := storage.NewRocksStorage(cfg.Global.Datadir)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

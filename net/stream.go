@@ -680,7 +680,6 @@ func (s *Stream) onRouteTable(message *MedMessage) error {
 
 	logging.Console().WithFields(logrus.Fields{
 		"len_peers": len(peers.Peers),
-		"peers":     peers.Peers,
 		"from":      s.pid.Pretty(),
 	}).Info("Route sync table received.")
 
