@@ -378,6 +378,7 @@ func (d *download) sendMetaQuery() error {
 	peers := d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, filter)
 	logging.Console().WithFields(logrus.Fields{
 		"mq":                       mq,
+		"filter":                   filter,
 		"peers":                    peers,
 		"sendData":                 sendData,
 		"numberOfPeers":            d.netService.Node().PeersCount(),
