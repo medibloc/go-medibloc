@@ -19,6 +19,7 @@ import (
 	goNet "net"
 
 	"net/http"
+	_ "net/http/pprof" // add pprof
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
