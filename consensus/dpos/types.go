@@ -33,7 +33,7 @@ const (
 	NumberOfRounds  = 1
 	MinMintDuration = 2 * time.Second
 
-	miningTickInterval = time.Second
+	miningTickInterval = 100 * time.Millisecond
 )
 
 // Error types of dpos package.
