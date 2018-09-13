@@ -202,7 +202,7 @@ func (bm *BlockManager) PushBlockData(bd *BlockData) error {
 	return bm.push(bd)
 }
 
-// PushCreatedBlock push block to block chain without execution and verification
+// PushCreatedBlock push block to block chain without execution and verification (only used for self made block)
 func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 	return bm.directPush(b)
 }
@@ -229,11 +229,9 @@ func (bm *BlockManager) directPush(b *Block) error {
 		}).Error("Failed to set new tail block.")
 		return err
 	}
-	//if len(revertBlocks) != 0 {
 	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
 		return err
 	}
-	//}
 
 	newLIB := bm.consensus.FindLIB(bm.bc)
 	err = bm.bc.SetLIB(newLIB)
