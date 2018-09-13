@@ -5,8 +5,8 @@ go:
 
 before_install:
   - sudo apt-get update -qq && sudo apt-get install libsnappy-dev zlib1g-dev libbz2-dev -qq
-  - git clone https://github.com/facebook/rocksdb.git
-  - cd rocksdb
+  - git clone https://github.com/facebook/rocksdb.git ${TRAVIS_HOME}/rocksdb
+  - cd ${TRAVIS_HOME}/rocksdb
   - make shared_lib
   - sudo cp --preserve=links ./librocksdb.* /usr/lib/
   - sudo cp -r ./include/rocksdb/ /usr/include/
@@ -16,6 +16,7 @@ before_install:
   - go get github.com/mattn/goveralls
 
 install:
+  - cd ${TRAVIS_HOME}/gopath/src/github.com/medibloc/go-medibloc
   - make dep
 
 script:
