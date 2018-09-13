@@ -19,20 +19,23 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func coreAccount2rpcAccount(account *core.Account, address string) *rpcpb.GetAccountResponse {
+func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) (*rpcpb.GetAccountResponse, error) {
+	curBandwdith, err := core.CurrentBandwidth(account, curTs)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgFailedToCalcBandwidth)
+	}
 	return &rpcpb.GetAccountResponse{
 		Address:   address,
 		Balance:   account.Balance.String(),
 		Nonce:     account.Nonce,
 		Vesting:   account.Vesting.String(),
 		Voted:     byteutils.BytesSlice2HexSlice(account.VotedSlice()),
-		Bandwidth: account.Bandwidth.String(),
-		Unstaking: account.Unstaking.String(),
-		//TxsFrom:   byteutils.BytesSlice2HexSlice(account.TxsFromSlice()),
-		//TxsTo:     byteutils.BytesSlice2HexSlice(account.TxsToSlice()),
-	}
+		Bandwidth: curBandwdith.String(),
+	}, nil
 }
 
 func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {

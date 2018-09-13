@@ -74,7 +74,7 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
-	return coreAccount2rpcAccount(acc, req.Address), nil
+	return coreAccount2rpcAccount(acc, block.Timestamp(), req.Address)
 }
 
 // GetBlock returns block
