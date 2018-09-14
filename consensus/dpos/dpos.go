@@ -351,12 +351,13 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 
 	for deadline.Sub(time.Now()) > 0 {
 		logging.WithFields(logrus.Fields{
-			"time remain": deadline.Sub(time.Now()),
+			"time.remain": deadline.Sub(time.Now()),
 		}).Debug("Make block is in progress")
 		transaction := d.tm.Pop()
 		if transaction == nil {
 			logging.Info("No more transactions in block pool.")
-			break
+			time.Sleep(10 * time.Millisecond)
+			continue
 		}
 
 		if err := block.BeginBatch(); err != nil {
