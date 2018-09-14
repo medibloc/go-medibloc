@@ -575,6 +575,12 @@
   revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/tecbot/gorocksdb"
+  packages = ["."]
+  revision = "214b6b7bc0f06812ab5602fdc502a3e619916f38"
+
+[[projects]]
   name = "github.com/urfave/cli"
   packages = ["."]
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
@@ -753,6 +759,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a2ed869e2a2475dc4af05082540427b0ee4e9151a17e8283692cb2e83b94fb60"
+  inputs-digest = "569ad2e9cec3d09a641b4762e1b8d8fab64feeeca750d54edb2e035e3915f4e4"
   solver-name = "gps-cdcl"
   solver-version = 1
