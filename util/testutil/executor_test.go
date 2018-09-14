@@ -16,52 +16,48 @@
 package testutil_test
 
 import (
-	"reflect"
 	"testing"
 
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/testutil"
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNetworkUtil(t *testing.T) {
-	dynastySize := 3
-	nt := testutil.NewNetwork(t, dynastySize)
-	nt.NewSeedNode()
-	for i := 0; i < dynastySize-1; i++ {
-		nt.NewNode()
-	}
-	nt.Start()
-	defer nt.Cleanup()
-	nt.SetLogTestHook()
-	nt.WaitForEstablished()
-
-	genesis, err := nt.Nodes[0].Med.BlockManager().BlockByHeight(core.GenesisHeight)
-	require.NoError(t, err)
-
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(nt.Seed.Config.Dynasties)
-	block := bb.Block(genesis).Child().SignMiner().Build()
-
-	to := nt.Nodes[1]
-	ch := make(chan net.Message)
-	subscriber := net.NewSubscriber(to, ch, false, core.MessageTypeNewBlock, 1)
-	to.Med.NetService().Register(subscriber)
-	defer to.Med.NetService().Deregister(subscriber)
-
-	from := nt.Nodes[0].Med.NetService()
-	from.Broadcast(core.MessageTypeNewBlock, block, 1)
-
-	msg := <-ch
-
-	bd, err := core.BytesToBlockData(msg.Data())
-	require.NoError(t, err)
-	require.True(t, reflect.DeepEqual(block.GetBlockData(), bd))
-}
+//func TestNetworkUtil(t *testing.T) {
+//	dynastySize := 3
+//	nt := testutil.NewNetwork(t, dynastySize)
+//	nt.NewSeedNode()
+//	for i := 0; i < dynastySize-1; i++ {
+//		nt.NewNode()
+//	}
+//	nt.Start()
+//	defer nt.Cleanup()
+//	nt.SetLogTestHook()
+//	nt.WaitForEstablished()
+//
+//	genesis, err := nt.Nodes[0].Med.BlockManager().BlockByHeight(core.GenesisHeight)
+//	require.NoError(t, err)
+//
+//	bb := blockutil.New(t, dynastySize).AddKeyPairs(nt.Seed.Config.Dynasties)
+//	block := bb.Block(genesis).Child().SignMiner().Build()
+//
+//	to := nt.Nodes[1]
+//	ch := make(chan net.Message)
+//	subscriber := net.NewSubscriber(to, ch, false, core.MessageTypeNewBlock, 1)
+//	to.Med.NetService().Register(subscriber)
+//	defer to.Med.NetService().Deregister(subscriber)
+//
+//	from := nt.Nodes[0].Med.NetService()
+//	from.Broadcast(core.MessageTypeNewBlock, block, 1)
+//
+//	msg := <-ch
+//
+//	bd, err := core.BytesToBlockData(msg.Data())
+//	require.NoError(t, err)
+//	require.True(t, reflect.DeepEqual(block.GetBlockData(), bd))
+//}
 
 func TestNetworkMiner(t *testing.T) {
 	dynastySize := 3
