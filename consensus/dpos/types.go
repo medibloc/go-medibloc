@@ -34,6 +34,7 @@ const (
 	MinMintDuration = 2 * time.Second
 
 	miningTickInterval = 100 * time.Millisecond
+	maxMintDuration    = 1450 * time.Millisecond
 )
 
 // Error types of dpos package.

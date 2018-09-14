@@ -297,7 +297,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 
 	// TODO @cl9200 Return transactions if an error condition.
 
-	time.Sleep(deadline.Sub(time.Now()))
+	time.Sleep(nextMintSlot(now).Sub(time.Now()))
 
 	logging.Console().WithFields(logrus.Fields{
 		"proposer": mintProposer,
@@ -454,8 +454,13 @@ func NextMintSlot2(ts int64) int64 {
 }
 
 func mintDeadline(ts time.Time) time.Time {
-	// TODO @cl9200 Do we need MaxMintDuration?
-	return nextMintSlot(ts)
+	maxMint := ts.Add(maxMintDuration)
+	nextMint := nextMintSlot(ts)
+
+	if maxMint.Unix() < nextMint.Unix() {
+		return maxMint
+	}
+	return nextMint
 }
 
 // CheckDeadline gets deadline time of the next block to produce
