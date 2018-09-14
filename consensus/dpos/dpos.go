@@ -259,7 +259,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return ErrInvalidBlockProposer
 	}
 
-	block, err := d.makeBlock(tail, deadline)
+	block, err := d.makeBlock(tail, deadline, nextMintSlot(now))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"tail":     tail,
@@ -320,7 +320,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	return nil
 }
 
-func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, error) {
+func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.Time) (*core.Block, error) {
 	logging.Console().Info("Start to make mint block.")
 
 	block, err := core.NewBlock(tail.ChainID(), d.miner, tail)
@@ -330,7 +330,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time) (*core.Block, err
 		}).Error("Failed to create new block.")
 		return nil, err
 	}
-	block.SetTimestamp(deadline.Unix())
+	block.SetTimestamp(nextMintTs.Unix())
 
 	if err := block.BeginBatch(); err != nil {
 		logging.Console().WithFields(logrus.Fields{

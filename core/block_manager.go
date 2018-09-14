@@ -363,6 +363,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
 			}).Warn("Failed to verifyBlockHeight")
+			fails = append(fails, childData)
 			continue
 		}
 
@@ -371,6 +372,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
 			}).Warn("Failed to verifyTimestamp")
+			fails = append(fails, childData)
 			continue
 		}
 
@@ -380,6 +382,8 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 				"err":       err,
 				"timestamp": childData.timestamp,
 			}).Warn("Block timestamp is wrong")
+			fails = append(fails, childData)
+			continue
 		}
 
 		err = bm.consensus.VerifyProposer(childData, parent)
@@ -571,9 +575,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 	}
 
 	if bm.syncService.IsDownloadActivated() {
-		logging.Console().WithFields(logrus.Fields{
-			"bm": bm,
-		}).Info("sync download is in progress")
+		logging.Console().Info("sync download is in progress")
 		return true
 	}
 
