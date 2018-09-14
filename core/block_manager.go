@@ -329,11 +329,9 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		}).Error("Failed to set new tail block.")
 		return err
 	}
-	//if len(revertBlocks) != 0 {
 	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
 		return err
 	}
-	//}
 
 	newLIB := bm.consensus.FindLIB(bm.bc)
 	err = bm.bc.SetLIB(newLIB)

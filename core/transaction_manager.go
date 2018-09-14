@@ -23,7 +23,6 @@ import (
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -157,9 +156,6 @@ func (mgr *TransactionManager) PushAndRelay(tx *Transaction) error {
 		return err
 	}
 	mgr.Relay(tx)
-	logging.Console().WithFields(logrus.Fields{
-		"hash": byteutils.Bytes2Hex(tx.hash),
-	}).Info("Transaction is pushed")
 	return nil
 }
 

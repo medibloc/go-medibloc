@@ -43,7 +43,7 @@ make build
 * Node Configuratoin : [node1.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/node1.conf), [node2.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/node2.conf), [node3.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/node3.conf)
 
 ### Running
-```bash
+```
 $ cd $GOPATH/src/github.com/medibloc/go-medibloc
 
 $ build/medi conf/test/3nodes/node1.conf

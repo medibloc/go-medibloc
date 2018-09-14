@@ -37,7 +37,6 @@ import (
 	"github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/libp2p/go-libp2p-peerstore"
-	"github.com/multiformats/go-multiaddr"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -158,7 +157,7 @@ func (table *RouteTable) AddPeerInfo(prettyID string, addrStr []string) error {
 
 	addrs := make([]ma.Multiaddr, len(addrStr))
 	for i, v := range addrStr {
-		addrs[i], err = multiaddr.NewMultiaddr(v)
+		addrs[i], err = ma.NewMultiaddr(v)
 		if err != nil {
 			return err
 		}
@@ -343,7 +342,7 @@ func (table *RouteTable) SyncRouteTable() {
 	peers := table.routeTable.ListPeers()
 
 	table.unverifiedPeers.Range(func(key, value interface{}) bool {
-		pid, _ := key.(peer.ID)
+		pid := key.(peer.ID)
 		peers = append(peers, pid)
 		return true
 	})
