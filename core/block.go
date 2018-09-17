@@ -404,8 +404,16 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Bloc
 	if err != nil {
 		return nil, err
 	}
-	if err := block.VerifyExecution(txMap); err != nil {
+	block.Storage().EnableBatch()
+	if err := block.VerifyExecution(parent, txMap); err != nil {
+		block.Storage().DisableBatch()
 		return nil, err
+	}
+	err = block.Storage().Flush()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to flush to storage.")
 	}
 	return block, err
 }
@@ -468,19 +476,6 @@ func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
 	}
 
 	block.BlockData = bd
-
-	if err := block.BeginBatch(); err != nil {
-		return nil, err
-	}
-
-	if err := block.SetMintDynastyState(parent); err != nil {
-		block.RollBack()
-		return nil, err
-	}
-
-	if err := block.Commit(); err != nil {
-		return nil, err
-	}
 
 	return block, nil
 }
@@ -844,8 +839,13 @@ func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*u
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (b *Block) VerifyExecution(txMap TxFactory) error {
+func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
 	b.BeginBatch()
+
+	if err := b.SetMintDynastyState(parent); err != nil {
+		b.RollBack()
+		return err
+	}
 
 	if err := b.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{

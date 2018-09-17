@@ -58,3 +58,16 @@ func (s *MemoryStorage) Put(key []byte, value []byte) error {
 func (s *MemoryStorage) Close() error {
 	return nil
 }
+
+// EnableBatch enable batch write.
+func (s *MemoryStorage) EnableBatch() {
+}
+
+// DisableBatch disable batch write.
+func (s *MemoryStorage) DisableBatch() {
+}
+
+// Flush write and flush pending batch write.
+func (s *MemoryStorage) Flush() error {
+	return nil
+}

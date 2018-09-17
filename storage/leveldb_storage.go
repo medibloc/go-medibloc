@@ -70,3 +70,16 @@ func (storage *LeveldbStorage) Get(key []byte) ([]byte, error) {
 func (storage *LeveldbStorage) Put(key []byte, value []byte) error {
 	return storage.db.Put(key, value, nil)
 }
+
+// EnableBatch enable batch write.
+func (storage *LeveldbStorage) EnableBatch() {
+}
+
+// DisableBatch disable batch write.
+func (storage *LeveldbStorage) DisableBatch() {
+}
+
+// Flush write and flush pending batch write.
+func (storage *LeveldbStorage) Flush() error {
+	return nil
+}

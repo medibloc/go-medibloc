@@ -329,12 +329,14 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		return nil, err
 	}
 	block.SetTimestamp(nextMintTs.Unix())
+	block.Storage().EnableBatch()
 
 	if err := block.BeginBatch(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
 		}).Error("Failed to begin batch of new block.")
+		block.Storage().DisableBatch()
 		return nil, err
 	}
 
@@ -342,10 +344,12 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")
+		block.Storage().DisableBatch()
 		return nil, err
 	}
 
 	if err := block.Commit(); err != nil {
+		block.Storage().DisableBatch()
 		return nil, err
 	}
 
@@ -361,6 +365,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		}
 
 		if err := block.BeginBatch(); err != nil {
+			block.Storage().DisableBatch()
 			return nil, err
 		}
 		err = block.ExecuteTransaction(transaction, d.bm.TxMap())
@@ -376,6 +381,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
+				block.Storage().DisableBatch()
 				return nil, err
 			}
 			continue
@@ -391,6 +397,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
+				block.Storage().DisableBatch()
 				return nil, err
 			}
 			continue
@@ -408,6 +415,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
+				block.Storage().DisableBatch()
 				return nil, err
 			}
 			continue
@@ -419,6 +427,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 				"err":   err,
 				"block": block,
 			}).Error("Failed to commit new block.")
+			block.Storage().DisableBatch()
 			return nil, err
 		}
 	}
@@ -429,6 +438,13 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		return nil, err
 	}
 	block.Commit()
+	err = block.Storage().Flush()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to flush to storage.")
+		return nil, err
+	}
 
 	return block, nil
 }

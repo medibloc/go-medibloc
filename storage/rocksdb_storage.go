@@ -79,6 +79,18 @@ func NewRocksStorage(path string) (*RocksStorage, error) {
 
 // Get return value to the key in Storage
 func (storage *RocksStorage) Get(key []byte) ([]byte, error) {
+	if storage.enableBatch {
+		storage.mutex.Lock()
+		defer storage.mutex.Unlock()
+
+		opt := storage.batchOpts[byteutils.Bytes2Hex(key)]
+		if opt != nil {
+			if opt.deleted {
+				return nil, ErrKeyNotFound
+			}
+			return opt.value, nil
+		}
+	}
 
 	value, err := storage.db.GetBytes(storage.ro, key)
 

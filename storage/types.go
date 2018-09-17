@@ -32,6 +32,15 @@ type Storage interface {
 	// Put put the key-value entry to Storage.
 	Put(key []byte, value []byte) error
 
+	// EnableBatch enables batch write.
+	EnableBatch()
+
+	// DisableBatch disables batch write.
+	DisableBatch()
+
+	// Flush writes pending batch write.
+	Flush() error
+
 	// Close closes storage
 	Close() error
 }

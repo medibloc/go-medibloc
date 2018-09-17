@@ -86,5 +86,4 @@ func TestChangeDynasty(t *testing.T) {
 	inDynasty, err = ds.InDynasty(newCandidate.Addr)
 	require.NoError(t, err)
 	assert.Equal(t, false, inDynasty)
-
 }
