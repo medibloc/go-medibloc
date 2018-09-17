@@ -472,7 +472,7 @@ func CheckDeadline(tail *core.Block, ts time.Time) (deadline time.Time, err erro
 	if tail.Timestamp() == last.Unix() {
 		return mintDeadline(ts), nil
 	}
-	if next.Sub(ts) < MinMintDuration {
+	if next.Sub(ts) < minMintDuration {
 		return mintDeadline(ts), nil
 	}
 	return time.Time{}, ErrWaitingBlockInLastSlot
