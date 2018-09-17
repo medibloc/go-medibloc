@@ -85,7 +85,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		syncActivationHeight:  cfg.Sync.SyncActivationHeight,
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
-		quitCh:                make(chan int, 1),
+		quitCh:                make(chan int),
 	}, nil
 }
 

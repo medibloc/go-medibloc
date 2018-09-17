@@ -75,7 +75,7 @@ func NewEventEmitter(size int) *EventEmitter {
 	return &EventEmitter{
 		eventSubscribers: new(sync.Map),
 		eventCh:          make(chan *Event, size),
-		quitCh:           make(chan bool, 1),
+		quitCh:           make(chan bool),
 		size:             size,
 	}
 }

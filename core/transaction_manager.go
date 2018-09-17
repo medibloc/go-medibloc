@@ -45,7 +45,7 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 	return &TransactionManager{
 		chainID:           cfg.Global.ChainId,
 		receivedMessageCh: make(chan net.Message, defaultTransactionMessageChanSize),
-		quitCh:            make(chan int, 1),
+		quitCh:            make(chan int),
 		pool:              NewTransactionPool(int(cfg.Chain.TransactionPoolSize)),
 	}
 }

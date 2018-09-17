@@ -61,7 +61,7 @@ func (d *Dpos) DynastySize() int {
 func New(dynastySize int) *Dpos {
 	return &Dpos{
 		dynastySize: dynastySize,
-		quitCh:      make(chan int, 1),
+		quitCh:      make(chan int),
 	}
 }
 
