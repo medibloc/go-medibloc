@@ -147,50 +147,53 @@ func (storage *RocksStorage) Close() error {
 
 // EnableBatch enable batch write.
 func (storage *RocksStorage) EnableBatch() {
-	storage.enableBatch = true
+	return
+	//	storage.enableBatch = true
 }
 
 // Flush write and flush pending batch write.
 func (storage *RocksStorage) Flush() error {
-	storage.mutex.Lock()
-	defer storage.mutex.Unlock()
-
-	if !storage.enableBatch {
-		return nil
-	}
-
-	//startAt := time.Now().UnixNano()
-
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-
-	//bl := len(storage.batchOpts)
-
-	for _, opt := range storage.batchOpts {
-		if opt.deleted {
-			wb.Delete(opt.key)
-		} else {
-			wb.Put(opt.key, opt.value)
-		}
-	}
-	storage.batchOpts = make(map[string]*batchOpt)
-
-	err := storage.db.Write(storage.wo, wb)
-
-	//endAt := time.Now().UnixNano()
-	//metricsRocksdbFlushTime.Update(endAt - startAt)
-	//metricsRocksdbFlushLen.Update(int64(bl))
-
-	return err
+	return nil
+	//storage.mutex.Lock()
+	//defer storage.mutex.Unlock()
+	//
+	//if !storage.enableBatch {
+	//	return nil
+	//}
+	//
+	////startAt := time.Now().UnixNano()
+	//
+	//wb := gorocksdb.NewWriteBatch()
+	//defer wb.Destroy()
+	//
+	////bl := len(storage.batchOpts)
+	//
+	//for _, opt := range storage.batchOpts {
+	//	if opt.deleted {
+	//		wb.Delete(opt.key)
+	//	} else {
+	//		wb.Put(opt.key, opt.value)
+	//	}
+	//}
+	//storage.batchOpts = make(map[string]*batchOpt)
+	//
+	//err := storage.db.Write(storage.wo, wb)
+	//
+	////endAt := time.Now().UnixNano()
+	////metricsRocksdbFlushTime.Update(endAt - startAt)
+	////metricsRocksdbFlushLen.Update(int64(bl))
+	//
+	//return err
 }
 
 // DisableBatch disable batch write.
 func (storage *RocksStorage) DisableBatch() {
-	storage.mutex.Lock()
-	defer storage.mutex.Unlock()
-	storage.batchOpts = make(map[string]*batchOpt)
-
-	storage.enableBatch = false
+	return
+	//storage.mutex.Lock()
+	//defer storage.mutex.Unlock()
+	//storage.batchOpts = make(map[string]*batchOpt)
+	//
+	//storage.enableBatch = false
 }
 
 // RecordMetrics record rocksdb metrics
