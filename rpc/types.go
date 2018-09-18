@@ -45,5 +45,6 @@ const (
 	ErrMsgTransactionNotFound        = "transaction not found"
 	ErrMsgUnmarshalTransactionFailed = "cannot unmarshal transaction"
 	ErrMsgInvalidRequest             = "invalid request"
-	ErrMsgFailedToCalcBandwidth      = "failed to calc bandwidth"
+	ErrMsgFailedToUpdateBandwidth    = "failed to update bandwidth"
+	ErrMsgFailedToUpdateUnstaking    = "failed to update Unstaking"
 )

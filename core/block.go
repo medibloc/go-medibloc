@@ -789,11 +789,6 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 	return nil
 }
 
-//CurrentBandwidth returns accounts current bandwidth
-func CurrentBandwidth(acc *Account, curTs int64) (*util.Uint128, error) {
-	return currentBandwidth(acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs, curTs)
-}
-
 func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*util.Uint128, error) {
 	elapsed := curTs - lastTs
 	if time.Duration(elapsed)*time.Second >= BandwidthRegenerateDuration {

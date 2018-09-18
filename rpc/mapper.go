@@ -24,17 +24,21 @@ import (
 )
 
 func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) (*rpcpb.GetAccountResponse, error) {
-	curBandwdith, err := core.CurrentBandwidth(account, curTs)
-	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgFailedToCalcBandwidth)
+	if err := account.UpdateBandwidth(curTs); err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateBandwidth)
 	}
+	if err := account.UpdateUnstaking(curTs); err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateUnstaking)
+	}
+
 	return &rpcpb.GetAccountResponse{
 		Address:   address,
 		Balance:   account.Balance.String(),
 		Nonce:     account.Nonce,
 		Vesting:   account.Vesting.String(),
 		Voted:     byteutils.BytesSlice2HexSlice(account.VotedSlice()),
-		Bandwidth: curBandwdith.String(),
+		Bandwidth: account.Bandwidth.String(),
+		Unstaking: account.Unstaking.String(),
 	}, nil
 }
 

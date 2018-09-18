@@ -16,6 +16,8 @@
 package core
 
 import (
+	"time"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -244,6 +246,45 @@ func (acc *Account) GetData(prefix string, key []byte) ([]byte, error) {
 //PutData put value to account's data trie
 func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
 	return acc.Data.Put(append([]byte(prefix), key...), value)
+}
+
+//UpdateBandwidth update bandwidth
+func (acc *Account) UpdateBandwidth(timestamp int64) error {
+	var err error
+
+	acc.Bandwidth, err = currentBandwidth(acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs, timestamp)
+	if err != nil {
+		return err
+	}
+	acc.LastBandwidthTs = timestamp
+
+	return nil
+}
+
+//UpdateUnstaking update unstaking and balance
+func (acc *Account) UpdateUnstaking(timestamp int64) error {
+	var err error
+	if acc.LastUnstakingTs == 0 {
+		return nil
+	}
+
+	elapsed := timestamp - acc.LastUnstakingTs
+	if time.Duration(elapsed)*time.Second < UnstakingWaitDuration {
+		return nil
+	}
+
+	acc.Balance, err = acc.Balance.Add(acc.Unstaking)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to add to balance.")
+		return err
+	}
+
+	acc.Unstaking = util.NewUint128()
+	acc.LastUnstakingTs = 0
+
+	return nil
 }
 
 //AccountState is a struct for account state
