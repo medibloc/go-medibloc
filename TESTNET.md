@@ -30,7 +30,7 @@ var medjs = Medjs.init(['https://node.medibloc.org']);
 * Genesis Config : [testnet/genesis.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/testnet/genesis.conf)
 * Seed Address
 ```
-"/ip4/13.209.235.191/tcp/9910/ipfs/12D3KooWMfq99SzYn5cjHr5ZPD9PWRMfNHoyWMv2m9mNAEwVFjaY"
+"/ip4/13.124.155.229/tcp/9900/ipfs/12D3KooWFVij7DgP88xxGKsRwKTLYBv1F7v4QaXqNBxpi99iVpfk"
 ```
 * Running
 ```
