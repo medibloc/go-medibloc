@@ -181,7 +181,20 @@ func getAndEqual(t *testing.T, tr *trie.Trie, pair *testPair) {
 	require.NoError(t, err)
 	t.Log(string(v), ":", tr.ShowPath(trie.RouteToKey(pair.route)))
 	require.Equal(t, 0, bytes.Compare([]byte(pair.value), v))
+}
 
+func putPairToTrieBatch(t *testing.T, tb *trie.Batch, pair *testPair) {
+	key := trie.RouteToKey(pair.route)
+	err := tb.Put(key, []byte(pair.value))
+	require.NoError(t, err)
+}
+
+func getAndEqualBatch(t *testing.T, tb *trie.Batch, pair *testPair) {
+	key := trie.RouteToKey(pair.route)
+	v, err := tb.Get(key)
+	require.NoError(t, err)
+	t.Log(string(v), ":", tb.ShowPath(trie.RouteToKey(pair.route)))
+	require.Equal(t, 0, bytes.Compare([]byte(pair.value), v))
 }
 
 func TestTrieBuild(t *testing.T) {

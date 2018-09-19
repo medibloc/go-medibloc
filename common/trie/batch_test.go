@@ -19,6 +19,9 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/medibloc/go-medibloc/storage"
+	"github.com/stretchr/testify/require"
+
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -74,11 +77,14 @@ func TestTrieBatch(t *testing.T) {
 	err = trieBatch.Commit()
 	assert.Nil(t, err)
 
+	testGetValue(key1, val1)
+
 	err = trieBatch.BeginBatch()
 	assert.Nil(t, err)
 
 	err = trieBatch.Put(key1, val2)
 	assert.Nil(t, err)
+	testGetValue(key1, val2)
 	trieBatch.RollBack()
 	testGetValue(key1, val1)
 
@@ -133,4 +139,112 @@ func TestTrieBatch_Clone(t *testing.T) {
 	getVal2, err := trBatch2.Get(key1)
 	assert.Nil(t, err)
 	assert.Equal(t, getVal1, getVal2)
+}
+
+func TestTrieBatch_DiskWriteCount(t *testing.T) {
+	testPairs := []*testPair{
+		{[]byte{0, 0, 0, 1}, "node0"},
+		{[]byte{0, 0, 0, 1, 1, 2}, "node1"},
+		{[]byte{0, 0, 0, 1, 1, 3}, "node2"},
+		{[]byte{0, 0, 0, 1, 1, 5, 5, 5, 1, 0}, "node3"},
+		{[]byte{0, 0, 0, 1, 1, 5, 5, 5, 2, 0}, "node4"},
+	}
+
+	storTr, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tr, err := trie.NewTrie(nil, storTr)
+	require.NoError(t, err)
+
+	for _, pair := range testPairs {
+		putPairToTrie(t, tr, pair)
+	}
+
+	for _, pair := range testPairs {
+		getAndEqual(t, tr, pair)
+	}
+
+	cnt := 0
+	storTr.Data().Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	t.Log("Number of nodes in trie storage:", cnt)
+
+	storTb, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tb, err := trie.NewBatch(nil, storTb)
+	require.NoError(t, err)
+
+	require.NoError(t, tb.BeginBatch())
+	for _, pair := range testPairs {
+		putPairToTrieBatch(t, tb, pair)
+	}
+	require.NoError(t, tb.Commit())
+
+	for _, pair := range testPairs {
+		getAndEqualBatch(t, tb, pair)
+	}
+
+	cnt = 0
+	storTb.Data().Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	t.Log("Number of nodes in trie batch storage:", cnt)
+
+}
+
+func TestTrieBatch_DiskWriteCount2(t *testing.T) {
+	testPairs := []*testPair{
+		{[]byte{0, 0, 0, 1}, "node0"},
+		{[]byte{0, 0, 0, 1, 1, 2}, "node1"},
+		{[]byte{0, 0, 0, 1, 1, 3}, "node2"},
+		{[]byte{0, 0, 0, 1, 1, 5, 5, 5, 1, 0}, "node3"},
+		{[]byte{0, 0, 0, 1, 1, 5, 5, 5, 2, 0}, "node4"},
+	}
+
+	storTr, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tr, err := trie.NewTrie(nil, storTr)
+	require.NoError(t, err)
+
+	for _, pair := range testPairs {
+		putPairToTrie(t, tr, pair)
+	}
+	require.NoError(t, tr.Delete(trie.RouteToKey(testPairs[4].route)))
+
+	for _, pair := range testPairs[:4] {
+		getAndEqual(t, tr, pair)
+	}
+
+	cnt := 0
+	storTr.Data().Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	t.Log("Number of nodes in trie storage:", cnt)
+
+	storTb, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tb, err := trie.NewBatch(nil, storTb)
+	require.NoError(t, err)
+
+	require.NoError(t, tb.BeginBatch())
+	for _, pair := range testPairs {
+		putPairToTrieBatch(t, tb, pair)
+	}
+	require.NoError(t, tb.Delete(trie.RouteToKey(testPairs[4].route)))
+	require.NoError(t, tb.Commit())
+
+	for _, pair := range testPairs[:4] {
+		getAndEqualBatch(t, tb, pair)
+	}
+
+	cnt = 0
+	storTb.Data().Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	t.Log("Number of nodes in trie batch storage:", cnt)
+
 }

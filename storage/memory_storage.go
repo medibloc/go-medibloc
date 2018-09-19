@@ -25,6 +25,10 @@ type MemoryStorage struct {
 	data *sync.Map
 }
 
+func (m *MemoryStorage) Data() *sync.Map {
+	return m.data
+}
+
 var _ Storage = &MemoryStorage{}
 
 // NewMemoryStorage init a storage
