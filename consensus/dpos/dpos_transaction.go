@@ -106,7 +106,10 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		return ErrNotCandidate
 	}
 
-	ds.DelCandidate(tx.candidateAddr)
+	err = ds.DelCandidate(tx.candidateAddr)
+	if err != nil {
+		return err
+	}
 
 	// Refund collateral
 	candidate, err := b.State().GetAccount(tx.candidateAddr)

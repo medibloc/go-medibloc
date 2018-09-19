@@ -90,7 +90,15 @@ func (s *State) RollBack() error {
 
 //Clone clone state
 func (s *State) Clone() (core.DposState, error) {
-	return NewDposState(s.candidateState.RootHash(), s.dynastyState.RootHash(), s.storage)
+	csRootHash, err := s.candidateState.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	dsRootHash, err := s.dynastyState.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	return NewDposState(csRootHash, dsRootHash, s.storage)
 }
 
 //BeginBatch begin batch
@@ -106,9 +114,18 @@ func (s *State) BeginBatch() error {
 
 //RootBytes returns root bytes for dpos state
 func (s *State) RootBytes() ([]byte, error) {
+	csRoot, err := s.candidateState.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	dsRoot, err := s.dynastyState.RootHash()
+	if err != nil {
+		return nil, err
+	}
+
 	pbState := &dpospb.State{
-		CandidateRootHash: s.CandidateState().RootHash(),
-		DynastyRootHash:   s.DynastyState().RootHash(),
+		CandidateRootHash: csRoot,
+		DynastyRootHash:   dsRoot,
 	}
 	return proto.Marshal(pbState)
 }

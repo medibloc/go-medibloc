@@ -566,19 +566,25 @@ func (b *Block) SetSealed(sealed bool) {
 
 // Seal writes state root hashes and block hash in block header
 func (b *Block) Seal() error {
+	var err error
 	if b.sealed {
 		return ErrBlockAlreadySealed
 	}
 
-	dposRoot, err := b.state.dposState.RootBytes()
+	b.reward = b.state.Reward()
+	b.supply = b.state.Supply()
+	b.accStateRoot, err = b.state.AccountsRoot()
 	if err != nil {
 		return err
 	}
-	b.reward = b.state.Reward()
-	b.supply = b.state.Supply()
-	b.accStateRoot = b.state.AccountsRoot()
-	b.txStateRoot = b.state.TxsRoot()
-	b.dposRoot = dposRoot
+	b.txStateRoot, err = b.state.TxsRoot()
+	if err != nil {
+		return err
+	}
+	b.dposRoot, err = b.state.dposState.RootBytes()
+	if err != nil {
+		return err
+	}
 
 	hash := HashBlockData(b.BlockData)
 	b.hash = hash
@@ -705,7 +711,7 @@ func (b *Block) updateUnstaking(tx *Transaction) error {
 	acc.Unstaking = util.NewUint128()
 	acc.LastUnstakingTs = 0
 
-	err = b.State().AccState().PutAccount(acc)
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -749,7 +755,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 	acc.Bandwidth = updated
 	acc.LastBandwidthTs = b.Timestamp()
 
-	err = b.State().AccState().PutAccount(acc)
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -779,7 +785,7 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 
 	acc.Bandwidth = curBandwidth
 	acc.LastBandwidthTs = curTs
-	err = b.State().AccState().PutAccount(acc)
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -860,6 +866,8 @@ func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
 		return err
 	}
 
+	b.Commit()
+
 	if err := b.VerifyState(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -869,7 +877,6 @@ func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
 		return err
 	}
 
-	b.Commit()
 	return nil
 }
 
@@ -964,26 +971,36 @@ func (b *Block) VerifyState() error {
 		return ErrInvalidBlockSupply
 	}
 
+	accRoot, err := b.state.AccountsRoot()
+	if err != nil {
+		return err
+	}
+	if !byteutils.Equal(accRoot, b.AccStateRoot()) {
+		logging.Console().WithFields(logrus.Fields{
+			"state":  byteutils.Bytes2Hex(accRoot),
+			"header": byteutils.Bytes2Hex(b.AccStateRoot()),
+		}).Warn("Failed to verify accounts root.")
+		return ErrInvalidBlockAccountsRoot
+	}
+
+	txsRoot, err := b.state.TxsRoot()
+	if err != nil {
+		return err
+	}
+	if !byteutils.Equal(txsRoot, b.TxStateRoot()) {
+		logging.WithFields(logrus.Fields{
+			"state":  byteutils.Bytes2Hex(txsRoot),
+			"header": byteutils.Bytes2Hex(b.TxStateRoot()),
+		}).Warn("Failed to verify transactions root.")
+		return ErrInvalidBlockTxsRoot
+	}
+
 	dposRoot, err := b.state.DposState().RootBytes()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to get dpos state's root bytes.")
 		return err
-	}
-	if !byteutils.Equal(b.state.AccountsRoot(), b.AccStateRoot()) {
-		logging.Console().WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.AccountsRoot()),
-			"header": byteutils.Bytes2Hex(b.AccStateRoot()),
-		}).Warn("Failed to verify accounts root.")
-		return ErrInvalidBlockAccountsRoot
-	}
-	if !byteutils.Equal(b.state.TxsRoot(), b.TxStateRoot()) {
-		logging.WithFields(logrus.Fields{
-			"state":  byteutils.Bytes2Hex(b.state.TxsRoot()),
-			"header": byteutils.Bytes2Hex(b.TxStateRoot()),
-		}).Warn("Failed to verify transactions root.")
-		return ErrInvalidBlockTxsRoot
 	}
 	if !byteutils.Equal(dposRoot, b.DposRoot()) {
 		logging.WithFields(logrus.Fields{

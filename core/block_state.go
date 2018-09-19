@@ -85,17 +85,17 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 }
 
 func (s *states) Clone() (*states, error) {
-	accState, err := NewAccountState(s.accState.RootHash(), s.storage)
+	accState, err := s.accState.Clone()
 	if err != nil {
 		return nil, err
 	}
 
-	txState, err := NewTransactionState(s.txState.RootHash(), s.storage)
+	txState, err := s.txState.Clone()
 	if err != nil {
 		return nil, err
 	}
 
-	dposState, err := DposState.Clone(s.dposState)
+	dposState, err := s.dposState.Clone()
 	if err != nil {
 		return nil, err
 	}
@@ -136,11 +136,11 @@ func (s *states) Commit() error {
 	return nil
 }
 
-func (s *states) AccountsRoot() []byte {
+func (s *states) AccountsRoot() ([]byte, error) {
 	return s.accState.RootHash()
 }
 
-func (s *states) TxsRoot() []byte {
+func (s *states) TxsRoot() ([]byte, error) {
 	return s.txState.RootHash()
 }
 
@@ -171,7 +171,7 @@ func (s *states) GetAccount(addr common.Address) (*Account, error) {
 }
 
 func (s *states) PutAccount(acc *Account) error {
-	return s.accState.PutAccount(acc)
+	return s.accState.putAccount(acc)
 }
 
 func (s *states) GetAccounts() ([]*Account, error) {
@@ -183,7 +183,7 @@ func (s *states) GetTx(txHash []byte) (*Transaction, error) {
 }
 
 func (s *states) incrementNonce(address common.Address) error {
-	return s.accState.IncrementNonce(address)
+	return s.accState.incrementNonce(address)
 }
 
 func (s *states) acceptTransaction(tx *Transaction, blockTime int64) error {

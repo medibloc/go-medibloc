@@ -175,6 +175,10 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	if err != nil {
 		return nil, err
 	}
+	votedRootHash, err := acc.Voted.RootHash()
+	if err != nil {
+		return nil, err
+	}
 	bandwidth, err := acc.Bandwidth.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -187,26 +191,43 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	if err != nil {
 		return nil, err
 	}
+	votersRootHash, err := acc.Voters.RootHash()
+	if err != nil {
+		return nil, err
+	}
 	votePower, err := acc.VotePower.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
+	txsFromRootHash, err := acc.TxsFrom.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	txsToRootHash, err := acc.TxsTo.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	dataRootHash, err := acc.Data.RootHash()
+	if err != nil {
+		return nil, err
+	}
+
 	return &corepb.Account{
 		Address:         acc.Address.Bytes(),
 		Balance:         balance,
 		Nonce:           acc.Nonce,
 		Vesting:         vesting,
-		VotedRootHash:   acc.Voted.RootHash(),
+		VotedRootHash:   votedRootHash,
 		Bandwidth:       bandwidth,
 		LastBandwidthTs: acc.LastBandwidthTs,
 		Unstaking:       unstaking,
 		LastUnstakingTs: acc.LastUnstakingTs,
 		Collateral:      collateral,
-		VotersRootHash:  acc.Voters.RootHash(),
+		VotersRootHash:  votersRootHash,
 		VotePower:       votePower,
-		TxsFromRootHash: acc.TxsFrom.RootHash(),
-		TxsToRootHash:   acc.TxsTo.RootHash(),
-		DataRootHash:    acc.Data.RootHash(),
+		TxsFromRootHash: txsFromRootHash,
+		TxsToRootHash:   txsToRootHash,
+		DataRootHash:    dataRootHash,
 	}, nil
 }
 
@@ -306,6 +327,14 @@ func NewAccountState(rootHash []byte, stor storage.Storage) (*AccountState, erro
 	}, nil
 }
 
+func (as *AccountState) Clone() (*AccountState, error) {
+	rootHash, err := as.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	return NewAccountState(rootHash, as.storage)
+}
+
 //GetAccount returns account
 func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	acc, err := newAccount(as.storage)
@@ -332,8 +361,8 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	return acc, nil
 }
 
-//PutAccount put account to trie batch
-func (as *AccountState) PutAccount(acc *Account) error {
+//putAccount put account to trie batch
+func (as *AccountState) putAccount(acc *Account) error {
 	accBytes, err := acc.toBytes()
 	if err != nil {
 		return err
@@ -341,54 +370,14 @@ func (as *AccountState) PutAccount(acc *Account) error {
 	return as.Put(acc.Address.Bytes(), accBytes)
 }
 
-// IncrementNonce increment account's nonce
-func (as *AccountState) IncrementNonce(addr common.Address) error {
+// incrementNonce increment account's nonce
+func (as *AccountState) incrementNonce(addr common.Address) error {
 	acc, err := as.GetAccount(addr)
 	if err != nil {
 		return err
 	}
 	acc.Nonce++
-	return as.PutAccount(acc)
-}
-
-//SetBandwidth sets bandwidth.
-func (as *AccountState) SetBandwidth(addr common.Address, bandwidth *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	acc.Bandwidth = bandwidth.DeepCopy()
-	return as.PutAccount(acc)
-}
-
-//SetLastBandwidthTs sets last update time of bandwidth.
-func (as *AccountState) SetLastBandwidthTs(addr common.Address, ts int64) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	acc.LastBandwidthTs = ts
-	return as.PutAccount(acc)
-}
-
-//SetUnstaking sets unstaking.
-func (as *AccountState) SetUnstaking(addr common.Address, unstaking *util.Uint128) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	acc.Unstaking = unstaking.DeepCopy()
-	return as.PutAccount(acc)
-}
-
-//SetLastUnstakingTs sets last update time of unstaking.
-func (as *AccountState) SetLastUnstakingTs(addr common.Address, ts int64) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	acc.LastUnstakingTs = ts
-	return as.PutAccount(acc)
+	return as.putAccount(acc)
 }
 
 // addTxsFrom add transaction in TxsFrom
@@ -409,7 +398,7 @@ func (as *AccountState) addTxsFrom(addr common.Address, txHash []byte) error {
 	if err != nil {
 		return err
 	}
-	return as.PutAccount(acc)
+	return as.putAccount(acc)
 }
 
 // addTxsTo add transaction in TxsFrom
@@ -430,7 +419,7 @@ func (as *AccountState) addTxsTo(addr common.Address, txHash []byte) error {
 	if err != nil {
 		return err
 	}
-	return as.PutAccount(acc)
+	return as.putAccount(acc)
 }
 
 //PutTx add transaction to account state

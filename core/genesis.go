@@ -299,8 +299,14 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		return nil, err
 	}
 
-	genesisBlock.accStateRoot = genesisBlock.state.AccountsRoot()
-	genesisBlock.txStateRoot = genesisBlock.state.TxsRoot()
+	genesisBlock.accStateRoot, err = genesisBlock.state.AccountsRoot()
+	if err != nil {
+		return nil, err
+	}
+	genesisBlock.txStateRoot, err = genesisBlock.state.TxsRoot()
+	if err != nil {
+		return nil, err
+	}
 	genesisBlock.dposRoot = dposRoot
 
 	genesisBlock.sealed = true

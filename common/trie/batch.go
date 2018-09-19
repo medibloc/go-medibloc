@@ -16,34 +16,23 @@
 package trie
 
 import (
+	"sync"
+
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
-// Action represents operation types in BatchTrie
-type Action int
-
-// Action constants
-const (
-	Insert Action = iota
-	Update
-	Delete
-)
-
-// Entry entry for not committed changes
-type Entry struct {
-	action Action
-	key    []byte
-	old    []byte
-	update []byte
+type dirty struct {
+	value      []byte
+	deleteFlag bool
 }
 
 // Batch batch implementation for trie
 type Batch struct {
-	batching    bool
-	changeLogs  []*Entry
-	oldRootHash []byte
-	trie        *Trie
-	storage     storage.Storage
+	mu       sync.RWMutex
+	batching bool
+	trie     *Trie
+	dirties  map[string]*dirty
 }
 
 // NewBatch return new Batch instance
@@ -54,7 +43,7 @@ func NewBatch(rootHash []byte, stor storage.Storage) (*Batch, error) {
 	}
 	return &Batch{
 		trie:    t,
-		storage: stor,
+		dirties: make(map[string]*dirty),
 	}, nil
 }
 
@@ -63,7 +52,8 @@ func (t *Batch) BeginBatch() error {
 	if t.batching {
 		return ErrBeginAgainInBatch
 	}
-	t.oldRootHash = t.trie.RootHash()
+	t.dirties = make(map[string]*dirty)
+	//t.oldRootHash = t.trie.RootHash()
 	t.batching = true
 	return nil
 }
@@ -73,7 +63,7 @@ func (t *Batch) Clone() (*Batch, error) {
 	if t.batching {
 		return nil, ErrCannotCloneOnBatching
 	}
-	return NewBatch(t.trie.RootHash(), t.storage)
+	return NewBatch(t.trie.RootHash(), t.trie.storage)
 }
 
 // Commit commit batch WARNING: not thread-safe
@@ -81,7 +71,21 @@ func (t *Batch) Commit() error {
 	if !t.batching {
 		return ErrNotBatching
 	}
-	t.changeLogs = t.changeLogs[:0]
+
+	for keyHex, d := range t.dirties {
+		key := byteutils.Hex2Bytes(keyHex)
+		if d.deleteFlag {
+			err := t.trie.Delete(key)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		if err := t.trie.Put(key, d.value); err != nil {
+			return err
+		}
+	}
+	t.dirties = make(map[string]*dirty)
 	t.batching = false
 	return nil
 }
@@ -91,17 +95,45 @@ func (t *Batch) Delete(key []byte) error {
 	if !t.batching {
 		return ErrNotBatching
 	}
-	entry := &Entry{action: Delete, key: key, old: nil}
-	old, getErr := t.trie.Get(key)
-	if getErr == nil {
-		entry.old = old
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	keyHex := byteutils.Bytes2Hex(key)
+
+	d, ok := t.dirties[keyHex]
+	if ok {
+		if d.deleteFlag {
+			return ErrNotFound
+		}
+		d.deleteFlag = true
+		return nil
 	}
-	t.changeLogs = append(t.changeLogs, entry)
-	return t.trie.Delete(key)
+
+	_, err := t.trie.Get(key)
+	if err != nil {
+		return err
+	}
+	t.dirties[keyHex] = &dirty{
+		value:      nil,
+		deleteFlag: true,
+	}
+	return nil
 }
 
 // Get get from trie
 func (t *Batch) Get(key []byte) ([]byte, error) {
+	if !t.batching {
+		return t.trie.Get(key)
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	keyHex := byteutils.Bytes2Hex(key)
+	d, ok := t.dirties[keyHex]
+	if ok {
+		if d.deleteFlag {
+			return nil, ErrNotFound
+		}
+		return d.value, nil
+	}
 	return t.trie.Get(key)
 }
 
@@ -115,14 +147,15 @@ func (t *Batch) Put(key []byte, value []byte) error {
 	if !t.batching {
 		return ErrNotBatching
 	}
-	entry := &Entry{action: Insert, key: key, old: nil, update: value}
-	old, getErr := t.trie.Get(key)
-	if getErr == nil {
-		entry.action = Update
-		entry.old = old
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	keyHex := byteutils.Bytes2Hex(key)
+	t.dirties[keyHex] = &dirty{
+		value:      value,
+		deleteFlag: false,
 	}
-	t.changeLogs = append(t.changeLogs, entry)
-	return t.trie.Put(key, value)
+
+	return nil
 }
 
 // RollBack rollback batch WARNING: not thread-safe
@@ -130,14 +163,15 @@ func (t *Batch) RollBack() error {
 	if !t.batching {
 		return ErrNotBatching
 	}
-	// TODO rollback with changelogs
-	t.changeLogs = t.changeLogs[:0]
-	t.trie.SetRootHash(t.oldRootHash)
+	t.dirties = make(map[string]*dirty)
 	t.batching = false
 	return nil
 }
 
 // RootHash getter for rootHash
-func (t *Batch) RootHash() []byte {
-	return t.trie.RootHash()
+func (t *Batch) RootHash() ([]byte, error) {
+	if t.batching {
+		return nil, ErrNotBatching
+	}
+	return t.trie.RootHash(), nil
 }

@@ -145,6 +145,8 @@ func TestVote(t *testing.T) {
 		assert.Equal(t, util.NewUint128FromUint(0), acc.VotePower)
 		_, err = acc.Voters.Get(voter.Addr.Bytes())
 		assert.Equal(t, trie.ErrNotFound, err)
-		assert.Equal(t, []byte(nil), acc.Voters.RootHash())
+		votersRoot, err := acc.Voters.RootHash()
+		require.NoError(t, err)
+		assert.Equal(t, []byte(nil), votersRoot)
 	}
 }

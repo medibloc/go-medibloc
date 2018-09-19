@@ -37,13 +37,22 @@ func TestCloneState(t *testing.T) {
 	newState, err := state.Clone()
 	require.NoError(t, err)
 
-	dposRoot, err := state.DposState().RootBytes()
+	accRoot, err := state.AccountsRoot()
 	require.NoError(t, err)
-	newDposRoot, err := newState.DposState().RootBytes()
+	newAccRoot, err := newState.AccountsRoot()
 	require.NoError(t, err)
+	assert.Equal(t, accRoot, newAccRoot)
 
-	assert.Equal(t, state.AccountsRoot(), newState.AccountsRoot())
-	assert.Equal(t, state.TxsRoot(), newState.TxsRoot())
+	txsRoot, err := state.TxsRoot()
+	require.NoError(t, err)
+	newTxsRoot, err := newState.TxsRoot()
+	require.NoError(t, err)
+	assert.Equal(t, txsRoot, newTxsRoot)
+
+	dposRoot, err := state.DposRoot()
+	require.NoError(t, err)
+	newDposRoot, err := newState.DposRoot()
+	require.NoError(t, err)
 	assert.Equal(t, dposRoot, newDposRoot)
 }
 

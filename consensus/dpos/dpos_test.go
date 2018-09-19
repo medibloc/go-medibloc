@@ -51,9 +51,12 @@ func TestChangeDynasty(t *testing.T) {
 		}).SignPair(newCandidate).Execute().SignMiner()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 	ds := seed.Tail().State().DposState()
+	isCandidate, err := ds.IsCandidate(newCandidate.Addr)
+	require.NoError(t, err)
+	assert.True(t, isCandidate)
 	inDynasty, err := ds.InDynasty(newCandidate.Addr)
 	require.NoError(t, err)
-	assert.Equal(t, false, inDynasty)
+	assert.False(t, inDynasty)
 
 	bb = bb.ChildNextDynasty().SignMiner()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
@@ -69,7 +72,7 @@ func TestChangeDynasty(t *testing.T) {
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 
 	ds = seed.Tail().State().DposState()
-	isCandidate, err := ds.IsCandidate(newCandidate.Addr)
+	isCandidate, err = ds.IsCandidate(newCandidate.Addr)
 	require.NoError(t, err)
 	assert.Equal(t, false, isCandidate)
 	inDynasty, err = ds.InDynasty(newCandidate.Addr)

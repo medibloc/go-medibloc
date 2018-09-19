@@ -42,6 +42,14 @@ func NewTransactionState(rootHash []byte, stor storage.Storage) (*TransactionSta
 	}, nil
 }
 
+func (ts *TransactionState) Clone() (*TransactionState, error) {
+	rootHash, err := ts.RootHash()
+	if err != nil {
+		return nil, err
+	}
+	return NewTransactionState(rootHash, ts.stor)
+}
+
 //Get returns transaction from transaction state
 func (ts *TransactionState) Get(hash []byte) (*Transaction, error) {
 	txBytes, err := ts.Batch.Get(hash)
