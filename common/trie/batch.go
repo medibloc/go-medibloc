@@ -76,7 +76,7 @@ func (t *Batch) Commit() error {
 		key := byteutils.Hex2Bytes(keyHex)
 		if d.deleteFlag {
 			err := t.trie.Delete(key)
-			if err != nil {
+			if err != nil && err != ErrNotFound{
 				return err
 			}
 			continue
