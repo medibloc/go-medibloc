@@ -246,5 +246,80 @@ func TestTrieBatch_DiskWriteCount2(t *testing.T) {
 		return true
 	})
 	t.Log("Number of nodes in trie batch storage:", cnt)
+}
 
+func TestTrieBatch_DiskWriteCount3(t *testing.T) {
+	testPairs := []*testPair{
+		{[]byte{0, 0, 0, 1}, "node0"},
+		{[]byte{0, 0, 0, 1}, "node1"},
+		{[]byte{0, 0, 0, 1}, "node2"},
+		{[]byte{0, 0, 0, 1}, "node3"},
+	}
+
+	storTr, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tr, err := trie.NewTrie(nil, storTr)
+	require.NoError(t, err)
+
+	for _, pair := range testPairs {
+		putPairToTrie(t, tr, pair)
+	}
+
+	getAndEqual(t, tr, testPairs[3])
+
+	cnt := 0
+	storTr.Data().Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	t.Log("Number of nodes in trie storage:", cnt)
+
+	storTb, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tb, err := trie.NewBatch(nil, storTb)
+	require.NoError(t, err)
+
+	require.NoError(t, tb.BeginBatch())
+	for _, pair := range testPairs {
+		putPairToTrieBatch(t, tb, pair)
+	}
+	require.NoError(t, tb.Commit())
+
+	getAndEqualBatch(t, tb, testPairs[3])
+
+	cnt = 0
+	storTb.Data().Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	t.Log("Number of nodes in trie batch storage:", cnt)
+}
+
+func TestTrieBatch_ProtectWrittenData(t *testing.T) {
+	testPairs := []*testPair{
+		{[]byte{0, 0, 0, 1}, "value1"},
+		{[]byte{0, 0, 0, 2}, "value2"},
+		{[]byte{0, 1, 1, 1}, "value1"},
+		{[]byte{0, 1, 1, 2}, "value2"},
+		{[]byte{0, 1, 1, 3}, "value3"},
+	}
+
+	stor, err := storage.NewMemoryStorage()
+	require.NoError(t, err)
+	tb, err := trie.NewBatch(nil, stor)
+
+	require.NoError(t, tb.BeginBatch())
+	putPairToTrieBatch(t, tb, testPairs[0])
+	require.NoError(t, tb.Commit())
+	rootHash, err := tb.RootHash()
+	require.NoError(t, err)
+
+	require.NoError(t, tb.BeginBatch())
+	putPairToTrieBatch(t, tb, testPairs[1])
+	require.NoError(t, tb.Commit())
+
+	tb1, err := trie.NewBatch(rootHash, stor)
+	require.NoError(t, err)
+
+	getAndEqualBatch(t, tb1, testPairs[0])
 }
