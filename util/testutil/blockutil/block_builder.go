@@ -59,23 +59,26 @@ func (bb *BlockBuilder) AddKeyPairs(keyPairs testutil.AddrKeyPairs) *BlockBuilde
 }
 
 func (bb *BlockBuilder) copy() *BlockBuilder {
-	var b *core.Block
-	var err error
-
-	if bb.B != nil {
-		b, err = bb.B.Clone()
-		require.NoError(bb.t, err)
-	}
-
 	return &BlockBuilder{
 		t:           bb.t,
-		B:           b,
+		B:           bb.B,
 		dynastySize: bb.dynastySize,
 		proposer:    bb.proposer,
 		Dynasties:   bb.Dynasties,
 		TokenDist:   bb.TokenDist,
 		KeyPairs:    bb.KeyPairs,
 	}
+}
+
+//Clone clones block on block builders (State of block must unprepared)
+func (bb *BlockBuilder) Clone() *BlockBuilder {
+	n := bb.copy()
+
+	var err error
+	require.NotNil(n.t, bb.B)
+	n.B, err = bb.B.Clone()
+	require.NoError(bb.t, err)
+	return n
 }
 
 //Genesis create genesis block
@@ -90,13 +93,20 @@ func (bb *BlockBuilder) Genesis() *BlockBuilder {
 }
 
 //Block sets block
-func (bb *BlockBuilder) Block(block *core.Block) *BlockBuilder {
+func (bb *BlockBuilder) Block(b *core.Block) *BlockBuilder {
 	n := bb.copy()
-	proposer, _ := block.Proposer()
+	proposer, _ := b.Proposer()
 	//require.NoError(n.t, err)
 
-	n.B = block
+	n.B = b
 	n.proposer = proposer
+	return n
+}
+
+//Prepare prepare block state
+func (bb *BlockBuilder) Prepare() *BlockBuilder {
+	n := bb.copy()
+	require.NoError(n.t, n.B.Prepare())
 	return n
 }
 
@@ -241,7 +251,7 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	n := bb.copy()
 
-	return n.Coinbase(pair.Addr).PayReward().Seal().CalcHash().SignKey(pair.PrivKey)
+	return n.Coinbase(pair.Addr).PayReward().Flush().Seal().CalcHash().SignKey(pair.PrivKey)
 }
 
 //SignMiner find proposer and sign with key pair
@@ -310,12 +320,17 @@ func (bb *BlockBuilder) PayReward() *BlockBuilder {
 	return n
 }
 
+//Flush saves state to storage
+func (bb *BlockBuilder) Flush() *BlockBuilder {
+	n := bb.copy()
+	require.NoError(n.t, n.B.Flush())
+	return n
+}
+
 //Seal set root hash on header
 func (bb *BlockBuilder) Seal() *BlockBuilder {
 	n := bb.copy()
-	t := bb.t
-	err := n.B.Seal()
-	require.NoError(t, err)
+	require.NoError(n.t, n.B.Seal())
 	return n
 }
 
@@ -356,9 +371,11 @@ func (bb *BlockBuilder) Child() *BlockBuilder {
 //ChildWithTimestamp create child block on specific timestamp
 func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
+	var err error
 	parent := bb.B
-	n.B.SetTransactions(make([]*core.Transaction, 0))
-	return n.ParentHash(bb.B.Hash()).Timestamp(ts).Height(bb.B.Height() + 1).Sealed(false).UpdateDynastyState(parent)
+	n.B, err = parent.Child()
+	require.NoError(n.t, err)
+	return n.Timestamp(ts).Prepare().UpdateDynastyState(parent)
 }
 
 //ChildNextDynasty create first child block of next dynasty

@@ -73,16 +73,16 @@ func TestBlock_PayReward(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 	parent := bb.Build()
 
-	bb = bb.Child().Stake().Tx().RandomTx().Execute()
+	bb = bb.Child().Stake().Tx().RandomTx().Execute().Flush()
 	miner := bb.FindMiner()
 
 	// wrong reward value (calculate reward based on wrong supply)
-	block := bb.Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
 	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, blockutil.DefaultTxMap)
 	assert.Equal(t, core.ErrInvalidBlockReward, err)
 
 	// wrong supply on header
-	block = bb.PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(miner.PrivKey).Build()
 	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, blockutil.DefaultTxMap)
 	assert.Equal(t, core.ErrInvalidBlockSupply, err)
 

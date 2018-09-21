@@ -25,8 +25,14 @@ type MemoryStorage struct {
 	data *sync.Map
 }
 
-func (m *MemoryStorage) Data() *sync.Map {
-	return m.data
+//Len returns number of keys in memory storage
+func (s *MemoryStorage) Len() int {
+	cnt := 0
+	s.data.Range(func(key, value interface{}) bool {
+		cnt++
+		return true
+	})
+	return cnt
 }
 
 var _ Storage = &MemoryStorage{}

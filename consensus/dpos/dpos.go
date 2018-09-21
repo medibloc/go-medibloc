@@ -321,15 +321,18 @@ func (d *Dpos) mintBlock(now time.Time) error {
 func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.Time) (*core.Block, error) {
 	logging.Console().Info("Start to make mint block.")
 
-	block, err := core.NewBlock(tail.ChainID(), d.miner, tail)
+	block, err := tail.Child()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to create new block.")
+		}).Error("Failed to make child block for make block")
 		return nil, err
 	}
 	block.SetTimestamp(nextMintTs.Unix())
-	block.Storage().EnableBatch()
+
+	if err := block.Prepare(); err != nil {
+		return nil, err
+	}
 
 	if err := block.BeginBatch(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -437,12 +440,16 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 	if err := block.PayReward(d.coinbase, tail.Supply()); err != nil {
 		return nil, err
 	}
-	block.Commit()
-	err = block.Storage().Flush()
+	err = block.Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	err = block.Flush()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to flush to storage.")
+		}).Error("Failed to flush state on storage")
 		return nil, err
 	}
 

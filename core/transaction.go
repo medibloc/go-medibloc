@@ -507,6 +507,10 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
+	err = acc.Data.Prepare()
+	if err != nil {
+		return err
+	}
 	err = acc.Data.BeginBatch()
 	if err != nil {
 		return err
@@ -519,7 +523,10 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-
+	err = acc.Data.Flush()
+	if err != nil {
+		return err
+	}
 	return b.State().PutAccount(acc)
 }
 
@@ -757,6 +764,9 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 	}
 
 	// Add certification to certified's account state
+	if err := certified.Data.Prepare(); err != nil {
+		return err
+	}
 	if err := certified.Data.BeginBatch(); err != nil {
 		return err
 	}
@@ -769,6 +779,9 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 	if err := certified.Data.Commit(); err != nil {
 		return err
 	}
+	if err := certified.Data.Flush(); err != nil {
+		return err
+	}
 	if err := b.State().PutAccount(certified); err != nil {
 		return err
 	}
@@ -778,7 +791,9 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-
+	if err := issuer.Data.Prepare(); err != nil {
+		return err
+	}
 	if err := issuer.Data.BeginBatch(); err != nil {
 		return err
 	}
@@ -789,6 +804,9 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 		return err
 	}
 	if err := issuer.Data.Commit(); err != nil {
+		return err
+	}
+	if err := issuer.Data.Flush(); err != nil {
 		return err
 	}
 	if err := b.State().PutAccount(issuer); err != nil {
@@ -859,6 +877,10 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 		return err
 	}
 	// change cert on issuer's cert issued List
+	err = issuer.Data.Prepare()
+	if err != nil {
+		return err
+	}
 	err = issuer.Data.BeginBatch()
 	if err != nil {
 		return err
@@ -871,12 +893,20 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
+	err = issuer.Data.Flush()
+	if err != nil {
+		return err
+	}
 	err = b.State().PutAccount(issuer)
 	if err != nil {
 		return err
 	}
 	// change cert on certified's cert received list
 	certified, err := b.State().GetAccount(common.BytesToAddress(pbCert.Certified))
+	if err != nil {
+		return err
+	}
+	err = certified.Data.Prepare()
 	if err != nil {
 		return err
 	}
@@ -889,6 +919,10 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 		return err
 	}
 	err = certified.Data.Commit()
+	if err != nil {
+		return err
+	}
+	err = certified.Data.Flush()
 	if err != nil {
 		return err
 	}

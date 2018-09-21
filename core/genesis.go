@@ -68,7 +68,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if conf == nil {
 		return nil, ErrNilArgument
 	}
-	blockState, err := NewBlockState(consensus, sto)
+	blockState, err := newStates(consensus, sto)
 	if err != nil {
 		return nil, err
 	}
@@ -90,6 +90,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		state:     blockState,
 		consensus: consensus,
 		sealed:    false,
+	}
+	if err := genesisBlock.Prepare(); err != nil {
+		return nil, err
 	}
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
@@ -185,6 +188,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			return nil, err
 		}
 
+		err = acc.Voted.Prepare()
+		if err != nil {
+			return nil, err
+		}
 		err = acc.Voted.BeginBatch()
 		if err != nil {
 			return nil, err
@@ -197,6 +204,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 		}
 		err = acc.Voted.Commit()
+		if err != nil {
+			return nil, err
+		}
+		err = acc.Voted.Flush()
 		if err != nil {
 			return nil, err
 		}
@@ -221,6 +232,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			if err != nil {
 				return nil, err
 			}
+			err = candAcc.Voters.Prepare()
+			if err != nil {
+				return nil, err
+			}
 			err = candAcc.Voters.BeginBatch()
 			if err != nil {
 				return nil, err
@@ -230,6 +245,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				return nil, err
 			}
 			err = candAcc.Voters.Commit()
+			if err != nil {
+				return nil, err
+			}
+			err = candAcc.Voters.Flush()
 			if err != nil {
 				return nil, err
 			}
@@ -293,6 +312,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err := genesisBlock.Commit(); err != nil {
 		return nil, err
 	}
+	if err := genesisBlock.Flush(); err != nil {
+		return nil, err
+	}
 
 	dposRoot, err := genesisBlock.state.DposState().RootBytes()
 	if err != nil {
@@ -335,7 +357,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		return false
 	}
 
-	accounts, err := block.State().accState.Accounts()
+	accounts, err := block.State().accState.accounts()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

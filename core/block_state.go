@@ -23,7 +23,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type states struct {
+// BlockState is block state
+type BlockState struct {
 	reward *util.Uint128
 	supply *util.Uint128
 
@@ -34,31 +35,39 @@ type states struct {
 	storage storage.Storage
 }
 
-func (s *states) Supply() *util.Uint128 {
-	return s.supply.DeepCopy()
+// Supply returns supply in state
+func (bs *BlockState) Supply() *util.Uint128 {
+	return bs.supply
 }
 
-func (s *states) Reward() *util.Uint128 {
-	return s.reward.DeepCopy()
+// Reward returns reward in state
+func (bs *BlockState) Reward() *util.Uint128 {
+	return bs.reward
 }
 
-func (s *states) AccState() *AccountState {
-	return s.accState
+// AccState returns account state in state
+func (bs *BlockState) AccState() *AccountState {
+	return bs.accState
 }
 
-func (s *states) DposState() DposState {
-	return s.dposState
+// DposState returns dpos state in state
+func (bs *BlockState) DposState() DposState {
+	return bs.dposState
 }
 
-func (s *states) GetCandidates() ([]common.Address, error) {
-	return s.DposState().Candidates()
+// GetCandidates returns list of candidates (only used in grpc)
+func (bs *BlockState) GetCandidates() ([]common.Address, error) {
+	// TODO: should be deprecate (if candidates are too many, grpc cannot full list of cadidiates. (max msg size)
+	return bs.DposState().Candidates()
 }
 
-func (s *states) GetDynasty() ([]common.Address, error) {
-	return s.DposState().Dynasty()
+// GetDynasty returns list of dynasty (only used in grpc)
+func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecate ?
+
+	return bs.DposState().Dynasty()
 }
 
-func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
+func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	accState, err := NewAccountState(nil, stor)
 	if err != nil {
 		return nil, err
@@ -74,7 +83,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 		return nil, err
 	}
 
-	return &states{
+	return &BlockState{
 		reward:    util.NewUint128(),
 		supply:    util.NewUint128(),
 		accState:  accState,
@@ -84,110 +93,164 @@ func newStates(consensus Consensus, stor storage.Storage) (*states, error) {
 	}, nil
 }
 
-func (s *states) Clone() (*states, error) {
-	accState, err := s.accState.Clone()
+//Clone clone states
+func (bs *BlockState) Clone() (*BlockState, error) {
+	accState, err := bs.accState.Clone()
 	if err != nil {
 		return nil, err
 	}
 
-	txState, err := s.txState.Clone()
+	txState, err := bs.txState.Clone()
 	if err != nil {
 		return nil, err
 	}
 
-	dposState, err := s.dposState.Clone()
+	dposState, err := bs.dposState.Clone()
 	if err != nil {
 		return nil, err
 	}
 
-	return &states{
-		reward:    s.reward.DeepCopy(),
-		supply:    s.supply.DeepCopy(),
+	return &BlockState{
+		reward:    bs.reward.DeepCopy(),
+		supply:    bs.supply.DeepCopy(),
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
-		storage:   s.storage,
+		storage:   bs.storage,
 	}, nil
 }
 
-func (s *states) BeginBatch() error {
-	if err := s.accState.BeginBatch(); err != nil {
+func (bs *BlockState) prepare() error {
+	if err := bs.accState.Prepare(); err != nil {
 		return err
 	}
-	if err := s.txState.BeginBatch(); err != nil {
+	if err := bs.txState.Prepare(); err != nil {
 		return err
 	}
-	if err := s.DposState().BeginBatch(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *states) Commit() error {
-	if err := s.accState.Commit(); err != nil {
-		return err
-	}
-	if err := s.txState.Commit(); err != nil {
-		return err
-	}
-	if err := s.dposState.Commit(); err != nil {
+	if err := bs.DposState().Prepare(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *states) AccountsRoot() ([]byte, error) {
-	return s.accState.RootHash()
+func (bs *BlockState) beginBatch() error {
+	if err := bs.accState.BeginBatch(); err != nil {
+		return err
+	}
+	if err := bs.txState.BeginBatch(); err != nil {
+		return err
+	}
+	if err := bs.DposState().BeginBatch(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *states) TxsRoot() ([]byte, error) {
-	return s.txState.RootHash()
+func (bs *BlockState) commit() error {
+	if err := bs.accState.Commit(); err != nil {
+		return err
+	}
+	if err := bs.txState.Commit(); err != nil {
+		return err
+	}
+	if err := bs.dposState.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+func (bs *BlockState) rollBack() error {
+	if err := bs.accState.RollBack(); err != nil {
+		return err
+	}
+	if err := bs.txState.RollBack(); err != nil {
+		return err
+	}
+	if err := bs.dposState.RollBack(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *states) DposRoot() ([]byte, error) {
-	return s.dposState.RootBytes()
+func (bs *BlockState) flush() error {
+	if err := bs.accState.Flush(); err != nil {
+		return err
+	}
+	if err := bs.txState.Flush(); err != nil {
+		return err
+	}
+	if err := bs.dposState.Flush(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (s *states) LoadAccountState(rootHash []byte) error {
-	accState, err := NewAccountState(rootHash, s.storage)
+func (bs *BlockState) reset() error {
+	if err := bs.accState.Reset(); err != nil {
+		return err
+	}
+	if err := bs.txState.Reset(); err != nil {
+		return err
+	}
+	if err := bs.dposState.Reset(); err != nil {
+		return err
+	}
+	return nil
+}
+
+//AccountsRoot returns account state root
+func (bs *BlockState) AccountsRoot() ([]byte, error) {
+	return bs.accState.RootHash()
+}
+
+//TxsRoot returns transaction state root
+func (bs *BlockState) TxsRoot() ([]byte, error) {
+	return bs.txState.RootHash()
+}
+
+//DposRoot returns dpos state root
+func (bs *BlockState) DposRoot() ([]byte, error) {
+	return bs.dposState.RootBytes()
+}
+
+func (bs *BlockState) loadAccountState(rootHash []byte) error {
+	accState, err := NewAccountState(rootHash, bs.storage)
 	if err != nil {
 		return err
 	}
-	s.accState = accState
+	bs.accState = accState
 	return nil
 }
 
-func (s *states) LoadTransactionState(rootBytes []byte) error {
-	txState, err := NewTransactionState(rootBytes, s.storage)
+func (bs *BlockState) loadTransactionState(rootBytes []byte) error {
+	txState, err := NewTransactionState(rootBytes, bs.storage)
 	if err != nil {
 		return err
 	}
-	s.txState = txState
+	bs.txState = txState
 	return nil
 }
 
-func (s *states) GetAccount(addr common.Address) (*Account, error) {
-	return s.accState.GetAccount(addr)
+//GetAccount returns account in state
+func (bs *BlockState) GetAccount(addr common.Address) (*Account, error) {
+	return bs.accState.GetAccount(addr)
 }
 
-func (s *states) PutAccount(acc *Account) error {
-	return s.accState.putAccount(acc)
+//PutAccount put account to state
+func (bs *BlockState) PutAccount(acc *Account) error {
+	return bs.accState.putAccount(acc)
 }
 
-func (s *states) GetAccounts() ([]*Account, error) {
-	return s.accState.Accounts()
+//GetTx returns txs in state
+func (bs *BlockState) GetTx(txHash []byte) (*Transaction, error) {
+	return bs.txState.Get(txHash)
 }
 
-func (s *states) GetTx(txHash []byte) (*Transaction, error) {
-	return s.txState.Get(txHash)
+func (bs *BlockState) incrementNonce(address common.Address) error {
+	return bs.accState.incrementNonce(address)
 }
 
-func (s *states) incrementNonce(address common.Address) error {
-	return s.accState.incrementNonce(address)
-}
-
-func (s *states) acceptTransaction(tx *Transaction, blockTime int64) error {
-	if err := s.txState.Put(tx); err != nil {
+func (bs *BlockState) acceptTransaction(tx *Transaction, blockTime int64) error {
+	if err := bs.txState.Put(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 			"tx":  tx,
@@ -195,7 +258,7 @@ func (s *states) acceptTransaction(tx *Transaction, blockTime int64) error {
 		return err
 	}
 
-	if err := s.accState.PutTx(tx); err != nil {
+	if err := bs.accState.PutTx(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 			"tx":  tx,
@@ -203,11 +266,11 @@ func (s *states) acceptTransaction(tx *Transaction, blockTime int64) error {
 		return err
 	}
 
-	return s.incrementNonce(tx.from)
+	return bs.incrementNonce(tx.from)
 }
 
-func (s *states) checkNonce(tx *Transaction) error {
-	fromAcc, err := s.GetAccount(tx.from)
+func (bs *BlockState) checkNonce(tx *Transaction) error {
+	fromAcc, err := bs.GetAccount(tx.from)
 	if err != nil {
 		return err
 	}
@@ -218,64 +281,5 @@ func (s *states) checkNonce(tx *Transaction) error {
 	} else if tx.nonce < expectedNonce {
 		return ErrSmallTransactionNonce
 	}
-	return nil
-}
-
-// BlockState possesses every states a block should have
-type BlockState struct {
-	*states
-	snapshot *states
-}
-
-// NewBlockState creates a new block state
-func NewBlockState(consensus Consensus, stor storage.Storage) (*BlockState, error) {
-	states, err := newStates(consensus, stor)
-	if err != nil {
-		return nil, err
-	}
-	return &BlockState{
-		states:   states,
-		snapshot: nil,
-	}, nil
-}
-
-// Clone clones block state
-func (bs *BlockState) Clone() (*BlockState, error) {
-	states, err := bs.states.Clone()
-	if err != nil {
-		return nil, err
-	}
-	return &BlockState{
-		states:   states,
-		snapshot: nil,
-	}, nil
-}
-
-// BeginBatch begins batch
-func (bs *BlockState) BeginBatch() error {
-	snapshot, err := bs.states.Clone()
-	if err != nil {
-		return err
-	}
-	if err := bs.states.BeginBatch(); err != nil {
-		return err
-	}
-	bs.snapshot = snapshot
-	return nil
-}
-
-// RollBack rolls back batch
-func (bs *BlockState) RollBack() error {
-	bs.states = bs.snapshot
-	//bs.snapshot = nil
-	return nil
-}
-
-// Commit saves batch updates
-func (bs *BlockState) Commit() error {
-	if err := bs.states.Commit(); err != nil {
-		return err
-	}
-	bs.snapshot = nil
 	return nil
 }

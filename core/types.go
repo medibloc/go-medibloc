@@ -173,9 +173,12 @@ type Consensus interface {
 //DposState is an interface for dpos state
 type DposState interface {
 	Clone() (DposState, error)
+	Prepare() error
 	BeginBatch() error
 	Commit() error
 	RollBack() error
+	Reset() error
+	Flush() error
 	RootBytes() ([]byte, error)
 
 	Candidates() ([]common.Address, error)

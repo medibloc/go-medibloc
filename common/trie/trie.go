@@ -17,6 +17,7 @@ package trie
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/medibloc/go-medibloc/util/byteutils"
 
@@ -101,8 +102,9 @@ type Trie struct {
 	rootHash []byte
 	storage  storage.Storage
 
-	batching   bool
-	refCounter map[string]*tempNode
+	prepared  bool
+	tempNodes map[string]*tempNode
+	mu        sync.Mutex
 }
 
 // NewTrie create and return new Trie instance
@@ -114,16 +116,68 @@ func NewTrie(rootHash []byte, storage storage.Storage) (*Trie, error) {
 		}
 	}
 	return &Trie{
-		rootHash:   rootHash,
-		storage:    storage,
-		batching:   false,
-		refCounter: make(map[string]*tempNode),
+		rootHash:  rootHash,
+		storage:   storage,
+		prepared:  false,
+		tempNodes: make(map[string]*tempNode),
 	}, nil
 }
 
 // Clone clone trie
 func (t *Trie) Clone() (*Trie, error) {
-	return &Trie{rootHash: t.rootHash, storage: t.storage}, nil
+	if t.prepared {
+		return nil, ErrCannotClonePreparedTrie
+	}
+	return NewTrie(t.rootHash, t.storage)
+}
+
+//Prepare prepare trie
+func (t *Trie) Prepare() error {
+	if t.prepared {
+		return ErrAlreadyPreparedTrie
+	}
+	t.tempNodes = make(map[string]*tempNode)
+	t.prepared = true
+
+	return nil
+}
+
+//Flush save temp nodes to storage
+func (t *Trie) Flush() error {
+	if !t.prepared {
+		return ErrNotPrepared
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, temp := range t.tempNodes {
+		if temp.saved || temp.refCount < 1 {
+			continue
+		}
+		pb, err := temp.node.toProto()
+		if err != nil {
+			return err
+		}
+		bytes, err := proto.Marshal(pb)
+		if err != nil {
+			return err
+		}
+		if err := t.storage.Put(temp.node.Hash, bytes); err != nil {
+			return err
+		}
+	}
+	t.tempNodes = make(map[string]*tempNode)
+	t.prepared = false
+	return nil
+}
+
+//Reset reset temp nodes
+func (t *Trie) Reset() error {
+	if !t.prepared {
+		return ErrNotPrepared
+	}
+	t.tempNodes = make(map[string]*tempNode)
+	t.prepared = false
+	return nil
 }
 
 // Delete delete value from Trie
@@ -182,7 +236,7 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 	}
 
 	switch n.Type {
-	case branch: //Todo: DeRef.(기존 branch)
+	case branch:
 		if len(route) == 0 {
 			n.Val[16] = nil
 		} else {
@@ -206,6 +260,7 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 
 		// branch has only one child node
 		if childrenCnt < 2 { //Todo: DeRef.(기존 branch, 기존 childNode)
+			t.deprecateNode(rootHash)
 			childNode, err := t.fetchNode(n.Val[childIndex])
 			if err != nil {
 				return nil, err
@@ -252,15 +307,15 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 		if childNode.Type == ext { // compress ext + ext to ext
 			childNode.Val[0] = append(n.Val[0], childNode.Val[0]...)
 			t.deprecateNode(childHash)
-			return t.saveNode(childNode) //Todo: DeRef.(기존 ext 지우기)
+			return t.saveNode(childNode)
 		}
 		n.Val[1] = childHash
 		t.deprecateNode(rootHash)
-		return t.saveNode(n) //Todo: DeRef.(기존 ext)
+		return t.saveNode(n)
 
 	case val:
 		t.deprecateNode(rootHash)
-		return nil, nil //Todo: DeRef.(기존 val)
+		return nil, nil
 	}
 	return nil, ErrInvalidNodeType
 }
@@ -270,9 +325,11 @@ func (t *Trie) fetchNode(hash []byte) (*node, error) {
 		value []byte
 		err   error
 	)
-	if t.batching {
+	if t.prepared {
+		t.mu.Lock()
+		defer t.mu.Unlock()
 		keyHex := byteutils.Bytes2Hex(hash)
-		temp, ok := t.refCounter[keyHex]
+		temp, ok := t.tempNodes[keyHex]
 		if !ok {
 			value, err = t.storage.Get(hash)
 			if err != nil {
@@ -284,7 +341,7 @@ func (t *Trie) fetchNode(hash []byte) (*node, error) {
 			}
 			n.Hash = hash
 
-			t.refCounter[keyHex] = &tempNode{
+			t.tempNodes[keyHex] = &tempNode{
 				node:     n,
 				refCount: 0,
 				saved:    true,
@@ -357,14 +414,16 @@ func (t *Trie) saveNode(n *node) ([]byte, error) {
 	hash := hash256[:]
 	n.Hash = hash
 
-	if t.batching {
+	if t.prepared {
+		t.mu.Lock()
+		defer t.mu.Unlock()
 		keyHex := byteutils.Bytes2Hex(hash)
-		temp, ok := t.refCounter[keyHex]
+		temp, ok := t.tempNodes[keyHex]
 		if ok {
 			temp.refCount++
 			return hash, nil
 		}
-		t.refCounter[keyHex] = &tempNode{
+		t.tempNodes[keyHex] = &tempNode{
 			node:     n,
 			refCount: 1,
 			saved:    false,
@@ -374,7 +433,7 @@ func (t *Trie) saveNode(n *node) ([]byte, error) {
 			return nil, err
 		}
 		if err == nil {
-			t.refCounter[keyHex].saved = true
+			t.tempNodes[keyHex].saved = true
 		}
 		return hash, nil
 	}
@@ -383,11 +442,13 @@ func (t *Trie) saveNode(n *node) ([]byte, error) {
 }
 
 func (t *Trie) deprecateNode(hash []byte) {
-	if !t.batching {
+	if !t.prepared {
 		return
 	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	keyHex := byteutils.Bytes2Hex(hash)
-	temp, ok := t.refCounter[keyHex]
+	temp, ok := t.tempNodes[keyHex]
 	if !ok {
 		return
 	}
@@ -395,6 +456,9 @@ func (t *Trie) deprecateNode(hash []byte) {
 		return
 	}
 	temp.refCount--
+	if temp.refCount < 1 {
+		delete(t.tempNodes, keyHex)
+	}
 }
 
 func (t *Trie) update(root []byte, route []byte, value []byte) ([]byte, error) {
@@ -478,7 +542,7 @@ func (t *Trie) updateExt(n *node, route []byte, value []byte) ([]byte, error) {
 	}
 
 	branch := emptyBranchNode()
-	if matchLen+1 == len(path) { // Todo: DeRef. (기존 ext 노드 삭제)
+	if matchLen+1 == len(path) {
 		branch.Val[path[matchLen]] = next
 	} else {
 		n.Val[0] = path[matchLen+1:]
@@ -518,10 +582,9 @@ func (t *Trie) updateVal(n *node, route []byte, value []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	// Todo: DeRef.
 	if len(route) == 0 { // same key
 		t.deprecateNode(n.Hash)
-		return hash, nil // Todo: DeRef.
+		return hash, nil
 	}
 
 	branch := emptyBranchNode()

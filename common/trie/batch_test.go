@@ -50,11 +50,9 @@ func TestTrieBatch(t *testing.T) {
 
 	testBatch(t, trieBatch)
 
-	err = trieBatch.BeginBatch()
-	assert.Nil(t, err)
+	require.NoError(t, trieBatch.BeginBatch())
 
-	err = trieBatch.BeginBatch()
-	assert.Equal(t, core.ErrBeginAgainInBatch, err)
+	assert.Equal(t, core.ErrBeginAgainInBatch, trieBatch.BeginBatch())
 
 	key1, _ := hex.DecodeString("2ed1b10c")
 	val1 := []byte("leafmedi1")
@@ -141,7 +139,7 @@ func TestTrieBatch_Clone(t *testing.T) {
 	assert.Equal(t, getVal1, getVal2)
 }
 
-func TestTrieBatch_DiskWriteCount(t *testing.T) {
+func TestTrieBatch_PrepareTest1(t *testing.T) {
 	testPairs := []*testPair{
 		{[]byte{0, 0, 0, 1}, "node0"},
 		{[]byte{0, 0, 0, 1, 1, 2}, "node1"},
@@ -163,38 +161,30 @@ func TestTrieBatch_DiskWriteCount(t *testing.T) {
 		getAndEqual(t, tr, pair)
 	}
 
-	cnt := 0
-	storTr.Data().Range(func(key, value interface{}) bool {
-		cnt++
-		return true
-	})
-	t.Log("Number of nodes in trie storage:", cnt)
+	t.Log("Number of nodes in trie storage:", storTr.Len())
 
 	storTb, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	tb, err := trie.NewBatch(nil, storTb)
 	require.NoError(t, err)
 
+	require.NoError(t, tb.Prepare())
 	require.NoError(t, tb.BeginBatch())
 	for _, pair := range testPairs {
 		putPairToTrieBatch(t, tb, pair)
 	}
 	require.NoError(t, tb.Commit())
+	require.NoError(t, tb.Flush())
 
 	for _, pair := range testPairs {
 		getAndEqualBatch(t, tb, pair)
 	}
 
-	cnt = 0
-	storTb.Data().Range(func(key, value interface{}) bool {
-		cnt++
-		return true
-	})
-	t.Log("Number of nodes in trie batch storage:", cnt)
+	t.Log("Number of nodes in trie batch storage:", storTb.Len())
 
 }
 
-func TestTrieBatch_DiskWriteCount2(t *testing.T) {
+func TestTrieBatch_PrepareTest2(t *testing.T) {
 	testPairs := []*testPair{
 		{[]byte{0, 0, 0, 1}, "node0"},
 		{[]byte{0, 0, 0, 1, 1, 2}, "node1"},
@@ -217,35 +207,27 @@ func TestTrieBatch_DiskWriteCount2(t *testing.T) {
 		getAndEqual(t, tr, pair)
 	}
 
-	cnt := 0
-	storTr.Data().Range(func(key, value interface{}) bool {
-		cnt++
-		return true
-	})
-	t.Log("Number of nodes in trie storage:", cnt)
+	t.Log("Number of nodes in trie storage:", storTr.Len())
 
 	storTb, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	tb, err := trie.NewBatch(nil, storTb)
 	require.NoError(t, err)
 
+	require.NoError(t, tb.Prepare())
 	require.NoError(t, tb.BeginBatch())
 	for _, pair := range testPairs {
 		putPairToTrieBatch(t, tb, pair)
 	}
 	require.NoError(t, tb.Delete(trie.RouteToKey(testPairs[4].route)))
 	require.NoError(t, tb.Commit())
+	require.NoError(t, tb.Flush())
 
 	for _, pair := range testPairs[:4] {
 		getAndEqualBatch(t, tb, pair)
 	}
 
-	cnt = 0
-	storTb.Data().Range(func(key, value interface{}) bool {
-		cnt++
-		return true
-	})
-	t.Log("Number of nodes in trie batch storage:", cnt)
+	t.Log("Number of nodes in trie batch storage:", storTb.Len())
 }
 
 func TestTrieBatch_DiskWriteCount3(t *testing.T) {
@@ -267,32 +249,24 @@ func TestTrieBatch_DiskWriteCount3(t *testing.T) {
 
 	getAndEqual(t, tr, testPairs[3])
 
-	cnt := 0
-	storTr.Data().Range(func(key, value interface{}) bool {
-		cnt++
-		return true
-	})
-	t.Log("Number of nodes in trie storage:", cnt)
+	t.Log("Number of nodes in trie storage:", storTr.Len())
 
 	storTb, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	tb, err := trie.NewBatch(nil, storTb)
 	require.NoError(t, err)
 
+	require.NoError(t, tb.Prepare())
 	require.NoError(t, tb.BeginBatch())
 	for _, pair := range testPairs {
 		putPairToTrieBatch(t, tb, pair)
 	}
 	require.NoError(t, tb.Commit())
+	require.NoError(t, tb.Flush())
 
 	getAndEqualBatch(t, tb, testPairs[3])
 
-	cnt = 0
-	storTb.Data().Range(func(key, value interface{}) bool {
-		cnt++
-		return true
-	})
-	t.Log("Number of nodes in trie batch storage:", cnt)
+	t.Log("Number of nodes in trie batch storage:", storTb.Len())
 }
 
 func TestTrieBatch_ProtectWrittenData(t *testing.T) {
@@ -308,15 +282,19 @@ func TestTrieBatch_ProtectWrittenData(t *testing.T) {
 	require.NoError(t, err)
 	tb, err := trie.NewBatch(nil, stor)
 
+	require.NoError(t, tb.Prepare())
 	require.NoError(t, tb.BeginBatch())
 	putPairToTrieBatch(t, tb, testPairs[0])
 	require.NoError(t, tb.Commit())
+	require.NoError(t, tb.Flush())
 	rootHash, err := tb.RootHash()
 	require.NoError(t, err)
 
+	require.NoError(t, tb.Prepare())
 	require.NoError(t, tb.BeginBatch())
 	putPairToTrieBatch(t, tb, testPairs[1])
 	require.NoError(t, tb.Commit())
+	require.NoError(t, tb.Flush())
 
 	tb1, err := trie.NewBatch(rootHash, stor)
 	require.NoError(t, err)

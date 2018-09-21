@@ -454,7 +454,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	// Invalid Block Hash
 	bb = bb.Block(genesis).Child()
 	pair := testNetwork.FindProposer(bb.B.Timestamp(), genesis)
-	block := bb.Coinbase(pair.Addr).PayReward().Seal().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Build()
+	block := bb.Coinbase(pair.Addr).PayReward().Flush().Seal().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidBlockHash, err)
 
@@ -517,33 +517,33 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
 
 	miner := bb.FindMiner()
-	bb = bb.Coinbase(miner.Addr).PayReward()
+	bb = bb.Coinbase(miner.Addr).PayReward().Flush()
 
-	block := bb.AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.ChainID(1111111).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 
-	block = bb.Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
+	block = bb.Clone().Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Coinbase(to.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().Coinbase(to.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.NoError(t, err)
 }

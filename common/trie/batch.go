@@ -18,8 +18,6 @@ package trie
 import (
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
@@ -31,10 +29,10 @@ type dirty struct {
 
 // Batch batch implementation for trie
 type Batch struct {
-	mu       sync.RWMutex
+	*Trie
 	batching bool
-	trie     *Trie
 	dirties  map[string]*dirty
+	mu       sync.RWMutex
 }
 
 // NewBatch return new Batch instance
@@ -44,85 +42,72 @@ func NewBatch(rootHash []byte, stor storage.Storage) (*Batch, error) {
 		return nil, err
 	}
 	return &Batch{
-		trie:    t,
+		Trie:    t,
 		dirties: make(map[string]*dirty),
 	}, nil
 }
 
 // BeginBatch begin batch
-func (b *Batch) BeginBatch() error {
-	if b.batching {
+func (tb *Batch) BeginBatch() error {
+	if tb.batching {
 		return ErrBeginAgainInBatch
 	}
-	b.dirties = make(map[string]*dirty)
-	b.batching = true
-
-	b.trie.batching = true
-	b.trie.refCounter = make(map[string]*tempNode)
+	tb.dirties = make(map[string]*dirty)
+	tb.batching = true
 	return nil
 }
 
 // Clone clone Batch
-func (b *Batch) Clone() (*Batch, error) {
-	if b.batching {
+func (tb *Batch) Clone() (*Batch, error) {
+	if tb.batching {
 		return nil, ErrCannotCloneOnBatching
 	}
-	return NewBatch(b.trie.RootHash(), b.trie.storage)
+	tr, err := tb.Trie.Clone()
+	if err != nil {
+		return nil, err
+	}
+	new := &Batch{
+		Trie:    tr,
+		dirties: make(map[string]*dirty),
+	}
+	return new, nil
 }
 
 // Commit commit batch WARNING: not thread-safe
-func (b *Batch) Commit() error {
-	if !b.batching {
+func (tb *Batch) Commit() error {
+	if !tb.batching {
 		return ErrNotBatching
 	}
-
-	for keyHex, d := range b.dirties {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+	for keyHex, d := range tb.dirties {
 		key := byteutils.Hex2Bytes(keyHex)
 		if d.deleteFlag {
-			err := b.trie.Delete(key)
+			err := tb.Trie.Delete(key)
 			if err != nil && err != ErrNotFound {
 				return err
 			}
 			continue
 		}
-		if err := b.trie.Put(key, d.value); err != nil {
+		if err := tb.Trie.Put(key, d.value); err != nil {
 			return err
 		}
 	}
-	for _, temp := range b.trie.refCounter {
-		if temp.saved || temp.refCount < 1 {
-			continue
-		}
-		pb, err := temp.node.toProto()
-		if err != nil {
-			return err
-		}
-		bytes, err := proto.Marshal(pb)
-		if err != nil {
-			return err
-		}
-		if err := b.trie.storage.Put(temp.node.Hash, bytes); err != nil {
-			return err
-		}
-	}
-	b.trie.refCounter = make(map[string]*tempNode)
-	b.trie.batching = false
-
-	b.dirties = make(map[string]*dirty)
-	b.batching = false
+	tb.dirties = make(map[string]*dirty)
+	tb.batching = false
 	return nil
 }
 
 // Delete delete in trie
-func (b *Batch) Delete(key []byte) error {
-	if !b.batching {
+func (tb *Batch) Delete(key []byte) error {
+	if !tb.batching {
 		return ErrNotBatching
 	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
 	keyHex := byteutils.Bytes2Hex(key)
 
-	d, ok := b.dirties[keyHex]
+	d, ok := tb.dirties[keyHex]
 	if ok {
 		if d.deleteFlag {
 			return ErrNotFound
@@ -131,11 +116,11 @@ func (b *Batch) Delete(key []byte) error {
 		return nil
 	}
 
-	_, err := b.trie.Get(key)
+	_, err := tb.Trie.Get(key)
 	if err != nil {
 		return err
 	}
-	b.dirties[keyHex] = &dirty{
+	tb.dirties[keyHex] = &dirty{
 		value:      nil,
 		deleteFlag: true,
 	}
@@ -143,37 +128,32 @@ func (b *Batch) Delete(key []byte) error {
 }
 
 // Get get from trie
-func (b *Batch) Get(key []byte) ([]byte, error) {
-	if !b.batching {
-		return b.trie.Get(key)
+func (tb *Batch) Get(key []byte) ([]byte, error) {
+	if !tb.batching {
+		return tb.Trie.Get(key)
 	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
 	keyHex := byteutils.Bytes2Hex(key)
-	d, ok := b.dirties[keyHex]
+	d, ok := tb.dirties[keyHex]
 	if ok {
 		if d.deleteFlag {
 			return nil, ErrNotFound
 		}
 		return d.value, nil
 	}
-	return b.trie.Get(key)
-}
-
-// Iterator iterates trie.
-func (b *Batch) Iterator(prefix []byte) (*Iterator, error) {
-	return b.trie.Iterator(prefix)
+	return tb.Trie.Get(key)
 }
 
 // Put put to trie
-func (b *Batch) Put(key []byte, value []byte) error {
-	if !b.batching {
+func (tb *Batch) Put(key []byte, value []byte) error {
+	if !tb.batching {
 		return ErrNotBatching
 	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
 	keyHex := byteutils.Bytes2Hex(key)
-	b.dirties[keyHex] = &dirty{
+	tb.dirties[keyHex] = &dirty{
 		value:      value,
 		deleteFlag: false,
 	}
@@ -182,26 +162,20 @@ func (b *Batch) Put(key []byte, value []byte) error {
 }
 
 // RollBack rollback batch WARNING: not thread-safe
-func (b *Batch) RollBack() error {
-	if !b.batching {
+func (tb *Batch) RollBack() error {
+	if !tb.batching {
 		return ErrNotBatching
 	}
-	b.trie.refCounter = make(map[string]*tempNode)
-	b.trie.batching = false
 
-	b.dirties = make(map[string]*dirty)
-	b.batching = false
+	tb.dirties = make(map[string]*dirty)
+	tb.batching = false
 	return nil
 }
 
 // RootHash getter for rootHash
-func (b *Batch) RootHash() ([]byte, error) {
-	if b.batching {
+func (tb *Batch) RootHash() ([]byte, error) {
+	if tb.batching {
 		return nil, ErrNotBatching
 	}
-	return b.trie.RootHash(), nil
-}
-
-func (b *Batch) ShowPath(key []byte) []string {
-	return b.trie.ShowPath(key)
+	return tb.Trie.RootHash(), nil
 }

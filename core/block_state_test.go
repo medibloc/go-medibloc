@@ -31,7 +31,7 @@ import (
 
 func TestCloneState(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	block := bb.Build()
+	block := bb.SignMiner().Build()
 
 	state := block.State()
 	newState, err := state.Clone()
@@ -96,7 +96,7 @@ func TestUpdateBandwidth(t *testing.T) {
 
 	tx = bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed += blockutil.Bandwidth(t, tx)
-	bb = bb.ExecuteTx(tx)
+	bb = bb.ExecuteTx(tx).Flush()
 	bb.Expect().Bandwidth(from.Addr, consumed)
 
 	afterWeek := dpos.NextMintSlot2(nextMintTs + 7*24*60*60)

@@ -141,6 +141,10 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		if err != nil {
 			return err
 		}
+		err = voter.Voted.Prepare()
+		if err != nil {
+			return err
+		}
 		err = voter.Voted.BeginBatch()
 		if err != nil {
 			return err
@@ -152,6 +156,10 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 		err = voter.Voted.Commit()
 		if err != nil {
 			return err
+		}
+		err = voter.Voted.Flush()
+		if err != nil {
+			return nil
 		}
 		err = b.State().PutAccount(voter)
 		if err != nil {
@@ -244,6 +252,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
+	err = acc.Voted.Prepare()
+	if err != nil {
+		return err
+	}
 	err = acc.Voted.BeginBatch()
 	if err != nil {
 		return err
@@ -256,6 +268,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		}
 	}
 	err = acc.Voted.Commit()
+	if err != nil {
+		return err
+	}
+	err = acc.Voted.Flush()
 	if err != nil {
 		return err
 	}
@@ -273,6 +289,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err != nil {
 			return err
 		}
+		err = candidate.Voters.Prepare()
+		if err != nil {
+			return err
+		}
 		err = candidate.Voters.BeginBatch()
 		if err != nil {
 			return err
@@ -282,6 +302,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 			return err
 		}
 		err = candidate.Voters.Commit()
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.Flush()
 		if err != nil {
 			return err
 		}
@@ -308,6 +332,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err != nil {
 			return err
 		}
+		err = candidate.Voters.Prepare()
+		if err != nil {
+			return err
+		}
 		err = candidate.Voters.BeginBatch()
 		if err != nil {
 			return err
@@ -317,6 +345,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 			return err
 		}
 		err = candidate.Voters.Commit()
+		if err != nil {
+			return err
+		}
+		err = candidate.Voters.Flush()
 		if err != nil {
 			return err
 		}

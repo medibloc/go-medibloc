@@ -122,7 +122,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	bb = bb.Stake().
 		Tx().Type(core.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
 
-	block := bb.PayReward().Seal().Build()
+	block := bb.PayReward().Flush().Seal().Build()
 
 	issuerAcc, err := block.State().GetAccount(issuer.Addr)
 	require.NoError(t, err)

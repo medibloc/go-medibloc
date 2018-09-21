@@ -400,20 +400,29 @@ func (bd *BlockData) VerifyIntegrity() error {
 
 // ExecuteOnParentBlock returns Block object with state after block execution
 func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
-	block, err := prepareExecution(bd, parent)
+	// Prepare Execution
+	block, err := parent.Child()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to make child block for execution on parent block")
+		return nil, err
+	}
+	block.BlockData = bd
+	err = block.Prepare()
 	if err != nil {
 		return nil, err
 	}
-	block.Storage().EnableBatch()
+
 	if err := block.VerifyExecution(parent, txMap); err != nil {
 		block.Storage().DisableBatch()
 		return nil, err
 	}
-	err = block.Storage().Flush()
+	err = block.Flush()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to flush to storage.")
+		}).Error("Failed to flush state")
 	}
 	return block, err
 }
@@ -425,7 +434,7 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 		BlockData: bd,
 		consensus: consensus,
 	}
-	if block.state, err = NewBlockState(block.consensus, storage); err != nil {
+	if block.state, err = newStates(block.consensus, storage); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -436,14 +445,14 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	block.state.reward = bd.Reward()
 	block.state.supply = bd.Supply()
 
-	if err = block.state.LoadAccountState(block.accStateRoot); err != nil {
+	if err = block.state.loadAccountState(block.accStateRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
 		}).Error("Failed to load accounts root.")
 		return nil, err
 	}
-	if err = block.state.LoadTransactionState(block.txStateRoot); err != nil {
+	if err = block.state.loadTransactionState(block.txStateRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -465,21 +474,6 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	return block, nil
 }
 
-// prepareExecution by setting states and storage as those of parents
-func prepareExecution(bd *BlockData, parent *Block) (*Block, error) {
-	block, err := NewBlock(parent.ChainID(), bd.Coinbase(), parent)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to make new block for prepareExecution")
-		return nil, err
-	}
-
-	block.BlockData = bd
-
-	return block, nil
-}
-
 // Block represents block with actual state tries
 type Block struct {
 	*BlockData
@@ -492,34 +486,6 @@ type Block struct {
 //Consensus returns block's consensus
 func (b *Block) Consensus() Consensus {
 	return b.consensus
-}
-
-// NewBlock initialize new block data
-func NewBlock(chainID uint32, coinbase common.Address, parent *Block) (*Block, error) {
-	state, err := parent.state.Clone()
-	if err != nil {
-		return nil, err
-	}
-
-	block := &Block{
-		BlockData: &BlockData{
-			BlockHeader: &BlockHeader{
-				parentHash: parent.Hash(),
-				coinbase:   coinbase,
-				reward:     parent.Reward(),
-				supply:     parent.Supply(),
-				timestamp:  time.Now().Unix(),
-				chainID:    chainID,
-			},
-			transactions: make([]*Transaction, 0),
-			height:       parent.height + 1,
-		},
-		storage:   parent.storage,
-		state:     state,
-		consensus: parent.consensus,
-		sealed:    false,
-	}
-	return block, nil
 }
 
 //Clone clone block
@@ -541,6 +507,30 @@ func (b *Block) Clone() (*Block, error) {
 		state:     state,
 		consensus: b.consensus,
 		sealed:    b.sealed,
+	}, nil
+}
+
+//Child return initial child block for verifying or making block
+func (b *Block) Child() (*Block, error) {
+	state, err := b.state.Clone()
+	if err != nil {
+		return nil, err
+	}
+	return &Block{
+		BlockData: &BlockData{
+			BlockHeader: &BlockHeader{
+				parentHash: b.Hash(),
+				chainID:    b.chainID,
+				supply:     b.supply.DeepCopy(),
+				reward:     util.NewUint128(),
+			},
+			transactions: make([]*Transaction, 0),
+			height:       b.height + 1,
+		},
+		storage:   b.storage,
+		state:     state,
+		consensus: b.consensus,
+		sealed:    false,
 	}, nil
 }
 
@@ -853,7 +843,6 @@ func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
 			"err":   err,
 			"block": b,
 		}).Error("Failed to execute block transactions.")
-		b.RollBack()
 		return err
 	}
 
@@ -862,7 +851,6 @@ func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
 			"err":   err,
 			"block": b,
 		}).Error("Failed to pay block reward.")
-		b.RollBack()
 		return err
 	}
 
@@ -873,7 +861,6 @@ func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
 			"err":   err,
 			"block": b,
 		}).Error("Failed to verify block state.")
-		b.RollBack()
 		return err
 	}
 
@@ -1026,19 +1013,29 @@ func (b *Block) SetMintDynastyState(parent *Block) error {
 	return b.state.dposState.SetMintDynastyState(b.timestamp, parent, b.consensus.DynastySize())
 }
 
+// Prepare prepare block state
+func (b *Block) Prepare() error {
+	return b.state.prepare()
+}
+
 // BeginBatch makes block state update possible
 func (b *Block) BeginBatch() error {
-	return b.state.BeginBatch()
+	return b.state.beginBatch()
 }
 
 // RollBack rolls back block state batch updates
 func (b *Block) RollBack() error {
-	return b.state.RollBack()
+	return b.state.rollBack()
 }
 
-// Commit saves batch updates to storage
+// Commit commit changes of block state
 func (b *Block) Commit() error {
-	return b.state.Commit()
+	return b.state.commit()
+}
+
+// Flush saves batch updates to storage
+func (b *Block) Flush() error {
+	return b.state.flush()
 }
 
 // GetBlockData returns data part of block

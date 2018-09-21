@@ -327,12 +327,16 @@ func NewAccountState(rootHash []byte, stor storage.Storage) (*AccountState, erro
 	}, nil
 }
 
+//Clone clones state
 func (as *AccountState) Clone() (*AccountState, error) {
-	rootHash, err := as.RootHash()
+	newBatch, err := as.Batch.Clone()
 	if err != nil {
 		return nil, err
 	}
-	return NewAccountState(rootHash, as.storage)
+	return &AccountState{
+		Batch:   newBatch,
+		storage: as.storage,
+	}, nil
 }
 
 //GetAccount returns account
@@ -386,6 +390,10 @@ func (as *AccountState) addTxsFrom(addr common.Address, txHash []byte) error {
 	if err != nil {
 		return err
 	}
+	err = acc.TxsFrom.Prepare()
+	if err != nil {
+		return err
+	}
 	err = acc.TxsFrom.BeginBatch()
 	if err != nil {
 		return err
@@ -398,12 +406,20 @@ func (as *AccountState) addTxsFrom(addr common.Address, txHash []byte) error {
 	if err != nil {
 		return err
 	}
+	err = acc.TxsFrom.Flush()
+	if err != nil {
+		return err
+	}
 	return as.putAccount(acc)
 }
 
 // addTxsTo add transaction in TxsFrom
 func (as *AccountState) addTxsTo(addr common.Address, txHash []byte) error {
 	acc, err := as.GetAccount(addr)
+	if err != nil {
+		return err
+	}
+	err = acc.TxsTo.Prepare()
 	if err != nil {
 		return err
 	}
@@ -416,6 +432,10 @@ func (as *AccountState) addTxsTo(addr common.Address, txHash []byte) error {
 		return err
 	}
 	err = acc.TxsTo.Commit()
+	if err != nil {
+		return err
+	}
+	err = acc.TxsTo.Flush()
 	if err != nil {
 		return err
 	}
@@ -433,8 +453,8 @@ func (as *AccountState) PutTx(tx *Transaction) error {
 	return nil
 }
 
-//Accounts returns account slice
-func (as *AccountState) Accounts() ([]*Account, error) {
+//accounts returns account slice
+func (as *AccountState) accounts() ([]*Account, error) {
 	var accounts []*Account
 	iter, err := as.Iterator(nil)
 	if err != nil {

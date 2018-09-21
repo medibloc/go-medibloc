@@ -66,6 +66,28 @@ func (s *State) DynastyState() *trie.Batch {
 	return s.dynastyState
 }
 
+//Prepare prepare trie
+func (s *State) Prepare() error {
+	if err := s.candidateState.Prepare(); err != nil {
+		return err
+	}
+	if err := s.dynastyState.Prepare(); err != nil {
+		return err
+	}
+	return nil
+}
+
+//BeginBatch begin batch
+func (s *State) BeginBatch() error {
+	if err := s.candidateState.BeginBatch(); err != nil {
+		return err
+	}
+	if err := s.dynastyState.BeginBatch(); err != nil {
+		return err
+	}
+	return nil
+}
+
 //Commit saves batch to state
 func (s *State) Commit() error {
 	if err := s.candidateState.Commit(); err != nil {
@@ -88,28 +110,44 @@ func (s *State) RollBack() error {
 	return nil
 }
 
-//Clone clone state
-func (s *State) Clone() (core.DposState, error) {
-	csRootHash, err := s.candidateState.RootHash()
-	if err != nil {
-		return nil, err
-	}
-	dsRootHash, err := s.dynastyState.RootHash()
-	if err != nil {
-		return nil, err
-	}
-	return NewDposState(csRootHash, dsRootHash, s.storage)
-}
-
-//BeginBatch begin batch
-func (s *State) BeginBatch() error {
-	if err := s.candidateState.BeginBatch(); err != nil {
+//Flush flush data to storage
+func (s *State) Flush() error {
+	if err := s.candidateState.Flush(); err != nil {
 		return err
 	}
-	if err := s.dynastyState.BeginBatch(); err != nil {
+	if err := s.dynastyState.Flush(); err != nil {
 		return err
 	}
 	return nil
+}
+
+//Reset reset trie's refCounter
+func (s *State) Reset() error {
+	if err := s.candidateState.Reset(); err != nil {
+		return err
+	}
+	if err := s.dynastyState.Reset(); err != nil {
+		return err
+	}
+	return nil
+}
+
+//Clone clone state
+func (s *State) Clone() (core.DposState, error) {
+	cs, err := s.candidateState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	ds, err := s.dynastyState.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	return &State{
+		candidateState: cs,
+		dynastyState:   ds,
+		storage:        s.storage,
+	}, nil
 }
 
 //RootBytes returns root bytes for dpos state
