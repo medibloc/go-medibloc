@@ -510,9 +510,9 @@ func (bm *BlockManager) loop() {
 		case <-bm.quitCh:
 			return
 		case msg := <-bm.receiveBlockMessageCh:
-			go bm.handleReceiveBlock(msg)
+			bm.handleReceiveBlock(msg)
 		case msg := <-bm.requestBlockMessageCh:
-			go bm.handleRequestBlock(msg)
+			bm.handleRequestBlock(msg)
 		}
 	}
 }

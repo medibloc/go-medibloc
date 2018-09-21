@@ -17,6 +17,7 @@ package testutil
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"io/ioutil"
@@ -177,9 +178,15 @@ func (cfg *NodeConfig) SetSeed(seed *Node) *NodeConfig {
 	return cfg
 }
 
-// CleanUp cleans up data directories and configuration files.
-func (cfg *NodeConfig) CleanUp() {
-	require.NoError(cfg.t, os.RemoveAll("testdata"))
+func DirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
 }
 
 func dumpGenesisConfig(genesis *corepb.Genesis) string {

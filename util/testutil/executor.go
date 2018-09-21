@@ -16,6 +16,7 @@
 package testutil
 
 import (
+	"os"
 	"testing"
 
 	"sync"
@@ -201,9 +202,10 @@ func (n *Network) Stop() {
 // Cleanup cleans up directories and files.
 func (n *Network) Cleanup() {
 	n.Stop()
-	for _, node := range n.Nodes {
-		node.Config.CleanUp()
-	}
+	size, err := DirSize("testdata")
+	require.NoError(n.t, err)
+	n.t.Log("TestData size:", size)
+	require.NoError(n.t, os.RemoveAll("testdata"))
 }
 
 // SetLogTestHook sets test hook for log messages.
