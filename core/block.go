@@ -730,7 +730,10 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 	}
 	if avail.Cmp(usage) < 0 {
 		logging.Console().WithFields(logrus.Fields{
-			"err": err,
+			"usage": usage,
+			"avail": avail,
+			"payer": addr.Hex(),
+			"err":   err,
 		}).Warn("Bandwidth limit exceeded.")
 		return ErrBandwidthLimitExceeded
 	}

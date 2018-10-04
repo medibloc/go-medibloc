@@ -177,3 +177,29 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	t.Logf("Revoke certification test complete")
 
 }
+
+func TestPayerSigner(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+
+	payer := bb.TokenDist[0]
+	from := testutil.NewAddrKeyPair(t)
+	to := testutil.NewAddrKeyPair(t)
+	bb = bb.
+		Tx().StakeTx(payer, 10000000000000000).Execute().
+		Tx().Type(core.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
+	bb.
+		Expect().
+		Balance(to.Addr, 300).
+		Balance(from.Addr, 700).
+		Vesting(from.Addr, 0)
+
+	payerAcc, err := bb.B.State().GetAccount(payer.Addr)
+	require.NoError(t, err)
+
+	//require.NoError(t,payerAcc.UpdateBandwidth(bb.B.Timestamp()))
+
+	t.Log("Payer's bandwidth after payer sign", payerAcc.Bandwidth)
+
+}

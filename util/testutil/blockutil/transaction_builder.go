@@ -27,7 +27,6 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/crypto/sha3"
 )
 
 //TxBuilder is a structure for transaction builder
@@ -191,16 +190,8 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
 
-	hasher := sha3.New256()
-	hasher.Write(n.tx.Hash())
-	hasher.Write(n.tx.Sign())
-	hash := hasher.Sum(nil)
-
 	signer := signer(t, key)
-	sig, err := signer.Sign(hash)
-	require.NoError(t, err)
-
-	n.tx.SetPayerSign(sig)
+	require.NoError(t, n.tx.SignByPayer(signer))
 	return n
 }
 
