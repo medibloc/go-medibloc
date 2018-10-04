@@ -297,7 +297,14 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	return common.PublicKeyToAddress(pubKey)
+	payer, err := common.PublicKeyToAddress(pubKey)
+	if err != nil {
+		return common.Address{}, err
+	}
+	logging.Console().WithFields(logrus.Fields{
+		"payer": payer.Hex(),
+	}).Info("Secondary sign exist")
+	return payer, nil
 }
 
 // SignByPayer puts payer's sign in tx
