@@ -603,15 +603,18 @@ func HashBlockData(bd *BlockData) []byte {
 
 // ExecuteTransaction on given block state
 func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
+	// Do not execute transaction if transaction's nonce is smaller or larger than expected nonce
 	err := b.state.checkNonce(transaction)
 	if err != nil {
 		return err
 	}
 
+	// Do not execute transaction if transaction was generated a day before
 	if transaction.Timestamp() < b.Timestamp()-TxDelayLimit {
 		return ErrTooOldTransaction
 	}
 
+	// Get Executable transaction interface from transaction type
 	newTxFunc, ok := txMap[transaction.TxType()]
 	if !ok {
 		return ErrInvalidTransactionType
@@ -622,6 +625,8 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
+	// If transaction has a payer it assigns payer to payer
+	// Unless transaction from is assigned as payer
 	payer, err := transaction.recoverPayer()
 	if err == ErrPayerSignatureNotExist {
 		payer = transaction.from
@@ -632,6 +637,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
+	// Update payer's bandwidth and save it in the accountState
 	err = b.regenerateBandwidth(payer)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -640,7 +646,8 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
-	err = b.updateUnstaking(transaction)
+	// Update transaction sender's balance
+	err = b.updateUnstaking(transaction.From())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -648,11 +655,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
-	err = tx.Execute(b)
+	// Execute transaction
+	err = tx.Execute(b) // TODO @ggomma apply temporary states
 	if err != nil {
 		return err
 	}
 
+	// Get required bandwidth of the transaction
 	usage, err := tx.Bandwidth()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -671,8 +680,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 	return nil
 }
 
-func (b *Block) updateUnstaking(tx *Transaction) error {
-	addr := tx.From()
+func (b *Block) updateUnstaking(addr common.Address) error {
 	acc, err := b.State().GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -681,10 +689,12 @@ func (b *Block) updateUnstaking(tx *Transaction) error {
 		return err
 	}
 
+	// Unstaking action does not exist
 	if acc.LastUnstakingTs == 0 {
 		return nil
 	}
 
+	// Staked coin is not returned if not enough time has been passed
 	elapsed := b.Timestamp() - acc.LastUnstakingTs
 	if time.Duration(elapsed)*time.Second < UnstakingWaitDuration {
 		return nil
@@ -701,7 +711,7 @@ func (b *Block) updateUnstaking(tx *Transaction) error {
 	acc.Unstaking = util.NewUint128()
 	acc.LastUnstakingTs = 0
 
-	err = b.State().PutAccount(acc)
+	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -721,6 +731,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 		return err
 	}
 
+	// Success if (vesting - bandwidth > usage)
 	avail, err := acc.Vesting.Sub(acc.Bandwidth)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -738,6 +749,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 		return ErrBandwidthLimitExceeded
 	}
 
+	// Update bandwidth and lastBandwidthTimestamp
 	updated, err := acc.Bandwidth.Add(usage)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -748,7 +760,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 	acc.Bandwidth = updated
 	acc.LastBandwidthTs = b.Timestamp()
 
-	err = b.State().PutAccount(acc)
+	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -761,6 +773,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 func (b *Block) regenerateBandwidth(addr common.Address) error {
 	curTs := b.Timestamp()
 
+	// TODO @ggomma use temporary state
 	acc, err := b.State().GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -776,9 +789,10 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 		return err
 	}
 
+	// update account
 	acc.Bandwidth = curBandwidth
 	acc.LastBandwidthTs = curTs
-	err = b.State().PutAccount(acc)
+	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -788,6 +802,7 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 	return nil
 }
 
+// currentBandwidth calculates updated bandwidth based on current time.
 func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*util.Uint128, error) {
 	elapsed := curTs - lastTs
 	if time.Duration(elapsed)*time.Second >= BandwidthRegenerateDuration {
@@ -802,6 +817,9 @@ func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*u
 		return bandwidth.DeepCopy(), nil
 	}
 
+	// Bandwidth means consumed bandwidth. So 0 means full bandwidth
+	// regeneratedBandwidth = veting * elapsedTime / BandwidthRegenerateDuration
+	// currentBandwidth = prevBandwidth - regeneratedBandwidth
 	mul := util.NewUint128FromUint(uint64(elapsed))
 	div := util.NewUint128FromUint(uint64(BandwidthRegenerateDuration / time.Second))
 	v1, err := vesting.Mul(mul)
@@ -893,7 +911,7 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return err
 	}
 
-	if err := b.state.acceptTransaction(tx, b.Timestamp()); err != nil {
+	if err := b.state.acceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
@@ -937,7 +955,7 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 
 // AcceptTransaction adds tx in block state
 func (b *Block) AcceptTransaction(tx *Transaction) error {
-	if err := b.state.acceptTransaction(tx, b.Timestamp()); err != nil {
+	if err := b.state.acceptTransaction(tx); err != nil {
 		return err
 	}
 	b.transactions = append(b.transactions, tx)

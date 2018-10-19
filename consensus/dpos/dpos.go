@@ -247,6 +247,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
+	// Check if it is the miner's turn
 	mintProposer, err := d.FindMintProposer(deadline.Unix(), tail)
 	if err != nil {
 		return err
@@ -334,6 +335,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		return nil, err
 	}
 
+	// Enable states changing (acc, tx, dpos)
 	if err := block.BeginBatch(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -343,6 +345,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		return nil, err
 	}
 
+	// Change dynasty state for current block
 	if err := block.SetMintDynastyState(tail); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -351,15 +354,21 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		return nil, err
 	}
 
+	// Save state changes (only dpos state in this line)
+	// Even though block proposer doesn't have enough time for including transactions below,
+	// states changed above need to be safely saved.
 	if err := block.Commit(); err != nil {
 		block.Storage().DisableBatch()
 		return nil, err
 	}
 
+	// Execute and include transactions until it's deadline
 	for deadline.Sub(time.Now()) > 0 {
 		logging.WithFields(logrus.Fields{
 			"time.remain": deadline.Sub(time.Now()),
 		}).Debug("Make block is in progress")
+
+		// Get transaction from transaction pool
 		transaction := d.tm.Pop()
 		if transaction == nil {
 			logging.Info("No more transactions in block pool.")
@@ -371,6 +380,8 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 			block.Storage().DisableBatch()
 			return nil, err
 		}
+
+		// Execute transaction and change states
 		err = block.ExecuteTransaction(transaction, d.bm.TxMap())
 
 		if err != nil && err == core.ErrLargeTransactionNonce {

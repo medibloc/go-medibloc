@@ -249,7 +249,7 @@ func (bs *BlockState) incrementNonce(address common.Address) error {
 	return bs.accState.incrementNonce(address)
 }
 
-func (bs *BlockState) acceptTransaction(tx *Transaction, blockTime int64) error {
+func (bs *BlockState) acceptTransaction(tx *Transaction) error {
 	if err := bs.txState.Put(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -269,6 +269,7 @@ func (bs *BlockState) acceptTransaction(tx *Transaction, blockTime int64) error 
 	return bs.incrementNonce(tx.from)
 }
 
+// checkNonce compare given transaction's nonce with expected account's nonce
 func (bs *BlockState) checkNonce(tx *Transaction) error {
 	fromAcc, err := bs.GetAccount(tx.from)
 	if err != nil {
