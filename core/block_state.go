@@ -271,7 +271,7 @@ func (bs *BlockState) acceptTransaction(tx *Transaction) error {
 
 // checkNonce compare given transaction's nonce with expected account's nonce
 func (bs *BlockState) checkNonce(tx *Transaction) error {
-	fromAcc, err := bs.GetAccount(tx.from)
+	fromAcc, err := bs.GetAccount(tx.From())
 	if err != nil {
 		return err
 	}
@@ -287,17 +287,37 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 
 // checkBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
 func (bs *BlockState) checkBandwidth(tx *Transaction, reqBandwidth *util.Uint128) error {
-	acc, err := bs.GetAccount(tx.from)
+	payer, err := tx.recoverPayer()
+	if err == ErrPayerSignatureNotExist {
+		payer = tx.From()
+	} else if err != nil {
+		return err
+	}
+
+	payerAcc, err := bs.GetAccount(payer)
 	if err != nil {
 		return err
 	}
 
-	avail, err := acc.Vesting.Sub(acc.Bandwidth)
+	avail, err := payerAcc.Vesting.Sub(payerAcc.Bandwidth)
 	if err != nil {
 		return err
 	}
 	if avail.Cmp(reqBandwidth) < 0 {
 		return ErrBandwidthLimitExceeded
+	}
+	return nil
+}
+
+// checkBalance compare given transaction's value with the account's balance
+func (bs *BlockState) checkBalance(tx *Transaction, reqBalance *util.Uint128) error {
+	acc, err := bs.GetAccount(tx.From())
+	if err != nil {
+		return err
+	}
+
+	if acc.Balance.Cmp(reqBalance) < 0 {
+		return ErrBalanceNotEnough
 	}
 	return nil
 }
