@@ -284,3 +284,20 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	}
 	return nil
 }
+
+// checkBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
+func (bs *BlockState) checkBandwidth(tx *Transaction, reqBandwidth *util.Uint128) error {
+	acc, err := bs.GetAccount(tx.from)
+	if err != nil {
+		return err
+	}
+
+	avail, err := acc.Vesting.Sub(acc.Bandwidth)
+	if err != nil {
+		return err
+	}
+	if avail.Cmp(reqBandwidth) < 0 {
+		return ErrBandwidthLimitExceeded
+	}
+	return nil
+}
