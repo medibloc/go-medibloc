@@ -638,7 +638,7 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 	}
 	curBandwidth, err := currentBandwidth(payerAcc.Vesting, payerAcc.Bandwidth, payerAcc.LastBandwidthTs, b.Timestamp())
 	if err != nil {
-		return ErrSystemError
+		return err
 	}
 	avail, err := payerAcc.Vesting.Sub(curBandwidth)
 	if err != nil {
@@ -705,48 +705,40 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 
 	// Case 2. Already executed transaction payload
 	// Case 3. Execute Error (Non-system error)
-	bandwidth, err := tx.Bandwidth()
-	if err != nil {
-		return nil
-	}
-	if err := tx.Execute(b); err != nil {
-		transaction.SetReceipt(&Receipt{
-			false,
-			bandwidth,
-			[]byte(err.Error()),
-		})
-		return err
-	}
-
-	// Get required bandwidth of the transaction
 	usage, err := tx.Bandwidth()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to get bandwidth of a transaction.")
+		return nil
+	}
+	err1 := tx.Execute(b)
+	if err1 != nil {
 		transaction.SetReceipt(&Receipt{
 			false,
-			bandwidth,
-			[]byte(err.Error()),
+			usage,
+			[]byte(err1.Error()),
 		})
-		return err
 	}
 
-	err = b.consumeBandwidth(payer, usage)
-	if err != nil {
+	err2 := b.consumeBandwidth(payer, usage)
+	if err1 != nil {
+		return err1
+	}
+	if err2 != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"err": err,
+			"err": err2,
 		}).Warn("Failed to update bandwidth.")
 		transaction.SetReceipt(&Receipt{
 			false,
-			bandwidth,
-			[]byte(err.Error()),
+			usage,
+			[]byte(err2.Error()),
 		})
-		return err
+		return err2
 	}
 	transaction.SetReceipt(&Receipt{
 		true,
-		bandwidth,
+		usage,
 		nil,
 	})
 	return nil
