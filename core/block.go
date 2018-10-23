@@ -50,6 +50,9 @@ type BlockHeader struct {
 
 	alg  algorithm.Algorithm
 	sign []byte
+
+	cpuUsage *util.Uint128
+	netUsage *util.Uint128
 }
 
 // ToProto converts BlockHeader to corepb.BlockHeader
@@ -601,52 +604,97 @@ func HashBlockData(bd *BlockData) []byte {
 	return hasher.Sum(nil)
 }
 
-// ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
-	// Do not execute transaction if transaction's nonce is smaller or larger than expected nonce
-	err := b.state.checkNonce(transaction)
-	if err != nil {
+// VerifyTransaction verifies transaction before execute
+// This process doesn't change account's nonce and bandwidth
+func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, local bool) error {
+	// Case 1. Unmatched Nonce
+	if err := b.state.checkNonce(transaction); err != nil {
 		return err
 	}
 
-	// Do not execute transaction if transaction was generated a day before
-	if transaction.Timestamp() < b.Timestamp()-TxDelayLimit {
-		return ErrTooOldTransaction
-	}
-
-	// Get Executable transaction interface from transaction type
+	// Case 2, 3, 4 are checked in the newTxFunc method
+	// Case 2. Invalid TX type
+	// Case 3. Invalid Components Error (Payload)
+	// Case 4. Too large TX size
 	newTxFunc, ok := txMap[transaction.TxType()]
 	if !ok {
 		return ErrInvalidTransactionType
 	}
-
 	tx, err := newTxFunc(transaction)
 	if err != nil {
 		return err
 	}
 
-	// If transaction has a payer it assigns payer to payer
-	// Unless transaction from is assigned as payer
+	// Case 5. Lack of bandwidth (transaction.from & payer)
 	payer, err := transaction.recoverPayer()
 	if err == ErrPayerSignatureNotExist {
-		payer = transaction.from
+		payer = transaction.From()
 	} else if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to recover a payer address.")
+		return err
+	}
+	payerAcc, err := b.state.GetAccount(payer)
+	if err != nil {
+		return err
+	}
+	curBandwidth, err := currentBandwidth(payerAcc.Vesting, payerAcc.Bandwidth, payerAcc.LastBandwidthTs, b.Timestamp())
+	if err != nil {
+		return ErrSystemError
+	}
+	avail, err := payerAcc.Vesting.Sub(curBandwidth)
+	if err != nil {
+		return err
+	}
+	usage, err := tx.Bandwidth()
+	if err != nil {
+		return err
+	}
+	if avail.Cmp(usage) < 0 {
+		return ErrBandwidthLimitExceeded
+	}
+
+	// Only for non-local transactions (from broadcast)
+	// Start verify from non-hard process
+	if !local {
+		// Case 1. TX hash unmatched
+		hash, err := transaction.CalcHash()
+		if err != nil {
+			return nil
+		}
+		if !byteutils.Equal(hash, transaction.Hash()) {
+			return ErrInvalidTransactionHash
+		}
+
+		// Case 2. Invalid signature
+		if err := transaction.verifySign(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ExecuteTransaction on given block state
+func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
+	newTxFunc, _ := txMap[transaction.TxType()]
+	tx, _ := newTxFunc(transaction)
+
+	// Case 1. Exceed block's max bandwidth - return to tx pool
+	// Exceed max cpu || net
+	if err := b.checkBandwidthLimit(tx); err != nil {
 		return err
 	}
 
-	// Update payer's bandwidth and save it in the accountState
-	err = b.regenerateBandwidth(payer)
-	if err != nil {
+	// Update payer's bandwidth and transaction.from's unstaking status before execute transaction
+	payer, err := transaction.recoverPayer()
+	if err == ErrPayerSignatureNotExist {
+		payer = transaction.From()
+	}
+	if err := b.regenerateBandwidth(payer); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to regenerate bandwidth.")
 		return err
 	}
 
-	// Update transaction sender's balance
 	err = b.updateUnstaking(transaction.From())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -655,9 +703,18 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		return err
 	}
 
-	// Execute transaction
-	err = tx.Execute(b) // TODO @ggomma apply temporary states
+	// Case 2. Already executed transaction payload
+	// Case 3. Execute Error (Non-system error)
+	bandwidth, err := tx.Bandwidth()
 	if err != nil {
+		return nil
+	}
+	if err := tx.Execute(b); err != nil {
+		transaction.SetReceipt(&Receipt{
+			false,
+			bandwidth,
+			[]byte(err.Error()),
+		})
 		return err
 	}
 
@@ -667,6 +724,11 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to get bandwidth of a transaction.")
+		transaction.SetReceipt(&Receipt{
+			false,
+			bandwidth,
+			[]byte(err.Error()),
+		})
 		return err
 	}
 
@@ -675,8 +737,18 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to update bandwidth.")
+		transaction.SetReceipt(&Receipt{
+			false,
+			bandwidth,
+			[]byte(err.Error()),
+		})
 		return err
 	}
+	transaction.SetReceipt(&Receipt{
+		true,
+		bandwidth,
+		nil,
+	})
 	return nil
 }
 
@@ -760,7 +832,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 	acc.Bandwidth = updated
 	acc.LastBandwidthTs = b.Timestamp()
 
-	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -1073,6 +1145,26 @@ func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 		}
 		emitter.Trigger(event)
 	}
+}
+
+func (b *Block) checkBandwidthLimit(tx ExecutableTx) error {
+	// TODO @ggomma calculate cpu / net usage from transaction
+	cpuUsage, err := tx.Bandwidth()
+	if err != nil {
+		return err
+	}
+	netUsage, err := tx.Bandwidth()
+	if err != nil {
+		return err
+	}
+	// TODO @ggomma use tx.cpuUsage and tx.netUsage
+	if b.cpuUsage.Cmp(cpuUsage) < 0 {
+		return ErrExceedBlockMaxCPUUsage
+	}
+	if b.netUsage.Cmp(netUsage) < 0 {
+		return ErrExceedBlockMaxNETUsage
+	}
+	return nil
 }
 
 // BytesToBlockData unmarshals proto bytes to BlockData.

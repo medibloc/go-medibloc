@@ -45,6 +45,8 @@ type Transaction struct {
 	alg       algorithm.Algorithm
 	sign      []byte
 	payerSign []byte
+
+	receipt *Receipt
 }
 
 // ToProto converts Transaction to corepb.Transaction
@@ -215,6 +217,16 @@ func (t *Transaction) PayerSign() []byte {
 //SetPayerSign set payerSign
 func (t *Transaction) SetPayerSign(payerSign []byte) {
 	t.payerSign = payerSign
+}
+
+//Receipt returns receipt
+func (t *Transaction) Receipt() *Receipt {
+	return t.receipt
+}
+
+//SetReceipt set receipt
+func (t *Transaction) SetReceipt(receipt *Receipt) {
+	t.receipt = receipt
 }
 
 //IsRelatedToAddress return whether the transaction is related to the address

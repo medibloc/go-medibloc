@@ -381,31 +381,21 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 			return nil, err
 		}
 
+		// Verify transaction before execute
+		if err := block.VerifyTransaction(transaction, d.bm.TxMap(), true); err != nil {
+			continue
+		}
 		// Execute transaction and change states
 		err = block.ExecuteTransaction(transaction, d.bm.TxMap())
 
-		if err != nil && err == core.ErrLargeTransactionNonce {
+		if err != nil && (err == core.ErrLargeTransactionNonce ||
+			err == core.ErrExceedBlockMaxCPUUsage ||
+			err == core.ErrExceedBlockMaxNETUsage) {
 			if err = d.tm.Push(transaction); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to push back tx.")
 			}
-			err = block.RollBack()
-			if err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to rollback new block.")
-				block.Storage().DisableBatch()
-				return nil, err
-			}
-			continue
-		}
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-				"tx":  transaction,
-			}).Error("Failed to execute transaction.")
-			// TODO : handle failed transaction (event?, or accept & write on receipt)
 			err = block.RollBack()
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{

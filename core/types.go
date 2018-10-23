@@ -65,6 +65,12 @@ const (
 	rateDecimal = "100000000000"
 )
 
+// Bandwidth limit per block
+const ( // TODO @ggomma change limit to real number
+	cpuLimit = "10000"
+	netLimit = "10000"
+)
+
 // TxBaseBandwidth is base bandwidth value of transactions.
 var TxBaseBandwidth = util.NewUint128FromUint(1000000000000)
 
@@ -142,6 +148,9 @@ var (
 	ErrNotInVoters                      = errors.New("voter is not in voters")
 	ErrCannotUseZeroValue               = errors.New("value should be larger than zero")
 	ErrFailedToDirectPush               = errors.New("cannot direct push to chain")
+	ErrSystemError                      = errors.New("undefined system error has been occurred")
+	ErrExceedBlockMaxCPUUsage           = errors.New("transaction exceeds block's max cpu usage")
+	ErrExceedBlockMaxNETUsage           = errors.New("transaction exceeds block's max net usage")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
