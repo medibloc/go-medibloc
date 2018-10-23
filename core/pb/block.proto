@@ -42,6 +42,14 @@ message Transaction {
   uint32 alg = 21;
   bytes sign = 22;
   bytes payerSign = 23;
+
+  Receipt receipt = 30;
+}
+
+message Receipt {
+  bool executed = 1;
+  bytes bandwidth_usage = 2;
+  bytes error = 3;
 }
 
 message TransactionHashTarget {
