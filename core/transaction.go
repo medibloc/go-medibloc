@@ -56,6 +56,15 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 		return nil, err
 	}
 
+	receipt, err := t.receipt.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	Receipt, ok := receipt.(*corepb.Receipt)
+	if !ok {
+		return nil, ErrInvalidReceiptToProto
+	}
+
 	return &corepb.Transaction{
 		Hash:      t.hash,
 		TxType:    t.txType,
@@ -69,6 +78,7 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 		Alg:       uint32(t.alg),
 		Sign:      t.sign,
 		PayerSign: t.payerSign,
+		Receipt:   Receipt,
 	}, nil
 }
 
@@ -77,6 +87,11 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Transaction); ok {
 		value, err := util.NewUint128FromFixedSizeByteSlice(msg.Value)
 		if err != nil {
+			return err
+		}
+
+		receipt := new(Receipt)
+		if err := receipt.FromProto(msg.Receipt); err != nil {
 			return err
 		}
 
@@ -92,6 +107,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 		t.alg = algorithm.Algorithm(msg.Alg)
 		t.sign = msg.Sign
 		t.payerSign = msg.PayerSign
+		t.receipt = receipt
 
 		return nil
 	}

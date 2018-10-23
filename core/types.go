@@ -151,6 +151,8 @@ var (
 	ErrSystemError                      = errors.New("undefined system error has been occurred")
 	ErrExceedBlockMaxCPUUsage           = errors.New("transaction exceeds block's max cpu usage")
 	ErrExceedBlockMaxNETUsage           = errors.New("transaction exceeds block's max net usage")
+	ErrCannotConvertReceipt             = errors.New("proto message cannot be converted into Receipt")
+	ErrInvalidReceiptToProto            = errors.New("receipt cannot be converted into proto")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

@@ -15,7 +15,11 @@
 
 package core
 
-import "github.com/medibloc/go-medibloc/util"
+import (
+	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/util"
+)
 
 // Receipt struct represents transaction receipt
 type Receipt struct {
@@ -37,4 +41,33 @@ func (r *Receipt) SetBandwidthUsage(bandwidthUsage *util.Uint128) {
 // SetExecuted sets transaction execution status
 func (r *Receipt) SetExecuted(executed bool) {
 	r.executed = executed
+}
+
+func (r *Receipt) ToProto() (proto.Message, error) {
+	bandwidthUsage, err := r.bandwidthUsage.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	return &corepb.Receipt{
+		Executed:       r.executed,
+		BandwidthUsage: bandwidthUsage,
+		Error:          r.error,
+	}, nil
+}
+
+func (r *Receipt) FromProto(msg proto.Message) error {
+	if msg, ok := msg.(*corepb.Receipt); ok {
+		bandwidthUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.BandwidthUsage)
+		if err != nil {
+			return err
+		}
+
+		r.executed = msg.Executed
+		r.bandwidthUsage = bandwidthUsage
+		r.error = msg.Error
+
+		return nil
+	}
+	return ErrCannotConvertReceipt
 }
