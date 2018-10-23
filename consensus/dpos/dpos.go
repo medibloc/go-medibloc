@@ -383,6 +383,13 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 
 		// Verify transaction before execute
 		if err := block.VerifyTransaction(transaction, d.bm.TxMap(), true); err != nil {
+			if err == core.ErrLargeTransactionNonce {
+				if err = d.tm.Push(transaction); err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("Failed to push back tx.")
+				}
+			}
 			continue
 		}
 		// Execute transaction and change states
