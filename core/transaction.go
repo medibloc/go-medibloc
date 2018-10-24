@@ -501,7 +501,7 @@ func (tx *TransferTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *TransferTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
-	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
+	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //AddRecordTx is a structure for adding record
@@ -578,7 +578,7 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *AddRecordTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
-	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
+	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //VestTx is a structure for withdrawing vesting
@@ -646,7 +646,7 @@ func (tx *VestTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *VestTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
-	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
+	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //WithdrawVestingTx is a structure for withdrawing vesting
@@ -736,7 +736,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *WithdrawVestingTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
-	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
+	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //AddCertificationTx is a structure for adding certification
@@ -864,7 +864,7 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *AddCertificationTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
-	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
+	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //RevokeCertificationTx is a structure for revoking certification
@@ -977,5 +977,5 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *RevokeCertificationTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
-	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
+	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
