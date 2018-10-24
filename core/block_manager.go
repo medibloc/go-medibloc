@@ -273,7 +273,6 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	// TODO @cl9200 Filter blocks of same height.
-
 	if err := bd.VerifyIntegrity(); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,

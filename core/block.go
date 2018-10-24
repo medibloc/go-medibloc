@@ -67,6 +67,16 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		return nil, err
 	}
 
+	cpuUsage, err := b.cpuUsage.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	netUsage, err := b.netUsage.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
 	return &corepb.BlockHeader{
 		Hash:         b.hash,
 		ParentHash:   b.parentHash,
@@ -80,6 +90,8 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
 		DposRoot:     b.dposRoot,
+		CpuUsage:     cpuUsage,
+		NetUsage:     netUsage,
 	}, nil
 }
 
@@ -106,6 +118,19 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.chainID = msg.ChainId
 		b.alg = algorithm.Algorithm(msg.Alg)
 		b.sign = msg.Sign
+
+		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
+		if err != nil {
+			return err
+		}
+
+		netUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.NetUsage)
+		if err != nil {
+			return err
+		}
+
+		b.cpuUsage = cpuUsage
+		b.netUsage = netUsage
 		return nil
 	}
 	return ErrInvalidProtoToBlockHeader
@@ -323,7 +348,6 @@ func (bd *BlockData) Clone() (*BlockData, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	newBd := new(BlockData)
 	err = newBd.FromProto(protoBd)
 	if err != nil {
@@ -493,7 +517,6 @@ func (b *Block) Consensus() Consensus {
 
 //Clone clone block
 func (b *Block) Clone() (*Block, error) {
-
 	bd, err := b.BlockData.Clone()
 	if err != nil {
 		return nil, err
@@ -503,7 +526,6 @@ func (b *Block) Clone() (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &Block{
 		BlockData: bd,
 		storage:   b.storage,
@@ -526,6 +548,8 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
+				cpuUsage:   util.NewUint128(),
+				netUsage:   util.NewUint128(),
 			},
 			transactions: make([]*Transaction, 0),
 			height:       b.height + 1,
@@ -639,6 +663,12 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 	curBandwidth, err := currentBandwidth(payerAcc.Vesting, payerAcc.Bandwidth, payerAcc.LastBandwidthTs, b.Timestamp())
 	if err != nil {
 		return err
+	}
+	if transaction.TxType() == TxOpVest {
+		payerAcc.Vesting, err = payerAcc.Vesting.Add(transaction.Value())
+		if err != nil {
+			return err
+		}
 	}
 	avail, err := payerAcc.Vesting.Sub(curBandwidth)
 	if err != nil {
@@ -867,7 +897,7 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 	// update account
 	acc.Bandwidth = curBandwidth
 	acc.LastBandwidthTs = curTs
-	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -1177,15 +1207,15 @@ func (b *Block) checkBandwidthLimit(tx ExecutableTx) error {
 	}
 
 	// TODO @ggomma use tx.cpuUsage and tx.netUsage
-	totalCpuUsage, err := b.cpuUsage.Add(cpuUsage)
+	totalCPUUsage, err := b.cpuUsage.Add(cpuUsage)
 	if err != nil {
 		return err
 	}
-	maxCpu, err := util.NewUint128FromString(cpuLimit)
+	maxCPU, err := util.NewUint128FromString(cpuLimit)
 	if err != nil {
 		return err
 	}
-	if maxCpu.Cmp(totalCpuUsage) < 0 {
+	if maxCPU.Cmp(totalCPUUsage) < 0 {
 		return ErrExceedBlockMaxCPUUsage
 	}
 

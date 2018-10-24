@@ -72,7 +72,11 @@ const ( // TODO @ggomma change limit to real number
 )
 
 // TxBaseBandwidth is base bandwidth value of transactions.
-var TxBaseBandwidth = util.NewUint128FromUint(1000000000000)
+var (
+	TxBaseCPUBandwidth = util.NewUint128FromUint(500000000000)
+	TxBaseNetBandwidth = util.NewUint128FromUint(500000000000)
+	TxBaseBandwidth    = util.NewUint128FromUint(1000000000000)
+)
 
 // Error types of core package.
 var (

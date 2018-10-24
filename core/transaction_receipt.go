@@ -34,8 +34,8 @@ func (r *Receipt) SetError(error []byte) {
 	r.error = error
 }
 
-// SetBandwidthUsage sets transaction's cpu bandwidth
-func (r *Receipt) SetCpuUsage(cpuUsage *util.Uint128) {
+// SetCPUUsage transaction's cpu bandwidth
+func (r *Receipt) SetCPUUsage(cpuUsage *util.Uint128) {
 	r.cpuUsage = cpuUsage
 }
 
@@ -49,6 +49,7 @@ func (r *Receipt) SetExecuted(executed bool) {
 	r.executed = executed
 }
 
+// ToProto transform receipt struct to proto message
 func (r *Receipt) ToProto() (proto.Message, error) {
 	cpuUsage, err := r.cpuUsage.ToFixedSizeByteSlice()
 	if err != nil {
@@ -67,6 +68,7 @@ func (r *Receipt) ToProto() (proto.Message, error) {
 	}, nil
 }
 
+// FromProto transform receipt proto message to receipt struct
 func (r *Receipt) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Receipt); ok {
 		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
