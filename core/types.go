@@ -67,8 +67,8 @@ const (
 
 // Bandwidth limit per block
 const ( // TODO @ggomma change limit to real number
-	cpuLimit = "10000"
-	netLimit = "10000"
+	cpuLimit = "10000000000000000"
+	netLimit = "10000000000000000"
 )
 
 // TxBaseBandwidth is base bandwidth value of transactions.
@@ -223,7 +223,7 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 //ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
-	Bandwidth() (*util.Uint128, error)
+	Bandwidth() (*util.Uint128, *util.Uint128, error)
 }
 
 // TransactionPayload is an interface of transaction payload.

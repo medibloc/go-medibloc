@@ -132,7 +132,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	initialTx.hash = hash
 
 	// Insert initial transaction
-	err = genesisBlock.AcceptTransaction(initialTx)
+	err = genesisBlock.AcceptTransaction(initialTx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +273,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.hash = hash
 
-		err = genesisBlock.AcceptTransaction(tx)
+		err = genesisBlock.AcceptTransaction(tx, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +293,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.hash = hash
 
-		err = genesisBlock.AcceptTransaction(tx)
+		err = genesisBlock.AcceptTransaction(tx, nil)
 		if err != nil {
 			return nil, err
 		}

@@ -48,8 +48,9 @@ message Transaction {
 
 message Receipt {
   bool executed = 1;
-  bytes bandwidth_usage = 2;
-  bytes error = 3;
+  bytes cpu_usage = 2;
+  bytes net_usage = 3;
+  bytes error = 4;
 }
 
 message TransactionHashTarget {

@@ -52,6 +52,7 @@ func TestChangeDynasty(t *testing.T) {
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 	ds := seed.Tail().State().DposState()
 	isCandidate, err := ds.IsCandidate(newCandidate.Addr)
+
 	require.NoError(t, err)
 	assert.True(t, isCandidate)
 	inDynasty, err := ds.InDynasty(newCandidate.Addr)

@@ -56,13 +56,18 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 		return nil, err
 	}
 
-	receipt, err := t.receipt.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	Receipt, ok := receipt.(*corepb.Receipt)
-	if !ok {
-		return nil, ErrInvalidReceiptToProto
+	var Receipt *corepb.Receipt
+	if t.receipt != nil {
+		receipt, err := t.receipt.ToProto()
+		if err != nil {
+			return nil, err
+		}
+
+		var ok bool
+		Receipt, ok = receipt.(*corepb.Receipt)
+		if !ok {
+			return nil, ErrInvalidReceiptToProto
+		}
 	}
 
 	return &corepb.Transaction{
@@ -91,8 +96,12 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 		}
 
 		receipt := new(Receipt)
-		if err := receipt.FromProto(msg.Receipt); err != nil {
-			return err
+		if msg.Receipt != nil {
+			if err := receipt.FromProto(msg.Receipt); err != nil {
+				return err
+			}
+		} else {
+			receipt = nil
 		}
 
 		t.hash = msg.Hash
@@ -397,7 +406,8 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v, timestamp:%v}`,
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v, timestamp:%v, 
+receipt:%v}`,
 		t.chainID,
 		byteutils.Bytes2Hex(t.hash),
 		t.from,
@@ -407,6 +417,7 @@ func (t *Transaction) String() string {
 		t.alg,
 		t.nonce,
 		t.timestamp,
+		t.receipt,
 	)
 }
 
@@ -489,8 +500,8 @@ func (tx *TransferTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *TransferTx) Bandwidth() (*util.Uint128, error) {
-	return TxBaseBandwidth, nil
+func (tx *TransferTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //AddRecordTx is a structure for adding record
@@ -566,8 +577,8 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddRecordTx) Bandwidth() (*util.Uint128, error) {
-	return TxBaseBandwidth, nil
+func (tx *AddRecordTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //VestTx is a structure for withdrawing vesting
@@ -634,8 +645,8 @@ func (tx *VestTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VestTx) Bandwidth() (*util.Uint128, error) {
-	return TxBaseBandwidth, nil
+func (tx *VestTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //WithdrawVestingTx is a structure for withdrawing vesting
@@ -724,8 +735,8 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *WithdrawVestingTx) Bandwidth() (*util.Uint128, error) {
-	return TxBaseBandwidth, nil
+func (tx *WithdrawVestingTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //AddCertificationTx is a structure for adding certification
@@ -852,8 +863,8 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddCertificationTx) Bandwidth() (*util.Uint128, error) {
-	return TxBaseBandwidth, nil
+func (tx *AddCertificationTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //RevokeCertificationTx is a structure for revoking certification
@@ -965,6 +976,6 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *RevokeCertificationTx) Bandwidth() (*util.Uint128, error) {
-	return TxBaseBandwidth, nil
+func (tx *RevokeCertificationTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return TxBaseBandwidth, TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }

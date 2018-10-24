@@ -414,7 +414,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 			continue
 		}
 
-		err = block.AcceptTransaction(transaction)
+		err = block.AcceptTransaction(transaction, d.bm.TxMap())
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":         err,

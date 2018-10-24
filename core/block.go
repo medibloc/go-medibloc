@@ -644,7 +644,11 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 	if err != nil {
 		return err
 	}
-	usage, err := tx.Bandwidth()
+	cpuUsage, netUsage, err := tx.Bandwidth()
+	if err != nil {
+		return err
+	}
+	usage, err := cpuUsage.Add(netUsage)
 	if err != nil {
 		return err
 	}
@@ -705,7 +709,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 
 	// Case 2. Already executed transaction payload
 	// Case 3. Execute Error (Non-system error)
-	usage, err := tx.Bandwidth()
+	cpuUsage, netUsage, err := tx.Bandwidth()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -716,11 +720,16 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 	if err1 != nil {
 		transaction.SetReceipt(&Receipt{
 			false,
-			usage,
+			cpuUsage,
+			netUsage,
 			[]byte(err1.Error()),
 		})
 	}
 
+	usage, err := cpuUsage.Add(netUsage)
+	if err != nil {
+		return err
+	}
 	err2 := b.consumeBandwidth(payer, usage)
 	if err1 != nil {
 		return err1
@@ -731,14 +740,16 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		}).Warn("Failed to update bandwidth.")
 		transaction.SetReceipt(&Receipt{
 			false,
-			usage,
+			cpuUsage,
+			netUsage,
 			[]byte(err2.Error()),
 		})
 		return err2
 	}
 	transaction.SetReceipt(&Receipt{
 		true,
-		usage,
+		cpuUsage,
+		netUsage,
 		nil,
 	})
 	return nil
@@ -1018,11 +1029,30 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 }
 
 // AcceptTransaction adds tx in block state
-func (b *Block) AcceptTransaction(tx *Transaction) error {
-	if err := b.state.acceptTransaction(tx); err != nil {
+func (b *Block) AcceptTransaction(transaction *Transaction, txMap TxFactory) error {
+	if err := b.state.acceptTransaction(transaction); err != nil {
 		return err
 	}
-	b.transactions = append(b.transactions, tx)
+	b.transactions = append(b.transactions, transaction)
+
+	if txMap != nil {
+		newTxFunc, _ := txMap[transaction.TxType()]
+		tx, _ := newTxFunc(transaction)
+		cpuUsage, netUsage, err := tx.Bandwidth()
+		if err != nil {
+			return err
+		}
+
+		b.cpuUsage, err = b.cpuUsage.Add(cpuUsage)
+		if err != nil {
+			return err
+		}
+		b.netUsage, err = b.netUsage.Add(netUsage)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -1141,19 +1171,33 @@ func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 
 func (b *Block) checkBandwidthLimit(tx ExecutableTx) error {
 	// TODO @ggomma calculate cpu / net usage from transaction
-	cpuUsage, err := tx.Bandwidth()
+	cpuUsage, netUsage, err := tx.Bandwidth()
 	if err != nil {
 		return err
 	}
-	netUsage, err := tx.Bandwidth()
-	if err != nil {
-		return err
-	}
+
 	// TODO @ggomma use tx.cpuUsage and tx.netUsage
-	if b.cpuUsage.Cmp(cpuUsage) < 0 {
+	totalCpuUsage, err := b.cpuUsage.Add(cpuUsage)
+	if err != nil {
+		return err
+	}
+	maxCpu, err := util.NewUint128FromString(cpuLimit)
+	if err != nil {
+		return err
+	}
+	if maxCpu.Cmp(totalCpuUsage) < 0 {
 		return ErrExceedBlockMaxCPUUsage
 	}
-	if b.netUsage.Cmp(netUsage) < 0 {
+
+	totalNetUsage, err := b.netUsage.Add(netUsage)
+	if err != nil {
+		return err
+	}
+	maxNet, err := util.NewUint128FromString(netLimit)
+	if err != nil {
+		return err
+	}
+	if maxNet.Cmp(totalNetUsage) < 0 {
 		return ErrExceedBlockMaxNETUsage
 	}
 	return nil

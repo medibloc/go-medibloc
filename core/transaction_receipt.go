@@ -23,9 +23,10 @@ import (
 
 // Receipt struct represents transaction receipt
 type Receipt struct {
-	executed       bool
-	bandwidthUsage *util.Uint128
-	error          []byte
+	executed bool
+	cpuUsage *util.Uint128
+	netUsage *util.Uint128
+	error    []byte
 }
 
 // SetError sets error occurred during transaction execution
@@ -33,9 +34,14 @@ func (r *Receipt) SetError(error []byte) {
 	r.error = error
 }
 
-// SetBandwidthUsage sets transaction's bandwidth
-func (r *Receipt) SetBandwidthUsage(bandwidthUsage *util.Uint128) {
-	r.bandwidthUsage = bandwidthUsage
+// SetBandwidthUsage sets transaction's cpu bandwidth
+func (r *Receipt) SetCpuUsage(cpuUsage *util.Uint128) {
+	r.cpuUsage = cpuUsage
+}
+
+// SetNetUsage sets transaction's net bandwidth
+func (r *Receipt) SetNetUsage(netUsage *util.Uint128) {
+	r.netUsage = netUsage
 }
 
 // SetExecuted sets transaction execution status
@@ -44,27 +50,37 @@ func (r *Receipt) SetExecuted(executed bool) {
 }
 
 func (r *Receipt) ToProto() (proto.Message, error) {
-	bandwidthUsage, err := r.bandwidthUsage.ToFixedSizeByteSlice()
+	cpuUsage, err := r.cpuUsage.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	netUsage, err := r.netUsage.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 
 	return &corepb.Receipt{
-		Executed:       r.executed,
-		BandwidthUsage: bandwidthUsage,
-		Error:          r.error,
+		Executed: r.executed,
+		CpuUsage: cpuUsage,
+		NetUsage: netUsage,
+		Error:    r.error,
 	}, nil
 }
 
 func (r *Receipt) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Receipt); ok {
-		bandwidthUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.BandwidthUsage)
+		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
+		if err != nil {
+			return err
+		}
+		netUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.NetUsage)
 		if err != nil {
 			return err
 		}
 
 		r.executed = msg.Executed
-		r.bandwidthUsage = bandwidthUsage
+		r.cpuUsage = cpuUsage
+		r.netUsage = netUsage
 		r.error = msg.Error
 
 		return nil

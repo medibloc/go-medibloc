@@ -74,8 +74,8 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *BecomeCandidateTx) Bandwidth() (*util.Uint128, error) {
-	return core.TxBaseBandwidth, nil
+func (tx *BecomeCandidateTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return core.TxBaseBandwidth, core.TxBaseBandwidth, nil // TODO use cpi, net bandwidth
 }
 
 //QuitCandidateTx is a structure for quiting candidate
@@ -202,8 +202,8 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *QuitCandidateTx) Bandwidth() (*util.Uint128, error) {
-	return core.TxBaseBandwidth, nil
+func (tx *QuitCandidateTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return core.TxBaseBandwidth, core.TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
 
 //VoteTx is a structure for voting
@@ -372,6 +372,6 @@ func checkDuplicate(candidates []common.Address) bool {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VoteTx) Bandwidth() (*util.Uint128, error) {
-	return core.TxBaseBandwidth, nil
+func (tx *VoteTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+	return core.TxBaseBandwidth, core.TxBaseBandwidth, nil // TODO use cpu, net bandwidth
 }
