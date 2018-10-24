@@ -282,10 +282,10 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 //ExecuteTx execute transaction
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
-
 	require.NoError(n.t, n.B.BeginBatch())
+	require.NoError(n.t, n.B.VerifyTransaction(tx, DefaultTxMap, true))
 	require.NoError(n.t, n.B.ExecuteTransaction(tx, DefaultTxMap))
-	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	require.NoError(n.t, n.B.AcceptTransaction(tx, DefaultTxMap))
 	require.NoError(n.t, n.B.Commit())
 
 	return n
@@ -294,15 +294,22 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 //ExecuteTxErr expect error occurred on executing
 func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
-
 	require.NoError(n.t, n.B.BeginBatch())
-	err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	err := n.B.VerifyTransaction(tx, DefaultTxMap, true)
 	if err != nil {
 		require.Equal(n.t, expected, err)
 		require.NoError(n.t, n.B.RollBack())
 		return n
 	}
-	err = n.B.AcceptTransaction(tx)
+
+	err = n.B.ExecuteTransaction(tx, DefaultTxMap)
+	if err != nil {
+		require.Equal(n.t, expected, err)
+		require.NoError(n.t, n.B.RollBack())
+		return n
+	}
+
+	err = n.B.AcceptTransaction(tx, DefaultTxMap)
 	require.Equal(n.t, expected, err)
 	require.NoError(n.t, n.B.Commit())
 

@@ -45,7 +45,9 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 func Bandwidth(t *testing.T, tx *core.Transaction) uint64 {
 	execTx, err := DefaultTxMap[tx.TxType()](tx)
 	require.NoError(t, err)
-	bw, err := execTx.Bandwidth()
+	cpuBw, netBw, err := execTx.Bandwidth()
+	require.NoError(t, err)
+	bw, err := cpuBw.Add(netBw)
 	require.NoError(t, err)
 	return bw.Uint64()
 }
