@@ -16,9 +16,10 @@
 package dpos
 
 import (
-	"time"
-
 	"bytes"
+	"encoding/json"
+	"io/ioutil"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -31,6 +32,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -52,7 +54,7 @@ type Dpos struct {
 	quitCh chan int
 }
 
-//DynastySize returns dynastySize
+// DynastySize returns dynastySize
 func (d *Dpos) DynastySize() int {
 	return d.dynastySize
 }
@@ -91,8 +93,42 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	d.startMine = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
 		d.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
-		d.miner = common.HexToAddress(cfg.Chain.Miner)
-		minerKey, err := secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
+		var address, privKey string
+
+		if cfg.Chain.Keydir != "" {
+			ksString, err := ioutil.ReadFile(cfg.Chain.Keydir)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err":    err,
+					"Keydir": cfg.Chain.Keydir,
+				}).Error("Error in reading keystore file.")
+				return err
+			}
+			ksf := crypto.EncryptedKeyJSONV3{}
+			json.Unmarshal([]byte(ksString), ksf)
+			key, err := crypto.DecryptKey([]byte(ksString), cfg.Chain.Passphrase)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Error in DecryptKey.")
+				return err
+			}
+			pk := secp256k1.NewPrivateKey(key.PrivateKey)
+			addr, err := common.PublicKeyToAddress(pk.PublicKey())
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Error in PublicKeyToAddress.")
+				return err
+			}
+			address = byteutils.Bytes2Hex(addr.Bytes())
+			privKey = byteutils.Bytes2Hex(secp256k1.FromECDSAPrivateKey(key.PrivateKey))
+		} else {
+			address = cfg.Chain.Miner
+			privKey = cfg.Chain.Privkey
+		}
+		d.miner = common.HexToAddress(address)
+		minerKey, err := secp256k1.NewPrivateKeyFromHex(privKey)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,

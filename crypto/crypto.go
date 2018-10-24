@@ -17,6 +17,7 @@ package crypto
 
 import (
 	"errors"
+	"math/big"
 
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
@@ -26,6 +27,7 @@ import (
 var (
 	// ErrAlgorithmInvalid invalid Algorithm for sign.
 	ErrAlgorithmInvalid = errors.New("invalid Algorithm")
+	secp256k1N, _       = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 )
 
 // GenerateKey generates PrivateKey.

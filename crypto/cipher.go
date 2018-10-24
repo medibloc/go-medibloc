@@ -20,6 +20,7 @@ import (
 	"crypto/cipher"
 )
 
+
 // AESCTRXOR encrypts text.
 func AESCTRXOR(key, inText, iv []byte) ([]byte, error) {
 	// AES-128 is selected due to size of encryptKey.
@@ -32,3 +33,5 @@ func AESCTRXOR(key, inText, iv []byte) ([]byte, error) {
 	stream.XORKeyStream(outText, inText)
 	return outText, nil
 }
+
+

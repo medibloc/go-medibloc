@@ -37,4 +37,5 @@ logs/
 # custom key and settings
 network.key
 private.key
+*.key
 custom.conf
