@@ -227,7 +227,7 @@ func (bb *BlockBuilder) Sealed(sealed bool) *BlockBuilder {
 //CalcHash calculate hash
 func (bb *BlockBuilder) CalcHash() *BlockBuilder {
 	n := bb.copy()
-	hash := core.HashBlockData(n.B.GetBlockData())
+	hash, _ := core.HashBlockData(n.B.GetBlockData())
 	n.B.SetHash(hash)
 	return n
 }

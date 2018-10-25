@@ -256,6 +256,16 @@ func (b *BlockHeader) SetSign(sign []byte) {
 	b.sign = sign
 }
 
+// CPUUsage returns cpuUsage
+func (b *BlockHeader) CPUUsage() *util.Uint128 {
+	return b.cpuUsage
+}
+
+// NetUsage returns netUsage
+func (b *BlockHeader) NetUsage() *util.Uint128 {
+	return b.netUsage
+}
+
 //Proposer returns miner address from block sign
 func (b *BlockHeader) Proposer() (common.Address, error) {
 	if b.sign == nil {
@@ -417,7 +427,10 @@ func (bd *BlockData) VerifyIntegrity() error {
 		}
 	}
 
-	wantedHash := HashBlockData(bd)
+	wantedHash, err := HashBlockData(bd)
+	if err != nil {
+		return err
+	}
 	if !byteutils.Equal(wantedHash, bd.hash) {
 		return ErrInvalidBlockHash
 	}
@@ -603,14 +616,18 @@ func (b *Block) Seal() error {
 		return err
 	}
 
-	hash := HashBlockData(b.BlockData)
+	hash, err := HashBlockData(b.BlockData)
+	if err != nil {
+		return err
+	}
+
 	b.hash = hash
 	b.sealed = true
 	return nil
 }
 
 // HashBlockData returns hash of block
-func HashBlockData(bd *BlockData) []byte {
+func HashBlockData(bd *BlockData) ([]byte, error) {
 	hasher := sha3.New256()
 
 	hasher.Write(bd.ParentHash())
@@ -621,11 +638,34 @@ func HashBlockData(bd *BlockData) []byte {
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
+	rewardBytes, err := bd.Reward().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	supplyBytes, err := bd.Supply().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	cpuUsageBytes, err := bd.CPUUsage().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	netUsageBytes, err := bd.NetUsage().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	hasher.Write(rewardBytes)
+	hasher.Write(supplyBytes)
+	// hasher.Write(bd.Alg())
+	hasher.Write(cpuUsageBytes)
+	hasher.Write(netUsageBytes)
+
 	for _, tx := range bd.transactions {
 		hasher.Write(tx.Hash())
 	}
 
-	return hasher.Sum(nil)
+	return hasher.Sum(nil), nil
 }
 
 // VerifyTransaction verifies transaction before execute
