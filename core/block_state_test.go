@@ -137,7 +137,7 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 	to := bb.TokenDist[1]
 
 	bb.Tx().StakeTx(from, 100000000000000).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(100000000000000).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
+		Tx().Type(core.TxOpWithdrawVesting).Value(100000000000000).SignPair(from).ExecuteErr(core.ErrExecutedErr).
 		Tx().Type(core.TxOpWithdrawVesting).Value(99000000000000).SignPair(from).Execute().
 		Tx().Type(core.TxOpTransfer).Value(10000000000000000).To(to.Addr).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
 		Expect().

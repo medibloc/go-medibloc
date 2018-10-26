@@ -152,10 +152,11 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb = bb.
-		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
+		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(
+		issuer).ExecuteErr(core.ErrExecutedErr).
 		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
 		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
-		ExecuteErr(core.ErrCertAlreadyRevoked)
+		ExecuteErr(core.ErrExecutedErr)
 	block = bb.Build()
 
 	issuerAcc, err = block.State().GetAccount(issuer.Addr)

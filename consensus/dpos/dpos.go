@@ -395,9 +395,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		// Execute transaction and change states
 		err = block.ExecuteTransaction(transaction, d.bm.TxMap())
 
-		if err != nil && (err == core.ErrLargeTransactionNonce ||
-			err == core.ErrExceedBlockMaxCPUUsage ||
-			err == core.ErrExceedBlockMaxNETUsage) {
+		if err != nil {
 			if err = d.tm.Push(transaction); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,

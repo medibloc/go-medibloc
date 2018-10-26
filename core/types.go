@@ -157,6 +157,7 @@ var (
 	ErrExceedBlockMaxNETUsage           = errors.New("transaction exceeds block's max net usage")
 	ErrCannotConvertReceipt             = errors.New("proto message cannot be converted into Receipt")
 	ErrInvalidReceiptToProto            = errors.New("receipt cannot be converted into proto")
+	ErrExecutedErr                      = errors.New("error has been occured and saved in transaction receipt")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

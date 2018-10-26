@@ -309,8 +309,9 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 		return n
 	}
 
-	err = n.B.AcceptTransaction(tx, DefaultTxMap)
 	require.Equal(n.t, expected, err)
+
+	err = n.B.AcceptTransaction(tx, DefaultTxMap)
 	require.NoError(n.t, n.B.Commit())
 
 	return n

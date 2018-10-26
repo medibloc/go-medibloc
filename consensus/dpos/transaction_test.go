@@ -38,7 +38,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 		Tx().StakeTx(candidate, 100000000000000000).Execute().
 		Tx().Type(txType).Value(10000000000000000000).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
 		Tx().Type(txType).Value(10).SignPair(candidate).Execute().
-		Tx().Type(txType).Value(10).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
+		Tx().Type(txType).Value(10).SignPair(candidate).ExecuteErr(core.ErrExecutedErr)
 
 	bb.Expect().
 		Balance(candidate.Addr, 1000000000000000000-10-100000000000000000).
@@ -60,7 +60,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	bb = bb.
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).Execute().
-		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
+		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(core.ErrExecutedErr)
 
 	block = bb.Build()
 	as = block.State().AccState()
@@ -100,8 +100,8 @@ func TestVote(t *testing.T) {
 		Tx().Type(core.TxOpVest).Value(333000000000000).SignPair(voter).Execute().
 		Tx().StakeTx(candidate, 10000000000000000).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).SignPair(candidate).Execute().
-		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(dpos.ErrOverMaxVote).
-		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(dpos.ErrDuplicateVote).
+		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(core.ErrExecutedErr).
+		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(core.ErrExecutedErr).
 		Tx().Type(dpos.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
 	bb.Expect().Balance(candidate.Addr, uint64(1000000000000000000-10-10000000000000000))

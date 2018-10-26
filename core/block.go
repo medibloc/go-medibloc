@@ -390,7 +390,8 @@ func (bd *BlockData) SetTransactions(txs []*Transaction) error {
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
 	proposer, _ := bd.Proposer()
-	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, reward:%v, supply:%v, timestamp:%v, proposer:%v>",
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, reward:%v, supply:%v, timestamp:%v, "+
+		"proposer:%v, cpuBandwidth:%v, netBandwidth:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
@@ -399,6 +400,8 @@ func (bd *BlockData) String() string {
 		bd.Supply().String(),
 		bd.Timestamp(),
 		proposer.Hex(),
+		bd.CPUUsage(),
+		bd.NetUsage(),
 	)
 }
 
@@ -689,7 +692,16 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 		return err
 	}
 
-	// Case 5. Lack of bandwidth (transaction.from & payer)
+	// Case 5. Lack of balance
+	acc, err := b.state.GetAccount(transaction.From())
+	if err != nil {
+		return err
+	}
+	if acc.Balance.Cmp(transaction.Value()) < 0 {
+		return ErrBalanceNotEnough
+	}
+
+	// Case 6. Lack of bandwidth (transaction.from & payer)
 	payer, err := transaction.recoverPayer()
 	if err == ErrPayerSignatureNotExist {
 		payer = transaction.From()
@@ -784,45 +796,45 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to get bandwidth of a transaction.")
-		return nil
+		return err
 	}
-	err1 := tx.Execute(b)
-	if err1 != nil {
-		transaction.SetReceipt(&Receipt{
-			false,
-			cpuUsage,
-			netUsage,
-			[]byte(err1.Error()),
-		})
-	}
-
 	usage, err := cpuUsage.Add(netUsage)
 	if err != nil {
 		return err
 	}
-	err2 := b.consumeBandwidth(payer, usage)
-	if err1 != nil {
-		return err1
+
+	receipt := &Receipt{
+		executed: true,
+		cpuUsage: cpuUsage,
+		netUsage: netUsage,
+		error:    nil,
 	}
-	if err2 != nil {
+	transaction.SetReceipt(receipt)
+
+	err = tx.Execute(b)
+	if err != nil {
+		receipt.executed = false
+		receipt.error = []byte(err.Error())
+		transaction.SetReceipt(receipt)
+	}
+
+	err = b.consumeBandwidth(payer, usage)
+	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"err": err2,
+			"err": err,
 		}).Warn("Failed to update bandwidth.")
-		transaction.SetReceipt(&Receipt{
-			false,
-			cpuUsage,
-			netUsage,
-			[]byte(err2.Error()),
-		})
-		return err2
+
+		receipt.executed = false
+		receipt.error = []byte(err.Error())
+		transaction.SetReceipt(receipt)
+		return ErrExecutedErr
 	}
-	transaction.SetReceipt(&Receipt{
-		true,
-		cpuUsage,
-		netUsage,
-		nil,
-	})
-	return nil
+
+	if receipt.error == nil {
+		return nil
+	}
+
+	return ErrExecutedErr
 }
 
 func (b *Block) updateUnstaking(addr common.Address) error {
