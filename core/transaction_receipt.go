@@ -34,9 +34,19 @@ func (r *Receipt) SetError(error []byte) {
 	r.error = error
 }
 
+// Error returns error
+func (r *Receipt) Error() []byte {
+	return r.error
+}
+
 // SetCPUUsage transaction's cpu bandwidth
 func (r *Receipt) SetCPUUsage(cpuUsage *util.Uint128) {
 	r.cpuUsage = cpuUsage
+}
+
+// CPUUsage returns cpuUsage
+func (r *Receipt) CPUUsage() *util.Uint128 {
+	return r.cpuUsage
 }
 
 // SetNetUsage sets transaction's net bandwidth
@@ -44,9 +54,19 @@ func (r *Receipt) SetNetUsage(netUsage *util.Uint128) {
 	r.netUsage = netUsage
 }
 
+// NetUsage returns cpuUsage
+func (r *Receipt) NetUsage() *util.Uint128 {
+	return r.netUsage
+}
+
 // SetExecuted sets transaction execution status
 func (r *Receipt) SetExecuted(executed bool) {
 	r.executed = executed
+}
+
+// Executed returns cpuUsage
+func (r *Receipt) Executed() bool {
+	return r.executed
 }
 
 // ToProto transform receipt struct to proto message
