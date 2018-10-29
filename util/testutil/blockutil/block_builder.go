@@ -304,12 +304,12 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 
 	err = n.B.ExecuteTransaction(tx, DefaultTxMap)
 	if err != nil {
-		require.Equal(n.t, expected, err)
-		require.NoError(n.t, n.B.RollBack())
-		return n
+		if err != core.ErrExecutedErr {
+			require.Equal(n.t, expected, err)
+			require.NoError(n.t, n.B.RollBack())
+			return n
+		}
 	}
-
-	require.Equal(n.t, expected, err)
 
 	err = n.B.AcceptTransaction(tx, DefaultTxMap)
 	require.NoError(n.t, n.B.Commit())

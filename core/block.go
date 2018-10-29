@@ -693,6 +693,7 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 	}
 
 	// Case 5. Lack of balance
+	// TODO @ggomma consider every transaction case
 	acc, err := b.state.GetAccount(transaction.From())
 	if err != nil {
 		return err
@@ -737,7 +738,6 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 	if avail.Cmp(usage) < 0 {
 		return ErrBandwidthLimitExceeded
 	}
-
 	// Only for non-local transactions (from broadcast)
 	// Start verify from non-hard process
 	if !local {
@@ -1060,12 +1060,14 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 // Execute executes a transaction.
 func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 	if err := b.ExecuteTransaction(tx, txMap); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":         err,
-			"transaction": tx,
-			"block":       b,
-		}).Warn("Failed to execute a transaction.")
-		return err
+		if err != ErrExecutedErr {
+			logging.Console().WithFields(logrus.Fields{
+				"err":         err,
+				"transaction": tx,
+				"block":       b,
+			}).Warn("Failed to execute a transaction.")
+			return err
+		}
 	}
 
 	if err := b.state.acceptTransaction(tx); err != nil {
