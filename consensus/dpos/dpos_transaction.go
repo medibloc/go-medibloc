@@ -202,7 +202,7 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *QuitCandidateTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *QuitCandidateTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return core.TxBaseCPUBandwidth, core.TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
@@ -372,6 +372,6 @@ func checkDuplicate(candidates []common.Address) bool {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VoteTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *VoteTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return core.TxBaseCPUBandwidth, core.TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }

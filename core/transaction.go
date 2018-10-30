@@ -500,7 +500,7 @@ func (tx *TransferTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *TransferTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *TransferTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
@@ -577,7 +577,7 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddRecordTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *AddRecordTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
@@ -645,7 +645,7 @@ func (tx *VestTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VestTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *VestTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
@@ -735,7 +735,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *WithdrawVestingTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *WithdrawVestingTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
@@ -863,7 +863,7 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddCertificationTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *AddCertificationTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }
 
@@ -976,6 +976,6 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *RevokeCertificationTx) Bandwidth() (*util.Uint128, *util.Uint128, error) {
+func (tx *RevokeCertificationTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
 }

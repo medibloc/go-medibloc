@@ -228,7 +228,7 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 //ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
-	Bandwidth() (*util.Uint128, *util.Uint128, error)
+	Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error)
 }
 
 // TransactionPayload is an interface of transaction payload.
