@@ -273,7 +273,7 @@ func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
 func (acc *Account) UpdateBandwidth(timestamp int64) error {
 	var err error
 
-	acc.Bandwidth, err = currentBandwidth(acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs, timestamp)
+	acc.Bandwidth, err = currentBandwidth(acc, timestamp)
 	if err != nil {
 		return err
 	}

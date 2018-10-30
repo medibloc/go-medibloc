@@ -134,16 +134,13 @@ func TestUpdatePayerBandwidth(t *testing.T) {
 func TestBandwidthWhenUnstaking(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 	from := bb.TokenDist[0]
-	to := bb.TokenDist[1]
 
 	bb.Tx().StakeTx(from, 100000000000000).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(200000000000000).SignPair(from).ExecuteErr(core.ErrExecutedErr).
-		Tx().Type(core.TxOpWithdrawVesting).Value(99000000000000).SignPair(from).Execute().
-		Tx().Type(core.TxOpTransfer).Value(10000000000000000).To(to.Addr).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
+		Tx().Type(core.TxOpWithdrawVesting).Value(100000000000000).SignPair(from).ExecuteErr(core.ErrVestingNotEnough).
+		Tx().Type(core.TxOpWithdrawVesting).Value(40000000000000).SignPair(from).Execute().
 		Expect().
-		Bandwidth(from.Addr, 1000000000000).
-		Unstaking(from.Addr, 99000000000000).
-		Vesting(from.Addr, 1000000000000)
+		Unstaking(from.Addr, 40000000000000).
+		Vesting(from.Addr, 60000000000000)
 }
 
 func TestTxsFromTxsTo(t *testing.T) {

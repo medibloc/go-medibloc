@@ -729,122 +729,114 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 	return hasher.Sum(nil), nil
 }
 
-// VerifyTransaction verifies transaction before execute
-// This process doesn't change account's nonce and bandwidth
-func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory) error {
-	// Case 1. Unmatched Nonce
+// ExecuteTransaction on given block state
+func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (giveBack bool, err error) {
+	// Executing process consists of two major parts
+	// Part 1 : Verify transaction and not affect state trie
+	// Part 2 : Execute transaction and affect state trie(store)
+
+	// Part 1 : Verify transaction and not affect state trie
+
+	// STEP 1. Check nonce
 	if err := b.state.checkNonce(transaction); err != nil {
-		return err
+		if err == ErrSmallTransactionNonce {
+			return false, err
+		} else if err == ErrLargeTransactionNonce {
+			return true, err
+		}
+		return false, err
 	}
 
-	// Case 2, 3, 4 are checked in the newTxFunc method
-	// Case 2. Invalid TX type
-	// Case 3. Invalid Components Error (Payload)
-	// Case 4. Too large TX size
+	// STEP 2. Check tx type
 	newTxFunc, ok := txMap[transaction.TxType()]
 	if !ok {
-		return ErrInvalidTransactionType
+		return false, ErrInvalidTransactionType
 	}
+
+	// STEP 3. Check tx components
 	tx, err := newTxFunc(transaction)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	// Case 5. Lack of balance
-	// TODO @ggomma consider every transaction case
+	// STEP 4. Check bandwidth (Exceeding block's max cpu/net bandwidth)
+	if err := b.checkBandwidthLimit(tx); err != nil {
+		return true, err
+	}
+
+	// STEP 5. Check balance
 	acc, err := b.state.GetAccount(transaction.From())
 	if err != nil {
-		return err
+		return false, err
 	}
 	if acc.Balance.Cmp(transaction.Value()) < 0 {
-		return ErrBalanceNotEnough
+		return false, ErrBalanceNotEnough
 	}
 
-	// Case 6. Lack of bandwidth (transaction.from & payer)
+	// STEP 6. Check personal bandwidth
 	payer, err := transaction.recoverPayer()
 	if err == ErrPayerSignatureNotExist {
 		payer = transaction.From()
 	} else if err != nil {
-		return err
+		return false, err
 	}
 	payerAcc, err := b.state.GetAccount(payer)
 	if err != nil {
-		return err
+		return false, err
 	}
-	curBandwidth, err := currentBandwidth(payerAcc.Vesting, payerAcc.Bandwidth, payerAcc.LastBandwidthTs, b.Timestamp())
+	curBandwidth, err := currentBandwidth(payerAcc, b.Timestamp())
 	if err != nil {
-		return err
-	}
-	if transaction.TxType() == TxOpVest {
-		payerAcc.Vesting, err = payerAcc.Vesting.Add(transaction.Value())
-		if err != nil {
-			return err
-		}
+		return false, err
 	}
 	avail, err := payerAcc.Vesting.Sub(curBandwidth)
 	if err != nil {
-		return err
+		return false, err
+	}
+	switch transaction.TxType() {
+	case TxOpVest:
+		avail, err = avail.Add(transaction.Value())
+		break
+	case TxOpWithdrawVesting:
+		if avail.Cmp(transaction.Value()) < 0 {
+			return false, ErrVestingNotEnough
+		}
+		avail, err = avail.Sub(transaction.Value())
+		break
+	default:
+		break
+	}
+	if err != nil {
+		return false, err
 	}
 	cpuUsage, netUsage, err := tx.Bandwidth()
 	if err != nil {
-		return err
+		return false, err
 	}
 	usage, err := cpuUsage.Add(netUsage)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if avail.Cmp(usage) < 0 {
-		return ErrBandwidthLimitExceeded
+		return false, ErrBandwidthLimitExceeded
 	}
 
-	return nil
-}
-
-// ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
-	newTxFunc, _ := txMap[transaction.TxType()]
-	tx, _ := newTxFunc(transaction)
-
-	// Case 1. Exceed block's max bandwidth - return to tx pool
-	// Exceed max cpu || net
-	if err := b.checkBandwidthLimit(tx); err != nil {
-		return err
-	}
+	// Part 2 : Execute transaction and affect state trie(store)
+	// Even if transaction fails, still consume account's bandwidth
 
 	// Update payer's bandwidth and transaction.from's unstaking status before execute transaction
-	payer, err := transaction.recoverPayer()
-	if err == ErrPayerSignatureNotExist {
-		payer = transaction.From()
-	}
 	if err := b.regenerateBandwidth(payer); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to regenerate bandwidth.")
-		return err
+		return false, err
 	}
-
 	err = b.updateUnstaking(transaction.From())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to update staking.")
-		return err
+		return false, err
 	}
-
-	// Case 2. Already executed transaction payload
-	// Case 3. Execute Error (Non-system error)
-	cpuUsage, netUsage, err := tx.Bandwidth()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to get bandwidth of a transaction.")
-		return err
-	}
-	usage, err := cpuUsage.Add(netUsage)
-	if err != nil {
-		return err
-	}
-
 	receipt := &Receipt{
 		executed: true,
 		cpuUsage: cpuUsage,
@@ -853,13 +845,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 	}
 	transaction.SetReceipt(receipt)
 
+	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
 	err = tx.Execute(b)
 	if err != nil {
 		receipt.executed = false
 		receipt.error = []byte(err.Error())
 		transaction.SetReceipt(receipt)
 	}
-
 	err = b.consumeBandwidth(payer, usage)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -869,14 +861,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) er
 		receipt.executed = false
 		receipt.error = []byte(err.Error())
 		transaction.SetReceipt(receipt)
-		return ErrExecutedErr
+		return false, ErrExecutedErr
 	}
 
 	if receipt.error == nil {
-		return nil
+		return false, nil
 	}
-
-	return ErrExecutedErr
+	return false, ErrExecutedErr
 }
 
 func (b *Block) updateUnstaking(addr common.Address) error {
@@ -981,9 +972,8 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 		}).Warn("Failed to get account.")
 		return err
 	}
-	vesting, bandwidth, lastTs := acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs
 
-	curBandwidth, err := currentBandwidth(vesting, bandwidth, lastTs, curTs)
+	curBandwidth, err := currentBandwidth(acc, curTs)
 	if err != nil {
 		return err
 	}
@@ -1002,7 +992,10 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 }
 
 // currentBandwidth calculates updated bandwidth based on current time.
-func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*util.Uint128, error) {
+func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
+	vesting := payer.Vesting
+	bandwidth := payer.Bandwidth
+	lastTs := payer.LastBandwidthTs
 	elapsed := curTs - lastTs
 	if time.Duration(elapsed)*time.Second >= BandwidthRegenerateDuration {
 		return util.NewUint128(), nil
@@ -1101,7 +1094,7 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
-	if err := b.ExecuteTransaction(tx, txMap); err != nil {
+	if _, err := b.ExecuteTransaction(tx, txMap); err != nil {
 		if err != ErrExecutedErr {
 			logging.Console().WithFields(logrus.Fields{
 				"err":         err,
