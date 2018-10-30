@@ -673,7 +673,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 
 // VerifyTransaction verifies transaction before execute
 // This process doesn't change account's nonce and bandwidth
-func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, local bool) error {
+func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory) error {
 	// Case 1. Unmatched Nonce
 	if err := b.state.checkNonce(transaction); err != nil {
 		return err
@@ -738,23 +738,7 @@ func (b *Block) VerifyTransaction(transaction *Transaction, txMap TxFactory, loc
 	if avail.Cmp(usage) < 0 {
 		return ErrBandwidthLimitExceeded
 	}
-	// Only for non-local transactions (from broadcast)
-	// Start verify from non-hard process
-	if !local {
-		// Case 1. TX hash unmatched
-		hash, err := transaction.CalcHash()
-		if err != nil {
-			return nil
-		}
-		if !byteutils.Equal(hash, transaction.Hash()) {
-			return ErrInvalidTransactionHash
-		}
 
-		// Case 2. Invalid signature
-		if err := transaction.verifySign(); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
