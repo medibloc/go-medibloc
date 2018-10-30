@@ -14,8 +14,10 @@ message BlockHeader {
   bytes acc_state_root = 21;
   bytes tx_state_root = 22;
   bytes dpos_root = 23;
-  bytes cpu_usage = 30;
-  bytes net_usage = 31;
+  bytes cpu_ref = 30;
+  bytes cpu_usage = 31;
+  bytes net_ref = 32;
+  bytes net_usage = 33;
 }
 
 message Block {

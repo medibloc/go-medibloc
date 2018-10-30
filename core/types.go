@@ -57,18 +57,24 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
-//DecimalCount is decimal count of balance
-const DecimalCount = "1000000000000"
-
 const (
-	rateNum     = "464"
-	rateDecimal = "100000000000"
+	//InflationRate is rate for reward
+	InflationRate = "4.64e-09"
+
+	//DecimalCount is decimal count of balance
+	DecimalCount = "1000000000000"
 )
 
 // Bandwidth limit per block
 const ( // TODO @ggomma change limit to real number
-	cpuLimit = "10000000000000000"
-	netLimit = "10000000000000000"
+	NumberOfBlocksInSingleTimeWindow = 201600 // 7 * 86400 / 3 (time window: 7days, block interval: 3 sec)
+	MinimumDiscountRatio             = "0.01"
+	cpuLimit                         = "3000000000000000" // 1000 TPS (block interval: 3 sec)
+	netLimit                         = "3072000000000000" // 3KB
+
+	BandwidthIncreaseRate = "1.05"
+	BandwidthDecreaseRate = "0.95"
+	ThresholdRatio        = "0.5"
 )
 
 // TxBaseBandwidth is base bandwidth value of transactions.

@@ -40,6 +40,9 @@ var (
 
 	// ErrUint128InvalidString indicates the string is not valid when converted to uin128.
 	ErrUint128InvalidString = errors.New("uint128: invalid string to uint128")
+
+	//ErrFailedToConvertFloat indicates the string is not valid when converted to float.
+	ErrFailedToConvertFloat = errors.New("float: invalid string to float")
 )
 
 // Uint128 defines uint128 type, based on big.Int.
@@ -234,4 +237,19 @@ func (u *Uint128) Bytes() []byte {
 // If x cannot be represented in a uint64, the result is undefined.
 func (u *Uint128) Uint64() uint64 {
 	return u.value.Uint64()
+}
+
+// MulWithFloat multiply uin128 with float64
+func (u *Uint128) MulWithFloat(s string) (*Uint128, error) {
+	x, ok := big.NewFloat(0).SetString(s)
+	if !ok {
+		return nil, ErrFailedToConvertFloat
+	}
+	tmp, _ := big.NewFloat(0).Mul(big.NewFloat(0).SetInt(u.value), x).Int(nil)
+	obj := &Uint128{tmp}
+
+	if err := obj.Validate(); nil != err {
+		return u, err
+	}
+	return obj, nil
 }

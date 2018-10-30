@@ -51,7 +51,9 @@ type BlockHeader struct {
 	alg  algorithm.Algorithm
 	sign []byte
 
+	cpuRef   *util.Uint128
 	cpuUsage *util.Uint128
+	netRef   *util.Uint128
 	netUsage *util.Uint128
 }
 
@@ -63,6 +65,16 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	}
 
 	supply, err := b.supply.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	cpuRef, err := b.cpuRef.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	netRef, err := b.netRef.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +102,9 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
 		DposRoot:     b.dposRoot,
+		CpuRef:       cpuRef,
 		CpuUsage:     cpuUsage,
+		NetRef:       netRef,
 		NetUsage:     netUsage,
 	}, nil
 }
@@ -119,7 +133,17 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.alg = algorithm.Algorithm(msg.Alg)
 		b.sign = msg.Sign
 
+		cpuRef, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuRef)
+		if err != nil {
+			return err
+		}
+
 		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
+		if err != nil {
+			return err
+		}
+
+		netRef, err := util.NewUint128FromFixedSizeByteSlice(msg.NetRef)
 		if err != nil {
 			return err
 		}
@@ -129,7 +153,9 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 			return err
 		}
 
+		b.cpuRef = cpuRef
 		b.cpuUsage = cpuUsage
+		b.netRef = netRef
 		b.netUsage = netUsage
 		return nil
 	}
@@ -234,6 +260,26 @@ func (b *BlockHeader) ChainID() uint32 {
 //SetChainID sets chainID
 func (b *BlockHeader) SetChainID(chainID uint32) {
 	b.chainID = chainID
+}
+
+//CPURef returns cpuRef
+func (b *BlockHeader) CPURef() *util.Uint128 {
+	return b.cpuRef
+}
+
+//SetCPURef sets cpuRef
+func (b *BlockHeader) SetCPURef(cpuRef *util.Uint128) {
+	b.cpuRef = cpuRef
+}
+
+//NetRef returns netRef
+func (b *BlockHeader) NetRef() *util.Uint128 {
+	return b.netRef
+}
+
+//SetNetRef sets netRef
+func (b *BlockHeader) SetNetRef(netRef *util.Uint128) {
+	b.netRef = netRef
 }
 
 //Alg returns signing algorithm
@@ -564,7 +610,9 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
+				cpuRef:     util.NewUint128(),
 				cpuUsage:   util.NewUint128(),
+				netRef:     util.NewUint128(),
 				netUsage:   util.NewUint128(),
 			},
 			transactions: make([]*Transaction, 0),
@@ -1286,19 +1334,7 @@ func BytesToBlockData(bytes []byte) (*BlockData, error) {
 
 //calcMintReward returns calculated block produce reward
 func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
-	rateNum, err := util.NewUint128FromString(rateNum)
-	if err != nil {
-		return nil, err
-	}
-	rateDecimal, err := util.NewUint128FromString(rateDecimal)
-	if err != nil {
-		return nil, err
-	}
-	tempReward, err := rateNum.Mul(parentSupply)
-	if err != nil {
-		return nil, err
-	}
-	reward, err := tempReward.Div(rateDecimal)
+	reward, err := parentSupply.MulWithFloat(InflationRate)
 	if err != nil {
 		return nil, err
 	}
@@ -1316,4 +1352,81 @@ func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 		return nil, err
 	}
 	return reward, nil
+}
+
+// calculate Reference cpu Bandwidth
+
+func calcRefCPU(parent *Block) (*util.Uint128, error) {
+	limit, err := util.NewUint128FromString(cpuLimit)
+	if err != nil {
+		return nil, err
+	}
+	return calcRefBandwidth(&calcRefBandwidthArg{
+		thresholdRatio: ThresholdRatio,
+		increaseRate:   BandwidthIncreaseRate,
+		decreaseRate:   BandwidthDecreaseRate,
+		discountRatio:  MinimumDiscountRatio,
+		limit:          limit,
+		usage:          parent.cpuUsage,
+		supply:         parent.supply,
+		previousRef:    parent.cpuRef,
+	})
+}
+
+// calculate Reference net Bandwidth
+func calcRefNet(parent *Block) (*util.Uint128, error) {
+	limit, err := util.NewUint128FromString(netLimit)
+	if err != nil {
+		return nil, err
+	}
+	return calcRefBandwidth(&calcRefBandwidthArg{
+		thresholdRatio: ThresholdRatio,
+		increaseRate:   BandwidthIncreaseRate,
+		decreaseRate:   BandwidthDecreaseRate,
+		discountRatio:  MinimumDiscountRatio,
+		limit:          limit,
+		usage:          parent.netUsage,
+		supply:         parent.supply,
+		previousRef:    parent.netRef,
+	})
+}
+
+type calcRefBandwidthArg struct {
+	thresholdRatio, increaseRate, decreaseRate, discountRatio string
+	limit, usage, supply, previousRef                         *util.Uint128
+}
+
+func calcRefBandwidth(arg *calcRefBandwidthArg) (*util.Uint128, error) {
+
+	thresholdBandwidth, err := arg.limit.MulWithFloat(arg.thresholdRatio)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set Reference Net Bandwidth
+	if arg.usage.Cmp(thresholdBandwidth) < 0 {
+		minRef, err := arg.supply.Div(util.NewUint128FromUint(NumberOfBlocksInSingleTimeWindow))
+		if err != nil {
+			return nil, err
+		}
+		minRef, err = arg.supply.Div(arg.limit)
+		if err != nil {
+			return nil, err
+		}
+		minRef, err = minRef.MulWithFloat(arg.discountRatio)
+		if err != nil {
+			return nil, err
+		}
+
+		newRef, err := arg.previousRef.MulWithFloat(arg.decreaseRate)
+		if err != nil {
+			return nil, err
+		}
+		if minRef.Cmp(newRef) > 0 {
+			return minRef, nil
+		}
+		return newRef, nil
+	}
+
+	return arg.previousRef.MulWithFloat(arg.increaseRate)
 }
