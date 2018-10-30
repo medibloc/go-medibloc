@@ -603,6 +603,14 @@ func (b *Block) Child() (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
+	cpuRef, err := calcRefCPU(b)
+	if err != nil {
+		return nil, err
+	}
+	netRef, err := calcRefNet(b)
+	if err != nil {
+		return nil, err
+	}
 	return &Block{
 		BlockData: &BlockData{
 			BlockHeader: &BlockHeader{
@@ -610,9 +618,9 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
-				cpuRef:     util.NewUint128(),
+				cpuRef:     cpuRef,
 				cpuUsage:   util.NewUint128(),
-				netRef:     util.NewUint128(),
+				netRef:     netRef,
 				netUsage:   util.NewUint128(),
 			},
 			transactions: make([]*Transaction, 0),
@@ -710,6 +718,8 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 	hasher.Write(supplyBytes)
 	// hasher.Write(bd.Alg())
 	hasher.Write(cpuUsageBytes)
+	hasher.Write(cpuUsageBytes)
+	hasher.Write(netUsageBytes)
 	hasher.Write(netUsageBytes)
 
 	for _, tx := range bd.transactions {
