@@ -955,10 +955,16 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
+	payload := new(RegisterAliasPayload)
+	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
+		return nil, err
+	}
+	fmt.Println("####")
+	fmt.Println(payload.AliasName)
 	return &RegisterAliasTx{
 		addr:       tx.From(),
 		collateral: tx.Value(),
-		aliasName:  string(tx.Payload()),
+		aliasName:  payload.AliasName,
 	}, nil
 }
 
@@ -998,6 +1004,11 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	} else {
 		return errors.New("alias already taken" +  aa.Account.Str())
 	}
+
+	aa2, err := b.State().accState.GetAliasAccount(tx.aliasName)
+	fmt.Println("@@@@@@@@@@@@@@@")
+	fmt.Println(tx.aliasName)
+	fmt.Println(aa2.Account.Hex())
 
 	err = acc.Data.Prepare()
 	if err != nil {
