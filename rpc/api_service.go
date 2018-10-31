@@ -234,6 +234,29 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	return coreTx2rpcTx(tx, true)
 }
 
+// GetTransactionReceipt returns transaction receipt
+func (s *APIService) GetTransactionReceipt(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.
+	GetTransactionReceiptResponse, error) {
+	if len(req.Hash) != 64 {
+		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
+	}
+
+	tailBlock := s.bm.TailBlock()
+	if tailBlock == nil {
+		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
+	}
+
+	txHash := byteutils.Hex2Bytes(req.Hash)
+	tx, err := tailBlock.State().GetTx(txHash)
+	if err != nil && err != trie.ErrNotFound {
+		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+	} else if err == trie.ErrNotFound { // tx is not in txsState
+		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
+	}
+	// If tx is already included in a block
+	return coreReceipt2rpcReceipt(tx)
+}
+
 // GetAccountTransactions returns transactions of the account
 func (s *APIService) GetAccountTransactions(ctx context.Context,
 	req *rpcpb.GetAccountTransactionsRequest) (*rpcpb.GetTransactionsResponse, error) {

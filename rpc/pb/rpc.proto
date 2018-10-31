@@ -53,6 +53,12 @@ service ApiService {
 		};
   }
 
+  rpc GetTransactionReceipt (GetTransactionRequest) returns (GetTransactionReceiptResponse) {
+    option (google.api.http) = {
+      get: "/v1/transaction/receipt"
+    };
+  }
+
   rpc GetAccountTransactions (GetAccountTransactionsRequest) returns (GetTransactionsResponse) {
     option (google.api.http) = {
 			get: "/v1/account/{address}/transactions"
@@ -237,6 +243,13 @@ message GetTransactionResponse {
   string payer_sign = 32;
   // If transaction is executed and included in the block, it returns true. otherwise, false.
   bool executed = 33;
+}
+
+message GetTransactionReceiptResponse {
+  bool executed = 1;
+  string cpuUsage = 2;
+  string netUsate = 3;
+  string error = 4;
 }
 
 message GetAccountTransactionsRequest {
