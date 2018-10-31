@@ -203,3 +203,33 @@ func TestPayerSigner(t *testing.T) {
 	t.Log("Payer's bandwidth after payer sign", payerAcc.Bandwidth)
 
 }
+
+func TestRegisterAlias(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+
+	//from := bb.TokenDist[testutil.DynastySize]
+	from := bb.TokenDist[0]
+	collateralAmount := uint64(1000000000000000)
+
+	bb = bb.
+		Tx().StakeTx(from, 10000000000000000).Execute().
+		Tx().Type(core.TxOpRegisterAlias).
+		Value(collateralAmount).
+		SignPair(from).
+		Payload(&core.RegisterAliasPayload{AliasName:"jiseob"}).
+		Execute()
+
+	bb.Expect().
+		Balance(from.Addr, uint64(1000000000000000000-collateralAmount-10000000000000000))
+	acc, err := bb.B.State().AccState().GetAliasAccount("jiseob")
+	//require.NoError(t, err)
+	if err != nil {
+		t.Log(err)
+	}
+	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
+
+	acc2, err := bb.B.State().AccState().GetAccount(from.Addr)
+	alias, err := acc2.GetData("", []byte("alias"))
+	t.Log(string(alias))
+
+}

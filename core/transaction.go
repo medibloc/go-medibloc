@@ -987,14 +987,16 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	}
 
 	aa, err := b.State().accState.GetAliasAccount(tx.aliasName)
+
 	if err != nil {
-		return err
-	}
-	if aa.Account.Str() != "" { // ask ""?
-		return errors.New("alias already taken")
+		if err == ErrNotFound {
+			aa.Account = tx.addr
+			b.State().accState.PutAliasAccount(aa, tx.aliasName)
+		} else {
+			return err
+		}
 	} else {
-		aa.Account = tx.addr
-		b.State().accState.PutAliasAccount(aa)
+		return errors.New("alias already taken" +  aa.Account.Str())
 	}
 
 	err = acc.Data.Prepare()

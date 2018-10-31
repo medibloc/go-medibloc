@@ -406,7 +406,7 @@ func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error)
 	}
 	accountBytes, err := as.Get([]byte(AliasName))
 	if err == ErrNotFound {
-		return aa, nil
+		return aa, err
 	}
 	if err != nil {
 		return nil, err
@@ -433,12 +433,12 @@ func (as *AccountState) putAccount(acc *Account) error {
 }
 
 //putAliasAccount put alias account to trie batch
-func (as *AccountState) PutAliasAccount(acc *AliasAccount) error {
-	accBytes, err := acc.aliasAccountToBytes()
+func (as *AccountState) PutAliasAccount(acc *AliasAccount, aliasName string) error {
+	aaBytes, err := acc.aliasAccountToBytes()
 	if err != nil {
 		return err
 	}
-	return as.Put(acc.Account.Bytes(), accBytes)
+	return as.Put([]byte(aliasName), aaBytes)
 }
 
 // incrementNonce increment account's nonce
