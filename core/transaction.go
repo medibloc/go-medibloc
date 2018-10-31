@@ -18,6 +18,8 @@ package core
 import (
 	"fmt"
 
+	"errors"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -938,5 +940,87 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *RevokeCertificationTx) Bandwidth() (*util.Uint128, error) {
+	return TxBaseBandwidth, nil
+}
+
+// RegisterAliasTx is a structure for register alias
+type RegisterAliasTx struct {
+	addr       common.Address
+	collateral *util.Uint128
+	aliasName  string
+}
+
+//NewRegisterAliasTx returns RegisterAliasTx
+func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.Payload()) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
+	return &RegisterAliasTx{
+		addr:       tx.From(),
+		collateral: tx.Value(),
+		aliasName:  string(tx.Payload()),
+	}, nil
+}
+
+//Execute RegisterAliasTx
+func (tx *RegisterAliasTx) Execute(b *Block) error {
+	// Set collateral to account's balance, and subtract from balance
+	acc, err := b.State().GetAccount(tx.addr)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Sub(tx.collateral)
+	if err == util.ErrUint128Underflow {
+		return ErrBalanceNotEnough
+	}
+	if err != nil {
+		return err
+	}
+	acc.Collateral = tx.collateral
+
+	pbAlias := &corepb.Alias{
+		AliasName: tx.aliasName,
+	}
+	aliasBytes, err := proto.Marshal(pbAlias)
+	if err != nil {
+		return err
+	}
+
+	aa, err := b.State().accState.GetAliasAccount(tx.aliasName)
+	if err != nil {
+		return err
+	}
+	if aa.Account.Str() != "" { // ask ""?
+		return errors.New("alias already taken")
+	} else {
+		aa.Account = tx.addr
+		b.State().accState.PutAliasAccount(aa)
+	}
+
+	err = acc.Data.Prepare()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = acc.PutData(AliasPrefix, []byte("alias"), aliasBytes)
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Commit()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Flush()
+	if err != nil {
+		return err
+	}
+	return b.State().PutAccount(acc)
+}
+
+//Bandwidth returns bandwidth.
+func (tx *RegisterAliasTx) Bandwidth() (*util.Uint128, error) {
 	return TxBaseBandwidth, nil
 }

@@ -25,6 +25,10 @@ message Account{
   bytes data_root_hash = 40;
 }
 
+message AliasAccount{
+  bytes account = 1;
+}
+
 message DataState {
   bytes tx_state_root_hash = 1;
   bytes record_state_root_hash = 2;
@@ -46,4 +50,8 @@ message Certification {
   int64 issue_time = 4;
   int64 expiration_time = 5;
   int64 revocation_time = 6;
+}
+
+message Alias {
+  string alias_name = 1;
 }

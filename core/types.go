@@ -35,6 +35,7 @@ const (
 	TxOpWithdrawVesting     = "withdraw_vesting"
 	TxOpAddCertification    = "add_certification"
 	TxOpRevokeCertification = "revoke_certification"
+	TxOpRegisterAlias       = "register_alias"
 )
 
 // Transaction related defaults

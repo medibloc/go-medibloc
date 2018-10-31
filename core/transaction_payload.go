@@ -119,6 +119,29 @@ func (payload *DefaultPayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
+// RegisterAliasPayload is payload type for register alias
+type RegisterAliasPayload struct {
+	AliasName string
+}
+
+// FromBytes converts bytes to payload.
+func (payload *RegisterAliasPayload) FromBytes(b []byte) error {
+	payloadPb := &corepb.RegisterAliasPayload{}
+	if err := proto.Unmarshal(b, payloadPb); err != nil {
+		return err
+	}
+	payload.AliasName = payloadPb.AliasName
+	return nil
+}
+
+// ToBytes returns marshaled DefaultPayload
+func (payload *RegisterAliasPayload) ToBytes() ([]byte, error) {
+	payloadPb := &corepb.RegisterAliasPayload{
+		AliasName: payload.AliasName,
+	}
+	return proto.Marshal(payloadPb)
+}
+
 // BytesToTransactionPayload convert byte slice to TransactionPayload
 func BytesToTransactionPayload(bytes []byte, payload TransactionPayload) error {
 	if err := payload.FromBytes(bytes); err != nil {
