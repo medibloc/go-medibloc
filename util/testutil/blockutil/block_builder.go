@@ -296,15 +296,12 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
 	_, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
-	if err != nil {
-		if err != core.ErrExecutedErr {
-			require.Equal(n.t, expected, err)
-			require.NoError(n.t, n.B.RollBack())
-			return n
-		}
+	require.Equal(n.t, expected, err)
+	if err != core.ErrExecutedErr {
+		require.NoError(n.t, n.B.RollBack())
+		return n
 	}
-
-	err = n.B.AcceptTransaction(tx, DefaultTxMap)
+	require.NoError(n.t, n.B.AcceptTransaction(tx, DefaultTxMap))
 	require.NoError(n.t, n.B.Commit())
 
 	return n
