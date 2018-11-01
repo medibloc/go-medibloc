@@ -52,6 +52,42 @@ func TestGetAccountApi(t *testing.T) {
 		ValueEqual("voted", []string{}).
 		ValueNotEqual("bandwidth", "0").
 		ValueEqual("unstaking", "0")
+
+	e.GET("/v1/account").
+		WithQuery("address", payer.Addr).
+		WithQuery("height", "2").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ValueEqual("address", payer.Address()).
+		ValueEqual("balance", "0").
+		ValueEqual("nonce", "2").
+		ValueEqual("vesting", "1000000000000000000").
+		ValueEqual("voted", []string{}).
+		ValueNotEqual("bandwidth", "0").
+		ValueEqual("unstaking", "0")
+
+	e.GET("/v1/account").
+		WithQuery("address", payer.Addr).
+		WithQuery("height", "3").
+		Expect().
+		Status(http.StatusBadRequest)
+
+	e.GET("/v1/account").
+		WithQuery("address", payer.Addr).
+		WithQuery("type", "genesis").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ValueEqual("vesting", "0")
+
+	e.GET("/v1/account").
+		WithQuery("address", payer.Addr).
+		WithQuery("type", "confirmed").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ValueEqual("vesting", "0")
 }
 
 func TestGetBlockApi(t *testing.T) {
@@ -72,6 +108,11 @@ func TestGetBlockApi(t *testing.T) {
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
 	// The block response should be the same one for designated hash, type, height parameter
+	e.GET("/v1/block").
+		WithQuery("hash", "0123456789012345678901234567890123456789012345678901234567890123").
+		Expect().
+		Status(http.StatusInternalServerError)
+
 	e.GET("/v1/block").
 		WithQuery("hash", byteutils.Bytes2Hex(b.Hash())).
 		Expect().
@@ -121,6 +162,18 @@ func TestGetBlockApi(t *testing.T) {
 		ContainsKey("txs_root").
 		ContainsKey("dpos_root").
 		ContainsKey("transactions")
+
+	e.GET("/v1/block").
+		WithQuery("type", "confirmed").
+		Expect().
+		Status(http.StatusOK).
+		JSON().Object().
+		ValueEqual("height", "1")
+
+	e.GET("/v1/block").
+		WithQuery("height", "5").
+		Expect().
+		Status(http.StatusBadRequest)
 }
 
 func TestGetBlocksApi(t *testing.T) {
