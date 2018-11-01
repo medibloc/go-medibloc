@@ -159,3 +159,19 @@ func TestGetBlocksApi(t *testing.T) {
 		WithQuery("to", "2").
 		Expect().JSON().Schema(schema)
 }
+
+func TestGetCandidatesApi(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	e.GET("/v1/candidates").
+		Expect().JSON().
+		Path("$.candidates").
+		Array().Length().Equal(3)
+}
