@@ -175,3 +175,23 @@ func TestGetCandidatesApi(t *testing.T) {
 		Path("$.candidates").
 		Array().Length().Equal(3)
 }
+
+func TestGetDynastyApi(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	addrs := e.GET("/v1/dynasty").
+		Expect().JSON().
+		Path("$.addresses").
+		Array()
+	addrs.Length().Equal(3)
+	for _, addr := range addrs.Iter() {
+		addr.String().Length().Equal(66)
+	}
+}
