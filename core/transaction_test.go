@@ -229,7 +229,12 @@ func TestRegisterAlias(t *testing.T) {
 	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
 
 	acc2, err := bb.B.State().AccState().GetAccount(from.Addr)
-	alias, err := acc2.GetData("", []byte("alias"))
-	t.Log(string(alias))
+	aliasBytes, err := acc2.GetData("", []byte("alias"))
+	pbAlias := new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		t.Log(err)
+	}
 
+	t.Log(pbAlias.AliasName)
 }
