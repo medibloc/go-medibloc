@@ -195,3 +195,26 @@ func TestGetDynastyApi(t *testing.T) {
 		addr.String().Length().Equal(66)
 	}
 }
+
+func TestGetMedState(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+		NextMintSlot2(time.Now().Unix()))
+	b := bb.SignMiner().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	e.GET("/v1/node/medstate").
+		Expect().JSON().Object().
+		ValueEqual("height", "2").
+		ValueEqual("LIB", byteutils.Bytes2Hex(bb.Genesis().B.Hash())).
+		ValueEqual("tail", byteutils.Bytes2Hex(b.Hash()))
+}
