@@ -398,7 +398,7 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	return acc, nil
 }
 
-//GetAccount returns account
+//GetAliasAccount returns alias account
 func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error) {
 	aa, err := newAliasAccount(as.storage)
 	if err != nil {
@@ -432,7 +432,7 @@ func (as *AccountState) putAccount(acc *Account) error {
 	return as.Put(acc.Address.Bytes(), accBytes)
 }
 
-//putAliasAccount put alias account to trie batch
+//PutAliasAccount put alias account to trie batch
 func (as *AccountState) PutAliasAccount(acc *AliasAccount, aliasName string) error {
 	aaBytes, err := acc.aliasAccountToBytes()
 	if err != nil {

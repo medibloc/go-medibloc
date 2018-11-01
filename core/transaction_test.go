@@ -216,7 +216,7 @@ func TestRegisterAlias(t *testing.T) {
 		Tx().Type(core.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
-		Payload(&core.RegisterAliasPayload{AliasName:"jiseob"}).
+		Payload(&core.RegisterAliasPayload{AliasName: "jiseob"}).
 		Execute()
 
 	bb.Expect().
@@ -239,7 +239,6 @@ func TestRegisterAlias(t *testing.T) {
 	t.Log(pbAlias.AliasName)
 }
 
-
 func TestRegisterAndDeregisterAlias(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
@@ -252,7 +251,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		Tx().Type(core.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
-		Payload(&core.RegisterAliasPayload{AliasName:"jiseob"}).
+		Payload(&core.RegisterAliasPayload{AliasName: "jiseob"}).
 		Execute()
 
 	bb.Expect().
@@ -273,13 +272,13 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	}
 	t.Log(pbAlias.AliasName)
 
-
-
 	bb = bb.
 		Tx().Type(core.TxOpDeregisterAlias).
 		SignPair(from).
 		Execute()
 
+	bb.Expect().
+		Balance(from.Addr, uint64(1000000000000000000-10000000000000000))
 
 	acc, err = bb.B.State().AccState().GetAliasAccount("jiseob")
 	//require.NoError(t, err)
