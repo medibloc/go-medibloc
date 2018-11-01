@@ -252,3 +252,28 @@ func TestGetPendingTransactions(t *testing.T) {
 		Path("$.transactions").
 		Array().Length().Equal(10)
 }
+
+func TestGetTransaction(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+		NextMintSlot2(time.Now().Unix())).Stake()
+	tx := bb.Tx().RandomTx().Build()
+	b := bb.ExecuteTx(tx).SignMiner().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	e.GET("/v1/transaction").
+		WithQuery("hash", byteutils.Bytes2Hex(tx.Hash())).
+		Expect().
+		JSON().Object().
+		ValueEqual("hash", byteutils.Bytes2Hex(tx.Hash())).
+		ValueEqual("executed", true)
+}
