@@ -36,6 +36,7 @@ const (
 	TxOpAddCertification    = "add_certification"
 	TxOpRevokeCertification = "revoke_certification"
 	TxOpRegisterAlias       = "register_alias"
+	TxOpDeregisterAlias     = "Deregister_alias"
 )
 
 // Transaction related defaults

@@ -48,6 +48,7 @@ var DefaultTxMap = core.TxFactory{
 	core.TxOpAddCertification:    core.NewAddCertificationTx,
 	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
 	core.TxOpRegisterAlias:       core.NewRegisterAliasTx,
+	core.TxOpDeregisterAlias:       core.NewDeregisterAliasTx,
 
 	dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
 	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,

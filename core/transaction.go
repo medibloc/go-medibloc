@@ -17,7 +17,6 @@ package core
 
 import (
 	"fmt"
-	"testing/quick"
 	"unicode"
 
 	"errors"
@@ -950,7 +949,7 @@ type RegisterAliasTx struct {
 	addr       common.Address
 	collateral *util.Uint128
 	aliasName  string
-	timestamp int64
+	timestamp  int64
 }
 
 //NewRegisterAliasTx returns RegisterAliasTx
@@ -973,11 +972,9 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 //Execute RegisterAliasTx
 func (tx *RegisterAliasTx) Execute(b *Block) error {
 	err := checkAliasCondition(tx.aliasName)
-	if err !=nil {
+	if err != nil {
 		return err
 	}
-
-
 	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
 		return err
@@ -990,7 +987,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 	if pbAlias.AliasName != "" {
-		return errors.New("already have a alias name. deregister it first : " +  pbAlias.AliasName)
+		return errors.New("already have a alias name. deregister it first : " + pbAlias.AliasName)
 	}
 
 	acc.Balance, err = acc.Balance.Sub(tx.collateral)
@@ -1001,14 +998,14 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 
-	collateral, err := tx.collateral.ToFixedSizeByteSlice()
+	collateralBytes, err := tx.collateral.ToFixedSizeByteSlice()
 	if err != nil {
 		return err
 	}
 	pbAlias = &corepb.Alias{
-		AliasName: tx.aliasName,
-		AliasCollateral: collateral,
-		Timestamp:tx.timestamp,
+		AliasName:       tx.aliasName,
+		AliasCollateral: collateralBytes,
+		Timestamp:       tx.timestamp,
 	}
 	aliasBytes, err = proto.Marshal(pbAlias)
 	if err != nil {
@@ -1047,16 +1044,15 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 		if err != nil {
 			return err
 		}
-		return errors.New("alias already taken by " +  aa.Account.Hex())
+		return errors.New("alias already taken by " + aa.Account.Hex())
 	}
-	return err
+	return nil
 }
 
 //Bandwidth returns bandwidth.
 func (tx *RegisterAliasTx) Bandwidth() (*util.Uint128, error) {
 	return TxBaseBandwidth, nil
 }
-
 
 func checkAliasCondition(an string) error {
 	if an == "" {
@@ -1068,23 +1064,19 @@ func checkAliasCondition(an string) error {
 	for i := 0; i < len(an); i++ {
 		ch := rune(an[i])
 
-		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch))  {
+		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
 			return errors.New("aliasname should contain only lowercase letters and numbers")
 		}
-		if i==0 && unicode.IsNumber(ch) {
+		if i == 0 && unicode.IsNumber(ch) {
 			return errors.New("first letter of alias name should not be number")
 		}
 	}
 	return nil
 }
 
-
-
-
-
 // DeregisterAliasTx is a structure for deregister alias
 type DeregisterAliasTx struct {
-	addr       common.Address
+	addr common.Address
 }
 
 //NewDeregisterAliasTx returns RegisterAliasTx
@@ -1092,21 +1084,43 @@ func NewDeregisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
-	return &RegisterAliasTx{
-		addr:       tx.From(),
+	return &DeregisterAliasTx{
+		addr: tx.From(),
 	}, nil
 }
 
 //Execute DeregisterAliasTx
 func (tx *DeregisterAliasTx) Execute(b *Block) error {
-	// Set collateral to account's balance, and subtract from balance
 	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
 		return err
 	}
 
-	pbAlias := &corepb.Alias{}
-	aliasBytes, err := proto.Marshal(pbAlias)
+	aliasBytes, err := acc.GetData("", []byte("alias"))
+	pbAlias := new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		return err
+	}
+	if pbAlias.AliasName == "" {
+		return errors.New("doesn't have any alias")
+	}
+	collateral, err := util.NewUint128FromFixedSizeByteSlice(pbAlias.AliasCollateral)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Add(collateral)
+	if err != nil {
+		return err
+	}
+
+	err = b.State().accState.PutAliasAccount(&AliasAccount{}, pbAlias.AliasName)
+	if err != nil {
+		return err
+	}
+
+	pbAlias = &corepb.Alias{}
+	aliasBytes, err = proto.Marshal(pbAlias)
 	if err != nil {
 		return err
 	}
@@ -1130,45 +1144,10 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-
-
-
-
-
-
-
-
-	acc.Balance, err = acc.Balance.Add(acc.Collateral)
-	if err == util.ErrUint128Underflow {
-		return ErrBalanceNotEnough
-	}
-	acc.Collateral = util.NewUint128FromUint(0)//TODO collateral, sub
-
-
-
-	if err != nil {
-		return err
-	}
-
-
-
-	aa, err := b.State().accState.GetAliasAccount(tx.aliasName)
-
-	if err != nil {
-		if err == ErrNotFound {
-			aa.Account = tx.addr
-			b.State().accState.PutAliasAccount(aa, tx.aliasName)
-		} else {
-			return err
-		}
-	} else {
-		return errors.New("alias already taken" +  aa.Account.Str())
-	}
-
 	return b.State().PutAccount(acc)
 }
 
 //Bandwidth returns bandwidth.
-func (tx *RegisterAliasTx) Bandwidth() (*util.Uint128, error) {
+func (tx *DeregisterAliasTx) Bandwidth() (*util.Uint128, error) {
 	return TxBaseBandwidth, nil
 }
