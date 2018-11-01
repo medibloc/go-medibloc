@@ -118,3 +118,44 @@ func TestGetBlockApi(t *testing.T) {
 		ContainsKey("dpos_root").
 		ContainsKey("transactions")
 }
+
+func TestGetBlocksApi(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist)
+	b := bb.Block(seed.GenesisBlock()).
+		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).SignMiner().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	schema := `
+	{
+		"type":"object",
+		"properties":{
+			"blocks":{
+				"type":"array",
+				"items":{
+					"type":"object",
+					"properties":{
+						"height": {
+							"type":"string"
+						}
+					}
+				},
+				"minItems":2
+			}
+		}
+	}`
+
+	e.GET("/v1/blocks").
+		WithQuery("from", "1").
+		WithQuery("to", "2").
+		Expect().JSON().Schema(schema)
+}
