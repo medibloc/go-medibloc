@@ -226,3 +226,8 @@ func TrieLen(t *testing.T, trie *trie.Batch) int {
 	}
 	return cnt
 }
+
+//IP2Local changes ip address to localhost address
+func IP2Local(ipAddr string) string {
+	return "http://localhost:" + strings.Split(ipAddr, ":")[1]
+}
