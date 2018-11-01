@@ -213,8 +213,14 @@ func TestGetBlocksApi(t *testing.T) {
 
 	e.GET("/v1/blocks").
 		WithQuery("from", "1").
-		WithQuery("to", "2").
+		WithQuery("to", "5").
 		Expect().JSON().Schema(schema)
+
+	e.GET("/v1/blocks").
+		WithQuery("from", "2").
+		WithQuery("to", "1").
+		Expect().
+		Status(http.StatusBadRequest)
 }
 
 func TestGetCandidatesApi(t *testing.T) {
