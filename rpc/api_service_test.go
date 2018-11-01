@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/core"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -276,4 +278,38 @@ func TestGetTransaction(t *testing.T) {
 		JSON().Object().
 		ValueEqual("hash", byteutils.Bytes2Hex(tx.Hash())).
 		ValueEqual("executed", true)
+}
+
+func TestGetAccountTransactions(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+		NextMintSlot2(time.Now().Unix())).Stake()
+
+	payer := seed.Config.TokenDist[0]
+	receiver := seed.Config.TokenDist[1]
+	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx).SignMiner().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	result := e.GET("/v1/account/{address}/transactions", payer.Addr.String()).
+		Expect().
+		JSON().Object().
+		Path("$.transactions").
+		Array()
+
+	result.Length().Equal(4) // Genesis, GenesisVest, Vest, Transfer
+
+	for _, TX := range result.Iter() {
+		assert.True(t, TX.Object().Path("$.from").String().Raw() == tx.From().String() || TX.Object().Path("$.to").
+			String().Raw() == tx.From().String())
+	}
 }
