@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/rpc"
+
 	"github.com/medibloc/go-medibloc/core"
 
 	"github.com/stretchr/testify/assert"
@@ -71,7 +73,9 @@ func TestGetAccountApi(t *testing.T) {
 		WithQuery("address", payer.Addr).
 		WithQuery("height", "3").
 		Expect().
-		Status(http.StatusBadRequest)
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidBlockHeight)
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
@@ -111,7 +115,9 @@ func TestGetBlockApi(t *testing.T) {
 	e.GET("/v1/block").
 		WithQuery("hash", "0123456789012345678901234567890123456789012345678901234567890123").
 		Expect().
-		Status(http.StatusInternalServerError)
+		Status(http.StatusInternalServerError).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgBlockNotFound)
 
 	e.GET("/v1/block").
 		WithQuery("hash", byteutils.Bytes2Hex(b.Hash())).
@@ -173,7 +179,9 @@ func TestGetBlockApi(t *testing.T) {
 	e.GET("/v1/block").
 		WithQuery("height", "5").
 		Expect().
-		Status(http.StatusBadRequest)
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidBlockHeight)
 }
 
 func TestGetBlocksApi(t *testing.T) {
@@ -220,7 +228,9 @@ func TestGetBlocksApi(t *testing.T) {
 		WithQuery("from", "2").
 		WithQuery("to", "1").
 		Expect().
-		Status(http.StatusBadRequest)
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidRequest)
 }
 
 func TestGetCandidatesApi(t *testing.T) {
@@ -337,6 +347,13 @@ func TestGetTransaction(t *testing.T) {
 		JSON().Object().
 		ValueEqual("hash", byteutils.Bytes2Hex(tx.Hash())).
 		ValueEqual("executed", true)
+
+	e.GET("/v1/transaction").
+		WithQuery("hash", "0123456789").
+		Expect().
+		Status(http.StatusNotFound).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
 }
 
 func TestGetAccountTransactions(t *testing.T) {
@@ -351,15 +368,15 @@ func TestGetAccountTransactions(t *testing.T) {
 		NextMintSlot2(time.Now().Unix())).Stake()
 
 	payer := seed.Config.TokenDist[0]
-	receiver := seed.Config.TokenDist[1]
-	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx).SignMiner().Build()
+	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(payer.Addr).Value(1).Nonce(3).SignPair(payer).Build()
 
-	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	seed.Med.TransactionManager().Push(tx)
+	assert.Equal(t, tx, seed.Med.TransactionManager().Get(tx.Hash()))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
 	result := e.GET("/v1/account/{address}/transactions", payer.Addr.String()).
+		WithQuery("include_pending", "true").
 		Expect().
 		JSON().Object().
 		Path("$.transactions").
