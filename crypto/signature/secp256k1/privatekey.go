@@ -57,11 +57,7 @@ func (k *PrivateKey) Algorithm() algorithm.Algorithm {
 	return algorithm.SECP256K1
 }
 
-// PrivateKey returns privateKey.
-func (k *PrivateKey) PrivateKey() *ecdsa.PrivateKey {
-	return k.privateKey
-}
-
+// Encoded encodes to bytes.
 func (k *PrivateKey) Encoded() ([]byte, error) {
 	return FromECDSAPrivateKey(k.privateKey), nil
 }

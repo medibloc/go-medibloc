@@ -17,10 +17,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/medibloc/go-medibloc/keystore"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/medibloc/go-medibloc/keystore"
 
 	"golang.org/x/crypto/ssh/terminal"
 )

@@ -24,14 +24,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/sha3"
-	"io"
-	"io/ioutil"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/crypto"
@@ -350,7 +351,7 @@ func numbytesToHex(s string) string {
 	m["65"] = "e"
 	m["66"] = "f"
 	var hex string
-	for i:=0; i<len(s)/2; i++ {
+	for i := 0; i < len(s)/2; i++ {
 		hex += m[s[2*i:2*i+2]]
 	}
 	return hex

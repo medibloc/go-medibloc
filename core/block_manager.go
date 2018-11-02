@@ -586,7 +586,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
 			"syncActivationHeight": bm.syncActivationHeight,
-			"err":                  err,
+			"err": err,
 		}).Debug("Failed to activate sync download manager.")
 		return false
 	}

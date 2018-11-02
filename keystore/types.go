@@ -16,9 +16,9 @@
 package keystore
 
 import (
-"github.com/medibloc/go-medibloc/common"
-"github.com/medibloc/go-medibloc/crypto/signature"
-"github.com/pborman/uuid"
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/crypto/signature"
+	"github.com/pborman/uuid"
 )
 
 // CipherJSON json format for crypto field in keystore file
@@ -46,7 +46,7 @@ type Key struct {
 	PrivateKey signature.PrivateKey
 }
 
-// encryptedKeyJSONV3
+// EncryptedKeyJSONV3 is a struct for encrypted key
 type EncryptedKeyJSONV3 struct {
 	Address string     `json:"address"`
 	Crypto  CipherJSON `json:"crypto"`

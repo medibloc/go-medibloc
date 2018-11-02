@@ -16,12 +16,13 @@
 package keystore_test
 
 import (
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
