@@ -16,6 +16,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
@@ -108,4 +110,28 @@ func (r *Receipt) FromProto(msg proto.Message) error {
 		return nil
 	}
 	return ErrCannotConvertReceipt
+}
+
+func (r *Receipt) String() string {
+	return fmt.Sprintf("{executed: %v, cpu: %v, net: %v, err: %v}", r.executed, r.cpuUsage, r.netUsage, r.error)
+}
+
+//NewReceipt returns new receipt
+func NewReceipt() *Receipt {
+	return &Receipt{
+		executed: false,
+		cpuUsage: util.NewUint128(),
+		netUsage: util.NewUint128(),
+		error:    nil,
+	}
+}
+
+//NewReceipt returns new receipt for genesis transaction
+func NewGenesisReceipt() *Receipt {
+	return &Receipt{
+		executed: true,
+		cpuUsage: util.NewUint128(),
+		netUsage: util.NewUint128(),
+		error:    nil,
+	}
 }

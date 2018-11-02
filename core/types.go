@@ -17,6 +17,7 @@ package core
 
 import (
 	"errors"
+	"math/big"
 
 	"time"
 
@@ -57,24 +58,23 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
-const (
-	//InflationRate is rate for reward
-	InflationRate = "4.64e-09"
-
-	//DecimalCount is decimal count of balance
-	DecimalCount = "1000000000000"
-)
+//InflationRate is rate for reward
+var InflationRate = big.NewRat(464, 1000000000000) // 4.64e-09
+//InflationRoundDown is constant for round down reward
+const InflationRoundDown = 10000000000 //1e10
 
 // Bandwidth limit per block
 const ( // TODO @ggomma change limit to real number
-	NumberOfBlocksInSingleTimeWindow = 201600 // 7 * 86400 / 3 (time window: 7days, block interval: 3 sec)
-	MinimumDiscountRatio             = "0.01"
-	cpuLimit                         = "3000000000000000" // 1000 TPS (block interval: 3 sec)
-	netLimit                         = "3072000000000000" // 3KB
+	NumberOfBlocksInSingleTimeWindow = 201600  // 7 * 86400 / 3 (time window: 7days, block interval: 3 sec)
+	cpuLimit                         = 3000000 // 1000 TPS (block interval: 3 sec, transfer tx: 1000 )
+	netLimit                         = 3000000 // 3MB
+)
 
-	BandwidthIncreaseRate = "1.05"
-	BandwidthDecreaseRate = "0.95"
-	ThresholdRatio        = "0.5"
+var (
+	MinimumDiscountRatio  = big.NewRat(1, 100)
+	BandwidthIncreaseRate = big.NewRat(105, 100)
+	BandwidthDecreaseRate = big.NewRat(95, 100)
+	ThresholdRatio        = big.NewRat(5, 10)
 )
 
 // TxBaseBandwidth is base bandwidth value of transactions.
@@ -93,7 +93,7 @@ var (
 	ErrInvalidAmount                    = errors.New("invalid amount")
 	ErrNotBatching                      = errors.New("not batching")
 	ErrVestingNotEnough                 = errors.New("vesting is not enough")
-	ErrBandwidthLimitExceeded           = errors.New("bandwidth limit exceeded")
+	ErrBandwidthNotEnough               = errors.New("bandwidth limit exceeded")
 	ErrCannotConvertTransaction         = errors.New("proto message cannot be converted into Transaction")
 	ErrCannotRevertLIB                  = errors.New("cannot revert latest irreversible block")
 	ErrCannotRemoveBlockOnCanonical     = errors.New("cannot remove block on canonical chain")
@@ -160,10 +160,10 @@ var (
 	ErrFailedToDirectPush               = errors.New("cannot direct push to chain")
 	ErrSystemError                      = errors.New("undefined system error has been occurred")
 	ErrExceedBlockMaxCPUUsage           = errors.New("transaction exceeds block's max cpu usage")
-	ErrExceedBlockMaxNETUsage           = errors.New("transaction exceeds block's max net usage")
+	ErrExceedBlockMaxNetUsage           = errors.New("transaction exceeds block's max net usage")
 	ErrCannotConvertReceipt             = errors.New("proto message cannot be converted into Receipt")
 	ErrInvalidReceiptToProto            = errors.New("receipt cannot be converted into proto")
-	ErrExecutedErr                      = errors.New("error has been occured and saved in transaction receipt")
+	ErrNoTransactionReceipt             = errors.New("failed to load transaction receipt")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -234,7 +234,7 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 //ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
-	Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error)
+	Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error)
 }
 
 // TransactionPayload is an interface of transaction payload.

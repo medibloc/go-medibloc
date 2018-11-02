@@ -435,12 +435,28 @@ func (t *Transaction) Clone() (*Transaction, error) {
 	return newTx, nil
 }
 
+//Size returns bytes size of transaction
+func (t *Transaction) Size() (int, error) {
+	pbTx, err := t.ToProto()
+	if err != nil {
+		return 0, err
+	}
+	tmp, _ := pbTx.(*corepb.Transaction)
+	tmp.Receipt = nil
+	txBytes, err := proto.Marshal(tmp)
+	if err != nil {
+		return 0, err
+	}
+	return len(txBytes), nil
+}
+
 //TransferTx is a structure for sending MED
 type TransferTx struct {
 	from    common.Address
 	to      common.Address
 	value   *util.Uint128
 	payload *DefaultPayload
+	size    int
 }
 
 //NewTransferTx returns TransferTx
@@ -455,12 +471,17 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 
 	return &TransferTx{
 		from:    tx.From(),
 		to:      tx.To(),
 		value:   tx.Value(),
 		payload: payload,
+		size:    size,
 	}, nil
 }
 
@@ -500,8 +521,16 @@ func (tx *TransferTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *TransferTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *TransferTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1000))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }
 
 //AddRecordTx is a structure for adding record
@@ -509,6 +538,7 @@ type AddRecordTx struct {
 	owner      common.Address
 	timestamp  int64
 	recordHash []byte
+	size       int
 }
 
 //NewAddRecordTx returns AddRecordTx
@@ -520,11 +550,16 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 
 	return &AddRecordTx{
 		owner:      tx.From(),
 		timestamp:  tx.Timestamp(),
 		recordHash: payload.RecordHash,
+		size:       size,
 	}, nil
 }
 
@@ -577,14 +612,23 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddRecordTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *AddRecordTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }
 
 //VestTx is a structure for withdrawing vesting
 type VestTx struct {
 	user   common.Address
 	amount *util.Uint128
+	size   int
 }
 
 //NewVestTx returns NewTx
@@ -595,9 +639,14 @@ func NewVestTx(tx *Transaction) (ExecutableTx, error) {
 	if tx.Value().Cmp(util.Uint128Zero()) == 0 {
 		return nil, ErrCannotUseZeroValue
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &VestTx{
 		user:   tx.From(),
 		amount: tx.Value(),
+		size:   size,
 	}, nil
 }
 
@@ -645,14 +694,24 @@ func (tx *VestTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VestTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *VestTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1000))
+	if err != nil {
+		return nil, nil, err
+	}
+	//fmt.Println("txSize:",uint64(tx.size))
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }
 
 //WithdrawVestingTx is a structure for withdrawing vesting
 type WithdrawVestingTx struct {
 	user   common.Address
 	amount *util.Uint128
+	size   int
 }
 
 //NewWithdrawVestingTx returns WithdrawVestingTx
@@ -660,9 +719,14 @@ func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &WithdrawVestingTx{
 		user:   tx.From(),
 		amount: tx.Value(),
+		size:   size,
 	}, nil
 }
 
@@ -735,18 +799,26 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *WithdrawVestingTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *WithdrawVestingTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1000))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }
 
 //AddCertificationTx is a structure for adding certification
 type AddCertificationTx struct {
-	Issuer    common.Address
-	Certified common.Address
-
+	Issuer          common.Address
+	Certified       common.Address
 	CertificateHash []byte
 	IssueTime       int64
 	ExpirationTime  int64
+	size            int
 }
 
 //NewAddCertificationTx returns AddCertificationTx
@@ -758,13 +830,17 @@ func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
-
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &AddCertificationTx{
 		Issuer:          tx.From(),
 		Certified:       tx.To(),
 		CertificateHash: payload.CertificateHash,
 		IssueTime:       payload.IssueTime,
 		ExpirationTime:  payload.ExpirationTime,
+		size:            size,
 	}, nil
 }
 
@@ -863,8 +939,16 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddCertificationTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *AddCertificationTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }
 
 //RevokeCertificationTx is a structure for revoking certification
@@ -872,6 +956,7 @@ type RevokeCertificationTx struct {
 	Revoker         common.Address
 	CertificateHash []byte
 	RevocationTime  int64
+	size            int
 }
 
 //NewRevokeCertificationTx returns RevokeCertificationTx
@@ -883,10 +968,15 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &RevokeCertificationTx{
 		Revoker:         tx.From(),
 		CertificateHash: payload.CertificateHash,
 		RevocationTime:  tx.timestamp,
+		size:            size,
 	}, nil
 }
 
@@ -976,6 +1066,14 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *RevokeCertificationTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return TxBaseCPUBandwidth, TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *RevokeCertificationTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }

@@ -284,25 +284,6 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	acc, err := tailBlock.State().GetAccount(address)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
-	}
-	if acc != nil {
-		txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
-		for _, hash := range txList {
-			tx, err := tailBlock.State().GetTx(hash)
-			if err != nil {
-				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
-			}
-			rpcTx, err := coreTx2rpcTx(tx, true)
-			if err != nil {
-				return nil, err
-			}
-			txs = append(txs, rpcTx)
-		}
-	}
-
 	return &rpcpb.GetTransactionsResponse{
 		Transactions: txs,
 	}, nil

@@ -91,9 +91,10 @@ func (tb *TxBuilder) To(addr common.Address) *TxBuilder {
 }
 
 //Value sets value
-func (tb *TxBuilder) Value(value uint64) *TxBuilder {
+func (tb *TxBuilder) Value(med float64) *TxBuilder {
 	n := tb.copy()
-	n.tx.SetValue(util.NewUint128FromUint(value))
+	value := FloatToUint128(n.t, med)
+	n.tx.SetValue(value)
 	return n
 }
 
@@ -217,9 +218,9 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 }
 
 //StakeTx generate stake Tx
-func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, value uint64) *TxBuilder {
+func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
-	return n.Type(core.TxOpVest).Value(value).SignPair(pair)
+	return n.Type(core.TxOpVest).Value(med).SignPair(pair)
 }
 
 //Build build transaction

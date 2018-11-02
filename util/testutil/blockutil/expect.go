@@ -20,6 +20,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,23 +45,27 @@ func (e *Expect) account(addr common.Address) *core.Account {
 }
 
 //Balance compare balance of account to expected value
-func (e *Expect) Balance(addr common.Address, value uint64) *Expect {
+func (e *Expect) Balance(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Balance.Uint64(), value)
+	value := FloatToUint128(e.t, med)
+	require.Equal(e.t, value.String(), acc.Balance.String())
+	//require.Zero(e.t, acc.Balance.Cmp(value))
 	return e
 }
 
 //Vesting compare vesting of account to expected value
-func (e *Expect) Vesting(addr common.Address, vest uint64) *Expect {
+func (e *Expect) Vesting(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Vesting.Uint64(), vest)
+	vest := FloatToUint128(e.t, med)
+	require.Zero(e.t, acc.Vesting.Cmp(vest))
 	return e
 }
 
 //Unstaking compares unstaking of account to expected value
-func (e *Expect) Unstaking(addr common.Address, unstake uint64) *Expect {
+func (e *Expect) Unstaking(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Unstaking.Uint64(), unstake)
+	unstake := FloatToUint128(e.t, med)
+	require.Zero(e.t, acc.Unstaking.Cmp(unstake))
 	return e
 }
 
@@ -79,9 +84,9 @@ func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 }
 
 //Bandwidth compares bandwidth of account to expected value
-func (e *Expect) Bandwidth(addr common.Address, bandwidth uint64) *Expect {
+func (e *Expect) Bandwidth(addr common.Address, bandwidth *util.Uint128) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.Bandwidth.Uint64(), bandwidth)
+	require.Equal(e.t, bandwidth.String(), acc.Bandwidth.String())
 	return e
 }
 

@@ -239,15 +239,12 @@ func (u *Uint128) Uint64() uint64 {
 	return u.value.Uint64()
 }
 
-// MulWithFloat multiply uin128 with float64
-func (u *Uint128) MulWithFloat(s string) (*Uint128, error) {
-	x, ok := big.NewFloat(0).SetString(s)
-	if !ok {
-		return nil, ErrFailedToConvertFloat
-	}
-	tmp, _ := big.NewFloat(0).Mul(big.NewFloat(0).SetInt(u.value), x).Int(nil)
-	obj := &Uint128{tmp}
+// MulWithRat multiply uin128 with big.Rat
+func (u *Uint128) MulWithRat(x *big.Rat) (*Uint128, error) {
+	tmp := big.NewInt(0).Mul(u.value, x.Num())
+	tmp = big.NewInt(0).Div(tmp, x.Denom())
 
+	obj := &Uint128{tmp}
 	if err := obj.Validate(); nil != err {
 		return u, err
 	}

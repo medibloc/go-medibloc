@@ -114,7 +114,7 @@ func (bb *BlockBuilder) Prepare() *BlockBuilder {
 func (bb *BlockBuilder) Stake() *BlockBuilder {
 	n := bb.copy()
 	for _, pair := range bb.KeyPairs {
-		n = n.Tx().StakeTx(pair, 100000000000000000).Execute()
+		n = n.Tx().StakeTx(pair, 100000).Execute()
 	}
 	return n
 }
@@ -283,9 +283,11 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	_, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
 	require.NoError(n.t, err)
-	require.NoError(n.t, n.B.AcceptTransaction(tx, DefaultTxMap))
+	tx.SetReceipt(receipt)
+	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	n.B.AppendTransaction(tx)
 	require.NoError(n.t, n.B.Commit())
 
 	return n
@@ -295,15 +297,17 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	_, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
 	require.Equal(n.t, expected, err)
-	if err != core.ErrExecutedErr {
-		require.NoError(n.t, n.B.RollBack())
+	require.NoError(n.t, n.B.RollBack())
+	if receipt == nil {
 		return n
 	}
-	require.NoError(n.t, n.B.AcceptTransaction(tx, DefaultTxMap))
+	require.NoError(n.t, n.B.BeginBatch())
+	tx.SetReceipt(receipt)
+	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	n.B.AppendTransaction(tx)
 	require.NoError(n.t, n.B.Commit())
-
 	return n
 }
 

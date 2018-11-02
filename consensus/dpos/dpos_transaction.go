@@ -28,6 +28,7 @@ import (
 type BecomeCandidateTx struct {
 	candidateAddr common.Address
 	collateral    *util.Uint128
+	size          int
 }
 
 //NewBecomeCandidateTx returns BecomeCandidateTx
@@ -35,9 +36,14 @@ func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > core.MaxPayloadSize {
 		return nil, core.ErrTooLargePayload
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &BecomeCandidateTx{
 		candidateAddr: tx.From(),
 		collateral:    tx.Value(),
+		size:          size,
 	}, nil
 }
 
@@ -74,13 +80,22 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *BecomeCandidateTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return core.TxBaseCPUBandwidth, core.TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *BecomeCandidateTx) Bandwidth(bs *core.BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.CPURef().Mul(util.NewUint128FromUint(1000))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.NetRef().Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }
 
 //QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
 	candidateAddr common.Address
+	size          int
 }
 
 //NewQuitCandidateTx returns QuitCandidateTx
@@ -88,8 +103,13 @@ func NewQuitCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > core.MaxPayloadSize {
 		return nil, core.ErrTooLargePayload
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &QuitCandidateTx{
 		candidateAddr: tx.From(),
+		size:          size,
 	}, nil
 }
 
@@ -169,6 +189,19 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 	return nil
 }
 
+//Bandwidth returns bandwidth.
+func (tx *QuitCandidateTx) Bandwidth(bs *core.BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.CPURef().Mul(util.NewUint128FromUint(1000))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.NetRef().Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
+}
+
 // VotePayload is payload type for VoteTx
 type VotePayload struct {
 	Candidates []common.Address
@@ -201,15 +234,11 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
-//Bandwidth returns bandwidth.
-func (tx *QuitCandidateTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return core.TxBaseCPUBandwidth, core.TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
-}
-
 //VoteTx is a structure for voting
 type VoteTx struct {
 	voter      common.Address
 	candidates []common.Address
+	size       int
 }
 
 //NewVoteTx returns VoteTx
@@ -221,10 +250,14 @@ func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if err := core.BytesToTransactionPayload(tx.Payload(), payload); err != nil {
 		return nil, err
 	}
-
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
 	return &VoteTx{
 		voter:      tx.From(),
 		candidates: payload.Candidates,
+		size:       size,
 	}, nil
 }
 
@@ -372,6 +405,14 @@ func checkDuplicate(candidates []common.Address) bool {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VoteTx) Bandwidth() (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	return core.TxBaseCPUBandwidth, core.TxBaseNetBandwidth, nil // TODO use cpu, net bandwidth
+func (tx *VoteTx) Bandwidth(bs *core.BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.CPURef().Mul(util.NewUint128FromUint(1000))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.NetRef().Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
 }

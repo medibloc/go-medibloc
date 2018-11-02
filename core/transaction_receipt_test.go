@@ -39,6 +39,7 @@ import (
 func TestReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
+	network.SetLogTestHook()
 
 	seed := network.NewSeedNode()
 	seed.Start()
@@ -50,11 +51,11 @@ func TestReceipt(t *testing.T) {
 	payer := seed.Config.TokenDist[0]
 
 	tb := bb.Tx()
-	tx1 := tb.Nonce(2).StakeTx(payer, 100000000000000000).Build()
-	tx2 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpWithdrawVesting).Value(2000000000000000000).SignPair(payer).
+	tx1 := tb.Nonce(2).StakeTx(payer, 100).Build()
+	tx2 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpWithdrawVesting).Value(200).SignPair(payer).
 		Build()
-	tx3 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpWithdrawVesting).Value(90000000000000).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrBalanceNotEnough).ExecuteTx(tx3).SignMiner().Build()
+	tx3 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpWithdrawVesting).Value(50).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrVestingNotEnough).ExecuteTx(tx3).SignMiner().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 	seed.Med.BlockManager().BroadCast(b.BlockData)
@@ -78,6 +79,7 @@ func TestReceipt(t *testing.T) {
 func TestErrorTransactionReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
+	network.SetLogTestHook()
 
 	seed := network.NewSeedNode()
 	seed.Start()
@@ -89,7 +91,7 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	payer := seed.Config.TokenDist[0]
 
 	tb := bb.Tx()
-	tx1 := tb.Nonce(2).StakeTx(payer, 1000000000000000).Build()
+	tx1 := tb.Nonce(2).StakeTx(payer, 1000).Build()
 
 	payload := &core.AddRecordPayload{
 		RecordHash: byteutils.Hex2Bytes("9eca7128409f609b2a72fc24985645665bbb99152b4b14261c3c3c93fb17cf54"),
@@ -97,7 +99,7 @@ func TestErrorTransactionReceipt(t *testing.T) {
 
 	tx2 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	tx3 := tb.Nonce(4).From(payer.Addr).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, core.ErrExecutedErr).SignMiner().Build()
+	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, core.ErrRecordAlreadyAdded).SignMiner().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 	seed.Med.BlockManager().BroadCast(b.BlockData)
