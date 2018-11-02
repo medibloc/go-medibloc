@@ -1,6 +1,10 @@
 package rpc_test
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -471,5 +475,67 @@ func TestAPIService_SendTransaction(t *testing.T) {
 		WithJSON(TX).
 		Expect().
 		JSON().Object().ValueEqual("error", rpc.ErrMsgInvalidTxValue)
+}
 
+type Result struct {
+	Topic string
+	Hash  string
+}
+
+type Data struct {
+	Result *Result
+}
+
+func TestAPIService_Subscribe(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake()
+	b := bb.SignMiner().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	tx := make([]*core.Transaction, 3)
+	payer := seed.Config.TokenDist[0]
+	for i := 3; i <= 5; i++ {
+		tx[i-3] = bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(payer.Addr).Value(1).Nonce(uint64(i)).SignPair(payer).Build()
+	}
+
+	go func() {
+		Client := &http.Client{}
+		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/subscribe?topics=%s", testutil.IP2Local(seed.Config.Config.Rpc.
+			HttpListen[0]), core.TopicPendingTransaction), nil)
+		req.Header.Set("Accept", "text/event-stream")
+
+		res, _ := Client.Do(req)
+		br := bufio.NewReader(res.Body)
+		defer res.Body.Close()
+
+		i := 0
+		for {
+			bs, err := br.ReadBytes('\n')
+
+			data := &Data{
+				Result: &Result{},
+			}
+			err = json.Unmarshal(bs, data)
+			if err == io.EOF || i > 2 {
+				break
+			}
+			fmt.Println(data.Result.Hash)
+			fmt.Println(byteutils.Bytes2Hex(tx[i].Hash()))
+			fmt.Println(i)
+			assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i].Hash()))
+			i = i + 1
+		}
+	}()
+
+	for i := 0; i <= 2; i++ {
+		time.Sleep(1000 * time.Millisecond)
+		seed.Med.TransactionManager().Push(tx[i])
+	}
 }
