@@ -68,8 +68,7 @@ service ApiService {
 
   rpc Subscribe (SubscribeRequest) returns (stream SubscribeResponse) {
     option (google.api.http) = {
-			post: "/v1/subscribe"
-			body: "*"
+			get: "/v1/subscribe"
 		};
   }
 

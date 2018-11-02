@@ -228,7 +228,7 @@ const (
       }
     },
     "/v1/subscribe": {
-      "post": {
+      "get": {
         "operationId": "Subscribe",
         "responses": {
           "200": {
@@ -240,11 +240,12 @@ const (
         },
         "parameters": [
           {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/rpcpbSubscribeRequest"
+            "name": "topics",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         ],
@@ -638,17 +639,6 @@ const (
         "hash": {
           "type": "string",
           "description": "Hex string of transaction hash."
-        }
-      }
-    },
-    "rpcpbSubscribeRequest": {
-      "type": "object",
-      "properties": {
-        "topics": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
