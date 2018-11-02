@@ -228,10 +228,10 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		if tx == nil {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 		}
-		return coreTx2rpcTx(tx, false)
+		return CoreTx2rpcTx(tx, false)
 	}
 	// If tx is already included in a block
-	return coreTx2rpcTx(tx, true)
+	return CoreTx2rpcTx(tx, true)
 }
 
 // GetAccountTransactions returns transactions of the account
@@ -244,7 +244,7 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 	if req.IncludePending {
 		poolTxs := s.tm.GetByAddress(address)
 		for _, tx := range poolTxs {
-			tx, err := coreTx2rpcTx(tx, false)
+			tx, err := CoreTx2rpcTx(tx, false)
 			if err != nil {
 				return nil, err
 			}
@@ -272,7 +272,7 @@ func (s *APIService) GetAccountTransactions(ctx context.Context,
 			if err != nil {
 				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 			}
-			rpcTx, err := coreTx2rpcTx(tx, true)
+			rpcTx, err := CoreTx2rpcTx(tx, true)
 			if err != nil {
 				return nil, err
 			}
@@ -293,6 +293,9 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	}
 
 	payloadBuf, err := hex.DecodeString(req.Payload)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
+	}
 
 	tx := &core.Transaction{}
 
@@ -309,9 +312,6 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	tx.SetSign(byteutils.Hex2Bytes(req.Sign))
 	tx.SetPayerSign(byteutils.Hex2Bytes(req.PayerSign))
 
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
-	}
 	if err = s.tm.PushAndRelay(tx); err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}

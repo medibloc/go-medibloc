@@ -21,7 +21,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/testutil"
 )
 
-func TestGetAccountApi(t *testing.T) {
+func TestAPIService_GetAccount(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -94,7 +94,7 @@ func TestGetAccountApi(t *testing.T) {
 		ValueEqual("vesting", "0")
 }
 
-func TestGetBlockApi(t *testing.T) {
+func TestAPIService_GetBlock(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -184,7 +184,7 @@ func TestGetBlockApi(t *testing.T) {
 		ValueEqual("error", rpc.ErrMsgInvalidBlockHeight)
 }
 
-func TestGetBlocksApi(t *testing.T) {
+func TestAPIService_GetBlocks(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -233,7 +233,7 @@ func TestGetBlocksApi(t *testing.T) {
 		ValueEqual("error", rpc.ErrMsgInvalidRequest)
 }
 
-func TestGetCandidatesApi(t *testing.T) {
+func TestAPIService_GetCandidates(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -249,7 +249,7 @@ func TestGetCandidatesApi(t *testing.T) {
 		Array().Length().Equal(3)
 }
 
-func TestGetDynastyApi(t *testing.T) {
+func TestAPIService_GetDynasty(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -269,7 +269,7 @@ func TestGetDynastyApi(t *testing.T) {
 	}
 }
 
-func TestGetMedState(t *testing.T) {
+func TestAPIService_GetMedState(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -292,7 +292,7 @@ func TestGetMedState(t *testing.T) {
 		ValueEqual("tail", byteutils.Bytes2Hex(b.Hash()))
 }
 
-func TestGetPendingTransactions(t *testing.T) {
+func TestAPIService_GetPendingTransactions(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -324,7 +324,7 @@ func TestGetPendingTransactions(t *testing.T) {
 		Array().Length().Equal(10)
 }
 
-func TestGetTransaction(t *testing.T) {
+func TestAPIService_GetTransaction(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -356,7 +356,7 @@ func TestGetTransaction(t *testing.T) {
 		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
 }
 
-func TestGetAccountTransactions(t *testing.T) {
+func TestAPIService_GetAccountTransactions(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -390,7 +390,7 @@ func TestGetAccountTransactions(t *testing.T) {
 	}
 }
 
-func TestHealthCheck(t *testing.T) {
+func TestAPIService_HealthCheck(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()
 
@@ -404,4 +404,50 @@ func TestHealthCheck(t *testing.T) {
 		Expect().
 		JSON().Object().
 		ValueEqual("ok", true)
+}
+
+func TestAPIService_SendTransaction(t *testing.T) {
+	network := testutil.NewNetwork(t, 3)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake()
+	b := bb.SignMiner().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	payer := seed.Config.TokenDist[0]
+	receiver := seed.Config.TokenDist[1]
+	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
+
+	_, err := rpc.CoreTx2rpcTx(tx, false)
+	assert.NoError(t, err)
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	TX, _ := rpc.CoreTx2rpcTx(tx, false)
+
+	e.POST("/v1/transaction").
+		WithJSON(TX).
+		Expect().
+		JSON().Object().
+		ValueEqual("hash", TX.Hash)
+
+	assert.Equal(t, seed.Med.TransactionManager().Get(tx.Hash()).Hash(), tx.Hash())
+
+	TX.Sign = "123"
+	e.POST("/v1/transaction").
+		WithJSON(TX).
+		Expect().
+		JSON().Object().ValueEqual("error", rpc.ErrMsgInvalidTransaction)
+
+	TX.Value = "abc"
+	e.POST("/v1/transaction").
+		WithJSON(TX).
+		Expect().
+		JSON().Object().ValueEqual("error", rpc.ErrMsgInvalidTxValue)
+
 }

@@ -74,7 +74,8 @@ func coreCandidate2rpcCandidate(candidate *core.Account) *rpcpb.Candidate {
 	}
 }
 
-func coreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionResponse, error) {
+// CoreTx2rpcTx converts core transaction type to rpcpb response type
+func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionResponse, error) {
 	return &rpcpb.GetTransactionResponse{
 		Hash:      byteutils.Bytes2Hex(tx.Hash()),
 		From:      tx.From().Hex(),
@@ -95,7 +96,7 @@ func coreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionRes
 func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.GetTransactionResponse, error) {
 	var rpcTxs []*rpcpb.GetTransactionResponse
 	for _, tx := range txs {
-		rpcTx, err := coreTx2rpcTx(tx, executed)
+		rpcTx, err := CoreTx2rpcTx(tx, executed)
 		if err != nil {
 			return nil, err
 		}
