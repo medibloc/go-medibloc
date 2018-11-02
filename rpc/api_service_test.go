@@ -354,6 +354,22 @@ func TestAPIService_GetTransaction(t *testing.T) {
 		Status(http.StatusNotFound).
 		JSON().Object().
 		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
+
+	tx = bb.Tx().RandomTx().Build()
+	seed.Med.TransactionManager().Push(tx)
+
+	e.GET("/v1/transaction").
+		WithQuery("hash", byteutils.Bytes2Hex(tx.Hash())).
+		Expect().
+		JSON().Object().
+		ValueEqual("hash", byteutils.Bytes2Hex(tx.Hash())).
+		ValueEqual("executed", false)
+
+	e.GET("/v1/transaction").
+		WithQuery("hash", "0123456789012345678901234567890123456789012345678901234567890123").
+		Expect().
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgTransactionNotFound)
 }
 
 func TestAPIService_GetAccountTransactions(t *testing.T) {
@@ -443,6 +459,12 @@ func TestAPIService_SendTransaction(t *testing.T) {
 		WithJSON(TX).
 		Expect().
 		JSON().Object().ValueEqual("error", rpc.ErrMsgInvalidTransaction)
+
+	TX.Payload = "WRONG PAYLOAD"
+	e.POST("/v1/transaction").
+		WithJSON(TX).
+		Expect().
+		JSON().Object().ValueEqual("error", rpc.ErrMsgBuildTransactionFail)
 
 	TX.Value = "abc"
 	e.POST("/v1/transaction").
