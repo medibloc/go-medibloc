@@ -235,6 +235,14 @@ func TestAPIService_GetBlocks(t *testing.T) {
 		Status(http.StatusBadRequest).
 		JSON().Object().
 		ValueEqual("error", rpc.ErrMsgInvalidRequest)
+
+	e.GET("/v1/blocks").
+		WithQuery("from", "1").
+		WithQuery("to", rpc.MaxBlocksCount+2).
+		Expect().
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgTooManyBlocksRequest)
 }
 
 func TestAPIService_GetCandidates(t *testing.T) {

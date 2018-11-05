@@ -121,6 +121,10 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 
+	if req.To-req.From > MaxBlocksCount {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgTooManyBlocksRequest)
+	}
+
 	if s.bm.TailBlock().Height() < req.To {
 		req.To = s.bm.TailBlock().Height()
 	}

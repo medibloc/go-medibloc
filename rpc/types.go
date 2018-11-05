@@ -47,4 +47,9 @@ const (
 	ErrMsgInvalidRequest             = "invalid request"
 	ErrMsgFailedToUpdateBandwidth    = "failed to update bandwidth"
 	ErrMsgFailedToUpdateUnstaking    = "failed to update Unstaking"
+	ErrMsgTooManyBlocksRequest       = "exceed max blocks count"
+)
+
+const (
+	MaxBlocksCount = 50
 )
