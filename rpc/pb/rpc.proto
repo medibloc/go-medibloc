@@ -59,12 +59,6 @@ service ApiService {
     };
   }
 
-  rpc GetAccountTransactions (GetAccountTransactionsRequest) returns (GetTransactionsResponse) {
-    option (google.api.http) = {
-			get: "/v1/account/{address}/transactions"
-		};
-  }
-
   rpc SendTransaction (SendTransactionRequest) returns (SendTransactionResponse) {
     option (google.api.http) = {
 			post: "/v1/transaction"

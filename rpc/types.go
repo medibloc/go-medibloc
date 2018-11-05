@@ -50,6 +50,7 @@ const (
 	ErrMsgTooManyBlocksRequest       = "exceed max blocks count"
 )
 
+// Limit for get blocks request
 const (
 	MaxBlocksCount = 50
 )
