@@ -87,7 +87,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
-		return coreBlock2rpcBlock(block)
+		return coreBlock2rpcBlock(block, false)
 	}
 
 	switch req.Type {
@@ -110,7 +110,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	return coreBlock2rpcBlock(block)
+	return coreBlock2rpcBlock(block, false)
 }
 
 // GetBlocks returns blocks
@@ -135,7 +135,7 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
 
-		rpcBlock, err := coreBlock2rpcBlock(block)
+		rpcBlock, err := coreBlock2rpcBlock(block, true)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 		}

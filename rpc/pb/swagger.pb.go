@@ -402,6 +402,12 @@ const (
             "$ref": "#/definitions/rpcpbGetTransactionResponse"
           },
           "title": "Transactions in block"
+        },
+        "tx_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

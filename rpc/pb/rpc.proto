@@ -152,6 +152,7 @@ message GetBlockResponse {
 
   // Transactions in block
   repeated GetTransactionResponse transactions = 30;
+  repeated string tx_hashes = 31;
 }
 
 message GetBlocksRequest {

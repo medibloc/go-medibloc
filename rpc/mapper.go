@@ -42,10 +42,19 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 	}, nil
 }
 
-func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
-	tx, err := coreTxs2rpcTxs(block.Transactions(), true)
-	if err != nil {
-		return nil, err
+func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse, error) {
+	var txs []*rpcpb.GetTransactionResponse
+	var txHashes []string
+	var err error
+	if light {
+		for _, tx := range block.Transactions() {
+			txHashes = append(txHashes, byteutils.Bytes2Hex(tx.Hash()))
+		}
+	} else {
+		txs, err = coreTxs2rpcTxs(block.Transactions(), true)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &rpcpb.GetBlockResponse{
@@ -62,7 +71,8 @@ func coreBlock2rpcBlock(block *core.Block) (*rpcpb.GetBlockResponse, error) {
 		AccsRoot:     byteutils.Bytes2Hex(block.AccStateRoot()),
 		TxsRoot:      byteutils.Bytes2Hex(block.TxStateRoot()),
 		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
-		Transactions: tx,
+		Transactions: txs,
+		TxHashes:     txHashes,
 	}, nil
 }
 
