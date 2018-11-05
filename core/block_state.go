@@ -16,6 +16,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -25,8 +27,12 @@ import (
 
 // BlockState is block state
 type BlockState struct {
-	reward *util.Uint128
-	supply *util.Uint128
+	reward   *util.Uint128
+	supply   *util.Uint128
+	cpuRef   *util.Uint128
+	cpuUsage *util.Uint128
+	netRef   *util.Uint128
+	netUsage *util.Uint128
 
 	accState  *AccountState
 	txState   *TransactionState
@@ -43,6 +49,26 @@ func (bs *BlockState) Supply() *util.Uint128 {
 // Reward returns reward in state
 func (bs *BlockState) Reward() *util.Uint128 {
 	return bs.reward
+}
+
+//CPURef returns cpuRef
+func (bs *BlockState) CPURef() *util.Uint128 {
+	return bs.cpuRef
+}
+
+//CPUUsage returns cpuUsage
+func (bs *BlockState) CPUUsage() *util.Uint128 {
+	return bs.cpuUsage
+}
+
+//NetRef returns netRef
+func (bs *BlockState) NetRef() *util.Uint128 {
+	return bs.netRef
+}
+
+//NetUsage returns netUsage
+func (bs *BlockState) NetUsage() *util.Uint128 {
+	return bs.netUsage
 }
 
 // AccState returns account state in state
@@ -86,6 +112,10 @@ func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	return &BlockState{
 		reward:    util.NewUint128(),
 		supply:    util.NewUint128(),
+		cpuRef:    util.NewUint128(),
+		cpuUsage:  util.NewUint128(),
+		netRef:    util.NewUint128(),
+		netUsage:  util.NewUint128(),
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
@@ -113,6 +143,10 @@ func (bs *BlockState) Clone() (*BlockState, error) {
 	return &BlockState{
 		reward:    bs.reward.DeepCopy(),
 		supply:    bs.supply.DeepCopy(),
+		cpuRef:    bs.cpuRef.DeepCopy(),
+		cpuUsage:  bs.cpuUsage.DeepCopy(),
+		netRef:    bs.netRef.DeepCopy(),
+		netUsage:  bs.netUsage.DeepCopy(),
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
@@ -212,6 +246,13 @@ func (bs *BlockState) DposRoot() ([]byte, error) {
 	return bs.dposState.RootBytes()
 }
 
+//String returns stringified blocks state
+func (bs *BlockState) String() string {
+	return fmt.Sprintf(
+		"{reward: %v, supply: %v, cpuRef: %v, cpuUsage: %v, netRef: %v, netUsage: %v}",
+		bs.reward, bs.supply, bs.cpuRef, bs.cpuUsage, bs.netRef, bs.netUsage)
+}
+
 func (bs *BlockState) loadAccountState(rootHash []byte) error {
 	accState, err := NewAccountState(rootHash, bs.storage)
 	if err != nil {
@@ -245,42 +286,96 @@ func (bs *BlockState) GetTx(txHash []byte) (*Transaction, error) {
 	return bs.txState.Get(txHash)
 }
 
-func (bs *BlockState) incrementNonce(address common.Address) error {
-	return bs.accState.incrementNonce(address)
-}
-
-func (bs *BlockState) acceptTransaction(tx *Transaction) error {
-	if err := bs.txState.Put(tx); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"tx":  tx,
-		}).Error("Failed to put a transaction to transaction state.")
-		return err
-	}
-
-	if err := bs.accState.PutTx(tx); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-			"tx":  tx,
-		}).Error("Failed to put a transaction to account")
-		return err
-	}
-
-	return bs.incrementNonce(tx.from)
-}
-
 // checkNonce compare given transaction's nonce with expected account's nonce
 func (bs *BlockState) checkNonce(tx *Transaction) error {
-	fromAcc, err := bs.GetAccount(tx.from)
+	fromAcc, err := bs.GetAccount(tx.From())
+	if err != nil {
+		return err
+	}
+	expectedNonce := fromAcc.Nonce + 1
+	if tx.nonce > expectedNonce {
+		logging.Console().WithFields(logrus.Fields{
+			"hash":     tx.Hash(),
+			"nonce":    tx.Nonce(),
+			"expected": expectedNonce,
+		}).Info("Transaction nonce gap exist")
+		return ErrLargeTransactionNonce
+	} else if tx.nonce < expectedNonce {
+		return ErrSmallTransactionNonce
+	}
+	return nil
+}
+
+// checkBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
+//func (bs *BlockState) checkBandwidth(tx *Transaction, reqBandwidth *util.Uint128) error {
+//	payer, err := tx.recoverPayer()
+//	if err == ErrPayerSignatureNotExist {
+//		payer = tx.From()
+//	} else if err != nil {
+//		return err
+//	}
+//
+//	payerAcc, err := bs.GetAccount(payer)
+//	if err != nil {
+//		return err
+//	}
+//
+//	avail, err := payerAcc.Vesting.Sub(payerAcc.Bandwidth)
+//	if err != nil {
+//		return err
+//	}
+//	if avail.Cmp(reqBandwidth) < 0 {
+//		return ErrBandwidthNotEnough
+//	}
+//	return nil
+//}
+
+// checkBalance compare given transaction's value with the account's balance
+func (bs *BlockState) checkBalance(tx *Transaction, reqBalance *util.Uint128) error {
+	acc, err := bs.GetAccount(tx.From())
 	if err != nil {
 		return err
 	}
 
-	expectedNonce := fromAcc.Nonce + 1
-	if tx.nonce > expectedNonce {
-		return ErrLargeTransactionNonce
-	} else if tx.nonce < expectedNonce {
-		return ErrSmallTransactionNonce
+	if acc.Balance.Cmp(reqBalance) < 0 {
+		return ErrBalanceNotEnough
+	}
+	return nil
+}
+
+func (bs *BlockState) checkBandwidthLimit(cpu, net *util.Uint128) error {
+	blockCPUUsage, err := bs.cpuUsage.Add(cpu)
+	if err != nil {
+		return err
+	}
+	maxCPU, err := bs.cpuRef.Mul(util.NewUint128FromUint(uint64(cpuLimit)))
+	if err != nil {
+		return err
+	}
+	if maxCPU.Cmp(blockCPUUsage) < 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"currentCPUUsage": blockCPUUsage,
+			"maxCPUUsage":     maxCPU,
+			"tx_cpu":          cpu,
+		}).Info("Not enough block cpu bandwidth to accept transaction")
+		return ErrExceedBlockMaxCPUUsage
+	}
+
+	blockNetUsage, err := bs.netUsage.Add(net)
+	if err != nil {
+		return err
+	}
+	maxNet, err := bs.netRef.Mul(util.NewUint128FromUint(uint64(netLimit)))
+	if err != nil {
+		return err
+	}
+	if maxNet.Cmp(blockNetUsage) < 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"currentNetUsage": blockNetUsage,
+			"maxNetUsage":     maxNet,
+			"tx_net":          net,
+		}).Info("Not enough block net bandwidth to accept transaction")
+		return ErrExceedBlockMaxNetUsage
 	}
 	return nil
 }

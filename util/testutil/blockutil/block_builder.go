@@ -114,7 +114,7 @@ func (bb *BlockBuilder) Prepare() *BlockBuilder {
 func (bb *BlockBuilder) Stake() *BlockBuilder {
 	n := bb.copy()
 	for _, pair := range bb.KeyPairs {
-		n = n.Tx().StakeTx(pair, 100000000000000000).Execute()
+		n = n.Tx().StakeTx(pair, 100000).Execute()
 	}
 	return n
 }
@@ -227,7 +227,7 @@ func (bb *BlockBuilder) Sealed(sealed bool) *BlockBuilder {
 //CalcHash calculate hash
 func (bb *BlockBuilder) CalcHash() *BlockBuilder {
 	n := bb.copy()
-	hash := core.HashBlockData(n.B.GetBlockData())
+	hash, _ := core.HashBlockData(n.B.GetBlockData())
 	n.B.SetHash(hash)
 	return n
 }
@@ -282,10 +282,12 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 //ExecuteTx execute transaction
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
-
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.ExecuteTransaction(tx, DefaultTxMap))
+	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	require.NoError(n.t, err)
+	tx.SetReceipt(receipt)
 	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	n.B.AppendTransaction(tx)
 	require.NoError(n.t, n.B.Commit())
 
 	return n
@@ -294,18 +296,18 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 //ExecuteTxErr expect error occurred on executing
 func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
-
 	require.NoError(n.t, n.B.BeginBatch())
-	err := n.B.ExecuteTransaction(tx, DefaultTxMap)
-	if err != nil {
-		require.Equal(n.t, expected, err)
-		require.NoError(n.t, n.B.RollBack())
+	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	require.Equal(n.t, expected, err)
+	require.NoError(n.t, n.B.RollBack())
+	if receipt == nil {
 		return n
 	}
-	err = n.B.AcceptTransaction(tx)
-	require.Equal(n.t, expected, err)
+	require.NoError(n.t, n.B.BeginBatch())
+	tx.SetReceipt(receipt)
+	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	n.B.AppendTransaction(tx)
 	require.NoError(n.t, n.B.Commit())
-
 	return n
 }
 

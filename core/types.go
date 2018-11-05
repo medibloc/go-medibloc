@@ -17,6 +17,7 @@ package core
 
 import (
 	"errors"
+	"math/big"
 
 	"time"
 
@@ -57,16 +58,32 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
-//DecimalCount is decimal count of balance
-const DecimalCount = "1000000000000"
+//InflationRate is rate for reward
+var InflationRate = big.NewRat(464, 1000000000000) // 4.64e-09
+//InflationRoundDown is constant for round down reward
+const InflationRoundDown = 10000000000 //1e10
 
-const (
-	rateNum     = "464"
-	rateDecimal = "100000000000"
+// Bandwidth limit per block
+const ( // TODO @ggomma change limit to real number
+	NumberOfBlocksInSingleTimeWindow = 201600  // 7 * 86400 / 3 (time window: 7days, block interval: 3 sec)
+	cpuLimit                         = 3000000 // 1000 TPS (block interval: 3 sec, transfer tx: 1000 )
+	netLimit                         = 3000000 // 3MB
+)
+
+// Bandwidth related defaults
+var (
+	MinimumDiscountRatio  = big.NewRat(1, 100)
+	BandwidthIncreaseRate = big.NewRat(105, 100)
+	BandwidthDecreaseRate = big.NewRat(95, 100)
+	ThresholdRatio        = big.NewRat(5, 10)
 )
 
 // TxBaseBandwidth is base bandwidth value of transactions.
-var TxBaseBandwidth = util.NewUint128FromUint(1000000000000)
+var (
+	TxBaseCPUBandwidth = util.NewUint128FromUint(500000000000)
+	TxBaseNetBandwidth = util.NewUint128FromUint(500000000000)
+	TxBaseBandwidth    = util.NewUint128FromUint(1000000000000)
+)
 
 // Error types of core package.
 var (
@@ -77,7 +94,7 @@ var (
 	ErrInvalidAmount                    = errors.New("invalid amount")
 	ErrNotBatching                      = errors.New("not batching")
 	ErrVestingNotEnough                 = errors.New("vesting is not enough")
-	ErrBandwidthLimitExceeded           = errors.New("bandwidth limit exceeded")
+	ErrBandwidthNotEnough               = errors.New("bandwidth limit exceeded")
 	ErrCannotConvertTransaction         = errors.New("proto message cannot be converted into Transaction")
 	ErrCannotRevertLIB                  = errors.New("cannot revert latest irreversible block")
 	ErrCannotRemoveBlockOnCanonical     = errors.New("cannot remove block on canonical chain")
@@ -142,6 +159,12 @@ var (
 	ErrNotInVoters                      = errors.New("voter is not in voters")
 	ErrCannotUseZeroValue               = errors.New("value should be larger than zero")
 	ErrFailedToDirectPush               = errors.New("cannot direct push to chain")
+	ErrSystemError                      = errors.New("undefined system error has been occurred")
+	ErrExceedBlockMaxCPUUsage           = errors.New("transaction exceeds block's max cpu usage")
+	ErrExceedBlockMaxNetUsage           = errors.New("transaction exceeds block's max net usage")
+	ErrCannotConvertReceipt             = errors.New("proto message cannot be converted into Receipt")
+	ErrInvalidReceiptToProto            = errors.New("receipt cannot be converted into proto")
+	ErrNoTransactionReceipt             = errors.New("failed to load transaction receipt")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -212,7 +235,7 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 //ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
-	Bandwidth() (*util.Uint128, error)
+	Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error)
 }
 
 // TransactionPayload is an interface of transaction payload.

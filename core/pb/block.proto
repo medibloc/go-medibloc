@@ -14,6 +14,10 @@ message BlockHeader {
   bytes acc_state_root = 21;
   bytes tx_state_root = 22;
   bytes dpos_root = 23;
+  bytes cpu_ref = 30;
+  bytes cpu_usage = 31;
+  bytes net_ref = 32;
+  bytes net_usage = 33;
 }
 
 message Block {
@@ -42,6 +46,15 @@ message Transaction {
   uint32 alg = 21;
   bytes sign = 22;
   bytes payerSign = 23;
+
+  Receipt receipt = 30;
+}
+
+message Receipt {
+  bool executed = 1;
+  bytes cpu_usage = 2;
+  bytes net_usage = 3;
+  bytes error = 4;
 }
 
 message TransactionHashTarget {

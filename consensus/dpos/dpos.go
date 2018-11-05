@@ -415,40 +415,47 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 		}
 
 		// Execute transaction and change states
-		err = block.ExecuteTransaction(transaction, d.bm.TxMap())
-
-		if err != nil && err == core.ErrLargeTransactionNonce {
-			if err = d.tm.Push(transaction); err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to push back tx.")
-			}
-			err = block.RollBack()
-			if err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to rollback new block.")
-				block.Storage().DisableBatch()
-				return nil, err
-			}
-			continue
-		}
+		receipt, err := block.ExecuteTransaction(transaction, d.bm.TxMap())
 		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-				"tx":  transaction,
-			}).Error("Failed to execute transaction.")
-			// TODO : handle failed transaction (event?, or accept & write on receipt)
-			err = block.RollBack()
-			if err != nil {
+			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
 				block.Storage().DisableBatch()
 				return nil, err
 			}
+			if err == core.ErrLargeTransactionNonce || err == core.ErrExceedBlockMaxCPUUsage || err == core.ErrExceedBlockMaxNetUsage {
+				if err = d.tm.Push(transaction); err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("failed to push back transaction to tx poll")
+				}
+				continue
+			}
+		} else {
+			if err := block.Commit(); err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to commit execution result")
+				block.Storage().DisableBatch()
+				return nil, err
+			}
+		}
+
+		if receipt == nil {
+			logging.Console().WithFields(logrus.Fields{
+				"transaction": transaction.Hash(),
+				"err":         err,
+			}).Info("failed to execute transaction")
 			continue
 		}
+
+		if err := block.BeginBatch(); err != nil {
+			block.Storage().DisableBatch()
+			return nil, err
+		}
+
+		transaction.SetReceipt(receipt)
 
 		err = block.AcceptTransaction(transaction)
 		if err != nil {
@@ -457,8 +464,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 				"transaction": transaction,
 			}).Error("Failed to accept transaction.")
 
-			err = block.RollBack()
-			if err != nil {
+			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
@@ -467,6 +473,8 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 			}
 			continue
 		}
+
+		block.AppendTransaction(transaction)
 
 		err = block.Commit()
 		if err != nil {

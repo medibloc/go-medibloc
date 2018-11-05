@@ -16,7 +16,11 @@
 package blockutil
 
 import (
+	"fmt"
+	"math/big"
 	"testing"
+
+	"github.com/medibloc/go-medibloc/util"
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
@@ -31,6 +35,8 @@ const (
 	dynastySize    = 3
 )
 
+var unitMed = util.NewUint128FromUint(1000000000000)
+
 //DefaultTxMap is default txmap for block util
 var DefaultTxMap = medlet.DefaultTxMap
 
@@ -42,10 +48,20 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 }
 
 //Bandwidth returns bandwidth usage of a transaction.
-func Bandwidth(t *testing.T, tx *core.Transaction) uint64 {
+func Bandwidth(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
 	execTx, err := DefaultTxMap[tx.TxType()](tx)
 	require.NoError(t, err)
-	bw, err := execTx.Bandwidth()
+	fmt.Println(b.State().CPURef(), b.State().NetRef())
+	cpuBw, netBw, err := execTx.Bandwidth(b.State())
 	require.NoError(t, err)
-	return bw.Uint64()
+	bw, err := cpuBw.Add(netBw)
+	require.NoError(t, err)
+	return bw
+}
+
+//FloatToUint128 covert float to uint128 (precision is only 1e-03)
+func FloatToUint128(t *testing.T, med float64) *util.Uint128 {
+	value, err := unitMed.MulWithRat(big.NewRat(int64(med*1000), 1000))
+	require.NoError(t, err)
+	return value
 }

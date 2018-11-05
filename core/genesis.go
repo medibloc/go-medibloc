@@ -82,6 +82,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				reward:     util.NewUint128FromUint(0),
 				timestamp:  GenesisTimestamp,
 				alg:        algorithm.SECP256K1,
+				cpuRef:     util.NewUint128FromUint(0),
+				cpuUsage:   util.NewUint128FromUint(0),
+				netRef:     util.NewUint128FromUint(0),
+				netUsage:   util.NewUint128FromUint(0),
 			},
 			transactions: make([]*Transaction, 0),
 			height:       GenesisHeight,
@@ -131,11 +135,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	initialTx.hash = hash
 
+	initialTx.SetReceipt(NewGenesisReceipt())
 	// Insert initial transaction
 	err = genesisBlock.AcceptTransaction(initialTx)
 	if err != nil {
 		return nil, err
 	}
+	genesisBlock.AppendTransaction(initialTx)
 
 	// Token distribution
 	supply := util.NewUint128()
@@ -273,10 +279,12 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.hash = hash
 
+		tx.SetReceipt(NewGenesisReceipt())
 		err = genesisBlock.AcceptTransaction(tx)
 		if err != nil {
 			return nil, err
 		}
+		genesisBlock.AppendTransaction(tx)
 
 		tx = &Transaction{
 			txType:    TxTyGenesisVesting,
@@ -293,10 +301,12 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.hash = hash
 
+		tx.SetReceipt(NewGenesisReceipt())
 		err = genesisBlock.AcceptTransaction(tx)
 		if err != nil {
 			return nil, err
 		}
+		genesisBlock.AppendTransaction(tx)
 
 		supply, err = supply.Add(total)
 		if err != nil {
@@ -384,7 +394,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts)-2 != len(tokenDist) {
+	if len(accounts)-1 != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
 			"accountCount": len(accounts),
 			"tokenCount":   len(tokenDist),

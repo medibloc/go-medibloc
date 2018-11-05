@@ -17,6 +17,7 @@ package core
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -50,6 +51,11 @@ type BlockHeader struct {
 
 	alg  algorithm.Algorithm
 	sign []byte
+
+	cpuRef   *util.Uint128
+	cpuUsage *util.Uint128
+	netRef   *util.Uint128
+	netUsage *util.Uint128
 }
 
 // ToProto converts BlockHeader to corepb.BlockHeader
@@ -60,6 +66,26 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	}
 
 	supply, err := b.supply.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	cpuRef, err := b.cpuRef.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	netRef, err := b.netRef.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	cpuUsage, err := b.cpuUsage.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	netUsage, err := b.netUsage.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +103,10 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
 		DposRoot:     b.dposRoot,
+		CpuRef:       cpuRef,
+		CpuUsage:     cpuUsage,
+		NetRef:       netRef,
+		NetUsage:     netUsage,
 	}, nil
 }
 
@@ -103,6 +133,31 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.chainID = msg.ChainId
 		b.alg = algorithm.Algorithm(msg.Alg)
 		b.sign = msg.Sign
+
+		cpuRef, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuRef)
+		if err != nil {
+			return err
+		}
+
+		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
+		if err != nil {
+			return err
+		}
+
+		netRef, err := util.NewUint128FromFixedSizeByteSlice(msg.NetRef)
+		if err != nil {
+			return err
+		}
+
+		netUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.NetUsage)
+		if err != nil {
+			return err
+		}
+
+		b.cpuRef = cpuRef
+		b.cpuUsage = cpuUsage
+		b.netRef = netRef
+		b.netUsage = netUsage
 		return nil
 	}
 	return ErrInvalidProtoToBlockHeader
@@ -208,6 +263,26 @@ func (b *BlockHeader) SetChainID(chainID uint32) {
 	b.chainID = chainID
 }
 
+//CPURef returns cpuRef
+func (b *BlockHeader) CPURef() *util.Uint128 {
+	return b.cpuRef
+}
+
+//SetCPURef sets cpuRef
+func (b *BlockHeader) SetCPURef(cpuRef *util.Uint128) {
+	b.cpuRef = cpuRef
+}
+
+//NetRef returns netRef
+func (b *BlockHeader) NetRef() *util.Uint128 {
+	return b.netRef
+}
+
+//SetNetRef sets netRef
+func (b *BlockHeader) SetNetRef(netRef *util.Uint128) {
+	b.netRef = netRef
+}
+
 //Alg returns signing algorithm
 func (b *BlockHeader) Alg() algorithm.Algorithm {
 	return b.alg
@@ -226,6 +301,16 @@ func (b *BlockHeader) Sign() []byte {
 //SetSign sets sign
 func (b *BlockHeader) SetSign(sign []byte) {
 	b.sign = sign
+}
+
+// CPUUsage returns cpuUsage
+func (b *BlockHeader) CPUUsage() *util.Uint128 {
+	return b.cpuUsage
+}
+
+// NetUsage returns netUsage
+func (b *BlockHeader) NetUsage() *util.Uint128 {
+	return b.netUsage
 }
 
 //Proposer returns miner address from block sign
@@ -320,7 +405,6 @@ func (bd *BlockData) Clone() (*BlockData, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	newBd := new(BlockData)
 	err = newBd.FromProto(protoBd)
 	if err != nil {
@@ -353,7 +437,8 @@ func (bd *BlockData) SetTransactions(txs []*Transaction) error {
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
 	proposer, _ := bd.Proposer()
-	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, reward:%v, supply:%v, timestamp:%v, proposer:%v>",
+	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, reward:%v, supply:%v, timestamp:%v, "+
+		"proposer:%v, cpuRef:%v, cpuBandwidth:%v, netRef:%v, netBandwidth:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
@@ -362,6 +447,10 @@ func (bd *BlockData) String() string {
 		bd.Supply().String(),
 		bd.Timestamp(),
 		proposer.Hex(),
+		bd.CPURef(),
+		bd.CPUUsage(),
+		bd.NetRef(),
+		bd.NetUsage(),
 	)
 }
 
@@ -390,7 +479,10 @@ func (bd *BlockData) VerifyIntegrity() error {
 		}
 	}
 
-	wantedHash := HashBlockData(bd)
+	wantedHash, err := HashBlockData(bd)
+	if err != nil {
+		return err
+	}
 	if !byteutils.Equal(wantedHash, bd.hash) {
 		return ErrInvalidBlockHash
 	}
@@ -490,7 +582,6 @@ func (b *Block) Consensus() Consensus {
 
 //Clone clone block
 func (b *Block) Clone() (*Block, error) {
-
 	bd, err := b.BlockData.Clone()
 	if err != nil {
 		return nil, err
@@ -500,7 +591,6 @@ func (b *Block) Clone() (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &Block{
 		BlockData: bd,
 		storage:   b.storage,
@@ -516,6 +606,14 @@ func (b *Block) Child() (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
+	state.cpuRef, err = calcRefCPU(b)
+	if err != nil {
+		return nil, err
+	}
+	state.netRef, err = calcRefNet(b)
+	if err != nil {
+		return nil, err
+	}
 	return &Block{
 		BlockData: &BlockData{
 			BlockHeader: &BlockHeader{
@@ -523,6 +621,10 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
+				cpuRef:     util.NewUint128(),
+				cpuUsage:   util.NewUint128(),
+				netRef:     util.NewUint128(),
+				netUsage:   util.NewUint128(),
 			},
 			transactions: make([]*Transaction, 0),
 			height:       b.height + 1,
@@ -563,6 +665,11 @@ func (b *Block) Seal() error {
 
 	b.reward = b.state.Reward()
 	b.supply = b.state.Supply()
+	b.cpuRef = b.state.cpuRef
+	b.cpuUsage = b.state.cpuUsage
+	b.netRef = b.state.netRef
+	b.netUsage = b.state.netUsage
+
 	b.accStateRoot, err = b.state.AccountsRoot()
 	if err != nil {
 		return err
@@ -576,14 +683,18 @@ func (b *Block) Seal() error {
 		return err
 	}
 
-	hash := HashBlockData(b.BlockData)
+	hash, err := HashBlockData(b.BlockData)
+	if err != nil {
+		return err
+	}
+
 	b.hash = hash
 	b.sealed = true
 	return nil
 }
 
 // HashBlockData returns hash of block
-func HashBlockData(bd *BlockData) []byte {
+func HashBlockData(bd *BlockData) ([]byte, error) {
 	hasher := sha3.New256()
 
 	hasher.Write(bd.ParentHash())
@@ -594,90 +705,153 @@ func HashBlockData(bd *BlockData) []byte {
 	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
 	hasher.Write(byteutils.FromUint32(bd.ChainID()))
 
+	rewardBytes, err := bd.Reward().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	supplyBytes, err := bd.Supply().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	cpuUsageBytes, err := bd.CPUUsage().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+	netUsageBytes, err := bd.NetUsage().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
+
+	hasher.Write(rewardBytes)
+	hasher.Write(supplyBytes)
+	// hasher.Write(bd.Alg())
+	hasher.Write(cpuUsageBytes)
+	hasher.Write(cpuUsageBytes)
+	hasher.Write(netUsageBytes)
+	hasher.Write(netUsageBytes)
+
 	for _, tx := range bd.transactions {
 		hasher.Write(tx.Hash())
 	}
 
-	return hasher.Sum(nil)
+	return hasher.Sum(nil), nil
 }
 
 // ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) error {
-	// Do not execute transaction if transaction's nonce is smaller or larger than expected nonce
-	err := b.state.checkNonce(transaction)
-	if err != nil {
-		return err
+func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*Receipt, error) {
+	// Executing process consists of two major parts
+	// Part 1 : Verify transaction and not affect state trie
+	// Part 2 : Execute transaction and affect state trie(store)
+
+	// Part 1 : Verify transaction and not affect state trie
+
+	// STEP 1. Check nonce
+	if err := b.state.checkNonce(transaction); err != nil {
+		return nil, err
 	}
 
-	// Do not execute transaction if transaction was generated a day before
-	if transaction.Timestamp() < b.Timestamp()-TxDelayLimit {
-		return ErrTooOldTransaction
-	}
-
-	// Get Executable transaction interface from transaction type
+	// STEP 2. Check tx type
 	newTxFunc, ok := txMap[transaction.TxType()]
 	if !ok {
-		return ErrInvalidTransactionType
+		return nil, ErrInvalidTransactionType
 	}
 
+	// STEP 3. Check tx components and set cpu, net usage on receipt
 	tx, err := newTxFunc(transaction)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	cpuUsage, netUsage, err := tx.Bandwidth(b.state)
+	if err != nil {
+		return nil, err
 	}
 
-	// If transaction has a payer it assigns payer to payer
-	// Unless transaction from is assigned as payer
+	// STEP 4. Check bandwidth (Exceeding block's max cpu/net bandwidth)
+	if err := b.state.checkBandwidthLimit(cpuUsage, netUsage); err != nil {
+		return nil, err
+	}
+
+	// STEP 5. Check balance
+	acc, err := b.state.GetAccount(transaction.From())
+	if err != nil {
+		return nil, err
+	}
+	if acc.Balance.Cmp(transaction.Value()) < 0 {
+		return nil, ErrBalanceNotEnough
+	}
+
+	// STEP 6. Check personal bandwidth
 	payer, err := transaction.recoverPayer()
 	if err == ErrPayerSignatureNotExist {
-		payer = transaction.from
+		payer = transaction.From()
 	} else if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to recover a payer address.")
-		return err
+		return nil, err
+	}
+	payerAcc, err := b.state.GetAccount(payer)
+	if err != nil {
+		return nil, err
+	}
+	curBandwidth, err := currentBandwidth(payerAcc, b.Timestamp())
+	if err != nil {
+		return nil, err
+	}
+	avail, err := payerAcc.Vesting.Sub(curBandwidth)
+	if err != nil {
+		return nil, err
+	}
+	switch transaction.TxType() {
+	case TxOpVest:
+		avail, err = avail.Add(transaction.Value())
+		break
+	case TxOpWithdrawVesting:
+		if avail.Cmp(transaction.Value()) < 0 {
+			return nil, ErrVestingNotEnough
+		}
+		avail, err = avail.Sub(transaction.Value())
+		break
+	default:
+		break
+	}
+	if err != nil {
+		return nil, err
+	}
+	usage, err := cpuUsage.Add(netUsage)
+	if err != nil {
+		return nil, err
+	}
+	if avail.Cmp(usage) < 0 {
+		return nil, ErrBandwidthNotEnough
 	}
 
-	// Update payer's bandwidth and save it in the accountState
-	err = b.regenerateBandwidth(payer)
-	if err != nil {
+	// Part 2 : Execute transaction and affect state trie(store)
+	// Even if transaction fails, still consume account's bandwidth
+
+	// Update payer's bandwidth and transaction.from's unstaking status before execute transaction
+	if err := b.regenerateBandwidth(payer); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to regenerate bandwidth.")
-		return err
+		return nil, err
 	}
-
-	// Update transaction sender's balance
 	err = b.updateUnstaking(transaction.From())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to update staking.")
-		return err
+		return nil, err
 	}
 
-	// Execute transaction
-	err = tx.Execute(b) // TODO @ggomma apply temporary states
+	receipt := NewReceipt()
+	receipt.cpuUsage = cpuUsage
+	receipt.netUsage = netUsage
+	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
+	err = tx.Execute(b)
 	if err != nil {
-		return err
+		receipt.error = []byte(err.Error())
+		return receipt, err
 	}
-
-	// Get required bandwidth of the transaction
-	usage, err := tx.Bandwidth()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to get bandwidth of a transaction.")
-		return err
-	}
-
-	err = b.consumeBandwidth(payer, usage)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to update bandwidth.")
-		return err
-	}
-	return nil
+	receipt.executed = true
+	return receipt, nil
 }
 
 func (b *Block) updateUnstaking(addr common.Address) error {
@@ -722,8 +896,25 @@ func (b *Block) updateUnstaking(addr common.Address) error {
 	return nil
 }
 
-func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error {
-	acc, err := b.State().GetAccount(addr)
+func (b *Block) consumeBandwidth(transaction *Transaction) error {
+	var (
+		payer common.Address
+		err   error
+	)
+	if transaction.payerSign == nil {
+		payer = transaction.from
+	} else {
+		payer, err = transaction.recoverPayer()
+		if err != nil {
+			return err
+		}
+	}
+	usage, err := transaction.receipt.netUsage.Add(transaction.receipt.cpuUsage)
+	if err != nil {
+		return err
+	}
+
+	acc, err := b.State().GetAccount(payer)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -743,10 +934,10 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 		logging.Console().WithFields(logrus.Fields{
 			"usage": usage,
 			"avail": avail,
-			"payer": addr.Hex(),
+			"payer": payer.Hex(),
 			"err":   err,
 		}).Warn("Bandwidth limit exceeded.")
-		return ErrBandwidthLimitExceeded
+		return ErrBandwidthNotEnough
 	}
 
 	// Update bandwidth and lastBandwidthTimestamp
@@ -760,7 +951,7 @@ func (b *Block) consumeBandwidth(addr common.Address, usage *util.Uint128) error
 	acc.Bandwidth = updated
 	acc.LastBandwidthTs = b.Timestamp()
 
-	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -782,9 +973,8 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 		}).Warn("Failed to get account.")
 		return err
 	}
-	vesting, bandwidth, lastTs := acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs
 
-	curBandwidth, err := currentBandwidth(vesting, bandwidth, lastTs, curTs)
+	curBandwidth, err := currentBandwidth(acc, curTs)
 	if err != nil {
 		return err
 	}
@@ -792,7 +982,7 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 	// update account
 	acc.Bandwidth = curBandwidth
 	acc.LastBandwidthTs = curTs
-	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -803,7 +993,10 @@ func (b *Block) regenerateBandwidth(addr common.Address) error {
 }
 
 // currentBandwidth calculates updated bandwidth based on current time.
-func currentBandwidth(vesting, bandwidth *util.Uint128, lastTs, curTs int64) (*util.Uint128, error) {
+func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
+	vesting := payer.Vesting
+	bandwidth := payer.Bandwidth
+	lastTs := payer.LastBandwidthTs
 	elapsed := curTs - lastTs
 	if time.Duration(elapsed)*time.Second >= BandwidthRegenerateDuration {
 		return util.NewUint128(), nil
@@ -902,16 +1095,19 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
-	if err := b.ExecuteTransaction(tx, txMap); err != nil {
+	receipt, err := b.ExecuteTransaction(tx, txMap)
+	if receipt == nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
 			"block":       b,
-		}).Warn("Failed to execute a transaction.")
+		}).Warn("No Receipt from transaction execution")
 		return err
 	}
 
-	if err := b.state.acceptTransaction(tx); err != nil {
+	tx.SetReceipt(receipt)
+
+	if err := b.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
@@ -953,13 +1149,42 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 	return nil
 }
 
-// AcceptTransaction adds tx in block state
-func (b *Block) AcceptTransaction(tx *Transaction) error {
-	if err := b.state.acceptTransaction(tx); err != nil {
+// AcceptTransaction consume bandwidth and adds tx in block state
+func (b *Block) AcceptTransaction(transaction *Transaction) error {
+	if transaction.receipt == nil {
+		return ErrNoTransactionReceipt
+	}
+
+	err := b.consumeBandwidth(transaction)
+	if err != nil {
 		return err
 	}
-	b.transactions = append(b.transactions, tx)
+
+	b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
+	if err != nil {
+		return err
+	}
+	b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
+	if err != nil {
+		return err
+	}
+
+	err = b.state.txState.Put(transaction)
+	if err != nil {
+		return err
+	}
+
+	err = b.state.accState.incrementNonce(transaction.from)
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// AppendTransaction append transaction to block data (only use on making block)
+func (b *Block) AppendTransaction(transaction *Transaction) {
+	b.BlockData.transactions = append(b.BlockData.transactions, transaction)
 }
 
 // VerifyState verifies block states comparing with root hashes in header
@@ -1090,34 +1315,93 @@ func BytesToBlockData(bytes []byte) (*BlockData, error) {
 
 //calcMintReward returns calculated block produce reward
 func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
-	rateNum, err := util.NewUint128FromString(rateNum)
+	reward, err := parentSupply.MulWithRat(InflationRate)
 	if err != nil {
 		return nil, err
 	}
-	rateDecimal, err := util.NewUint128FromString(rateDecimal)
+	roundDownDecimal := util.NewUint128FromUint(InflationRoundDown)
+	reward, err = reward.Div(roundDownDecimal)
 	if err != nil {
 		return nil, err
 	}
-	tempReward, err := rateNum.Mul(parentSupply)
-	if err != nil {
-		return nil, err
-	}
-	reward, err := tempReward.Div(rateDecimal)
-	if err != nil {
-		return nil, err
-	}
-
-	roundDecimal, err := util.NewUint128FromString(DecimalCount)
-	if err != nil {
-		return nil, err
-	}
-	reward, err = reward.Div(roundDecimal)
-	if err != nil {
-		return nil, err
-	}
-	reward, err = reward.Mul(roundDecimal)
+	reward, err = reward.Mul(roundDownDecimal)
 	if err != nil {
 		return nil, err
 	}
 	return reward, nil
+}
+
+// calculate Reference cpu Bandwidth
+
+func calcRefCPU(parent *Block) (*util.Uint128, error) {
+
+	return calcRefBandwidth(&calcRefBandwidthArg{
+		thresholdRatio: ThresholdRatio,
+		increaseRate:   BandwidthIncreaseRate,
+		decreaseRate:   BandwidthDecreaseRate,
+		discountRatio:  MinimumDiscountRatio,
+		limit:          cpuLimit,
+		usage:          parent.cpuUsage,
+		supply:         parent.supply,
+		previousRef:    parent.cpuRef,
+	})
+}
+
+// calculate Reference net Bandwidth
+func calcRefNet(parent *Block) (*util.Uint128, error) {
+	return calcRefBandwidth(&calcRefBandwidthArg{
+		thresholdRatio: ThresholdRatio,
+		increaseRate:   BandwidthIncreaseRate,
+		decreaseRate:   BandwidthDecreaseRate,
+		discountRatio:  MinimumDiscountRatio,
+		limit:          netLimit,
+		usage:          parent.netUsage,
+		supply:         parent.supply,
+		previousRef:    parent.netRef,
+	})
+}
+
+type calcRefBandwidthArg struct {
+	thresholdRatio, increaseRate, decreaseRate, discountRatio *big.Rat
+	limit                                                     uint64
+	usage, supply, previousRef                                *util.Uint128
+}
+
+func calcRefBandwidth(arg *calcRefBandwidthArg) (*util.Uint128, error) {
+	limit := util.NewUint128FromUint(uint64(arg.limit))
+	thresholdBandwidth, err := arg.previousRef.Mul(limit)
+	if err != nil {
+		return nil, err
+	}
+	thresholdBandwidth, err = thresholdBandwidth.MulWithRat(arg.thresholdRatio)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set Reference Net Bandwidth
+	if arg.usage.Cmp(thresholdBandwidth) <= 0 {
+		minRef, err := arg.supply.Div(util.NewUint128FromUint(NumberOfBlocksInSingleTimeWindow))
+		if err != nil {
+			return nil, err
+		}
+		minRef, err = minRef.Div(limit)
+		if err != nil {
+			return nil, err
+		}
+		minRef, err = minRef.MulWithRat(arg.discountRatio)
+		if err != nil {
+			return nil, err
+		}
+
+		newRef, err := arg.previousRef.MulWithRat(arg.decreaseRate)
+		if err != nil {
+			return nil, err
+		}
+		if minRef.Cmp(newRef) > 0 {
+			return minRef, nil
+		}
+		return newRef, nil
+	}
+
+	return arg.previousRef.MulWithRat(arg.increaseRate)
 }

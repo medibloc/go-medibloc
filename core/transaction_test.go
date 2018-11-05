@@ -36,13 +36,13 @@ func TestSend(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	bb.
-		Tx().StakeTx(from, 10000000000000000).Execute().
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1000001000000000000).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
+		Tx().StakeTx(from, 10000).Execute().
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
-		Balance(from.Addr, 1000000000000000000-10-10000000000000000).
-		Vesting(from.Addr, 10000000000000000)
+		Balance(from.Addr, 399989990).
+		Vesting(from.Addr, 10000)
 
 }
 
@@ -54,7 +54,7 @@ func TestAddRecord(t *testing.T) {
 	owner := bb.TokenDist[0]
 
 	block := bb.
-		Tx().StakeTx(owner, 10000000000000000).Execute().
+		Tx().StakeTx(owner, 10000).Execute().
 		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(owner).Execute().
 		Build()
 
@@ -73,21 +73,21 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	from := bb.TokenDist[testutil.DynastySize]
-	vestingAmount := uint64(1000000000000000)
-	withdrawAmount := uint64(301)
+	vestingAmount := 1000.0
+	withdrawAmount := 301.0
 
 	bb = bb.
 		Tx().Type(core.TxOpVest).Value(vestingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000000000000-vestingAmount)).
-		Vesting(from.Addr, uint64(vestingAmount))
+		Balance(from.Addr, 400000000-vestingAmount).
+		Vesting(from.Addr, vestingAmount)
 
 	bb = bb.
 		Tx().Type(core.TxOpWithdrawVesting).Value(withdrawAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000000000000-vestingAmount)).
+		Balance(from.Addr, 400000000-vestingAmount).
 		Vesting(from.Addr, vestingAmount-withdrawAmount).
 		Unstaking(from.Addr, withdrawAmount)
 
@@ -98,7 +98,7 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb = bb.SignMiner().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(from).Execute()
 	bb.Expect().
-		Balance(from.Addr, 1000000000000000000-vestingAmount+withdrawAmount).
+		Balance(from.Addr, 400000000-vestingAmount+withdrawAmount).
 		Unstaking(from.Addr, 0)
 }
 
@@ -152,7 +152,8 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb = bb.
-		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired).
+		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(expirationTime + int64(1)).SignPair(
+		issuer).ExecuteErr(core.ErrCertAlreadyExpired).
 		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).Execute().
 		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).Timestamp(revokeTime).SignPair(issuer).
 		ExecuteErr(core.ErrCertAlreadyRevoked)
@@ -185,9 +186,9 @@ func TestPayerSigner(t *testing.T) {
 	from := testutil.NewAddrKeyPair(t)
 	to := testutil.NewAddrKeyPair(t)
 	bb = bb.
-		Tx().StakeTx(payer, 10000000000000000).Execute().
+		Tx().StakeTx(payer, 10000).Execute().
 		Tx().Type(core.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrBandwidthLimitExceeded).
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrBandwidthNotEnough).
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
 	bb.
 		Expect().

@@ -114,3 +114,24 @@ func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.GetTransac
 	}
 	return rpcTxs, nil
 }
+
+func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.GetTransactionReceiptResponse, error) {
+	if tx.Receipt() == nil {
+		return &rpcpb.GetTransactionReceiptResponse{
+			Executed: true, // Transaction accepted but isn't stored in the trie due to version update
+			CpuUsage: "",
+			NetUsate: "",
+			Error:    "",
+		}, nil
+	}
+	err := byteutils.Bytes2Hex(tx.Receipt().Error())
+	cpuUsage := tx.Receipt().CPUUsage().String()
+	netUsage := tx.Receipt().NetUsage().String()
+
+	return &rpcpb.GetTransactionReceiptResponse{
+		Executed: tx.Receipt().Executed(),
+		CpuUsage: cpuUsage,
+		NetUsate: netUsage,
+		Error:    err,
+	}, nil
+}

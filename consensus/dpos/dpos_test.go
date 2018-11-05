@@ -42,6 +42,12 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
 
+	t.Log(seed.Tail().Hash())
+	t.Log(bb.B.Hash())
+
+	bb = bb.Child().SignMiner()
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
+
 	bb = bb.Child().Stake().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(newCandidate).Execute().
 		Tx().Type(core.TxOpVest).Value(10).SignPair(newCandidate).Execute().
@@ -52,6 +58,7 @@ func TestChangeDynasty(t *testing.T) {
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 	ds := seed.Tail().State().DposState()
 	isCandidate, err := ds.IsCandidate(newCandidate.Addr)
+
 	require.NoError(t, err)
 	assert.True(t, isCandidate)
 	inDynasty, err := ds.InDynasty(newCandidate.Addr)

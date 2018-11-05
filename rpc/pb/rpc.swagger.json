@@ -267,6 +267,31 @@
         ]
       }
     },
+    "/v1/transaction/receipt": {
+      "get": {
+        "operationId": "GetTransactionReceipt",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbGetTransactionReceiptResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hash",
+            "description": "Transaction hash.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/transactions/pending": {
       "get": {
         "operationId": "GetPendingTransactions",
@@ -461,6 +486,24 @@
         "LIB": {
           "type": "string",
           "title": "Current LIB hash"
+        }
+      }
+    },
+    "rpcpbGetTransactionReceiptResponse": {
+      "type": "object",
+      "properties": {
+        "executed": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "cpuUsage": {
+          "type": "string"
+        },
+        "netUsate": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
         }
       }
     },

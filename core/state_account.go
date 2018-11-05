@@ -53,9 +53,6 @@ type Account struct {
 	Voters     *trie.Batch   // voters who voted to me
 	VotePower  *util.Uint128 // sum of voters' vesting
 
-	TxsFrom *trie.Batch // transaction sent from account
-	TxsTo   *trie.Batch // transaction sent to account
-
 	Data *trie.Batch // contain records, certReceived, certIssued
 
 	Storage storage.Storage
@@ -67,14 +64,6 @@ func newAccount(stor storage.Storage) (*Account, error) {
 		return nil, err
 	}
 	voters, err := trie.NewBatch(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-	TxsFrom, err := trie.NewBatch(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-	TxsTo, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +85,6 @@ func newAccount(stor storage.Storage) (*Account, error) {
 		Collateral:      util.NewUint128(),
 		Voters:          voters,
 		VotePower:       util.NewUint128(),
-		TxsFrom:         TxsFrom,
-		TxsTo:           TxsTo,
 		Data:            data,
 		Storage:         stor,
 	}
@@ -147,17 +134,6 @@ func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 	if err != nil {
 		return err
 	}
-
-	acc.TxsFrom, err = trie.NewBatch(pbAcc.TxsFromRootHash, acc.Storage)
-	if err != nil {
-		return err
-	}
-
-	acc.TxsTo, err = trie.NewBatch(pbAcc.TxsToRootHash, acc.Storage)
-	if err != nil {
-		return err
-	}
-
 	acc.Data, err = trie.NewBatch(pbAcc.DataRootHash, acc.Storage)
 	if err != nil {
 		return err
@@ -199,14 +175,6 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	txsFromRootHash, err := acc.TxsFrom.RootHash()
-	if err != nil {
-		return nil, err
-	}
-	txsToRootHash, err := acc.TxsTo.RootHash()
-	if err != nil {
-		return nil, err
-	}
 	dataRootHash, err := acc.Data.RootHash()
 	if err != nil {
 		return nil, err
@@ -225,8 +193,6 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 		Collateral:      collateral,
 		VotersRootHash:  votersRootHash,
 		VotePower:       votePower,
-		TxsFromRootHash: txsFromRootHash,
-		TxsToRootHash:   txsToRootHash,
 		DataRootHash:    dataRootHash,
 	}, nil
 }
@@ -249,16 +215,6 @@ func (acc *Account) VotersSlice() [][]byte {
 	return KeyTrieToSlice(acc.Voters)
 }
 
-//TxsFromSlice returns slice converted from TxsFrom trie
-func (acc *Account) TxsFromSlice() [][]byte {
-	return KeyTrieToSlice(acc.TxsFrom)
-}
-
-//TxsToSlice returns slice converted from TxsTo trie
-func (acc *Account) TxsToSlice() [][]byte {
-	return KeyTrieToSlice(acc.TxsTo)
-}
-
 //GetData returns value in account's data trie
 func (acc *Account) GetData(prefix string, key []byte) ([]byte, error) {
 	return acc.Data.Get(append([]byte(prefix), key...))
@@ -273,7 +229,7 @@ func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
 func (acc *Account) UpdateBandwidth(timestamp int64) error {
 	var err error
 
-	acc.Bandwidth, err = currentBandwidth(acc.Vesting, acc.Bandwidth, acc.LastBandwidthTs, timestamp)
+	acc.Bandwidth, err = currentBandwidth(acc, timestamp)
 	if err != nil {
 		return err
 	}
@@ -382,75 +338,6 @@ func (as *AccountState) incrementNonce(addr common.Address) error {
 	}
 	acc.Nonce++
 	return as.putAccount(acc)
-}
-
-// addTxsFrom add transaction in TxsFrom
-func (as *AccountState) addTxsFrom(addr common.Address, txHash []byte) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	err = acc.TxsFrom.Prepare()
-	if err != nil {
-		return err
-	}
-	err = acc.TxsFrom.BeginBatch()
-	if err != nil {
-		return err
-	}
-	err = acc.TxsFrom.Put(txHash, txHash)
-	if err != nil {
-		return err
-	}
-	err = acc.TxsFrom.Commit()
-	if err != nil {
-		return err
-	}
-	err = acc.TxsFrom.Flush()
-	if err != nil {
-		return err
-	}
-	return as.putAccount(acc)
-}
-
-// addTxsTo add transaction in TxsFrom
-func (as *AccountState) addTxsTo(addr common.Address, txHash []byte) error {
-	acc, err := as.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	err = acc.TxsTo.Prepare()
-	if err != nil {
-		return err
-	}
-	err = acc.TxsTo.BeginBatch()
-	if err != nil {
-		return err
-	}
-	err = acc.TxsTo.Put(txHash, txHash)
-	if err != nil {
-		return err
-	}
-	err = acc.TxsTo.Commit()
-	if err != nil {
-		return err
-	}
-	err = acc.TxsTo.Flush()
-	if err != nil {
-		return err
-	}
-	return as.putAccount(acc)
-}
-
-//PutTx add transaction to account state
-func (as *AccountState) PutTx(tx *Transaction) error {
-	if err := as.addTxsFrom(tx.From(), tx.Hash()); err != nil {
-		return err
-	}
-	if err := as.addTxsTo(tx.To(), tx.Hash()); err != nil {
-		return err
-	}
-	return nil
 }
 
 //accounts returns account slice
