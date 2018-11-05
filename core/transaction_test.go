@@ -204,45 +204,8 @@ func TestPayerSigner(t *testing.T) {
 
 }
 
-func TestRegisterAlias(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-
-	//from := bb.TokenDist[testutil.DynastySize]
-	from := bb.TokenDist[0]
-	collateralAmount := uint64(1000000000000000)
-
-	bb = bb.
-		Tx().StakeTx(from, 10000000000000000).Execute().
-		Tx().Type(core.TxOpRegisterAlias).
-		Value(collateralAmount).
-		SignPair(from).
-		Payload(&core.RegisterAliasPayload{AliasName: "jiseob"}).
-		Execute()
-
-	bb.Expect().
-		Balance(from.Addr, uint64(1000000000000000000-collateralAmount-10000000000000000))
-	acc, err := bb.B.State().AccState().GetAliasAccount("jiseob")
-	//require.NoError(t, err)
-	if err != nil {
-		t.Log(err)
-	}
-	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
-
-	acc2, err := bb.B.State().AccState().GetAccount(from.Addr)
-	aliasBytes, err := acc2.GetData("", []byte("alias"))
-	pbAlias := new(corepb.Alias)
-	err = proto.Unmarshal(aliasBytes, pbAlias)
-	if err != nil {
-		t.Log(err)
-	}
-
-	t.Log(pbAlias.AliasName)
-}
-
 func TestRegisterAndDeregisterAlias(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-
-	//from := bb.TokenDist[testutil.DynastySize]
 	from := bb.TokenDist[0]
 	collateralAmount := uint64(1000000000000000)
 
@@ -251,20 +214,19 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		Tx().Type(core.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
-		Payload(&core.RegisterAliasPayload{AliasName: "jiseob"}).
+		Payload(&core.RegisterAliasPayload{AliasName: "testalias"}).
 		Execute()
 
 	bb.Expect().
 		Balance(from.Addr, uint64(1000000000000000000-collateralAmount-10000000000000000))
-	acc, err := bb.B.State().AccState().GetAliasAccount("jiseob")
-	//require.NoError(t, err)
+	acc, err := bb.B.State().AccState().GetAliasAccount("testalias")
 	if err != nil {
 		t.Log(err)
 	}
 	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
 
 	acc2, err := bb.B.State().AccState().GetAccount(from.Addr)
-	aliasBytes, err := acc2.GetData("", []byte("alias"))
+	aliasBytes, err := acc2.GetData(core.AliasPrefix, []byte("alias"))
 	pbAlias := new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
@@ -280,20 +242,19 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	bb.Expect().
 		Balance(from.Addr, uint64(1000000000000000000-10000000000000000))
 
-	acc, err = bb.B.State().AccState().GetAliasAccount("jiseob")
+	acc, err = bb.B.State().AccState().GetAliasAccount("testalias")
 	//require.NoError(t, err)
 	if err != nil {
 		t.Log(err)
+	} else {
+		t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
 	}
-	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
-
 	acc2, err = bb.B.State().AccState().GetAccount(from.Addr)
-	aliasBytes, err = acc2.GetData("", []byte("alias"))
+	aliasBytes, err = acc2.GetData(core.AliasPrefix, []byte(core.AliasKey))
 	pbAlias = new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
 		t.Log(err)
 	}
 	t.Log(pbAlias.AliasName)
-
 }

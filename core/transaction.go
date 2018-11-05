@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"unicode"
 
-	"errors"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -32,6 +30,11 @@ import (
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
+)
+
+const (
+	AliasKey        = "alias"
+	CollateralLimit = "1000000"
 )
 
 // Transaction struct represents transaction
@@ -971,7 +974,15 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 
 //Execute RegisterAliasTx
 func (tx *RegisterAliasTx) Execute(b *Block) error {
-	err := checkAliasCondition(tx.aliasName)
+	collateralLimit, err := util.NewUint128FromString(CollateralLimit)
+	if err != nil {
+		return err
+	}
+	if tx.collateral.Cmp(collateralLimit) < 0 {
+		return ErrAliasCollateralLimit
+	}
+
+	err = checkAliasCondition(tx.aliasName)
 	if err != nil {
 		return err
 	}
@@ -979,15 +990,18 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-
-	aliasBytes, err := acc.GetData("", []byte("alias"))
+	//aliasBytes, err := acc.GetData(AliasPrefix, []byte("alias"))
+	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
+	if err != nil && err != ErrNotFound{
+		return err
+	}
 	pbAlias := new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
 		return err
 	}
 	if pbAlias.AliasName != "" {
-		return errors.New("already have a alias name. deregister it first : " + pbAlias.AliasName)
+		return ErrAlreadyHaveAlias
 	}
 
 	acc.Balance, err = acc.Balance.Sub(tx.collateral)
@@ -1019,7 +1033,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	err = acc.PutData(AliasPrefix, []byte("alias"), aliasBytes)
+	err = acc.PutData(AliasPrefix, []byte(AliasKey), aliasBytes)
 	if err != nil {
 		return err
 	}
@@ -1035,17 +1049,18 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-
-	aa, err := b.State().accState.GetAliasAccount(tx.aliasName)
-	if err == ErrNotFound {
-		aa.Account = tx.addr
-		b.State().accState.PutAliasAccount(aa, tx.aliasName)
-	} else {
-		if err != nil {
-			return err
-		}
-		return errors.New("alias already taken by " + aa.Account.Hex())
+	_, err = b.State().accState.GetAliasAccount(tx.aliasName)
+	if err != nil && err != ErrNotFound {
+		return err
+	} else if err == nil {
+		return ErrAliasAlreadyTaken
 	}
+	aa, err := newAliasAccount()
+	if err != nil {
+		return err
+	}
+	aa.Account = tx.addr
+	b.State().accState.PutAliasAccount(aa, tx.aliasName)
 	return nil
 }
 
@@ -1056,19 +1071,19 @@ func (tx *RegisterAliasTx) Bandwidth() (*util.Uint128, error) {
 
 func checkAliasCondition(an string) error {
 	if an == "" {
-		return errors.New("aliasname should not be empty string")
+		return ErrAliasEmptyString
 	}
 	if len(an) > 12 {
-		return errors.New("aliasname should not be longer than 12 letters")
+		return ErrAliasLengthLimit
 	}
 	for i := 0; i < len(an); i++ {
 		ch := rune(an[i])
 
 		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
-			return errors.New("aliasname should contain only lowercase letters and numbers")
+			return ErrAliasInvalidChar
 		}
 		if i == 0 && unicode.IsNumber(ch) {
-			return errors.New("first letter of alias name should not be number")
+			return ErrAliasFirsLetter
 		}
 	}
 	return nil
@@ -1096,14 +1111,14 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 
-	aliasBytes, err := acc.GetData("", []byte("alias"))
+	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
 	pbAlias := new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
 		return err
 	}
 	if pbAlias.AliasName == "" {
-		return errors.New("doesn't have any alias")
+		return ErrAliasNotExist
 	}
 	collateral, err := util.NewUint128FromFixedSizeByteSlice(pbAlias.AliasCollateral)
 	if err != nil {
@@ -1114,16 +1129,11 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 
-	err = b.State().accState.PutAliasAccount(&AliasAccount{}, pbAlias.AliasName)
+	err = b.State().accState.Delete([]byte(pbAlias.AliasName))
 	if err != nil {
 		return err
 	}
 
-	pbAlias = &corepb.Alias{}
-	aliasBytes, err = proto.Marshal(pbAlias)
-	if err != nil {
-		return err
-	}
 	err = acc.Data.Prepare()
 	if err != nil {
 		return err
@@ -1132,7 +1142,7 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	err = acc.PutData(AliasPrefix, []byte("alias"), aliasBytes)
+	err = acc.Data.Delete([]byte(AliasKey))
 	if err != nil {
 		return err
 	}

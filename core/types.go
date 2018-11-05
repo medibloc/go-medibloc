@@ -144,6 +144,14 @@ var (
 	ErrNotInVoters                      = errors.New("voter is not in voters")
 	ErrCannotUseZeroValue               = errors.New("value should be larger than zero")
 	ErrFailedToDirectPush               = errors.New("cannot direct push to chain")
+	ErrAlreadyHaveAlias                 = errors.New("already have a alias name")
+	ErrAliasAlreadyTaken                = errors.New("already occupied alias")
+	ErrAliasEmptyString                 = errors.New("aliasname should not be empty string")
+	ErrAliasLengthLimit                 = errors.New("aliasname should not be longer than 12 letters")
+	ErrAliasInvalidChar                 = errors.New("aliasname should contain only lowercase letters and numbers")
+	ErrAliasFirsLetter                  = errors.New("first letter of alias name should not be a number")
+	ErrAliasNotExist                    = errors.New("doesn't have any alias")
+	ErrAliasCollateralLimit             = errors.New("not enough transaction value for alias collateral")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
