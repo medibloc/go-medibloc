@@ -217,6 +217,15 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		Payload(&core.RegisterAliasPayload{AliasName: "testalias"}).
 		Execute()
 
+	bb = bb.
+		Tx().StakeTx(from, 10000000000000000).Execute().
+		Tx().Type(core.TxOpRegisterAlias).
+		Value(collateralAmount).
+		SignPair(from).
+		Payload(&core.RegisterAliasPayload{AliasName: "testalias"}).
+		Execute()
+
+
 	bb.Expect().
 		Balance(from.Addr, uint64(1000000000000000000-collateralAmount-10000000000000000))
 	acc, err := bb.B.State().AccState().GetAliasAccount("testalias")

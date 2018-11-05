@@ -83,11 +83,14 @@ service ApiService {
 message GetAccountRequest {
   // Hex string of the account addresss.
   string address = 1;
+  // If you send address, alias field is ignored.
+  // String of the account alias.
+  string alias = 2;
   // If you send type, height field is ignored.
   // Block type "genesis", "confirmed", or "tail".
-  string type = 2;
+  string type = 3;
   // Block account state with height
-  uint64 height = 3;
+  uint64 height = 4;
 }
 
 message GetAccountResponse {
@@ -106,6 +109,8 @@ message GetAccountResponse {
   string bandwidth = 6;
 
   string unstaking = 7;
+
+  Data data = 8;
   //	// List of record hash.
   //	repeated string records = 6;
   //	// Account addresses that have certificated the account.
@@ -116,6 +121,10 @@ message GetAccountResponse {
   //  repeated string txs_from = 9;
   //  // Transactions sent to account
   //  repeated string txs_to = 10;
+}
+
+message Data {
+  string Alias = 1;
 }
 
 message GetBlockRequest {

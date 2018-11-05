@@ -20,7 +20,7 @@
         "operationId": "GetAccount",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetAccountResponse"
             }
@@ -30,6 +30,13 @@
           {
             "name": "address",
             "description": "Hex string of the account addresss.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "alias",
+            "description": "If you send address, alias field is ignored.\nString of the account alias.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -60,7 +67,7 @@
         "operationId": "GetAccountTransactions",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
@@ -93,7 +100,7 @@
         "operationId": "GetBlock",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlockResponse"
             }
@@ -133,7 +140,7 @@
         "operationId": "GetBlocks",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlocksResponse"
             }
@@ -165,7 +172,7 @@
         "operationId": "GetCandidates",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetCandidatesResponse"
             }
@@ -181,7 +188,7 @@
         "operationId": "GetDynasty",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetDynastyResponse"
             }
@@ -197,7 +204,7 @@
         "operationId": "HealthCheck",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbHealthCheckResponse"
             }
@@ -213,7 +220,7 @@
         "operationId": "GetMedState",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetMedStateResponse"
             }
@@ -229,7 +236,7 @@
         "operationId": "Subscribe",
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/rpcpbSubscribeResponse"
             }
@@ -255,7 +262,7 @@
         "operationId": "GetTransaction",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionResponse"
             }
@@ -278,7 +285,7 @@
         "operationId": "SendTransaction",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbSendTransactionResponse"
             }
@@ -304,7 +311,7 @@
         "operationId": "GetPendingTransactions",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
@@ -327,6 +334,14 @@
           "type": "string"
         },
         "votePower": {
+          "type": "string"
+        }
+      }
+    },
+    "rpcpbData": {
+      "type": "object",
+      "properties": {
+        "Alias": {
           "type": "string"
         }
       }
@@ -363,6 +378,9 @@
         },
         "unstaking": {
           "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/rpcpbData"
         }
       }
     },

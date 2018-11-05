@@ -1,7 +1,7 @@
-package rpcpb
+package rpcpb 
 
 const (
-	swagger = `{
+swagger = `{
   "swagger": "2.0",
   "info": {
     "title": "rpc.proto",
@@ -23,7 +23,7 @@ const (
         "operationId": "GetAccount",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetAccountResponse"
             }
@@ -33,6 +33,13 @@ const (
           {
             "name": "address",
             "description": "Hex string of the account addresss.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "alias",
+            "description": "If you send address, alias field is ignored.\nString of the account alias.",
             "in": "query",
             "required": false,
             "type": "string"
@@ -63,7 +70,7 @@ const (
         "operationId": "GetAccountTransactions",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
@@ -96,7 +103,7 @@ const (
         "operationId": "GetBlock",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlockResponse"
             }
@@ -136,7 +143,7 @@ const (
         "operationId": "GetBlocks",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlocksResponse"
             }
@@ -168,7 +175,7 @@ const (
         "operationId": "GetCandidates",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetCandidatesResponse"
             }
@@ -184,7 +191,7 @@ const (
         "operationId": "GetDynasty",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetDynastyResponse"
             }
@@ -200,7 +207,7 @@ const (
         "operationId": "HealthCheck",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbHealthCheckResponse"
             }
@@ -216,7 +223,7 @@ const (
         "operationId": "GetMedState",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetMedStateResponse"
             }
@@ -232,7 +239,7 @@ const (
         "operationId": "Subscribe",
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/rpcpbSubscribeResponse"
             }
@@ -258,7 +265,7 @@ const (
         "operationId": "GetTransaction",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionResponse"
             }
@@ -281,7 +288,7 @@ const (
         "operationId": "SendTransaction",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbSendTransactionResponse"
             }
@@ -307,7 +314,7 @@ const (
         "operationId": "GetPendingTransactions",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
@@ -330,6 +337,14 @@ const (
           "type": "string"
         },
         "votePower": {
+          "type": "string"
+        }
+      }
+    },
+    "rpcpbData": {
+      "type": "object",
+      "properties": {
+        "Alias": {
           "type": "string"
         }
       }
@@ -366,6 +381,9 @@ const (
         },
         "unstaking": {
           "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/rpcpbData"
         }
       }
     },

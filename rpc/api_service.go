@@ -17,7 +17,6 @@ package rpc
 
 import (
 	"encoding/hex"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
@@ -70,6 +69,13 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
+	if req.Address == "" {
+		account, err := block.State().AccState().GetAliasAccount(req.Alias)
+		if err != nil {
+			return nil, err
+		}
+		req.Address = account.Account.Str() // req.Address
+	}
 	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
@@ -354,3 +360,4 @@ func (s *APIService) HealthCheck(ctx context.Context, req *rpcpb.NonParamRequest
 		Ok: true,
 	}, nil
 }
+
