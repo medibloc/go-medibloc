@@ -70,6 +70,7 @@ const ( // TODO @ggomma change limit to real number
 	netLimit                         = 3000000 // 3MB
 )
 
+// Bandwidth related defaults
 var (
 	MinimumDiscountRatio  = big.NewRat(1, 100)
 	BandwidthIncreaseRate = big.NewRat(105, 100)

@@ -126,7 +126,7 @@ func NewReceipt() *Receipt {
 	}
 }
 
-//NewReceipt returns new receipt for genesis transaction
+//NewGenesisReceipt returns new receipt for genesis transaction
 func NewGenesisReceipt() *Receipt {
 	return &Receipt{
 		executed: true,
