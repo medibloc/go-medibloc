@@ -54,6 +54,16 @@ type Dpos struct {
 	quitCh chan int
 }
 
+//MinerKey returns minerKey
+func (d *Dpos) MinerKey() signature.PrivateKey {
+	return d.minerKey
+}
+
+//Miner returns miner address
+func (d *Dpos) Miner() common.Address {
+	return d.miner
+}
+
 // DynastySize returns dynastySize
 func (d *Dpos) DynastySize() int {
 	return d.dynastySize
@@ -94,21 +104,21 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	if cfg.Chain.StartMine {
 		d.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
 		if cfg.Chain.Keydir != "" {
-			ksJson, err := ioutil.ReadFile(cfg.Chain.Keydir)
+			ks, err := ioutil.ReadFile(cfg.Chain.Keydir)
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err":    err,
 					"Keydir": cfg.Chain.Keydir,
 				}).Error("failed to read key store file")
-				return err
+				return keystore.ErrFailedToReadKeystoreFile
 			}
 
-			key, err := keystore.DecryptKey(ksJson, cfg.Chain.Passphrase)
+			key, err := keystore.DecryptKey(ks, cfg.Chain.Passphrase)
 			if err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("failed to decrypt keystore file")
-				return err
+				return keystore.ErrFailedToDecrypt
 			}
 			d.miner = key.Address
 			d.minerKey = key.PrivateKey

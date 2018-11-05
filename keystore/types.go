@@ -19,6 +19,16 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/pborman/uuid"
+	"github.com/pkg/errors"
+)
+
+//
+var (
+	ErrFailedToReadKeystoreFile      = errors.New("failed to read keystore file")
+	ErrInvalidKeystoreVersion        = errors.New("cannot parse old version")
+	ErrFailedToUnmarshalKeystoreJSON = errors.New("failed unmarshal keystore json")
+	ErrWrongPassphrase               = errors.New("wrong passphrase for keystore")
+	ErrFailedToDecrypt               = errors.New("failed to decrypt keystore by passphrase")
 )
 
 // CipherJSON json format for crypto field in keystore file

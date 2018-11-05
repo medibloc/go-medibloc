@@ -20,6 +20,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+	"github.com/medibloc/go-medibloc/util/testutil"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/stretchr/testify/assert"
@@ -74,4 +77,44 @@ func TestEncryptDecryptV3(t *testing.T) {
 	t.Log(byteutils.Bytes2Hex(privKeyBytes))
 	t.Log(byteutils.Bytes2Hex(pubKeyBytes))
 
+}
+
+func TestDposSetup(t *testing.T) {
+	const (
+		testPassphrase = "testpassphrase"
+		filename       = "testKeyfile.key"
+	)
+	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
+	privKeyBytes, err := privKey.Encoded()
+	require.NoError(t, err)
+
+	addr, err := common.PublicKeyToAddress(privKey.PublicKey())
+	require.NoError(t, err)
+
+	t.Log("Private Key: ", byteutils.Bytes2Hex(privKeyBytes))
+	t.Log("Addr: ", addr.Hex())
+	require.NoError(t, keystore.MakeKeystoreV3(byteutils.Bytes2Hex(privKeyBytes), testPassphrase, filename))
+	defer os.Remove(filename)
+
+	cfg := testutil.NewConfig(t).SetRandomGenesis(testutil.DynastySize)
+	cfg.Config.Chain.StartMine = true
+	cfg.Config.Chain.Passphrase = testPassphrase
+	cfg.Config.Chain.Keydir = filename
+
+	tn := testutil.NewNetwork(t, testutil.DynastySize)
+	defer tn.Cleanup()
+	tn.SetLogTestHook()
+
+	seed := tn.NewSeedNodeWithConfig(cfg)
+	seed.Start()
+	d := seed.Med.Consensus().(*dpos.Dpos)
+
+	minerKeyBytes, err := d.MinerKey().Encoded()
+	require.NoError(t, err)
+
+	t.Log("Dpos miner key: ", byteutils.Bytes2Hex(minerKeyBytes))
+	t.Log("Dpos miner addr: ", d.Miner().Hex())
+
+	require.Equal(t, privKeyBytes, minerKeyBytes)
+	require.Equal(t, addr.Hex(), d.Miner().Hex())
 }

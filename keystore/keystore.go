@@ -219,11 +219,11 @@ func DecryptKey(keyjson []byte, auth string) (*Key, error) {
 		err             error
 	)
 	if version, ok := m["version"].(string); ok && version == "1" {
-		return nil, errors.New("cannot parse old version")
+		return nil, ErrInvalidKeystoreVersion
 	}
 	k := new(EncryptedKeyJSONV3)
 	if err := json.Unmarshal(keyjson, k); err != nil {
-		return nil, err
+		return nil, ErrFailedToUnmarshalKeystoreJSON
 	}
 	keyBytes, keyID, err = decryptKeyV3(k, auth)
 	// Handle any decryption errors and return the key
@@ -231,7 +231,7 @@ func DecryptKey(keyjson []byte, auth string) (*Key, error) {
 		return nil, err
 	}
 	keyString := byteutils.Bytes2Hex(keyBytes)
-	if len(keyString) == 128 {
+	if len(keyString) == 128 { // TODO : will be deprecated after update medjs
 		keyBytes = byteutils.Hex2Bytes(numbytesToHex(keyString))
 	}
 	key := secp256k1.GeneratePrivateKey()
@@ -275,7 +275,7 @@ func DecryptDataV3(CipherJSON CipherJSON, auth string) ([]byte, error) {
 	macHasher.Write(cipherText)
 	calculatedMAC := macHasher.Sum(nil)
 	if !bytes.Equal(calculatedMAC, mac) {
-		return nil, errors.New("could not decrypt key with given passphrase")
+		return nil, ErrWrongPassphrase
 	}
 	plainText, err := crypto.AESCTRXOR(derivedKey[:16], cipherText, iv)
 	if err != nil {
@@ -294,7 +294,7 @@ func decryptKeyV3(keyProtected *EncryptedKeyJSONV3, auth string) (keyBytes []byt
 	if err != nil {
 		return nil, nil, err
 	}
-	return plainText, keyID, err
+	return plainText, keyID, nil
 }
 
 // getKDFKey key decrypt function decrypts key from crypto JSON using auth string
@@ -332,6 +332,7 @@ func ensureInt(x interface{}) int {
 	return res
 }
 
+// TODO : will be deprecated after update medjs
 func numbytesToHex(s string) string {
 	m := make(map[string]string)
 	m["30"] = "0"
