@@ -47,4 +47,5 @@ const (
 	ErrMsgInvalidRequest             = "invalid request"
 	ErrMsgFailedToUpdateBandwidth    = "failed to update bandwidth"
 	ErrMsgFailedToUpdateUnstaking    = "failed to update Unstaking"
+	ErrMsgAliasNotFound              = "alias not found"
 )

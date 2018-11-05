@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"encoding/hex"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
@@ -68,19 +69,22 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if block == nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
-
-	if req.Address == "" {
+	addr := req.Address
+	if addr == "" {
 		account, err := block.State().AccState().GetAliasAccount(req.Alias)
-		if err != nil {
-			return nil, err
+		if err == trie.ErrNotFound {
+			return nil, status.Error(codes.NotFound, ErrMsgAliasNotFound)
 		}
-		req.Address = account.Account.Str() // req.Address
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
+		}
+		addr = account.Account.String()
 	}
-	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
+	acc, err := block.State().GetAccount(common.HexToAddress(addr))
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
-	return coreAccount2rpcAccount(acc, block.Timestamp(), req.Address)
+	return coreAccount2rpcAccount(acc, block.Timestamp(), addr)
 }
 
 // GetBlock returns block
@@ -360,4 +364,3 @@ func (s *APIService) HealthCheck(ctx context.Context, req *rpcpb.NonParamRequest
 		Ok: true,
 	}, nil
 }
-

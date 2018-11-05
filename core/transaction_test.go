@@ -223,11 +223,10 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		Value(collateralAmount).
 		SignPair(from).
 		Payload(&core.RegisterAliasPayload{AliasName: "testalias"}).
-		Execute()
-
+		ExecuteErr(core.ErrAlreadyHaveAlias)
 
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000000000000-collateralAmount-10000000000000000))
+		Balance(from.Addr, uint64(1000000000000000000-collateralAmount-20000000000000000))
 	acc, err := bb.B.State().AccState().GetAliasAccount("testalias")
 	if err != nil {
 		t.Log(err)
@@ -248,8 +247,13 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		SignPair(from).
 		Execute()
 
+	bb = bb.
+		Tx().Type(core.TxOpDeregisterAlias).
+		SignPair(from).
+		ExecuteErr(core.ErrAliasNotExist)
+
 	bb.Expect().
-		Balance(from.Addr, uint64(1000000000000000000-10000000000000000))
+		Balance(from.Addr, uint64(1000000000000000000-20000000000000000))
 
 	acc, err = bb.B.State().AccState().GetAliasAccount("testalias")
 	//require.NoError(t, err)

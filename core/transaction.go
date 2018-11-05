@@ -33,7 +33,9 @@ import (
 )
 
 const (
+	//AliasKey key for find aliasname
 	AliasKey        = "alias"
+	//CollateralLimit limit valure for register alias
 	CollateralLimit = "1000000"
 )
 
@@ -992,7 +994,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	}
 	//aliasBytes, err := acc.GetData(AliasPrefix, []byte("alias"))
 	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
-	if err != nil && err != ErrNotFound{
+	if err != nil && err != ErrNotFound {
 		return err
 	}
 	pbAlias := new(corepb.Alias)

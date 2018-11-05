@@ -110,7 +110,7 @@ message GetAccountResponse {
 
   string unstaking = 7;
 
-  Data data = 8;
+  Data data = 11;
   //	// List of record hash.
   //	repeated string records = 6;
   //	// Account addresses that have certificated the account.
