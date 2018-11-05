@@ -16,9 +16,11 @@
 package dpos
 
 import (
+	"bytes"
+	"io/ioutil"
 	"time"
 
-	"bytes"
+	"github.com/medibloc/go-medibloc/keystore"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -52,7 +54,17 @@ type Dpos struct {
 	quitCh chan int
 }
 
-//DynastySize returns dynastySize
+//MinerKey returns minerKey
+func (d *Dpos) MinerKey() signature.PrivateKey {
+	return d.minerKey
+}
+
+//Miner returns miner address
+func (d *Dpos) Miner() common.Address {
+	return d.miner
+}
+
+// DynastySize returns dynastySize
 func (d *Dpos) DynastySize() int {
 	return d.dynastySize
 }
@@ -91,15 +103,36 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	d.startMine = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
 		d.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
-		d.miner = common.HexToAddress(cfg.Chain.Miner)
-		minerKey, err := secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Invalid miner private key.")
-			return err
+		if cfg.Chain.Keydir != "" {
+			ks, err := ioutil.ReadFile(cfg.Chain.Keydir)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err":    err,
+					"Keydir": cfg.Chain.Keydir,
+				}).Error("failed to read key store file")
+				return keystore.ErrFailedToReadKeystoreFile
+			}
+
+			key, err := keystore.DecryptKey(ks, cfg.Chain.Passphrase)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("failed to decrypt keystore file")
+				return keystore.ErrFailedToDecrypt
+			}
+			d.miner = key.Address
+			d.minerKey = key.PrivateKey
+		} else {
+			var err error
+			d.miner = common.HexToAddress(cfg.Chain.Miner)
+			d.minerKey, err = secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Invalid miner private key.")
+				return err
+			}
 		}
-		d.minerKey = minerKey
 	}
 
 	// Setup genesis configuration

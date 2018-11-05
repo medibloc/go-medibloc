@@ -92,7 +92,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to create leveldb storage.")
+		}).Error("Failed to create rocksdb storage.")
 		return nil, err
 	}
 
