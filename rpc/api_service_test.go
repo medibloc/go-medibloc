@@ -507,35 +507,57 @@ func TestAPIService_Subscribe(t *testing.T) {
 
 	go func() {
 		Client := &http.Client{}
-		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/subscribe?topics=%s", testutil.IP2Local(seed.Config.Config.Rpc.
-			HttpListen[0]), core.TopicPendingTransaction), nil)
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/subscribe?topics=%s&topics=%s&topics=%s",
+			testutil.IP2Local(seed.Config.Config.Rpc.
+				HttpListen[0]), core.TopicPendingTransaction, core.TopicTransactionExecutionResult, core.TopicNewTailBlock), nil)
+		assert.NoError(t, err)
 		req.Header.Set("Accept", "text/event-stream")
 
-		res, _ := Client.Do(req)
+		res, err := Client.Do(req)
+		assert.NoError(t, err)
 		br := bufio.NewReader(res.Body)
 		defer res.Body.Close()
 
 		i := 0
 		for {
 			bs, err := br.ReadBytes('\n')
+			if err == io.EOF || i > 6 {
+				break
+			}
+			assert.NoError(t, err)
 
 			data := &Data{
 				Result: &Result{},
 			}
+
 			err = json.Unmarshal(bs, data)
-			if err == io.EOF || i > 2 {
-				break
+			assert.NoError(t, err)
+
+			switch data.Result.Topic {
+			case core.TopicPendingTransaction:
+				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i%3].Hash()))
+			case core.TopicTransactionExecutionResult:
+				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i%3].Hash()))
+			case core.TopicNewTailBlock:
+				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(b.Hash()))
 			}
-			fmt.Println(data.Result.Hash)
-			fmt.Println(byteutils.Bytes2Hex(tx[i].Hash()))
-			fmt.Println(i)
-			assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i].Hash()))
 			i = i + 1
 		}
 	}()
 
 	for i := 0; i <= 2; i++ {
+		// At least 3 seconds for next block
 		time.Sleep(1000 * time.Millisecond)
 		seed.Med.TransactionManager().Push(tx[i])
 	}
+
+	bb = bb.ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
+	for i := 0; i <= 2; i++ {
+		time.Sleep(500 * time.Millisecond)
+		bb.ExecuteTx(tx[i])
+	}
+	b = bb.SignMiner().Build()
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, err)
+	time.Sleep(500 * time.Millisecond)
 }
