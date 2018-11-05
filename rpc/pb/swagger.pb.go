@@ -38,6 +38,13 @@ const (
             "type": "string"
           },
           {
+            "name": "alias",
+            "description": "If you send address, alias field is ignored.\nString of the account alias.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
             "name": "type",
             "description": "If you send type, height field is ignored.\nBlock type \"genesis\", \"confirmed\", or \"tail\".",
             "in": "query",
@@ -327,6 +334,14 @@ const (
         }
       }
     },
+    "rpcpbData": {
+      "type": "object",
+      "properties": {
+        "Alias": {
+          "type": "string"
+        }
+      }
+    },
     "rpcpbGetAccountResponse": {
       "type": "object",
       "properties": {
@@ -359,6 +374,9 @@ const (
         },
         "unstaking": {
           "type": "string"
+        },
+        "data": {
+          "$ref": "#/definitions/rpcpbData"
         }
       }
     },

@@ -204,3 +204,74 @@ func TestPayerSigner(t *testing.T) {
 	t.Log("Payer's bandwidth after payer sign", payerAcc.Bandwidth)
 
 }
+
+func TestRegisterAndDeregisterAlias(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[0]
+	const (
+		collateralAmount = 1000
+		testAliasName    = "testalias"
+	)
+
+	bb = bb.
+		Tx().StakeTx(from, 10000).Execute().
+		Tx().Type(core.TxOpRegisterAlias).
+		Value(collateralAmount).
+		SignPair(from).
+		Payload(&core.RegisterAliasPayload{AliasName: testAliasName}).
+		Execute()
+
+	bb = bb.
+		Tx().StakeTx(from, 10000).Execute().
+		Tx().Type(core.TxOpRegisterAlias).
+		Value(collateralAmount).
+		SignPair(from).
+		Payload(&core.RegisterAliasPayload{AliasName: testAliasName}).
+		ExecuteErr(core.ErrAlreadyHaveAlias)
+
+	bb.Expect().
+		Balance(from.Addr, 400000000-collateralAmount-20000)
+	acc, err := bb.B.State().AccState().GetAliasAccount(testAliasName)
+	if err != nil {
+		t.Log(err)
+	}
+	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
+
+	acc2, err := bb.B.State().AccState().GetAccount(from.Addr)
+	aliasBytes, err := acc2.GetData(core.AliasPrefix, []byte("alias"))
+	pbAlias := new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		t.Log(err)
+	}
+	t.Log(pbAlias.AliasName)
+
+	bb = bb.
+		Tx().Type(core.TxOpDeregisterAlias).
+		SignPair(from).
+		Execute()
+
+	bb = bb.
+		Tx().Type(core.TxOpDeregisterAlias).
+		SignPair(from).
+		ExecuteErr(core.ErrAliasNotExist)
+
+	bb.Expect().
+		Balance(from.Addr, 400000000-20000)
+
+	acc, err = bb.B.State().AccState().GetAliasAccount(testAliasName)
+	//require.NoError(t, err)
+	if err != nil {
+		t.Log(err)
+	} else {
+		t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
+	}
+	acc2, err = bb.B.State().AccState().GetAccount(from.Addr)
+	aliasBytes, err = acc2.GetData(core.AliasPrefix, []byte(core.AliasKey))
+	pbAlias = new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		t.Log(err)
+	}
+	t.Log(pbAlias.AliasName)
+}

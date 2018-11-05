@@ -157,7 +157,6 @@ func (tb *Batch) Put(key []byte, value []byte) error {
 		value:      value,
 		deleteFlag: false,
 	}
-
 	return nil
 }
 

@@ -69,12 +69,22 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if block == nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
-
-	acc, err := block.State().GetAccount(common.HexToAddress(req.Address))
+	addr := req.Address
+	if addr == "" {
+		account, err := block.State().AccState().GetAliasAccount(req.Alias)
+		if err == trie.ErrNotFound {
+			return nil, status.Error(codes.NotFound, ErrMsgAliasNotFound)
+		}
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
+		}
+		addr = account.Account.String()
+	}
+	acc, err := block.State().GetAccount(common.HexToAddress(addr))
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
-	return coreAccount2rpcAccount(acc, block.Timestamp(), req.Address)
+	return coreAccount2rpcAccount(acc, block.Timestamp(), addr)
 }
 
 // GetBlock returns block

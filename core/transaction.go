@@ -17,6 +17,7 @@ package core
 
 import (
 	"fmt"
+	"unicode"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -29,6 +30,13 @@ import (
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
+)
+
+const (
+	//AliasKey key for find aliasname
+	AliasKey = "alias"
+	//CollateralLimit limit valure for register alias
+	CollateralLimit = "1000000"
 )
 
 // Transaction struct represents transaction
@@ -1067,6 +1075,239 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 
 //Bandwidth returns bandwidth.
 func (tx *RevokeCertificationTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
+}
+
+// RegisterAliasTx is a structure for register alias
+type RegisterAliasTx struct {
+	addr       common.Address
+	collateral *util.Uint128
+	aliasName  string
+	timestamp  int64
+	size       int
+}
+
+//NewRegisterAliasTx returns RegisterAliasTx
+func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.Payload()) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
+	payload := new(RegisterAliasPayload)
+	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
+		return nil, err
+	}
+	return &RegisterAliasTx{
+		addr:       tx.From(),
+		aliasName:  payload.AliasName,
+		collateral: tx.Value(),
+		timestamp:  tx.Timestamp(),
+	}, nil
+}
+
+//Execute RegisterAliasTx
+func (tx *RegisterAliasTx) Execute(b *Block) error {
+	collateralLimit, err := util.NewUint128FromString(CollateralLimit)
+	if err != nil {
+		return err
+	}
+	if tx.collateral.Cmp(collateralLimit) < 0 {
+		return ErrAliasCollateralLimit
+	}
+
+	err = checkAliasCondition(tx.aliasName)
+	if err != nil {
+		return err
+	}
+	acc, err := b.State().GetAccount(tx.addr)
+	if err != nil {
+		return err
+	}
+	//aliasBytes, err := acc.GetData(AliasPrefix, []byte("alias"))
+	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	pbAlias := new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		return err
+	}
+	if pbAlias.AliasName != "" {
+		return ErrAlreadyHaveAlias
+	}
+
+	acc.Balance, err = acc.Balance.Sub(tx.collateral)
+	if err == util.ErrUint128Underflow {
+		return ErrBalanceNotEnough
+	}
+	if err != nil {
+		return err
+	}
+
+	collateralBytes, err := tx.collateral.ToFixedSizeByteSlice()
+	if err != nil {
+		return err
+	}
+	pbAlias = &corepb.Alias{
+		AliasName:       tx.aliasName,
+		AliasCollateral: collateralBytes,
+		Timestamp:       tx.timestamp,
+	}
+	aliasBytes, err = proto.Marshal(pbAlias)
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Prepare()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = acc.PutData(AliasPrefix, []byte(AliasKey), aliasBytes)
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Commit()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Flush()
+	if err != nil {
+		return err
+	}
+	err = b.State().PutAccount(acc)
+	if err != nil {
+		return err
+	}
+	_, err = b.State().accState.GetAliasAccount(tx.aliasName)
+	if err != nil && err != ErrNotFound {
+		return err
+	} else if err == nil {
+		return ErrAliasAlreadyTaken
+	}
+	aa, err := newAliasAccount()
+	if err != nil {
+		return err
+	}
+	aa.Account = tx.addr
+	b.State().accState.PutAliasAccount(aa, tx.aliasName)
+	return nil
+}
+
+//Bandwidth returns bandwidth.
+func (tx *RegisterAliasTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
+	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
+	if err != nil {
+		return nil, nil, err
+	}
+	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cpuUsage, netUsage, nil
+}
+
+func checkAliasCondition(an string) error {
+	if an == "" {
+		return ErrAliasEmptyString
+	}
+	if len(an) > 12 {
+		return ErrAliasLengthLimit
+	}
+	for i := 0; i < len(an); i++ {
+		ch := rune(an[i])
+
+		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
+			return ErrAliasInvalidChar
+		}
+		if i == 0 && unicode.IsNumber(ch) {
+			return ErrAliasFirsLetter
+		}
+	}
+	return nil
+}
+
+// DeregisterAliasTx is a structure for deregister alias
+type DeregisterAliasTx struct {
+	addr common.Address
+	size int
+}
+
+//NewDeregisterAliasTx returns RegisterAliasTx
+func NewDeregisterAliasTx(tx *Transaction) (ExecutableTx, error) {
+	if len(tx.Payload()) > MaxPayloadSize {
+		return nil, ErrTooLargePayload
+	}
+	return &DeregisterAliasTx{
+		addr: tx.From(),
+	}, nil
+}
+
+//Execute DeregisterAliasTx
+func (tx *DeregisterAliasTx) Execute(b *Block) error {
+	acc, err := b.State().GetAccount(tx.addr)
+	if err != nil {
+		return err
+	}
+
+	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
+	pbAlias := new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		return err
+	}
+	if pbAlias.AliasName == "" {
+		return ErrAliasNotExist
+	}
+	collateral, err := util.NewUint128FromFixedSizeByteSlice(pbAlias.AliasCollateral)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Add(collateral)
+	if err != nil {
+		return err
+	}
+
+	err = b.State().accState.Delete([]byte(pbAlias.AliasName))
+	if err != nil {
+		return err
+	}
+
+	err = acc.Data.Prepare()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.BeginBatch()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Delete([]byte(AliasKey))
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Commit()
+	if err != nil {
+		return err
+	}
+	err = acc.Data.Flush()
+	if err != nil {
+		return err
+	}
+	return b.State().PutAccount(acc)
+}
+
+//Bandwidth returns bandwidth.
+func (tx *DeregisterAliasTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
 	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
 	if err != nil {
 		return nil, nil, err

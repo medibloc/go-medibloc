@@ -90,3 +90,7 @@ message RevokeCertificationPayload {
 message AddRecordPayload {
   bytes hash = 1;
 }
+
+message RegisterAliasPayload {
+  string alias_name = 1;
+}

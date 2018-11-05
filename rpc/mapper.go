@@ -16,7 +16,9 @@
 package rpc
 
 import (
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"google.golang.org/grpc/codes"
@@ -30,7 +32,15 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 	if err := account.UpdateUnstaking(curTs); err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateUnstaking)
 	}
-
+	aliasBytes, err := account.GetData(core.AliasPrefix, []byte(core.AliasKey))
+	if err != nil && err != core.ErrNotFound {
+		return nil, err
+	}
+	pbAlias := new(corepb.Alias)
+	err = proto.Unmarshal(aliasBytes, pbAlias)
+	if err != nil {
+		return nil, err
+	}
 	return &rpcpb.GetAccountResponse{
 		Address:   address,
 		Balance:   account.Balance.String(),
@@ -39,6 +49,7 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 		Voted:     byteutils.BytesSlice2HexSlice(account.VotedSlice()),
 		Bandwidth: account.Bandwidth.String(),
 		Unstaking: account.Unstaking.String(),
+		Data:      &rpcpb.Data{Alias: pbAlias.AliasName},
 	}, nil
 }
 

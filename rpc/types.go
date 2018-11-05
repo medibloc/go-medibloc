@@ -48,6 +48,7 @@ const (
 	ErrMsgFailedToUpdateBandwidth    = "failed to update bandwidth"
 	ErrMsgFailedToUpdateUnstaking    = "failed to update Unstaking"
 	ErrMsgTooManyBlocksRequest       = "exceed max blocks count"
+	ErrMsgAliasNotFound              = "alias not found"
 )
 
 // Limit for get blocks request

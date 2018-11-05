@@ -36,6 +36,8 @@ const (
 	TxOpWithdrawVesting     = "withdraw_vesting"
 	TxOpAddCertification    = "add_certification"
 	TxOpRevokeCertification = "revoke_certification"
+	TxOpRegisterAlias       = "register_alias"
+	TxOpDeregisterAlias     = "Deregister_alias"
 )
 
 // Transaction related defaults
@@ -165,6 +167,14 @@ var (
 	ErrCannotConvertReceipt             = errors.New("proto message cannot be converted into Receipt")
 	ErrInvalidReceiptToProto            = errors.New("receipt cannot be converted into proto")
 	ErrNoTransactionReceipt             = errors.New("failed to load transaction receipt")
+	ErrAlreadyHaveAlias                 = errors.New("already have a alias name")
+	ErrAliasAlreadyTaken                = errors.New("already occupied alias")
+	ErrAliasEmptyString                 = errors.New("aliasname should not be empty string")
+	ErrAliasLengthLimit                 = errors.New("aliasname should not be longer than 12 letters")
+	ErrAliasInvalidChar                 = errors.New("aliasname should contain only lowercase letters and numbers")
+	ErrAliasFirsLetter                  = errors.New("first letter of alias name should not be a number")
+	ErrAliasNotExist                    = errors.New("doesn't have any alias")
+	ErrAliasCollateralLimit             = errors.New("not enough transaction value for alias collateral")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

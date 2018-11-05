@@ -33,6 +33,7 @@ const (
 	RecordsPrefix      = "r_"  // records
 	CertReceivedPrefix = "cr_" // certs received
 	CertIssuedPrefix   = "ci_" // certs issued
+	AliasPrefix        = ""    // alias
 )
 
 // Account default item in state
@@ -417,4 +418,66 @@ func KeyTrieToSlice(trie *trie.Batch) [][]byte {
 		}
 	}
 	return slice
+}
+
+// AliasAccount alias for account
+type AliasAccount struct {
+	Account common.Address
+}
+
+func newAliasAccount() (*AliasAccount, error) {
+	acc := &AliasAccount{
+		Account: common.Address{},
+	}
+	return acc, nil
+}
+
+func (aa *AliasAccount) fromProto(pbAcc *corepb.AliasAccount) error {
+	//var err error
+	aa.Account = common.BytesToAddress(pbAcc.Account)
+	return nil
+}
+
+func (aa *AliasAccount) toProto() (*corepb.AliasAccount, error) {
+	return &corepb.AliasAccount{
+		Account: aa.Account.Bytes(),
+	}, nil
+}
+
+func (aa *AliasAccount) aliasAccountToBytes() ([]byte, error) {
+	pbAcc, err := aa.toProto()
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(pbAcc)
+}
+
+//GetAliasAccount returns alias account
+func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error) {
+	accountBytes, err := as.Get([]byte(AliasName))
+	if err != nil {
+		return nil, err
+	}
+	aa, err := newAliasAccount()
+	if err != nil {
+		return nil, err
+	}
+	pbAliasAccount := new(corepb.AliasAccount)
+	if err := proto.Unmarshal(accountBytes, pbAliasAccount); err != nil {
+		return nil, err
+	}
+	if err := aa.fromProto(pbAliasAccount); err != nil {
+		return nil, err
+	}
+
+	return aa, nil
+}
+
+//PutAliasAccount put alias account to trie batch
+func (as *AccountState) PutAliasAccount(acc *AliasAccount, aliasName string) error {
+	aaBytes, err := acc.aliasAccountToBytes()
+	if err != nil {
+		return err
+	}
+	return as.Put([]byte(aliasName), aaBytes)
 }
