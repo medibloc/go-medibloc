@@ -384,40 +384,6 @@ func TestAPIService_GetTransaction(t *testing.T) {
 		ValueEqual("error", rpc.ErrMsgTransactionNotFound)
 }
 
-func TestAPIService_GetAccountTransactions(t *testing.T) {
-	network := testutil.NewNetwork(t, 3)
-	defer network.Cleanup()
-
-	seed := network.NewSeedNode()
-	seed.Start()
-	network.WaitForEstablished()
-
-	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
-		NextMintSlot2(time.Now().Unix())).Stake()
-
-	payer := seed.Config.TokenDist[0]
-	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(payer.Addr).Value(1).Nonce(3).SignPair(payer).Build()
-
-	seed.Med.TransactionManager().Push(tx)
-	assert.Equal(t, tx, seed.Med.TransactionManager().Get(tx.Hash()))
-
-	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
-
-	result := e.GET("/v1/account/{address}/transactions", payer.Addr.String()).
-		WithQuery("include_pending", "true").
-		Expect().
-		JSON().Object().
-		Path("$.transactions").
-		Array()
-
-	result.Length().Equal(4) // Genesis, GenesisVest, Vest, Transfer
-
-	for _, TX := range result.Iter() {
-		assert.True(t, TX.Object().Path("$.from").String().Raw() == tx.From().String() || TX.Object().Path("$.to").
-			String().Raw() == tx.From().String())
-	}
-}
-
 func TestAPIService_HealthCheck(t *testing.T) {
 	network := testutil.NewNetwork(t, 3)
 	defer network.Cleanup()

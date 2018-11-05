@@ -55,39 +55,6 @@
         ]
       }
     },
-    "/v1/account/{address}/transactions": {
-      "get": {
-        "operationId": "GetAccountTransactions",
-        "responses": {
-          "200": {
-            "description": "",
-            "schema": {
-              "$ref": "#/definitions/rpcpbGetTransactionsResponse"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "address",
-            "description": "Hex string of the account addresss.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "include_pending",
-            "description": "Whether or not to include pending transactions. Default is true.",
-            "in": "query",
-            "required": false,
-            "type": "boolean",
-            "format": "boolean"
-          }
-        ],
-        "tags": [
-          "ApiService"
-        ]
-      }
-    },
     "/v1/block": {
       "get": {
         "operationId": "GetBlock",

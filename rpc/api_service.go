@@ -238,57 +238,6 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 	return CoreTx2rpcTx(tx, true)
 }
 
-// GetAccountTransactions returns transactions of the account
-func (s *APIService) GetAccountTransactions(ctx context.Context,
-	req *rpcpb.GetAccountTransactionsRequest) (*rpcpb.GetTransactionsResponse, error) {
-	var txs []*rpcpb.GetTransactionResponse
-
-	address := common.HexToAddress(req.Address)
-
-	if req.IncludePending {
-		poolTxs := s.tm.GetByAddress(address)
-		for _, tx := range poolTxs {
-			tx, err := CoreTx2rpcTx(tx, false)
-			if err != nil {
-				return nil, err
-			}
-			txs = append(txs, tx)
-			// Add send transaction twice if the address of from is as same as the address of to
-			if tx.TxType == core.TxOpTransfer && tx.From == tx.To {
-				txs = append(txs, tx)
-			}
-		}
-	}
-
-	tailBlock := s.bm.TailBlock()
-	if tailBlock == nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
-	}
-
-	acc, err := tailBlock.State().GetAccount(address)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
-	}
-	if acc != nil {
-		txList := append(acc.TxsToSlice(), acc.TxsFromSlice()...)
-		for _, hash := range txList {
-			tx, err := tailBlock.State().GetTx(hash)
-			if err != nil {
-				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
-			}
-			rpcTx, err := CoreTx2rpcTx(tx, true)
-			if err != nil {
-				return nil, err
-			}
-			txs = append(txs, rpcTx)
-		}
-	}
-
-	return &rpcpb.GetTransactionsResponse{
-		Transactions: txs,
-	}, nil
-}
-
 // SendTransaction sends transaction
 func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.SendTransactionResponse, error) {
 	value, err := util.NewUint128FromString(req.Value)
