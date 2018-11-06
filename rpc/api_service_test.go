@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc"
@@ -31,7 +33,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[0]
+	payer := seed.Config.TokenDist[3]
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(2).StakeTx(payer, 400000000).Build()
@@ -40,6 +42,9 @@ func TestAPIService_GetAccount(t *testing.T) {
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	acc, err := b.State().GetAccount(payer.Addr)
+	require.NoError(t, err)
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
@@ -418,8 +423,8 @@ func TestAPIService_SendTransaction(t *testing.T) {
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
-	payer := seed.Config.TokenDist[0]
-	receiver := seed.Config.TokenDist[1]
+	payer := seed.Config.TokenDist[3]
+	receiver := seed.Config.TokenDist[4]
 	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
 
 	_, err := rpc.CoreTx2rpcTx(tx, false)
@@ -480,7 +485,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
 	tx := make([]*core.Transaction, 3)
-	payer := seed.Config.TokenDist[0]
+	payer := seed.Config.TokenDist[3]
 	for i := 3; i <= 5; i++ {
 		tx[i-3] = bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(payer.Addr).Value(1).Nonce(uint64(i)).SignPair(payer).Build()
 	}

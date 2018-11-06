@@ -676,12 +676,13 @@ func (tx *VestTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	voted := user.VotedSlice()
 
 	err = b.State().PutAccount(user)
 	if err != nil {
 		return err
 	}
+
+	voted := user.VotedSlice()
 
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
