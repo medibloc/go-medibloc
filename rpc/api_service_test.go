@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc"
@@ -42,9 +40,6 @@ func TestAPIService_GetAccount(t *testing.T) {
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
-
-	acc, err := b.State().GetAccount(payer.Addr)
-	require.NoError(t, err)
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
