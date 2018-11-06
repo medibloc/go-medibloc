@@ -70,9 +70,9 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	if !common.IsHexAddress(req.Address) {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidAcddress)
-	}
+	//if !common.IsHexAddress(req.Address) {
+	//	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidAcddress)
+	//}
 
 	addr := req.Address
 	if addr == "" {
