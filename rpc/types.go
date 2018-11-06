@@ -49,6 +49,8 @@ const (
 	ErrMsgFailedToUpdateUnstaking    = "failed to update Unstaking"
 	ErrMsgTooManyBlocksRequest       = "exceed max blocks count"
 	ErrMsgAliasNotFound              = "alias not found"
+	ErrMsgInvalidAcddress            = "invalid account address"
+	ErrMsgInvalidBlockType           = "invalid block type"
 )
 
 // Limit for get blocks request

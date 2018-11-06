@@ -29,21 +29,21 @@
         "parameters": [
           {
             "name": "address",
-            "description": "Hex string of the account addresss.",
+            "description": "Send only one between address and alias\nHex string of the account addresss.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "alias",
-            "description": "If you send address, alias field is ignored.\nString of the account alias.",
+            "description": "String of the account alias.",
             "in": "query",
             "required": false,
             "type": "string"
           },
           {
             "name": "type",
-            "description": "If you send type, height field is ignored.\nBlock type \"genesis\", \"confirmed\", or \"tail\".",
+            "description": "Send only one between type and height\nBlock type \"genesis\", \"confirmed\", or \"tail\".",
             "in": "query",
             "required": false,
             "type": "string"

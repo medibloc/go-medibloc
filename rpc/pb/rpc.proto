@@ -80,16 +80,17 @@ service ApiService {
 }
 
 message GetAccountRequest {
+  // Send only one between address and alias
   // Hex string of the account addresss.
   string address = 1;
-  // If you send address, alias field is ignored.
   // String of the account alias.
   string alias = 2;
-  // If you send type, height field is ignored.
+
+  // Send only one between type and height
   // Block type "genesis", "confirmed", or "tail".
-  string type = 3;
+  string type = 10;
   // Block account state with height
-  uint64 height = 4;
+  uint64 height = 11;
 }
 
 message GetAccountResponse {

@@ -50,40 +50,49 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	var block *core.Block
 	var err error
 
-	switch req.Type {
-	case GENESIS:
-		block, err = s.bm.BlockByHeight(1)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+	// XOR
+	if ((req.Address == "") == (req.Alias == "")) || ((req.Type == "") == (req.
+		Height == 0)) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
+	}
+
+	if req.Type != "" {
+		switch req.GetType() {
+		case GENESIS:
+			block, err = s.bm.BlockByHeight(1)
+			if err != nil {
+				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+			}
+		case CONFIRMED:
+			block = s.bm.LIB()
+		case TAIL:
+			block = s.bm.TailBlock()
+		default:
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockType)
 		}
-	case CONFIRMED:
-		block = s.bm.LIB()
-	case TAIL:
-		block = s.bm.TailBlock()
-	default:
-		block, err = s.bm.BlockByHeight(req.Height)
+	} else {
+		block, err = s.bm.BlockByHeight(req.GetHeight())
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
 		}
 	}
+
 	if block == nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	//if !common.IsHexAddress(req.Address) {
-	//	return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidAcddress)
-	//}
-
-	addr := req.Address
-	if addr == "" {
-		account, err := block.State().AccState().GetAliasAccount(req.Alias)
+	var addr string
+	if common.IsHexAddress(req.Address) {
+		addr = req.Address
+	} else {
+		alisAcc, err := block.State().AccState().GetAliasAccount(req.Alias)
 		if err == trie.ErrNotFound {
 			return nil, status.Error(codes.NotFound, ErrMsgAliasNotFound)
 		}
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
-		addr = account.Account.String()
+		addr = alisAcc.Account.String()
 	}
 
 	acc, err := block.State().GetAccount(common.HexToAddress(addr))

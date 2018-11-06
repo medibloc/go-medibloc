@@ -42,8 +42,8 @@ func TestAPIService_GetAccount(t *testing.T) {
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
 	e.GET("/v1/account").
-		WithQuery("address", payer.Addr).
 		WithQuery("type", "tail").
+		WithQuery("address", payer.Addr).
 		Expect().
 		Status(http.StatusOK).
 		JSON().Object().
@@ -57,7 +57,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
-		WithQuery("height", "2").
+		WithQuery("height", 2).
 		Expect().
 		Status(http.StatusOK).
 		JSON().Object().
@@ -71,7 +71,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
-		WithQuery("height", "3").
+		WithQuery("height", 3).
 		Expect().
 		Status(http.StatusBadRequest).
 		JSON().Object().
@@ -92,6 +92,29 @@ func TestAPIService_GetAccount(t *testing.T) {
 		Status(http.StatusOK).
 		JSON().Object().
 		ValueEqual("vesting", "0")
+
+	e.GET("/v1/account").
+		WithQuery("address", payer.Addr).
+		Expect().
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidRequest)
+
+	e.GET("/v1/account").
+		WithQuery("address", payer.Addr).
+		WithQuery("alias", "Hello World").
+		Expect().
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidRequest)
+
+	e.GET("/v1/account").
+		WithQuery("type", "confirmed").
+		Expect().
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidRequest)
+	// TODO @jiseob alias test
 }
 
 func TestAPIService_GetBlock(t *testing.T) {

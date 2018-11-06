@@ -16,7 +16,6 @@
 package rpc
 
 import (
-	"fmt"
 	"net/http"
 
 	"encoding/json"
@@ -97,7 +96,7 @@ func errorHandler(ctx context.Context, _ *runtime.ServeMux, marshaler runtime.Ma
 		Error: s.Message(),
 	}
 	w.Header().Set("Content-type", marshaler.ContentType())
-	fmt.Println(runtime.HTTPStatusFromCode(grpc.Code(err)))
+
 	if s.Code() == codes.Unknown {
 		w.WriteHeader(runtime.HTTPStatusFromCode(codes.OutOfRange))
 	} else {
