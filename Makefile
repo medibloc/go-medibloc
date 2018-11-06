@@ -65,3 +65,4 @@ lint:
 clean:
 	-rm -rf $(BUILD_DIR)
 	-rm -rf $(REPORT_DIR)
+	@go clean -testcache
