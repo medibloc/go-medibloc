@@ -192,7 +192,7 @@ func (m *Data) GetAlias() string {
 }
 
 type GetBlockRequest struct {
-	// If you send hash, type and height field is ignored.
+	// Send only one among hash, type and height
 	// Block hash
 	Hash string `protobuf:"bytes,1,opt,name=hash,proto3" json:"hash,omitempty"`
 	// Block type "genesis", "confirmed", or "tail".

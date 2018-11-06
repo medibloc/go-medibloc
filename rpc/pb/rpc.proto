@@ -128,7 +128,7 @@ message Data {
 }
 
 message GetBlockRequest {
-  // If you send hash, type and height field is ignored.
+  // Send only one among hash, type and height
   // Block hash
   string hash = 1;
   // Block type "genesis", "confirmed", or "tail".

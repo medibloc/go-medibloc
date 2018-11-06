@@ -18,6 +18,8 @@ package rpc
 import (
 	"encoding/hex"
 
+	"github.com/medibloc/go-medibloc/util/math"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
@@ -51,8 +53,7 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	var err error
 
 	// XOR
-	if ((req.Address == "") == (req.Alias == "")) || ((req.Type == "") == (req.
-		Height == 0)) {
+	if !(math.XOR(len(req.Address) != 66, req.Alias == "") && math.XOR(req.Type == "", req.Height == 0)) {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 

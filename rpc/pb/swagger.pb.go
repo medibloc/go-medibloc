@@ -79,7 +79,7 @@ const (
         "parameters": [
           {
             "name": "hash",
-            "description": "If you send hash, type and height field is ignored.\nBlock hash.",
+            "description": "Send only one among hash, type and height\nBlock hash.",
             "in": "query",
             "required": false,
             "type": "string"
