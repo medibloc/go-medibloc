@@ -833,37 +833,11 @@ func (b *Block) updateUnstaking(addr common.Address) error {
 		return err
 	}
 
-	// Unstaking action does not exist
-	if acc.LastUnstakingTs == 0 {
-		return nil
-	}
-
-	// Staked coin is not returned if not enough time has been passed
-	elapsed := b.Timestamp() - acc.LastUnstakingTs
-	if time.Duration(elapsed)*time.Second < UnstakingWaitDuration {
-		return nil
-	}
-
-	acc.Balance, err = acc.Balance.Add(acc.Unstaking)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to add to balance.")
+	if err := acc.UpdateUnstaking(b.timestamp); err != nil {
 		return err
 	}
 
-	acc.Unstaking = util.NewUint128()
-	acc.LastUnstakingTs = 0
-
-	err = b.State().PutAccount(acc) // TODO @ggomma use temporary state
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to put account.")
-		return err
-	}
-
-	return nil
+	return b.State().PutAccount(acc)
 }
 
 func (b *Block) consumeBandwidth(transaction *Transaction) error {

@@ -242,10 +242,12 @@ func (acc *Account) UpdateBandwidth(timestamp int64) error {
 //UpdateUnstaking update unstaking and balance
 func (acc *Account) UpdateUnstaking(timestamp int64) error {
 	var err error
+	// Unstaking action does not exist
 	if acc.LastUnstakingTs == 0 {
 		return nil
 	}
 
+	// Staked coin is not returned if not enough time has been passed
 	elapsed := timestamp - acc.LastUnstakingTs
 	if time.Duration(elapsed)*time.Second < UnstakingWaitDuration {
 		return nil
