@@ -20,16 +20,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/util/testutil"
-
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/stretchr/testify/assert"
-
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/keystore"
+	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/testutil"
+
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 

@@ -17,7 +17,6 @@ package core_test
 
 import (
 	"testing"
-
 	"time"
 
 	"github.com/medibloc/go-medibloc/core"

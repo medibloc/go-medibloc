@@ -17,7 +17,6 @@ package core
 
 import (
 	"sync"
-
 	"time"
 
 	"github.com/gogo/protobuf/proto"

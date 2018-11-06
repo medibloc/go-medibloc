@@ -771,63 +771,33 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 		return nil, err
 	}
 
-	// STEP 5. Check balance
-	acc, err := b.state.GetAccount(transaction.From())
-	if err != nil {
-		return nil, err
-	}
-	if acc.Balance.Cmp(transaction.Value()) < 0 {
-		return nil, ErrBalanceNotEnough
-	}
-
-	// STEP 6. Check personal bandwidth
-	payer, err := transaction.recoverPayer()
+	payerAddr, err := transaction.recoverPayer()
 	if err == ErrPayerSignatureNotExist {
-		payer = transaction.From()
+		payerAddr = transaction.From()
 	} else if err != nil {
 		return nil, err
 	}
-	payerAcc, err := b.state.GetAccount(payer)
+
+	payer, err := b.state.GetAccount(payerAddr)
 	if err != nil {
 		return nil, err
 	}
-	curBandwidth, err := currentBandwidth(payerAcc, b.Timestamp())
-	if err != nil {
+
+	// Update payer's bandwidth
+	if err := payer.UpdateBandwidth(b.timestamp); err != nil {
 		return nil, err
 	}
-	avail, err := payerAcc.Vesting.Sub(curBandwidth)
-	if err != nil {
+
+	// STEP 5. Check payer's bandwidth
+	if err := b.state.checkPayerBandwidth(payer, transaction, cpuUsage, netUsage); err != nil {
 		return nil, err
-	}
-	switch transaction.TxType() {
-	case TxOpVest:
-		avail, err = avail.Add(transaction.Value())
-		break
-	case TxOpWithdrawVesting:
-		if avail.Cmp(transaction.Value()) < 0 {
-			return nil, ErrVestingNotEnough
-		}
-		avail, err = avail.Sub(transaction.Value())
-		break
-	default:
-		break
-	}
-	if err != nil {
-		return nil, err
-	}
-	usage, err := cpuUsage.Add(netUsage)
-	if err != nil {
-		return nil, err
-	}
-	if avail.Cmp(usage) < 0 {
-		return nil, ErrBandwidthNotEnough
 	}
 
 	// Part 2 : Execute transaction and affect state trie(store)
 	// Even if transaction fails, still consume account's bandwidth
 
 	// Update payer's bandwidth and transaction.from's unstaking status before execute transaction
-	if err := b.regenerateBandwidth(payer); err != nil {
+	if err := b.State().PutAccount(payer); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to regenerate bandwidth.")
@@ -951,37 +921,6 @@ func (b *Block) consumeBandwidth(transaction *Transaction) error {
 	acc.Bandwidth = updated
 	acc.LastBandwidthTs = b.Timestamp()
 
-	err = b.State().PutAccount(acc)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to put account.")
-		return err
-	}
-	return nil
-}
-
-func (b *Block) regenerateBandwidth(addr common.Address) error {
-	curTs := b.Timestamp()
-
-	// TODO @ggomma use temporary state
-	acc, err := b.State().GetAccount(addr)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":  err,
-			"addr": addr.Hex(),
-		}).Warn("Failed to get account.")
-		return err
-	}
-
-	curBandwidth, err := currentBandwidth(acc, curTs)
-	if err != nil {
-		return err
-	}
-
-	// update account
-	acc.Bandwidth = curBandwidth
-	acc.LastBandwidthTs = curTs
 	err = b.State().PutAccount(acc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{

@@ -307,38 +307,32 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 }
 
 // checkBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
-//func (bs *BlockState) checkBandwidth(tx *Transaction, reqBandwidth *util.Uint128) error {
-//	payer, err := tx.recoverPayer()
-//	if err == ErrPayerSignatureNotExist {
-//		payer = tx.From()
-//	} else if err != nil {
-//		return err
-//	}
-//
-//	payerAcc, err := bs.GetAccount(payer)
-//	if err != nil {
-//		return err
-//	}
-//
-//	avail, err := payerAcc.Vesting.Sub(payerAcc.Bandwidth)
-//	if err != nil {
-//		return err
-//	}
-//	if avail.Cmp(reqBandwidth) < 0 {
-//		return ErrBandwidthNotEnough
-//	}
-//	return nil
-//}
-
-// checkBalance compare given transaction's value with the account's balance
-func (bs *BlockState) checkBalance(tx *Transaction, reqBalance *util.Uint128) error {
-	acc, err := bs.GetAccount(tx.From())
+func (bs *BlockState) checkPayerBandwidth(payer *Account, transaction *Transaction, cpuUsage, netUsage *util.Uint128) error {
+	avail, err := payer.Vesting.Sub(payer.Bandwidth)
 	if err != nil {
 		return err
 	}
-
-	if acc.Balance.Cmp(reqBalance) < 0 {
-		return ErrBalanceNotEnough
+	switch transaction.TxType() {
+	case TxOpVest:
+		avail, err = avail.Add(transaction.Value())
+		if err != nil {
+			return err
+		}
+	case TxOpWithdrawVesting:
+		avail, err = avail.Sub(transaction.Value())
+		if err == util.ErrUint128Underflow {
+			return ErrVestingNotEnough
+		}
+		if err != nil {
+			return err
+		}
+	}
+	usage, err := cpuUsage.Add(netUsage)
+	if err != nil {
+		return err
+	}
+	if avail.Cmp(usage) < 0 {
+		return ErrBandwidthNotEnough
 	}
 	return nil
 }
