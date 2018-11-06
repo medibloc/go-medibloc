@@ -69,6 +69,11 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if block == nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
+
+	if !common.IsHexAddress(req.Address) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidAcddress)
+	}
+
 	addr := req.Address
 	if addr == "" {
 		account, err := block.State().AccState().GetAliasAccount(req.Alias)
@@ -80,6 +85,7 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 		}
 		addr = account.Account.String()
 	}
+
 	acc, err := block.State().GetAccount(common.HexToAddress(addr))
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
