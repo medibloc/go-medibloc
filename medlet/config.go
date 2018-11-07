@@ -51,8 +51,9 @@ func LoadConfig(file string) (*medletpb.Config, error) {
 	pb := new(medletpb.Config)
 	if err := proto.UnmarshalText(content, pb); err != nil {
 		log.Console().WithFields(logrus.Fields{
-			"file": file,
-			"err":  err,
+			"content": content,
+			"file":    file,
+			"err":     err,
 		}).Error("Failed to parse the config file.")
 		return nil, err
 	}
@@ -72,6 +73,19 @@ func createDefaultConfigFile(filename string) error {
 
 //DefaultConfig returns default config.
 func DefaultConfig() *medletpb.Config {
+	proposerConfig := make([]*medletpb.ProposerConfig, 3)
+
+	proposerConfig[0] = &medletpb.ProposerConfig{
+		Proposer: "11",
+		Privkey:  "22",
+		Coinbase: "33",
+	}
+	proposerConfig[1] = &medletpb.ProposerConfig{
+		Proposer: "44",
+		Privkey:  "55",
+		Coinbase: "66",
+	}
+
 	return &medletpb.Config{
 		Global: &medletpb.GlobalConfig{
 			ChainId: 1,
@@ -86,17 +100,18 @@ func DefaultConfig() *medletpb.Config {
 		},
 		Chain: &medletpb.ChainConfig{
 			Genesis:             "",
-			Keydir:              "",
+			//Keydir:              "",
 			StartMine:           false,
-			Coinbase:            "",
-			Miner:               "",
-			Passphrase:          "",
+			//Coinbase:            "",
+			//Miner:               "",
+			//Passphrase:          "",
 			SignatureCiphers:    nil,
 			BlockCacheSize:      128,
 			TailCacheSize:       128,
 			BlockPoolSize:       128,
 			TransactionPoolSize: 262144,
-			Privkey:             "",
+			//Privkey:             "",
+			Proposers:        proposerConfig,
 		},
 		Rpc: &medletpb.RPCConfig{
 			RpcListen:        []string{"127.0.0.1:9920"},

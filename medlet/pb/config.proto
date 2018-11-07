@@ -74,6 +74,23 @@ message ChainConfig {
     // Miner private key.
     string privkey = 29;
 
+    // Proposer list for multi proposer
+    repeated ProposerConfig proposers = 30;
+
+}
+
+message ProposerConfig {
+    // Proposer.
+    string proposer = 1;
+    // Proposer private key.
+    string privkey = 2;
+    // Coinbase.
+    string coinbase = 3;
+
+    // Key dir.
+    string keydir = 11;
+    // Passphrase.
+    string passphrase = 12;
 }
 
 message RPCConfig {

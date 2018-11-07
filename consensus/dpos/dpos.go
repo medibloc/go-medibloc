@@ -42,6 +42,7 @@ type Dpos struct {
 	dynastySize int
 
 	startMine bool
+	proposers map[common.Address]*proposer
 	coinbase  common.Address
 	miner     common.Address
 	minerKey  signature.PrivateKey
@@ -52,6 +53,12 @@ type Dpos struct {
 	genesis *corepb.Genesis
 
 	quitCh chan int
+}
+
+type proposer struct {
+	proposerAddress common.Address
+	privkey         signature.PrivateKey
+	coinbase        common.Address
 }
 
 //MinerKey returns minerKey
@@ -74,6 +81,7 @@ func New(dynastySize int) *Dpos {
 	return &Dpos{
 		dynastySize: dynastySize,
 		quitCh:      make(chan int),
+		proposers:   make(map[common.Address]*proposer),
 	}
 }
 
@@ -102,36 +110,47 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	// Setup miner
 	d.startMine = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
-		d.coinbase = common.HexToAddress(cfg.Chain.Coinbase)
-		if cfg.Chain.Keydir != "" {
-			ks, err := ioutil.ReadFile(cfg.Chain.Keydir)
-			if err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err":    err,
-					"Keydir": cfg.Chain.Keydir,
-				}).Error("failed to read key store file")
-				return keystore.ErrFailedToReadKeystoreFile
-			}
+		if len(cfg.Chain.Proposers) == 0 {
+			return keystore.ErrProposerConfigNotFound
+		}
+		for i := 0; i < len(cfg.Chain.Proposers); i++ {
+			p := &proposer{}
+			pc := cfg.Chain.Proposers[i]
 
-			key, err := keystore.DecryptKey(ks, cfg.Chain.Passphrase)
-			if err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("failed to decrypt keystore file")
-				return keystore.ErrFailedToDecrypt
+			p.coinbase = common.HexToAddress(pc.Coinbase)
+
+			if pc.Keydir != "" {
+				ks, err := ioutil.ReadFile(pc.Keydir)
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err":    err,
+						"Keydir": pc.Keydir,
+					}).Error("failed to read key store file")
+					return keystore.ErrFailedToReadKeystoreFile
+				}
+
+				key, err := keystore.DecryptKey(ks, pc.Passphrase)
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("failed to decrypt keystore file")
+					return keystore.ErrFailedToDecrypt
+				}
+				p.proposerAddress = key.Address
+				p.privkey = key.PrivateKey
+
+			} else {
+				var err error
+				p.proposerAddress = common.HexToAddress(pc.Proposer)
+				p.privkey, err = secp256k1.NewPrivateKeyFromHex(pc.Privkey)
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("Invalid miner private key.")
+					return err
+				}
 			}
-			d.miner = key.Address
-			d.minerKey = key.PrivateKey
-		} else {
-			var err error
-			d.miner = common.HexToAddress(cfg.Chain.Miner)
-			d.minerKey, err = secp256k1.NewPrivateKeyFromHex(cfg.Chain.Privkey)
-			if err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Invalid miner private key.")
-				return err
-			}
+			d.proposers[p.proposerAddress] = p
 		}
 	}
 
@@ -280,14 +299,15 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
+
 	// Check if it is the miner's turn
 	mintProposer, err := d.FindMintProposer(deadline.Unix(), tail)
 	if err != nil {
 		return err
 	}
-	if !d.miner.Equals(mintProposer) {
+	p, ok := d.proposers[mintProposer]
+	if !ok {
 		logging.WithFields(logrus.Fields{
-			"miner":    d.miner,
 			"proposer": mintProposer,
 		}).Debug("It's not my turn to mint the block.")
 		return ErrInvalidBlockProposer
@@ -319,7 +339,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		}).Error("Failed to create new crypto signature.")
 		return err
 	}
-	sig.InitSign(d.minerKey)
+	sig.InitSign(p.privkey)
 
 	err = block.SignThis(sig)
 	if err != nil {
