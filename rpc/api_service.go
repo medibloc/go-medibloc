@@ -108,6 +108,10 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	var block *core.Block
 	var err error
 
+	if !math.TernaryXOR(len(req.Hash) == 64, req.Type != "", req.Height != 0) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
+	}
+
 	if len(req.Hash) == 64 {
 		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
 		if block == nil {

@@ -206,6 +206,14 @@ func TestAPIService_GetBlock(t *testing.T) {
 		Status(http.StatusBadRequest).
 		JSON().Object().
 		ValueEqual("error", rpc.ErrMsgInvalidBlockHeight)
+
+	e.GET("/v1/block").
+		WithQuery("type", "genesis").
+		WithQuery("height", "1").
+		Expect().
+		Status(http.StatusBadRequest).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidRequest)
 }
 
 func TestAPIService_GetBlocks(t *testing.T) {
