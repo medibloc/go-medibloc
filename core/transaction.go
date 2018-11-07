@@ -35,7 +35,7 @@ import (
 const (
 	//AliasKey key for find aliasname
 	AliasKey = "alias"
-	//CollateralLimit limit valure for register alias
+	//CollateralLimit limit value for register alias
 	CollateralLimit = "1000000"
 )
 
@@ -43,7 +43,6 @@ const (
 type Transaction struct {
 	hash      []byte
 	txType    string
-	from      common.Address
 	to        common.Address
 	value     *util.Uint128
 	timestamp int64
@@ -55,6 +54,9 @@ type Transaction struct {
 	payerSign []byte
 
 	receipt *Receipt
+
+	from  common.Address
+	payer common.Address
 }
 
 // ToProto converts Transaction to corepb.Transaction
@@ -81,7 +83,6 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 	return &corepb.Transaction{
 		Hash:      t.hash,
 		TxType:    t.txType,
-		From:      t.from.Bytes(),
 		To:        t.to.Bytes(),
 		Value:     value,
 		Timestamp: t.timestamp,
@@ -97,39 +98,49 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 
 // FromProto converts corepb.Transaction to Transaction
 func (t *Transaction) FromProto(msg proto.Message) error {
-	if msg, ok := msg.(*corepb.Transaction); ok {
-		value, err := util.NewUint128FromFixedSizeByteSlice(msg.Value)
-		if err != nil {
+	pbTx, ok := msg.(*corepb.Transaction)
+	if !ok {
+		return ErrCannotConvertTransaction
+	}
+	value, err := util.NewUint128FromFixedSizeByteSlice(pbTx.Value)
+	if err != nil {
+		return err
+	}
+	receipt := new(Receipt)
+	if pbTx.Receipt != nil {
+		if err := receipt.FromProto(pbTx.Receipt); err != nil {
 			return err
 		}
-
-		receipt := new(Receipt)
-		if msg.Receipt != nil {
-			if err := receipt.FromProto(msg.Receipt); err != nil {
-				return err
-			}
-		} else {
-			receipt = nil
-		}
-
-		t.hash = msg.Hash
-		t.txType = msg.TxType
-		t.from = common.BytesToAddress(msg.From)
-		t.to = common.BytesToAddress(msg.To)
-		t.value = value
-		t.timestamp = msg.Timestamp
-		t.nonce = msg.Nonce
-		t.chainID = msg.ChainId
-		t.payload = msg.Payload
-		t.alg = algorithm.Algorithm(msg.Alg)
-		t.sign = msg.Sign
-		t.payerSign = msg.PayerSign
-		t.receipt = receipt
-
-		return nil
+	} else {
+		receipt = nil
 	}
 
-	return ErrCannotConvertTransaction
+	t.hash = pbTx.Hash
+	t.txType = pbTx.TxType
+	t.to = common.BytesToAddress(pbTx.To)
+	t.value = value
+	t.timestamp = pbTx.Timestamp
+	t.nonce = pbTx.Nonce
+	t.chainID = pbTx.ChainId
+	t.payload = pbTx.Payload
+	t.alg = algorithm.Algorithm(pbTx.Alg)
+	t.sign = pbTx.Sign
+	t.payerSign = pbTx.PayerSign
+	t.receipt = receipt
+
+	t.from, err = t.recoverSigner()
+	if err == ErrTransactionSignatureNotExist {
+		t.from = common.Address{}
+	} else if err != nil {
+		return err
+	}
+	t.payer, err = t.recoverPayer()
+	if err == ErrPayerSignatureNotExist {
+		t.payer = t.from
+	} else if err != nil {
+		return ErrCannotRecoverPayer
+	}
+	return nil
 }
 
 //Hash returns hash
@@ -281,7 +292,6 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 
 	txHashTarget := &corepb.TransactionHashTarget{
 		TxType:    t.txType,
-		From:      t.from.Bytes(),
 		To:        t.to.Bytes(),
 		Value:     value,
 		Timestamp: t.timestamp,
@@ -331,6 +341,10 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 		return common.Address{}, ErrPayerSignatureNotExist
 	}
 	msg := t.getPayerSignTarget()
+
+	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+		return common.Address{}, err
+	}
 
 	sig, err := crypto.NewSignature(t.alg)
 	if err != nil {
@@ -388,17 +402,22 @@ func (t *Transaction) verifySign() error {
 	if err := crypto.CheckAlgorithm(t.alg); err != nil {
 		return err
 	}
-	signer, err := t.recoverSigner()
+	_, err := t.recoverSigner()
 	if err != nil {
 		return err
-	}
-	if !t.from.Equals(signer) {
-		return ErrInvalidTransactionSigner
 	}
 	return nil
 }
 
 func (t *Transaction) recoverSigner() (common.Address, error) {
+	if t.sign == nil || len(t.sign) == 0 {
+		return common.Address{}, ErrTransactionSignatureNotExist
+	}
+
+	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+		return common.Address{}, err
+	}
+
 	sig, err := crypto.NewSignature(t.alg)
 	if err != nil {
 		return common.Address{}, err

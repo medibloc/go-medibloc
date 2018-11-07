@@ -451,7 +451,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 
 	payer := seed.Config.TokenDist[3]
 	receiver := seed.Config.TokenDist[4]
-	tx := bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
+	tx := bb.Tx().Type(core.TxOpTransfer).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
 
 	_, err := rpc.CoreTx2rpcTx(tx, false)
 	assert.NoError(t, err)
@@ -513,7 +513,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 	tx := make([]*core.Transaction, 3)
 	payer := seed.Config.TokenDist[3]
 	for i := 3; i <= 5; i++ {
-		tx[i-3] = bb.Tx().Type(core.TxOpTransfer).From(payer.Addr).To(payer.Addr).Value(1).Nonce(uint64(i)).SignPair(payer).Build()
+		tx[i-3] = bb.Tx().Type(core.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i)).SignPair(payer).Build()
 	}
 
 	go func() {

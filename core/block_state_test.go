@@ -77,7 +77,7 @@ func TestNonceCheck(t *testing.T) {
 
 	bb = bb.
 		Tx().StakeTx(from, 100000).Execute().
-		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).From(from.Addr).CalcHash().SignKey(from.PrivKey).ExecuteErr(core.ErrSmallTransactionNonce).
+		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).SignPair(from).ExecuteErr(core.ErrSmallTransactionNonce).
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(5).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().

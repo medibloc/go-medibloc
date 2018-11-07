@@ -537,6 +537,11 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	block.state.reward = bd.Reward()
 	block.state.supply = bd.Supply()
 
+	block.state.cpuRef = bd.cpuRef
+	block.state.cpuUsage = bd.cpuUsage
+	block.state.netRef = bd.netRef
+	block.state.netUsage = bd.netUsage
+
 	if err = block.state.loadAccountState(block.accStateRoot); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -771,14 +776,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 		return nil, err
 	}
 
-	payerAddr, err := transaction.recoverPayer()
-	if err == ErrPayerSignatureNotExist {
-		payerAddr = transaction.From()
-	} else if err != nil {
-		return nil, err
-	}
-
-	payer, err := b.state.GetAccount(payerAddr)
+	payer, err := b.state.GetAccount(transaction.payer)
 	if err != nil {
 		return nil, err
 	}
@@ -841,24 +839,13 @@ func (b *Block) updateUnstaking(addr common.Address) error {
 }
 
 func (b *Block) consumeBandwidth(transaction *Transaction) error {
-	var (
-		payer common.Address
-		err   error
-	)
-	if transaction.payerSign == nil {
-		payer = transaction.from
-	} else {
-		payer, err = transaction.recoverPayer()
-		if err != nil {
-			return err
-		}
-	}
+	var err error
 	usage, err := transaction.receipt.netUsage.Add(transaction.receipt.cpuUsage)
 	if err != nil {
 		return err
 	}
 
-	acc, err := b.State().GetAccount(payer)
+	acc, err := b.State().GetAccount(transaction.payer)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -878,7 +865,7 @@ func (b *Block) consumeBandwidth(transaction *Transaction) error {
 		logging.Console().WithFields(logrus.Fields{
 			"usage": usage,
 			"avail": avail,
-			"payer": payer.Hex(),
+			"payer": transaction.payer.Hex(),
 			"err":   err,
 		}).Warn("Bandwidth limit exceeded.")
 		return ErrBandwidthNotEnough
@@ -1064,31 +1051,32 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 
 // AcceptTransaction consume bandwidth and adds tx in block state
 func (b *Block) AcceptTransaction(transaction *Transaction) error {
-	if transaction.receipt == nil {
-		return ErrNoTransactionReceipt
+	var err error
+	// Genesis transactions do not have from and receipt
+	if !transaction.from.Equals(common.Address{}) {
+		if transaction.receipt == nil {
+			return ErrNoTransactionReceipt
+		}
+
+		if err := b.consumeBandwidth(transaction); err != nil {
+			return err
+		}
+
+		b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
+		if err != nil {
+			return err
+		}
+		b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
+		if err != nil {
+			return err
+		}
+
+		if err := b.state.accState.incrementNonce(transaction.from); err != nil {
+			return err
+		}
 	}
 
-	err := b.consumeBandwidth(transaction)
-	if err != nil {
-		return err
-	}
-
-	b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
-	if err != nil {
-		return err
-	}
-	b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
-	if err != nil {
-		return err
-	}
-
-	err = b.state.txState.Put(transaction)
-	if err != nil {
-		return err
-	}
-
-	err = b.state.accState.incrementNonce(transaction.from)
-	if err != nil {
+	if err := b.state.txState.Put(transaction); err != nil {
 		return err
 	}
 

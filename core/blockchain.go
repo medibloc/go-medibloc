@@ -97,7 +97,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 	if err != nil && err != storage.ErrKeyNotFound {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to load tail block from storage.")
+		}).Error("Failed to load genesis block from storage.")
 		return err
 	}
 	if err != nil && err == storage.ErrKeyNotFound {

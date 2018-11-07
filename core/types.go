@@ -153,6 +153,7 @@ var (
 	ErrVoteDuplicate                    = errors.New("cannot vote already voted account")
 	ErrDynastyExpired                   = errors.New("dynasty in the consensus state has been expired")
 	ErrBlockSignatureNotExist           = errors.New("block signature does not exist in the blockheader")
+	ErrTransactionSignatureNotExist     = errors.New("signature does not exist in the tx")
 	ErrPayerSignatureNotExist           = errors.New("payer signature does not exist in the tx")
 	ErrWrongEventTopic                  = errors.New("required event topic doesn't exist in topic list")
 	ErrTransactionHashAlreadyAdded      = errors.New("transaction already added")
@@ -175,6 +176,8 @@ var (
 	ErrAliasFirsLetter                  = errors.New("first letter of alias name should not be a number")
 	ErrAliasNotExist                    = errors.New("doesn't have any alias")
 	ErrAliasCollateralLimit             = errors.New("not enough transaction value for alias collateral")
+	ErrCannotRecoverSigner              = errors.New("failed to recover payer from sign")
+	ErrCannotRecoverPayer               = errors.New("failed to recover payer from payer sign")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

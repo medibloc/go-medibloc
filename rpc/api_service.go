@@ -23,7 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -297,26 +297,35 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxValue)
 	}
+	valueBytes, err := value.ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
 
 	payloadBuf, err := hex.DecodeString(req.Payload)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
 	}
 
-	tx := &core.Transaction{}
+	pbTx := &corepb.Transaction{
+		Hash:      byteutils.Hex2Bytes(req.Hash),
+		TxType:    req.TxType,
+		To:        byteutils.Hex2Bytes(req.To),
+		Value:     valueBytes,
+		Timestamp: req.Timestamp,
+		Nonce:     req.Nonce,
+		ChainId:   req.ChainId,
+		Payload:   payloadBuf,
+		Alg:       req.Alg,
+		Sign:      byteutils.Hex2Bytes(req.Sign),
+		PayerSign: byteutils.Hex2Bytes(req.PayerSign),
+		Receipt:   nil,
+	}
 
-	tx.SetTxType(req.TxType)
-	tx.SetHash(byteutils.Hex2Bytes(req.Hash))
-	tx.SetFrom(common.HexToAddress(req.From))
-	tx.SetTo(common.HexToAddress(req.To))
-	tx.SetValue(value)
-	tx.SetTimestamp(req.Timestamp)
-	tx.SetNonce(req.Nonce)
-	tx.SetChainID(req.ChainId)
-	tx.SetPayload(payloadBuf)
-	tx.SetAlg(algorithm.Algorithm(req.Alg))
-	tx.SetSign(byteutils.Hex2Bytes(req.Sign))
-	tx.SetPayerSign(byteutils.Hex2Bytes(req.PayerSign))
+	tx := &core.Transaction{}
+	if err := tx.FromProto(pbTx); err != nil {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
+	}
 
 	if err = s.tm.PushAndRelay(tx); err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)

@@ -267,19 +267,17 @@ message SendTransactionRequest {
   // Transaction hash
   string hash = 1;
   // Hex string of the sender account addresss.
-  string from = 2;
-  // Hex string of the receiver account addresss.
-  string to = 3;
+  string to = 2;
   // Amount of value sending with this transaction.
-  string value = 4; // uint128, len=16
+  string value = 3; // uint128, len=16
   // Transaction timestamp.
-  int64 timestamp = 5;
+  int64 timestamp = 4;
   // Transaction type.
-  string tx_type = 6;
+  string tx_type = 5;
   // Transaction nonce.
-  uint64 nonce = 7;
+  uint64 nonce = 6;
   // Transaction chain ID.
-  uint32 chain_id = 8;
+  uint32 chain_id = 7;
 
   // Transaction payload
   string payload = 20;

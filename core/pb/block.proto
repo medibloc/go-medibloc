@@ -34,12 +34,11 @@ message DownloadParentBlock {
 message Transaction {
   bytes hash = 1;
   string tx_type = 2;
-  bytes from = 3;
-  bytes to = 4;
-  bytes value = 5;
-  int64 timestamp = 6;
-  uint64 nonce = 7;
-  uint32 chain_id = 8;
+  bytes to = 3;
+  bytes value = 4;
+  int64 timestamp = 5;
+  uint64 nonce = 6;
+  uint32 chain_id = 7;
 
   bytes payload = 10;
 
@@ -59,12 +58,11 @@ message Receipt {
 
 message TransactionHashTarget {
   string tx_type = 1;
-  bytes from = 2;
-  bytes to = 3;
-  bytes value = 4;
-  int64 timestamp = 5;
-  uint64 nonce = 6;
-  uint32 chain_id = 7;
+  bytes to = 2;
+  bytes value = 3;
+  int64 timestamp = 4;
+  uint64 nonce = 5;
+  uint32 chain_id = 6;
 
   bytes payload = 10;
 }

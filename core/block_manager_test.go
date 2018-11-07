@@ -471,16 +471,16 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 
 	// Invalid Transaction Hash
 	pair = testutil.NewAddrKeyPair(t)
-	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).From(pair.Addr).SignKey(pair.PrivKey).Add().SignMiner().Build()
+	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignMiner().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidTransactionHash, err)
 
-	// Invalid Transaction Signer
-	pair1 := testutil.NewAddrKeyPair(t)
-	pair2 := testutil.NewAddrKeyPair(t)
-	block = bb.Block(genesis).Child().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignMiner().Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, core.ErrInvalidTransactionSigner, err)
+	//// Invalid Transaction Signer
+	//pair1 := testutil.NewAddrKeyPair(t)
+	//pair2 := testutil.NewAddrKeyPair(t)
+	//block = bb.Block(genesis).Child().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignMiner().Build()
+	//err = bm.PushBlockData(block.GetBlockData())
+	//assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
 
 func TestBlockManager_InvalidState(t *testing.T) {

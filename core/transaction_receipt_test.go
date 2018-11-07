@@ -52,9 +52,9 @@ func TestReceipt(t *testing.T) {
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(2).StakeTx(payer, 100).Build()
-	tx2 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpWithdrawVesting).Value(200).SignPair(payer).
+	tx2 := tb.Nonce(3).Type(core.TxOpWithdrawVesting).Value(200).SignPair(payer).
 		Build()
-	tx3 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpWithdrawVesting).Value(50).SignPair(payer).Build()
+	tx3 := tb.Nonce(3).Type(core.TxOpWithdrawVesting).Value(50).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrVestingNotEnough).ExecuteTx(tx3).SignMiner().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
@@ -97,8 +97,8 @@ func TestErrorTransactionReceipt(t *testing.T) {
 		RecordHash: byteutils.Hex2Bytes("9eca7128409f609b2a72fc24985645665bbb99152b4b14261c3c3c93fb17cf54"),
 	}
 
-	tx2 := tb.Nonce(3).From(payer.Addr).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	tx3 := tb.Nonce(4).From(payer.Addr).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx2 := tb.Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx3 := tb.Nonce(4).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, core.ErrRecordAlreadyAdded).SignMiner().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)

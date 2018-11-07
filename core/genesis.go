@@ -120,11 +120,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 	initialTx := &Transaction{
 		txType:    TxTyGenesis,
-		from:      GenesisCoinbase,
 		to:        GenesisCoinbase,
 		value:     util.Uint128Zero(),
 		timestamp: GenesisTimestamp,
-		nonce:     1,
 		chainID:   conf.Meta.ChainId,
 		payload:   payloadBuf,
 	}
@@ -135,8 +133,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	initialTx.hash = hash
 
-	initialTx.SetReceipt(NewGenesisReceipt())
-	// Insert initial transaction
 	err = genesisBlock.AcceptTransaction(initialTx)
 	if err != nil {
 		return nil, err
@@ -145,7 +141,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 	// Token distribution
 	supply := util.NewUint128()
-	for i, dist := range conf.TokenDistribution {
+	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
 		balance, err := util.NewUint128FromString(dist.Balance)
 		if err != nil {
@@ -266,12 +262,11 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 		tx := &Transaction{
 			txType:    TxTyGenesis,
-			from:      GenesisCoinbase,
 			to:        addr,
 			value:     total,
 			timestamp: GenesisTimestamp,
-			nonce:     2 + uint64(i),
-			chainID:   conf.Meta.ChainId,
+			//nonce:     2 + uint64(i),
+			chainID: conf.Meta.ChainId,
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {
@@ -279,7 +274,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.hash = hash
 
-		tx.SetReceipt(NewGenesisReceipt())
+		//tx.SetReceipt(NewGenesisReceipt())
 		err = genesisBlock.AcceptTransaction(tx)
 		if err != nil {
 			return nil, err
@@ -288,12 +283,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 
 		tx = &Transaction{
 			txType:    TxTyGenesisVesting,
-			from:      addr,
 			to:        common.Address{},
 			value:     vesting,
 			timestamp: GenesisTimestamp,
 			nonce:     1,
 			chainID:   conf.Meta.ChainId,
+			from:      addr,
+			payer:     addr,
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {
@@ -394,7 +390,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 	}
 
 	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts)-1 != len(tokenDist) {
+	if len(accounts) != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
 			"accountCount": len(accounts),
 			"tokenCount":   len(tokenDist),

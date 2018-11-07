@@ -104,12 +104,12 @@ func TestInfiniteLoop(t *testing.T) {
 	from2 := testutil.NewAddrKeyPair(t)
 	to := testutil.NewAddrKeyPair(t)
 
-	from1Nonce2 := tb.Type(core.TxOpTransfer).Timestamp(1000).Value(10).To(to.Addr).From(from1.Addr).
-		Nonce(2).CalcHash().SignKey(from1.PrivKey).Build()
-	from2Nonce1 := tb.Type(core.TxOpTransfer).Timestamp(1200).Value(10).To(to.Addr).From(from2.Addr).
-		Nonce(1).CalcHash().SignKey(from2.PrivKey).Build()
-	from2Nonce2 := tb.Type(core.TxOpTransfer).Timestamp(1100).Value(10).To(to.Addr).From(from2.Addr).
-		Nonce(2).CalcHash().SignKey(from2.PrivKey).Build()
+	from1Nonce2 := tb.Type(core.TxOpTransfer).Timestamp(1000).Value(10).To(to.Addr).Nonce(2).
+		SignPair(from1).Build()
+	from2Nonce1 := tb.Type(core.TxOpTransfer).Timestamp(1200).Value(10).To(to.Addr).Nonce(1).
+		SignPair(from2).Build()
+	from2Nonce2 := tb.Type(core.TxOpTransfer).Timestamp(1100).Value(10).To(to.Addr).Nonce(2).
+		SignPair(from2).Build()
 
 	pool := core.NewTransactionPool(128)
 	err := pool.Push(from1Nonce2)

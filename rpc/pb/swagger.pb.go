@@ -617,13 +617,9 @@ const (
           "type": "string",
           "title": "Transaction hash"
         },
-        "from": {
-          "type": "string",
-          "description": "Hex string of the sender account addresss."
-        },
         "to": {
           "type": "string",
-          "description": "Hex string of the receiver account addresss."
+          "description": "Hex string of the sender account addresss."
         },
         "value": {
           "type": "string",
