@@ -16,6 +16,7 @@
 package testutil
 
 import (
+	"net"
 	"os"
 	"testing"
 
@@ -68,6 +69,18 @@ func (node *Node) Start() {
 	err = node.Med.Start()
 	require.NoError(node.t, err)
 
+	startTime := time.Now()
+	for {
+		require.True(node.t, time.Now().Sub(startTime) < time.Duration(3*time.Second))
+		conn, err := net.Dial("tcp", node.Config.Config.Rpc.HttpListen[0])
+		if err != nil {
+			time.Sleep(10 * time.Millisecond)
+		} else {
+			require.NotNil(node.t, conn)
+			conn.Close()
+			return
+		}
+	}
 }
 
 // Stop stops test node.
