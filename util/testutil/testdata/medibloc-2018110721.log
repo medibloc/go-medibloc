@@ -1,0 +1,7 @@
+time="2018-11-07T21:01:21+09:00" level=info msg="Logger Configuration." file=loggers.go func=logging.initLogger level=debug line=107 path=testdata
+time="2018-11-07T21:01:21+09:00" level=info msg="Generate New Network Key" file=network_key.go func=net.LoadNetworkKeyFromFileOrCreateNew line=60 privateKeyPath=testdata/node533141396/data/network.key
+time="2018-11-07T21:01:21+09:00" level=info msg="Generate New Network Key" file=network_key.go func=net.LoadNetworkKeyFromFileOrCreateNew line=60 privateKeyPath=testdata/node053381603/data/network.key
+time="2018-11-07T21:01:21+09:00" level=info msg="Generate New Network Key" file=network_key.go func=net.LoadNetworkKeyFromFileOrCreateNew line=60 privateKeyPath=testdata/node117252070/data/network.key
+time="2018-11-07T21:01:21+09:00" level=info msg="Setting up Medlet..." file=medlet.go func="medlet.(*Medlet).Setup" line=133
+time="2018-11-07T21:01:21+09:00" level=error msg="Invalid miner private key." err="invalid length, need 256 bits" file=dpos.go func="dpos.(*Dpos).Setup" line=150
+time="2018-11-07T21:01:21+09:00" level=error msg="Failed to setup consensus." err="invalid length, need 256 bits" file=medlet.go func="medlet.(*Medlet).Setup" line=150

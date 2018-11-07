@@ -17,6 +17,7 @@ package dpos
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -143,6 +144,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 				var err error
 				p.proposerAddress = common.HexToAddress(pc.Proposer)
 				p.privkey, err = secp256k1.NewPrivateKeyFromHex(pc.Privkey)
+				fmt.Println(pc.Privkey)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
