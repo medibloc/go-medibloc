@@ -73,7 +73,7 @@ func createDefaultConfigFile(filename string) error {
 
 //DefaultConfig returns default config.
 func DefaultConfig() *medletpb.Config {
-	proposerConfig := make([]*medletpb.ProposerConfig, 3)
+	proposerConfig := make([]*medletpb.ProposerConfig, 1)
 
 	proposerConfig[0] = &medletpb.ProposerConfig{
 		Proposer: "",
@@ -94,9 +94,9 @@ func DefaultConfig() *medletpb.Config {
 			RouteTableSyncLoopInterval: 2000,
 		},
 		Chain: &medletpb.ChainConfig{
-			Genesis:             "",
+			Genesis: "",
 			//Keydir:              "",
-			StartMine:           false,
+			StartMine: false,
 			//Coinbase:            "",
 			//Miner:               "",
 			//Passphrase:          "",
@@ -106,7 +106,7 @@ func DefaultConfig() *medletpb.Config {
 			BlockPoolSize:       128,
 			TransactionPoolSize: 262144,
 			//Privkey:             "",
-			Proposers:        proposerConfig,
+			Proposers: proposerConfig,
 		},
 		Rpc: &medletpb.RPCConfig{
 			RpcListen:        []string{"127.0.0.1:9920"},

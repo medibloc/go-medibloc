@@ -16,6 +16,7 @@
 package medlet
 
 import (
+	"fmt"
 	goNet "net"
 
 	"net/http"
@@ -141,6 +142,10 @@ func (m *Medlet) Setup() error {
 	}
 
 	m.transactionManager.Setup(m.netService)
+	fmt.Println(m.config)
+	fmt.Println(m.genesis)
+	fmt.Println(m.blockManager)
+	fmt.Println(m.transactionManager)
 
 	err = m.consensus.Setup(m.config, m.genesis, m.blockManager, m.transactionManager)
 	if err != nil {

@@ -114,6 +114,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 		if len(cfg.Chain.Proposers) == 0 {
 			return keystore.ErrProposerConfigNotFound
 		}
+		//fmt.Println(cfg.Chain.Proposers)
 		for i := 0; i < len(cfg.Chain.Proposers); i++ {
 			p := &proposer{}
 			pc := cfg.Chain.Proposers[i]
@@ -300,7 +301,6 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		}).Debug("It's not time to mint.")
 		return err
 	}
-
 
 	// Check if it is the miner's turn
 	mintProposer, err := d.FindMintProposer(deadline.Unix(), tail)

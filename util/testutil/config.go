@@ -110,6 +110,13 @@ func (cfg *NodeConfig) SetMiner(miner *AddrKeyPair) *NodeConfig {
 	cfg.Config.Chain.StartMine = true
 	cfg.Config.Chain.Coinbase = miner.Address()
 	cfg.Config.Chain.Privkey = miner.PrivateKey()
+
+	cfg.Config.Chain.Proposers[0] = &medletpb.ProposerConfig{
+		Proposer: miner.Address(),
+		Privkey:  miner.PrivateKey(),
+		Coinbase: miner.Address(),
+	}
+
 	return cfg
 }
 
