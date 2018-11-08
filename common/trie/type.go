@@ -13,3 +13,9 @@ var (
 	ErrNotPrepared             = errors.New("not preparing")
 	ErrCannotClonePreparedTrie = errors.New("cannot clone prepared trie")
 )
+
+// Serializable interface for serializing/deserializing
+type Serializable interface {
+	ToBytes() ([]byte, error)
+	FromBytes([]byte) error
+}
