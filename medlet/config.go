@@ -76,19 +76,9 @@ func DefaultConfig() *medletpb.Config {
 	proposerConfig := make([]*medletpb.ProposerConfig, 3)
 
 	proposerConfig[0] = &medletpb.ProposerConfig{
-		Proposer: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		Privkey:  "ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea",
-		Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-	}
-	proposerConfig[1] = &medletpb.ProposerConfig{
-		Proposer: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		Privkey:  "ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea",
-		Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-	}
-	proposerConfig[2] = &medletpb.ProposerConfig{
-		Proposer: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
-		Privkey:  "ee8ea71e9501306fdd00c6e58b2ede51ca125a583858947ff8e309abf11d37ea",
-		Coinbase: "02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c",
+		Proposer: "",
+		Privkey:  "",
+		Coinbase: "",
 	}
 
 	return &medletpb.Config{
