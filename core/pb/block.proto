@@ -31,6 +31,21 @@ message DownloadParentBlock {
   bytes sign = 2;
 }
 
+message BlockHashTarget {
+  bytes parent_hash = 1;
+  bytes coinbase = 2;
+  bytes acc_state_root = 3;
+  bytes tx_state_root = 4;
+  bytes dpos_root = 5;
+  int64 timestamp = 6;
+  uint32 chain_id = 7;
+  bytes reward = 8;
+  bytes supply = 9;
+  bytes cpu_usage = 20;
+  bytes net_usage = 21;
+  repeated bytes tx_hash = 30;
+}
+
 message Transaction {
   bytes hash = 1;
   string tx_type = 2;

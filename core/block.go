@@ -700,16 +700,6 @@ func (b *Block) Seal() error {
 
 // HashBlockData returns hash of block
 func HashBlockData(bd *BlockData) ([]byte, error) {
-	hasher := sha3.New256()
-
-	hasher.Write(bd.ParentHash())
-	hasher.Write(bd.Coinbase().Bytes())
-	hasher.Write(bd.AccStateRoot())
-	hasher.Write(bd.TxStateRoot())
-	hasher.Write(bd.DposRoot())
-	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
-	hasher.Write(byteutils.FromUint32(bd.ChainID()))
-
 	rewardBytes, err := bd.Reward().ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -727,17 +717,32 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 
-	hasher.Write(rewardBytes)
-	hasher.Write(supplyBytes)
-	// hasher.Write(bd.Alg())
-	hasher.Write(cpuUsageBytes)
-	hasher.Write(cpuUsageBytes)
-	hasher.Write(netUsageBytes)
-	hasher.Write(netUsageBytes)
-
+	txHash := make([][]byte, len(bd.transactions))
 	for _, tx := range bd.transactions {
-		hasher.Write(tx.Hash())
+		txHash = append(txHash, tx.Hash())
 	}
+
+	blockHashTarget := &corepb.BlockHashTarget{
+		ParentHash:   bd.ParentHash(),
+		Coinbase:     bd.Coinbase().Bytes(),
+		AccStateRoot: bd.AccStateRoot(),
+		TxStateRoot:  bd.TxStateRoot(),
+		DposRoot:     bd.DposRoot(),
+		Timestamp:    bd.Timestamp(),
+		ChainId:      bd.ChainID(),
+		Reward:       rewardBytes,
+		Supply:       supplyBytes,
+		CpuUsage:     cpuUsageBytes,
+		NetUsage:     netUsageBytes,
+		TxHash:       txHash,
+	}
+	blockHashTargetBytes, err := proto.Marshal(blockHashTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	hasher := sha3.New256()
+	hasher.Write(blockHashTargetBytes)
 
 	return hasher.Sum(nil), nil
 }
