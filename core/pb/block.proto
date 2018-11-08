@@ -82,6 +82,11 @@ message TransactionHashTarget {
   bytes payload = 10;
 }
 
+message TransactionPayerSignTarget {
+  bytes hash = 1;
+  bytes sign = 2;
+}
+
 message DefaultPayload {
   string message = 1;
 }

@@ -326,21 +326,32 @@ func (t *Transaction) SignThis(signer signature.Signature) error {
 	return nil
 }
 
-func (t *Transaction) getPayerSignTarget() []byte {
-	hasher := sha3.New256()
+func (t *Transaction) getPayerSignTarget() ([]byte, error) {
+	payerSignTarget := &corepb.TransactionPayerSignTarget{
+		Hash: t.Hash(),
+		Sign: t.Sign(),
+	}
 
-	hasher.Write(t.hash)
-	hasher.Write(t.sign)
+	payerSignTargetBytes, err := proto.Marshal(payerSignTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	hasher := sha3.New256()
+	hasher.Write(payerSignTargetBytes)
 
 	hash := hasher.Sum(nil)
-	return hash
+	return hash, nil
 }
 
 func (t *Transaction) recoverPayer() (common.Address, error) {
 	if t.payerSign == nil || len(t.payerSign) == 0 {
 		return common.Address{}, ErrPayerSignatureNotExist
 	}
-	msg := t.getPayerSignTarget()
+	msg, err := t.getPayerSignTarget()
+	if err != nil {
+		return common.Address{}, err
+	}
 
 	if err := crypto.CheckAlgorithm(t.alg); err != nil {
 		return common.Address{}, err
@@ -368,7 +379,10 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 
 // SignByPayer puts payer's sign in tx
 func (t *Transaction) SignByPayer(signer signature.Signature) error {
-	target := t.getPayerSignTarget()
+	target, err := t.getPayerSignTarget()
+	if err != nil {
+		return err
+	}
 
 	sig, err := signer.Sign(target)
 	if err != nil {
