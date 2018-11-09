@@ -17,8 +17,11 @@ package core
 
 import (
 	"fmt"
+	"hash"
 	"math/big"
 	"time"
+
+	hash2 "github.com/medibloc/go-medibloc/crypto/hash"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -49,8 +52,9 @@ type BlockHeader struct {
 	timestamp int64
 	chainID   uint32
 
-	alg  algorithm.Algorithm
-	sign []byte
+	hashAlg   algorithm.HashAlgorithm
+	cryptoAlg algorithm.CryptoAlgorithm
+	sign      []byte
 
 	cpuRef   *util.Uint128
 	cpuUsage *util.Uint128
@@ -98,7 +102,8 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		Supply:       supply,
 		Timestamp:    b.timestamp,
 		ChainId:      b.chainID,
-		Alg:          uint32(b.alg),
+		CryptoAlg:    uint32(b.cryptoAlg),
+		HashAlg:      uint32(b.hashAlg),
 		Sign:         b.sign,
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
@@ -131,7 +136,8 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.supply = supply
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
-		b.alg = algorithm.Algorithm(msg.Alg)
+		b.hashAlg = algorithm.HashAlgorithm(msg.HashAlg)
+		b.cryptoAlg = algorithm.CryptoAlgorithm(msg.CryptoAlg)
 		b.sign = msg.Sign
 
 		cpuRef, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuRef)
@@ -283,14 +289,24 @@ func (b *BlockHeader) SetNetRef(netRef *util.Uint128) {
 	b.netRef = netRef
 }
 
-//Alg returns signing algorithm
-func (b *BlockHeader) Alg() algorithm.Algorithm {
-	return b.alg
+//HashAlg returns hashing algorithm
+func (b *BlockHeader) HashAlg() algorithm.HashAlgorithm {
+	return b.hashAlg
 }
 
-//SetAlg sets signing algorithm
-func (b *BlockHeader) SetAlg(alg algorithm.Algorithm) {
-	b.alg = alg
+//SetHashAlg sets hashing algorithm
+func (b *BlockHeader) SetHashAlg(alg algorithm.HashAlgorithm) {
+	b.hashAlg = alg
+}
+
+//CryptoAlg returns signing algorithm
+func (b *BlockHeader) CryptoAlg() algorithm.CryptoAlgorithm {
+	return b.cryptoAlg
+}
+
+//SetCryptoAlg sets signing algorithm
+func (b *BlockHeader) SetCryptoAlg(alg algorithm.CryptoAlgorithm) {
+	b.cryptoAlg = alg
 }
 
 //Sign returns sign
@@ -320,11 +336,11 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 	}
 	msg := b.hash
 
-	sig, err := crypto.NewSignature(b.alg)
+	sig, err := crypto.NewSignature(b.cryptoAlg)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
-			"algorithm": b.alg,
+			"algorithm": b.cryptoAlg,
 		}).Debug("Invalid sign algorithm.")
 		return common.Address{}, err
 	}
@@ -460,7 +476,7 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 	if err != nil {
 		return err
 	}
-	bd.alg = signer.Algorithm()
+	bd.cryptoAlg = signer.Algorithm()
 	bd.sign = sig
 	return nil
 }
@@ -473,6 +489,14 @@ func (bd *BlockData) VerifyIntegrity() error {
 		}
 		return nil
 	}
+
+	if err := crypto.CheckCryptoAlgorithm(bd.CryptoAlg()); err != nil {
+		return err
+	}
+	if err := hash2.CheckHashAlgorithm(bd.HashAlg()); err != nil {
+		return err
+	}
+
 	for _, tx := range bd.transactions {
 		if err := tx.VerifyIntegrity(bd.chainID); err != nil {
 			return err
@@ -626,6 +650,8 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
+				cryptoAlg:  b.CryptoAlg(), // TODO @ggomma use cmd config
+				hashAlg:    b.HashAlg(),   // TODO @ggomma use cmd config
 				cpuRef:     util.NewUint128(),
 				cpuUsage:   util.NewUint128(),
 				netRef:     util.NewUint128(),
@@ -730,6 +756,8 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		DposRoot:     bd.DposRoot(),
 		Timestamp:    bd.Timestamp(),
 		ChainId:      bd.ChainID(),
+		HashAlg:      uint32(bd.HashAlg()),
+		CryptoAlg:    uint32(bd.CryptoAlg()),
 		Reward:       rewardBytes,
 		Supply:       supplyBytes,
 		CpuUsage:     cpuUsageBytes,
@@ -741,7 +769,14 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 
-	hasher := sha3.New256()
+	var hasher hash.Hash
+	switch bd.hashAlg {
+	case algorithm.SHA3256:
+		hasher = sha3.New256()
+	default:
+		return nil, algorithm.ErrInvalidHashAlgorithm
+	}
+
 	hasher.Write(blockHashTargetBytes)
 
 	return hasher.Sum(nil), nil

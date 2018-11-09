@@ -18,6 +18,8 @@ package core_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+
 	"strings"
 	"time"
 
@@ -461,7 +463,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	// Invalid Block Sign algorithm
 	block = bb.Block(genesis).Child().SignMiner().Alg(11).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
 
 	// Invalid Block Signer
 	invalidPair := testutil.NewAddrKeyPair(t)
@@ -541,7 +543,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 
 	block = bb.Clone().Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	require.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
 
 	block = bb.Clone().Coinbase(to.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())

@@ -312,7 +312,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1) // TODO @ggomma use cmd config
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

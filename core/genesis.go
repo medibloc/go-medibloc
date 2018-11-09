@@ -81,7 +81,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				coinbase:   GenesisCoinbase,
 				reward:     util.NewUint128FromUint(0),
 				timestamp:  GenesisTimestamp,
-				alg:        algorithm.SECP256K1,
+				hashAlg:    algorithm.SHA3256,
+				cryptoAlg:  algorithm.SECP256K1,
 				cpuRef:     util.NewUint128FromUint(0),
 				cpuUsage:   util.NewUint128FromUint(0),
 				netRef:     util.NewUint128FromUint(0),
@@ -125,6 +126,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		timestamp: GenesisTimestamp,
 		chainID:   conf.Meta.ChainId,
 		payload:   payloadBuf,
+		hashAlg:   algorithm.SHA3256,
+		cryptoAlg: algorithm.SECP256K1,
 	}
 
 	hash, err := initialTx.CalcHash()
@@ -266,7 +269,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			value:     total,
 			timestamp: GenesisTimestamp,
 			//nonce:     2 + uint64(i),
-			chainID: conf.Meta.ChainId,
+			chainID:   conf.Meta.ChainId,
+			hashAlg:   algorithm.SHA3256,
+			cryptoAlg: algorithm.SECP256K1,
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {
@@ -290,6 +295,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			chainID:   conf.Meta.ChainId,
 			from:      addr,
 			payer:     addr,
+			hashAlg:   algorithm.SHA3256,
+			cryptoAlg: algorithm.SECP256K1,
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {

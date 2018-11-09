@@ -42,7 +42,8 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	tx := &core.Transaction{}
 	tx.SetChainID(testutil.ChainID)
 	tx.SetValue(util.Uint128Zero())
-	tx.SetAlg(defaultSignAlg)
+	tx.SetCryptoAlg(defaultSignAlg)
+	tx.SetHashAlg(defaultHashAlg)
 
 	tx.SetTimestamp(bb.B.Timestamp())
 
@@ -131,9 +132,9 @@ func (tb *TxBuilder) ChainID(chainID uint32) *TxBuilder {
 }
 
 //Alg sets signature algorithm
-func (tb *TxBuilder) Alg(alg algorithm.Algorithm) *TxBuilder {
+func (tb *TxBuilder) Alg(alg algorithm.CryptoAlgorithm) *TxBuilder {
 	n := tb.copy()
-	n.tx.SetAlg(alg)
+	n.tx.SetCryptoAlg(alg)
 	return n
 }
 
@@ -171,7 +172,7 @@ func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 
 	signer := signer(t, key)
 
-	n.tx.SetAlg(signer.Algorithm())
+	n.tx.SetCryptoAlg(signer.Algorithm())
 
 	sig, err := signer.Sign(n.tx.Hash())
 	require.NoError(t, err)

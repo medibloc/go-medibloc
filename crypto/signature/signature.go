@@ -23,7 +23,7 @@ import (
 type Signature interface {
 
 	// Algorithm returns the standard algorithm for this key.
-	Algorithm() algorithm.Algorithm
+	Algorithm() algorithm.CryptoAlgorithm
 
 	// InitSign this object for signing. If this method is called
 	// again with a different argument, it negates the effect

@@ -17,7 +17,6 @@ package common
 
 import (
 	"bytes"
-	"errors"
 	"math/big"
 
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -65,12 +64,12 @@ func PublicKeyToAddress(p signature.PublicKey) (Address, error) {
 		}
 		return BytesToAddress(buf), nil
 	default:
-		return Address{}, errors.New("Invalid public key algorithm")
+		return Address{}, algorithm.ErrInvalidCryptoAlgorithm
 	}
 }
 
 // AddressToPublicKey gets PublicKey from Address.
-func AddressToPublicKey(addr Address, alg algorithm.Algorithm) (signature.PublicKey, error) {
+func AddressToPublicKey(addr Address, alg algorithm.CryptoAlgorithm) (signature.PublicKey, error) {
 	switch alg {
 	case algorithm.SECP256K1:
 		var pubKey *secp256k1.PublicKey
@@ -79,7 +78,7 @@ func AddressToPublicKey(addr Address, alg algorithm.Algorithm) (signature.Public
 		}
 		return pubKey, nil
 	default:
-		return nil, errors.New("Invalid public key algorithm")
+		return nil, algorithm.ErrInvalidCryptoAlgorithm
 	}
 }
 

@@ -9,7 +9,8 @@ message BlockHeader {
   bytes supply = 5;
   int64 timestamp = 6;
   uint32 chain_id = 7;
-  uint32 alg = 11;
+  uint32 hash_alg = 10;
+  uint32 crypto_alg = 11;
   bytes sign = 12;
   bytes acc_state_root = 21;
   bytes tx_state_root = 22;
@@ -41,6 +42,8 @@ message BlockHashTarget {
   uint32 chain_id = 7;
   bytes reward = 8;
   bytes supply = 9;
+  uint32 hash_alg = 10;
+  uint32 crypto_alg = 11;
   bytes cpu_usage = 20;
   bytes net_usage = 21;
   repeated bytes tx_hash = 30;
@@ -57,7 +60,8 @@ message Transaction {
 
   bytes payload = 10;
 
-  uint32 alg = 21;
+  uint32 hash_alg = 20;
+  uint32 crypto_alg = 21;
   bytes sign = 22;
   bytes payerSign = 23;
 
@@ -78,6 +82,8 @@ message TransactionHashTarget {
   int64 timestamp = 4;
   uint64 nonce = 5;
   uint32 chain_id = 6;
+  uint32 hash_alg = 7;
+  uint32 crypto_alg = 8;
 
   bytes payload = 10;
 }

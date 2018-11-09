@@ -29,7 +29,7 @@ type Key interface {
 
 	// Algorithm returns the standard algorithm for this key. For
 	// example, "ECDSA" would indicate that this key is a ECDSA key.
-	Algorithm() algorithm.Algorithm
+	Algorithm() algorithm.CryptoAlgorithm
 
 	// Encoded returns the key in its primary encoding format, or null
 	// if this key does not support encoding.
@@ -47,7 +47,7 @@ type PrivateKey interface {
 
 	// Algorithm returns the standard algorithm for this key. For
 	// example, "ECDSA" would indicate that this key is a ECDSA key.
-	Algorithm() algorithm.Algorithm
+	Algorithm() algorithm.CryptoAlgorithm
 
 	// Encoded returns the key in its primary encoding format, or null
 	// if this key does not support encoding.
@@ -68,7 +68,7 @@ type PublicKey interface {
 
 	// Algorithm returns the standard algorithm for this key. For
 	// example, "ECDSA" would indicate that this key is a ECDSA key.
-	Algorithm() algorithm.Algorithm
+	Algorithm() algorithm.CryptoAlgorithm
 
 	// Encoded returns the key in its primary encoding format, or null
 	// if this key does not support encoding.

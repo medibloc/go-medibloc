@@ -17,7 +17,10 @@ package core
 
 import (
 	"fmt"
+	"hash"
 	"unicode"
+
+	hash2 "github.com/medibloc/go-medibloc/crypto/hash"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -49,7 +52,8 @@ type Transaction struct {
 	nonce     uint64
 	chainID   uint32
 	payload   []byte
-	alg       algorithm.Algorithm
+	hashAlg   algorithm.HashAlgorithm
+	cryptoAlg algorithm.CryptoAlgorithm
 	sign      []byte
 	payerSign []byte
 
@@ -89,7 +93,8 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 		Nonce:     t.nonce,
 		ChainId:   t.chainID,
 		Payload:   t.payload,
-		Alg:       uint32(t.alg),
+		HashAlg:   uint32(t.hashAlg),
+		CryptoAlg: uint32(t.cryptoAlg),
 		Sign:      t.sign,
 		PayerSign: t.payerSign,
 		Receipt:   Receipt,
@@ -123,7 +128,8 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.nonce = pbTx.Nonce
 	t.chainID = pbTx.ChainId
 	t.payload = pbTx.Payload
-	t.alg = algorithm.Algorithm(pbTx.Alg)
+	t.hashAlg = algorithm.HashAlgorithm(pbTx.HashAlg)
+	t.cryptoAlg = algorithm.CryptoAlgorithm(pbTx.CryptoAlg)
 	t.sign = pbTx.Sign
 	t.payerSign = pbTx.PayerSign
 	t.receipt = receipt
@@ -233,14 +239,24 @@ func (t *Transaction) SetChainID(chainID uint32) {
 	t.chainID = chainID
 }
 
-//Alg returns signing algorithm
-func (t *Transaction) Alg() algorithm.Algorithm {
-	return t.alg
+//HashAlg returns hashing algorithm
+func (t *Transaction) HashAlg() algorithm.HashAlgorithm {
+	return t.hashAlg
 }
 
-//SetAlg set signing algorithm
-func (t *Transaction) SetAlg(alg algorithm.Algorithm) {
-	t.alg = alg
+//SetHashAlg set hashing algorithm
+func (t *Transaction) SetHashAlg(alg algorithm.HashAlgorithm) {
+	t.hashAlg = alg
+}
+
+//CryptoAlg returns signing algorithm
+func (t *Transaction) CryptoAlg() algorithm.CryptoAlgorithm {
+	return t.cryptoAlg
+}
+
+//SetCryptoAlg set signing algorithm
+func (t *Transaction) SetCryptoAlg(alg algorithm.CryptoAlgorithm) {
+	t.cryptoAlg = alg
 }
 
 //Sign returns sign
@@ -283,8 +299,6 @@ func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
 
 // CalcHash calculates transaction's hash.
 func (t *Transaction) CalcHash() ([]byte, error) {
-	hasher := sha3.New256()
-
 	value, err := t.value.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -298,20 +312,30 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 		Nonce:     t.nonce,
 		ChainId:   t.chainID,
 		Payload:   t.payload,
+		HashAlg:   uint32(t.hashAlg),
+		CryptoAlg: uint32(t.cryptoAlg),
 	}
 	txHashTargetBytes, err := proto.Marshal(txHashTarget)
 	if err != nil {
 		return nil, err
 	}
+
+	var hasher hash.Hash
+	switch t.hashAlg {
+	case algorithm.SHA3256: // TODO @ggomma use cmd config
+		hasher = sha3.New256()
+	default:
+		return nil, algorithm.ErrInvalidHashAlgorithm
+	}
+
 	hasher.Write(txHashTargetBytes)
 
-	hash := hasher.Sum(nil)
-	return hash, nil
+	return hasher.Sum(nil), nil
 }
 
 // SignThis signs tx with given signature interface
 func (t *Transaction) SignThis(signer signature.Signature) error {
-	t.alg = signer.Algorithm()
+	t.cryptoAlg = signer.Algorithm()
 	hash, err := t.CalcHash()
 	if err != nil {
 		return err
@@ -353,11 +377,11 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
 		return common.Address{}, err
 	}
 
-	sig, err := crypto.NewSignature(t.alg)
+	sig, err := crypto.NewSignature(t.cryptoAlg)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -399,6 +423,10 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 		return ErrInvalidChainID
 	}
 
+	if err := hash2.CheckHashAlgorithm(t.hashAlg); err != nil {
+		return err
+	}
+
 	// check Hash.
 	wantedHash, err := t.CalcHash()
 	if err != nil {
@@ -413,7 +441,7 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 }
 
 func (t *Transaction) verifySign() error {
-	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
 		return err
 	}
 	_, err := t.recoverSigner()
@@ -428,11 +456,11 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 		return common.Address{}, ErrTransactionSignatureNotExist
 	}
 
-	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
 		return common.Address{}, err
 	}
 
-	sig, err := crypto.NewSignature(t.alg)
+	sig, err := crypto.NewSignature(t.cryptoAlg)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -447,15 +475,16 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v, timestamp:%v, 
-receipt:%v}`,
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, cryptoAlg:%v, hashAlg:%v nonce:%v, 
+timestamp:%v, receipt:%v}`,
 		t.chainID,
 		byteutils.Bytes2Hex(t.hash),
 		t.from,
 		t.to,
 		t.value.String(),
 		t.TxType(),
-		t.alg,
+		t.cryptoAlg,
+		t.hashAlg,
 		t.nonce,
 		t.timestamp,
 		t.receipt,

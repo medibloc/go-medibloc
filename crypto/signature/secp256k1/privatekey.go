@@ -53,7 +53,7 @@ func NewPrivateKeyFromHex(b string) (*PrivateKey, error) {
 }
 
 // Algorithm returns algorithm name.
-func (k *PrivateKey) Algorithm() algorithm.Algorithm {
+func (k *PrivateKey) Algorithm() algorithm.CryptoAlgorithm {
 	return algorithm.SECP256K1
 }
 

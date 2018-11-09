@@ -29,7 +29,7 @@ type Signature struct {
 }
 
 // Algorithm secp256k1 algorithm
-func (s *Signature) Algorithm() algorithm.Algorithm {
+func (s *Signature) Algorithm() algorithm.CryptoAlgorithm {
 	return algorithm.SECP256K1
 }
 

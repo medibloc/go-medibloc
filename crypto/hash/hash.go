@@ -18,6 +18,8 @@ package hash
 import (
 	"crypto/sha256"
 
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
 )
@@ -47,4 +49,14 @@ func Ripemd160(args ...[]byte) []byte {
 		hasher.Write(bytes)
 	}
 	return hasher.Sum(nil)
+}
+
+// CheckHashAlgorithm checks algorithm.
+func CheckHashAlgorithm(alg algorithm.HashAlgorithm) error {
+	switch alg {
+	case algorithm.SHA3256:
+		return nil
+	default:
+		return algorithm.ErrInvalidHashAlgorithm
+	}
 }

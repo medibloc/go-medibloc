@@ -34,7 +34,7 @@ func NewPublicKey(pub ecdsa.PublicKey) *PublicKey {
 }
 
 // Algorithm algorithm name.
-func (k *PublicKey) Algorithm() algorithm.Algorithm {
+func (k *PublicKey) Algorithm() algorithm.CryptoAlgorithm {
 	return algorithm.SECP256K1
 }
 

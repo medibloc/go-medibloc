@@ -316,7 +316,8 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		Nonce:     req.Nonce,
 		ChainId:   req.ChainId,
 		Payload:   payloadBuf,
-		Alg:       req.Alg,
+		CryptoAlg: req.Alg,
+		HashAlg:   2, // TODO @ggomma add hash algorithm field
 		Sign:      byteutils.Hex2Bytes(req.Sign),
 		PayerSign: byteutils.Hex2Bytes(req.PayerSign),
 		Receipt:   nil,
