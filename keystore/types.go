@@ -29,7 +29,6 @@ var (
 	ErrFailedToUnmarshalKeystoreJSON = errors.New("failed unmarshal keystore json")
 	ErrWrongPassphrase               = errors.New("wrong passphrase for keystore")
 	ErrFailedToDecrypt               = errors.New("failed to decrypt keystore by passphrase")
-	ErrProposerConfigNotFound        = errors.New("proposer config not found")
 )
 
 // CipherJSON json format for crypto field in keystore file

@@ -51,4 +51,5 @@ var (
 	ErrOverMaxVote            = errors.New("too many vote")
 	ErrDuplicateVote          = errors.New("cannot vote multiple vote for same account")
 	ErrWaitingBlockInLastSlot = errors.New("cannot mint block now, waiting for last block")
+	ErrProposerConfigNotFound = errors.New("proposer config not found")
 )

@@ -59,7 +59,7 @@ type Dpos struct {
 type Proposer struct {
 	ProposerAddress common.Address
 	Privkey         signature.PrivateKey
-	coinbase        common.Address
+	Coinbase        common.Address
 }
 
 //MinerKey returns minerKey
@@ -117,7 +117,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	d.startMine = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
 		if len(cfg.Chain.Proposers) == 0 {
-			return keystore.ErrProposerConfigNotFound //TODO not keystore
+			return ErrProposerConfigNotFound
 		}
 		//fmt.Println(cfg.Chain.Proposers)
 		//for i := 0; i < len(cfg.Chain.Proposers); i++ {
@@ -125,7 +125,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 			p := &Proposer{}
 			//pc := cfg.Chain.Proposers[i]
 
-			p.coinbase = common.HexToAddress(pc.Coinbase)
+			p.Coinbase = common.HexToAddress(pc.Coinbase)
 
 			if pc.Keydir != "" {
 				ks, err := ioutil.ReadFile(pc.Keydir)
@@ -321,7 +321,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return ErrInvalidBlockProposer
 	}
 
-	block, err := d.makeBlock(tail, deadline, nextMintSlot(now))
+	block, err := d.makeBlock(p.Coinbase, tail, deadline, nextMintSlot(now))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"tail":     tail,
@@ -380,7 +380,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	return nil
 }
 
-func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.Time) (*core.Block, error) {
+func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline time.Time, nextMintTs time.Time) (*core.Block, error) {
 	logging.Console().Info("Start to make mint block.")
 
 	block, err := tail.Child()
@@ -516,8 +516,8 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 	}
 
 	block.BeginBatch()
-	block.SetCoinbase(d.coinbase) // TODO change coinbase
-	if err := block.PayReward(d.coinbase, tail.Supply()); err != nil {// TODO change coinbase
+	block.SetCoinbase(coinbase)
+	if err := block.PayReward(coinbase, tail.Supply()); err != nil {
 		return nil, err
 	}
 	err = block.Commit()

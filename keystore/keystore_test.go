@@ -18,6 +18,7 @@ package keystore_test
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/medibloc/go-medibloc/medlet/pb"
@@ -80,9 +81,9 @@ func TestEncryptDecryptV3(t *testing.T) {
 
 }
 
-func TestDposSetup(t *testing.T) {//TODO coinbase
+func TestDposSetup(t *testing.T) {
 	const (
-		testdataDir = "./testdata/"
+		testdataDir     = "testdata"
 		testPassphrase1 = "testpassphrase1"
 		testPassphrase2 = "testpassphrase2"
 		testPassphrase3 = "testpassphrase3"
@@ -90,13 +91,6 @@ func TestDposSetup(t *testing.T) {//TODO coinbase
 		filename2       = "testKeyfile2.key"
 		filename3       = "testKeyfile3.key"
 	)
-
-	//type testProposerKey struct {
-	//	passphrase string
-	//	filename   string
-	//	address    common.Address
-	//	keybytes   []byte
-	//}
 
 	filenames := [3]string{filename1, filename2, filename3}
 	testPassphrases := [3]string{testPassphrase1, testPassphrase2, testPassphrase3}
@@ -120,13 +114,12 @@ func TestDposSetup(t *testing.T) {//TODO coinbase
 
 		t.Log("Private Key: ", byteutils.Bytes2Hex(privKeyBytes))
 		t.Log("Addr: ", pair.Addr.Hex())
-		require.NoError(t, keystore.MakeKeystoreV3(byteutils.Bytes2Hex(privKeyBytes), testPassphrases[i], testdataDir + filenames[i]))
+		path := filepath.Join(testdataDir, filenames[i])
+		require.NoError(t, keystore.MakeKeystoreV3(byteutils.Bytes2Hex(privKeyBytes), testPassphrases[i], path))
 
 		cfg.Config.Chain.StartMine = true
-		cfg.Config.Chain.Proposers[i] = &medletpb.ProposerConfig{Keydir: testdataDir + filenames[i], Passphrase: testPassphrases[i]}
+		cfg.Config.Chain.Proposers[i] = &medletpb.ProposerConfig{Keydir: path, Passphrase: testPassphrases[i], Coinbase: addresses[i].Hex()}
 	}
-
-
 
 	seed := tn.NewSeedNodeWithConfig(cfg)
 	seed.Start()
@@ -143,5 +136,6 @@ func TestDposSetup(t *testing.T) {//TODO coinbase
 		pk, err := proposer.Privkey.Encoded()
 		require.NoError(t, err, "encoding fail")
 		require.Equal(t, pk, keyBytes[i])
+		require.Equal(t, proposer.Coinbase, addresses[i])
 	}
 }
