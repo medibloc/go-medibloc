@@ -103,7 +103,7 @@ func (a *Address) SetBytes(b []byte) {
 	copy(a[AddressLength-len(b):], b)
 }
 
-// Equals compare Address. //TODO unused?
+// Equals compare Address.
 func (a Address) Equals(b Address) bool {
 	return bytes.Compare(a[:], b[:]) == 0
 }

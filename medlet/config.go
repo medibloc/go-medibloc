@@ -79,6 +79,9 @@ func DefaultConfig() *medletpb.Config {
 		Proposer: "",
 		Privkey:  "",
 		Coinbase: "",
+
+		Keydir:     "",
+		Passphrase: "",
 	}
 
 	return &medletpb.Config{
@@ -94,19 +97,14 @@ func DefaultConfig() *medletpb.Config {
 			RouteTableSyncLoopInterval: 2000,
 		},
 		Chain: &medletpb.ChainConfig{
-			Genesis: "",
-			//Keydir:              "",
-			StartMine: false,
-			//Coinbase:            "",
-			//Miner:               "",
-			//Passphrase:          "",
+			Genesis:             "",
+			StartMine:           false,
 			SignatureCiphers:    nil,
 			BlockCacheSize:      128,
 			TailCacheSize:       128,
 			BlockPoolSize:       128,
 			TransactionPoolSize: 262144,
-			//Privkey:             "",
-			Proposers: proposerConfig,
+			Proposers:           proposerConfig,
 		},
 		Rpc: &medletpb.RPCConfig{
 			RpcListen:        []string{"127.0.0.1:9920"},
