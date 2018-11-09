@@ -153,10 +153,8 @@ func request_ApiService_SendTransaction_0(ctx context.Context, marshaler runtime
 	var protoReq SendTransactionRequest
 	var metadata runtime.ServerMetadata
 
-	if req.ContentLength > 0 {
-		if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil {
-			return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
-		}
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 
 	msg, err := client.SendTransaction(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
@@ -208,14 +206,14 @@ func RegisterApiServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.Ser
 	defer func() {
 		if err != nil {
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Printf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 			return
 		}
 		go func() {
 			<-ctx.Done()
 			if cerr := conn.Close(); cerr != nil {
-				grpclog.Printf("Failed to close conn to %s: %v", endpoint, cerr)
+				grpclog.Infof("Failed to close conn to %s: %v", endpoint, cerr)
 			}
 		}()
 	}()
@@ -229,8 +227,8 @@ func RegisterApiServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn 
 	return RegisterApiServiceHandlerClient(ctx, mux, NewApiServiceClient(conn))
 }
 
-// RegisterApiServiceHandler registers the http handlers for service ApiService to "mux".
-// The handlers forward requests to the grpc endpoint over the given implementation of "ApiServiceClient".
+// RegisterApiServiceHandlerClient registers the http handlers for service ApiService
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ApiServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ApiServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
 // "ApiServiceClient" to call the correct interceptors.

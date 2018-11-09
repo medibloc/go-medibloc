@@ -186,7 +186,8 @@ func TestAPIService_GetBlock(t *testing.T) {
 		ContainsKey("supply").
 		ContainsKey("timestamp").
 		ContainsKey("chain_id").
-		ContainsKey("alg").
+		ContainsKey("crypto_alg").
+		ContainsKey("hash_alg").
 		ContainsKey("sign").
 		ContainsKey("accs_root").
 		ContainsKey("txs_root").
