@@ -20,6 +20,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/medibloc/go-medibloc/medlet/pb"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/crypto"
@@ -80,25 +82,48 @@ func TestEncryptDecryptV3(t *testing.T) {
 
 func TestDposSetup(t *testing.T) {
 	const (
-		testPassphrase = "testpassphrase"
-		filename       = "testKeyfile.key"
+		testPassphrase1 = "testpassphrase1"
+		testPassphrase2 = "testpassphrase2"
+		testPassphrase3 = "testpassphrase3"
+		filename1       = "testKeyfile1.key"
+		filename2       = "testKeyfile2.key"
+		filename3       = "testKeyfile3.key"
 	)
-	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
-	privKeyBytes, err := privKey.Encoded()
-	require.NoError(t, err)
 
-	addr, err := common.PublicKeyToAddress(privKey.PublicKey())
-	require.NoError(t, err)
+	type testProposerKey struct {
+		passphrase string
+		filename   string
+		address    common.Address
+		keybytes   []byte
+	}
 
-	t.Log("Private Key: ", byteutils.Bytes2Hex(privKeyBytes))
-	t.Log("Addr: ", addr.Hex())
-	require.NoError(t, keystore.MakeKeystoreV3(byteutils.Bytes2Hex(privKeyBytes), testPassphrase, filename))
-	defer os.Remove(filename)
-
+	filenames := [3]string{filename1, filename2, filename3}
+	testPassphrases := [3]string{testPassphrase1, testPassphrase2, testPassphrase3}
+	addresses := [3]common.Address{}
+	keyBytes := [3][]byte{} // make struct?
 	cfg := testutil.NewConfig(t).SetRandomGenesis(testutil.DynastySize)
-	cfg.Config.Chain.StartMine = true
-	cfg.Config.Chain.Passphrase = testPassphrase
-	cfg.Config.Chain.Keydir = filename
+	cfg.Config.Chain.Proposers = make([]*medletpb.ProposerConfig, 3)
+
+	for i := 0; i < 3; i++ {
+		privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
+		privKeyBytes, err := privKey.Encoded()
+		require.NoError(t, err)
+		keyBytes[i] = privKeyBytes
+
+		addr, err := common.PublicKeyToAddress(privKey.PublicKey())
+		require.NoError(t, err)
+		addresses[i] = addr
+
+		t.Log("Private Key: ", byteutils.Bytes2Hex(privKeyBytes))
+		t.Log("Addr: ", addr.Hex())
+		require.NoError(t, keystore.MakeKeystoreV3(byteutils.Bytes2Hex(privKeyBytes), testPassphrases[i], filenames[i]))
+		defer os.Remove(filenames[i])
+
+		cfg.Config.Chain.StartMine = true
+		cfg.Config.Chain.Proposers[i] = &medletpb.ProposerConfig{Keydir: filenames[i], Passphrase: testPassphrases[i]}
+		//cfg.Config.Chain.Proposers[i].Passphrase = testPassphrases[i]
+		//cfg.Config.Chain.Proposers[i].Keydir = filenames[i]
+	}
 
 	tn := testutil.NewNetwork(t, testutil.DynastySize)
 	defer tn.Cleanup()
@@ -108,12 +133,27 @@ func TestDposSetup(t *testing.T) {
 	seed.Start()
 	d := seed.Med.Consensus().(*dpos.Dpos)
 
-	minerKeyBytes, err := d.MinerKey().Encoded()
-	require.NoError(t, err)
+	pm := d.Proposers()
 
-	t.Log("Dpos miner key: ", byteutils.Bytes2Hex(minerKeyBytes))
-	t.Log("Dpos miner addr: ", d.Miner().Hex())
+	for i := 0; i < 3; i++ {
+		proposer := pm[addresses[i]]
+		//fmt.Println(proposer.ProposerAddress)
+		require.Equal(t, proposer.ProposerAddress, addresses[i])
+		pk, err := proposer.Privkey.Encoded()
+		require.NoError(t, err, "encoding fail")
+		require.Equal(t, pk, keyBytes[i])
+	}
 
-	require.Equal(t, privKeyBytes, minerKeyBytes)
-	require.Equal(t, addr.Hex(), d.Miner().Hex())
+	//for k, v := range p {
+	//	fmt.Printf("key[%s] value[%s]\n", k, v)
+	//}
+
+	//minerKeyBytes, err := d.MinerKey().Encoded()
+	//require.NoError(t, err)
+	//
+	//t.Log("Dpos miner key: ", byteutils.Bytes2Hex(minerKeyBytes))
+	//t.Log("Dpos miner addr: ", d.Miner().Hex())
+	//
+	//require.Equal(t, privKeyBytes, minerKeyBytes)
+	//require.Equal(t, addr.Hex(), d.Miner().Hex())
 }

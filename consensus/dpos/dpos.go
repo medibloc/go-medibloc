@@ -17,7 +17,6 @@ package dpos
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -43,7 +42,7 @@ type Dpos struct {
 	dynastySize int
 
 	startMine bool
-	proposers map[common.Address]*proposer
+	proposers map[common.Address]*Proposer
 	coinbase  common.Address
 	miner     common.Address
 	minerKey  signature.PrivateKey
@@ -56,9 +55,10 @@ type Dpos struct {
 	quitCh chan int
 }
 
-type proposer struct {
-	proposerAddress common.Address
-	privkey         signature.PrivateKey
+//Proposer returns proposer
+type Proposer struct {
+	ProposerAddress common.Address
+	Privkey         signature.PrivateKey
 	coinbase        common.Address
 }
 
@@ -72,6 +72,11 @@ func (d *Dpos) Miner() common.Address {
 	return d.miner
 }
 
+//Proposers returns Proposers
+func (d *Dpos) Proposers() map[common.Address]*Proposer {
+	return d.proposers
+}
+
 // DynastySize returns dynastySize
 func (d *Dpos) DynastySize() int {
 	return d.dynastySize
@@ -82,7 +87,7 @@ func New(dynastySize int) *Dpos {
 	return &Dpos{
 		dynastySize: dynastySize,
 		quitCh:      make(chan int),
-		proposers:   make(map[common.Address]*proposer),
+		proposers:   make(map[common.Address]*Proposer),
 	}
 }
 
@@ -116,7 +121,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 		}
 		//fmt.Println(cfg.Chain.Proposers)
 		for i := 0; i < len(cfg.Chain.Proposers); i++ {
-			p := &proposer{}
+			p := &Proposer{}
 			pc := cfg.Chain.Proposers[i]
 
 			p.coinbase = common.HexToAddress(pc.Coinbase)
@@ -138,14 +143,14 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 					}).Error("failed to decrypt keystore file")
 					return keystore.ErrFailedToDecrypt
 				}
-				p.proposerAddress = key.Address
-				p.privkey = key.PrivateKey
+				p.ProposerAddress = key.Address
+				p.Privkey = key.PrivateKey
 
 			} else {
 				var err error
-				p.proposerAddress = common.HexToAddress(pc.Proposer)
-				p.privkey, err = secp256k1.NewPrivateKeyFromHex(pc.Privkey)
-				fmt.Println(pc.Privkey)
+				p.ProposerAddress = common.HexToAddress(pc.Proposer)
+				p.Privkey, err = secp256k1.NewPrivateKeyFromHex(pc.Privkey)
+				//fmt.Println(pc.Privkey)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -153,7 +158,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 					return err
 				}
 			}
-			d.proposers[p.proposerAddress] = p
+			d.proposers[p.ProposerAddress] = p
 		}
 	}
 
@@ -258,7 +263,7 @@ func (d *Dpos) VerifyInterval(bd *core.BlockData, parent *core.Block) error {
 	return nil
 }
 
-// VerifyProposer verifies block proposer.
+// VerifyProposer verifies block Proposer.
 func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
 	signer, err := bd.Proposer()
 	if err != nil {
@@ -279,10 +284,10 @@ func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
 
 		logging.Console().WithFields(logrus.Fields{
 			"bd":       bd,
-			"proposer": proposer,
+			"Proposer": proposer,
 			"signer":   signer,
 			"dynasty":  dynasty,
-		}).Warn("Block proposer and block signer do not match.")
+		}).Warn("Block Proposer and block signer do not match.")
 		return ErrInvalidBlockProposer
 	}
 	return nil
@@ -310,7 +315,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	p, ok := d.proposers[mintProposer]
 	if !ok {
 		logging.WithFields(logrus.Fields{
-			"proposer": mintProposer,
+			"Proposer": mintProposer,
 		}).Debug("It's not my turn to mint the block.")
 		return ErrInvalidBlockProposer
 	}
@@ -341,7 +346,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		}).Error("Failed to create new crypto signature.")
 		return err
 	}
-	sig.InitSign(p.privkey)
+	sig.InitSign(p.Privkey)
 
 	err = block.SignThis(sig)
 	if err != nil {
@@ -356,7 +361,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	time.Sleep(nextMintSlot(now).Sub(time.Now()))
 
 	logging.Console().WithFields(logrus.Fields{
-		"proposer": mintProposer,
+		"Proposer": mintProposer,
 		"block":    block,
 	}).Info("New block is minted.")
 
@@ -410,7 +415,7 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 	}
 
 	// Save state changes (only dpos state in this line)
-	// Even though block proposer doesn't have enough time for including transactions below,
+	// Even though block Proposer doesn't have enough time for including transactions below,
 	// states changed above need to be safely saved.
 	if err := block.Commit(); err != nil {
 		block.Storage().DisableBatch()

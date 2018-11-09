@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var update = flag.Bool("update", false, "update .golden files")
+var update = flag.Bool("update", true, "update .golden files")
 
 func init() {
 	flag.Parse()
