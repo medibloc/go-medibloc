@@ -47,7 +47,7 @@ func TestConfigNotExist(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	path := filepath.Join("testdata", strings.ToLower(t.Name())+".golden")
+	path := filepath.Join(strings.ToLower(t.Name())+".golden")
 	if *update {
 		ioutil.WriteFile(path, []byte(defaultConfigString()), 0644)
 	}

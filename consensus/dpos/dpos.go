@@ -117,12 +117,13 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	d.startMine = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
 		if len(cfg.Chain.Proposers) == 0 {
-			return keystore.ErrProposerConfigNotFound
+			return keystore.ErrProposerConfigNotFound //TODO not keystore
 		}
 		//fmt.Println(cfg.Chain.Proposers)
-		for i := 0; i < len(cfg.Chain.Proposers); i++ {
+		//for i := 0; i < len(cfg.Chain.Proposers); i++ {
+		for _, pc := range cfg.Chain.Proposers {
 			p := &Proposer{}
-			pc := cfg.Chain.Proposers[i]
+			//pc := cfg.Chain.Proposers[i]
 
 			p.coinbase = common.HexToAddress(pc.Coinbase)
 
@@ -515,8 +516,8 @@ func (d *Dpos) makeBlock(tail *core.Block, deadline time.Time, nextMintTs time.T
 	}
 
 	block.BeginBatch()
-	block.SetCoinbase(d.coinbase)
-	if err := block.PayReward(d.coinbase, tail.Supply()); err != nil {
+	block.SetCoinbase(d.coinbase) // TODO change coinbase
+	if err := block.PayReward(d.coinbase, tail.Supply()); err != nil {// TODO change coinbase
 		return nil, err
 	}
 	err = block.Commit()
