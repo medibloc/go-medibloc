@@ -18,10 +18,10 @@ package core
 import (
 	"errors"
 	"math/big"
-
 	"time"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -198,10 +198,11 @@ type Consensus interface {
 	LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 
 	DynastySize() int
+	MakeMintDynasty(ts int64, parent *Block) ([]common.Address, error)
 
 	ForkChoice(bc *BlockChain) (newTail *Block)
 	VerifyInterval(bd *BlockData, parent *Block) error
-	VerifyProposer(bd *BlockData, parent *Block) error
+	VerifyProposer(b *Block) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
 }
@@ -217,6 +218,9 @@ type DposState interface {
 	Flush() error
 	RootBytes() ([]byte, error)
 
+	CandidateState() *trie.Batch
+	DynastyState() *trie.Batch
+
 	Candidates() ([]common.Address, error)
 	IsCandidate(addr common.Address) (bool, error)
 	PutCandidate(addr common.Address) error
@@ -225,7 +229,6 @@ type DposState interface {
 	Dynasty() ([]common.Address, error)
 	InDynasty(addr common.Address) (bool, error)
 	SetDynasty(dynasty []common.Address) error
-	SetMintDynastyState(ts int64, parent *Block, dynastySize int) error
 
 	SortByVotePower(as *AccountState) ([]common.Address, error)
 }

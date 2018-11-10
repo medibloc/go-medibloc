@@ -132,7 +132,7 @@ func (m *Medlet) Setup() error {
 
 	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter)
 
-	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus)
+	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus, DefaultTxMap)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -153,8 +153,6 @@ func (m *Medlet) Setup() error {
 	m.transactionManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectTransactionManager(m.transactionManager)
-
-	m.blockManager.SetTxMap(DefaultTxMap)
 
 	m.blockManager.InjectSyncService(m.syncService)
 	m.syncService.Setup(m.netService, m.blockManager)

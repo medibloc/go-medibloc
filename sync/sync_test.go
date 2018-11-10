@@ -36,7 +36,7 @@ func TestService_Start(t *testing.T) {
 		chunkSize = 20
 	)
 
-	testNetwork := testutil.NewNetwork(t, 3)
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
 	testNetwork.SetLogTestHook()
 

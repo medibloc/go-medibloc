@@ -334,19 +334,23 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 }
 
 // SignThis signs tx with given signature interface
-func (t *Transaction) SignThis(signer signature.Signature) error {
-	t.cryptoAlg = signer.Algorithm()
-	hash, err := t.CalcHash()
+func (t *Transaction) SignThis(key signature.PrivateKey) error {
+	var err error
+	t.hash, err = t.CalcHash()
 	if err != nil {
 		return err
 	}
 
-	sig, err := signer.Sign(hash)
+	signer, err := crypto.NewSignature(t.cryptoAlg)
 	if err != nil {
 		return err
 	}
-	t.hash = hash
-	t.sign = sig
+	signer.InitSign(key)
+
+	t.sign, err = signer.Sign(t.hash)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

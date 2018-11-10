@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -51,10 +53,10 @@ func TestBlock_BasicTx(t *testing.T) {
 
 	nt.WaitForEstablished()
 
-	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist)
-	tx1 := bb.Block(seed.GenesisBlock()).Tx().RandomTx().Build()
-	tx2 := bb.Block(seed.GenesisBlock()).Tx().RandomTx().Build()
-	tx3 := bb.Block(seed.GenesisBlock()).Tx().RandomTx().Build()
+	tb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Tx()
+	tx1 := tb.RandomTx().Build()
+	tx2 := tb.RandomTx().Build()
+	tx3 := tb.RandomTx().Build()
 
 	err := seed.Med.TransactionManager().Push(tx1)
 	require.NoError(t, err)
@@ -75,14 +77,16 @@ func TestBlock_PayReward(t *testing.T) {
 	bb = bb.Child().Stake().Tx().RandomTx().Execute().Flush()
 	miner := bb.FindMiner()
 
+	cons := dpos.New(testutil.DynastySize)
+
 	// wrong reward value (calculate reward based on wrong supply)
 	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
-	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, blockutil.DefaultTxMap)
+	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, cons, blockutil.DefaultTxMap)
 	assert.Equal(t, core.ErrInvalidBlockReward, err)
 
 	// wrong supply on header
 	block = bb.Clone().PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(miner.PrivKey).Build()
-	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, blockutil.DefaultTxMap)
+	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, cons, blockutil.DefaultTxMap)
 	assert.Equal(t, core.ErrInvalidBlockSupply, err)
 
 }

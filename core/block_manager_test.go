@@ -16,18 +16,15 @@
 package core_test
 
 import (
-	"testing"
-
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-
-	"strings"
-	"time"
-
 	"fmt"
+	"strings"
+	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -497,8 +494,8 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	genesis := seed.GenesisBlock()
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.TokenDist).AddKeyPairs(seed.Config.Dynasties)
 
-	from := seed.Config.TokenDist[0]
-	to := seed.Config.TokenDist[1]
+	from := seed.Config.TokenDist[dynastySize]
+	to := seed.Config.TokenDist[dynastySize+1]
 	bb = bb.Block(genesis).Child().Stake().
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpAddRecord).
@@ -519,7 +516,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
 
 	miner := bb.FindMiner()
-	bb = bb.Coinbase(miner.Addr).PayReward().Flush()
+	bb = bb.Coinbase(miner.Addr).PayReward().Flush().Seal()
 
 	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
@@ -545,9 +542,9 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
 
-	block = bb.Clone().Coinbase(to.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().Coinbase(to.Addr).CalcHash().SignKey(miner.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.NoError(t, err)
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 }
 
 func foundInLog(hook *test.Hook, s string) bool {

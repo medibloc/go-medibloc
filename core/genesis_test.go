@@ -18,18 +18,27 @@ package core_test
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestGenesisConf(t *testing.T) {
+	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
+	str := proto.MarshalTextString(conf)
+	t.Log(str)
+}
+
 func TestNewGenesisBlock(t *testing.T) {
-	genesisBlock, dynasties, dist := testutil.NewTestGenesisBlock(t, 21)
+	dynastySize := 21
+	genesisBlock, dynasties, dist := testutil.NewTestGenesisBlock(t, dynastySize)
 
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
@@ -41,28 +50,35 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equalf(t, txs[0].Payload(), payloadBuf, "Initial tx payload should equal '%s'", initialMessage)
 
-	t.Log(len(txs[0].Hash()))
-	t.Log(len(txs[1].Hash()))
+	t.Log(len(txs))
 
 	for i := 0; i < len(dist); i++ {
-		assert.True(t, dist[i].Addr.Equals(txs[1+2*i].To()))
-		assert.Equal(t, "400000000000000000000", txs[1+2*i].Value().String())
+		assert.True(t, dist[i].Addr.Equals(txs[1+i].To()))
+		assert.Equal(t, "400000000000000000000", txs[1+i].Value().String())
 	}
 
-	dposState := genesisBlock.State().DposState()
+	child := blockutil.New(t, dynastySize).Block(genesisBlock).Child().Build()
 	for _, dynasty := range dynasties {
 		addr := dynasty.Addr
 
-		isCandidate, err := dposState.IsCandidate(addr)
+		isCandidate, err := genesisBlock.State().DposState().IsCandidate(addr)
 		require.NoError(t, err)
 		assert.True(t, isCandidate)
-		inDynasty, err := dposState.InDynasty(addr)
+
+		inDynasty, err := child.State().DposState().InDynasty(addr)
 		require.NoError(t, err)
 		assert.True(t, inDynasty)
 	}
 
 	accState := genesisBlock.State().AccState()
-	for _, holder := range dist {
+	for _, holder := range dist[:21] {
+		addr := holder.Addr
+		acc, err := accState.GetAccount(addr)
+		assert.NoError(t, err)
+
+		assert.Equal(t, "299000000000000000000", acc.Balance.String())
+	}
+	for _, holder := range dist[21:] {
 		addr := holder.Addr
 		acc, err := accState.GetAccount(addr)
 		assert.NoError(t, err)
@@ -76,7 +92,7 @@ func TestCheckGenesisBlock(t *testing.T) {
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	consensus := dpos.New(testutil.DynastySize)
-	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
+	genesis, err := core.NewGenesisBlock(conf, consensus, blockutil.DefaultTxMap, stor)
 	require.NoError(t, err)
 
 	ok := core.CheckGenesisConf(genesis, conf)
@@ -87,30 +103,6 @@ func TestCheckGenesisBlock(t *testing.T) {
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.Meta.DynastySize = 22
-	require.False(t, core.CheckGenesisConf(genesis, modified))
-
-	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.Consensus.Dpos.Dynasty = modified.Consensus.Dpos.Dynasty[1:]
-	require.False(t, core.CheckGenesisConf(genesis, modified))
-
-	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.Consensus.Dpos.Dynasty[0] = "Wrong Address"
-	require.False(t, core.CheckGenesisConf(genesis, modified))
-
-	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
 	modified.TokenDistribution = modified.TokenDistribution[1:]
-	require.False(t, core.CheckGenesisConf(genesis, modified))
-
-	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.TokenDistribution[2].Address = "Wrong Address"
-	require.False(t, core.CheckGenesisConf(genesis, modified))
-
-	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.TokenDistribution[3].Balance = "989898"
-	require.False(t, core.CheckGenesisConf(genesis, modified))
-
-	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.TokenDistribution[4].Balance = "Wrong Value"
 	require.False(t, core.CheckGenesisConf(genesis, modified))
 }

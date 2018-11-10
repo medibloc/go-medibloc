@@ -245,7 +245,7 @@ func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64)
 
 //MakeMintDynasty returns dynasty slice for mint block
 func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]common.Address, error) {
-	if d.checkTransitionDynasty(parent.Timestamp(), ts) {
+	if d.checkTransitionDynasty(parent.Timestamp(), ts) || parent.Timestamp() == core.GenesisTimestamp {
 		as := parent.State().AccState()
 		ds := parent.State().DposState()
 		sortedCandidates, err := ds.SortByVotePower(as)
@@ -276,18 +276,6 @@ func (s *State) SetDynasty(dynasty []common.Address) error {
 			return err
 		}
 	}
-	return nil
-}
-
-//SetMintDynastyState set mint block's dynasty state
-func (s *State) SetMintDynastyState(ts int64, parent *core.Block, dynastySize int) error {
-	d := New(dynastySize)
-
-	mintDynasty, err := d.MakeMintDynasty(ts, parent)
-	if err != nil {
-		return err
-	}
-	s.SetDynasty(mintDynasty)
 	return nil
 }
 

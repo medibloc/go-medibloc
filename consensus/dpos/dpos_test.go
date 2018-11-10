@@ -50,7 +50,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb = bb.Child().Stake().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(newCandidate).Execute().
-		Tx().Type(core.TxOpVest).Value(10).SignPair(newCandidate).Execute().
+		Tx().Type(core.TxOpVest).Value(300000000).SignPair(newCandidate).Execute().
 		Tx().Type(dpos.TxOpVote).
 		Payload(&dpos.VotePayload{
 			Candidates: []common.Address{newCandidate.Addr},

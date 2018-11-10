@@ -37,7 +37,7 @@ import (
 // CASE 3. Make invalid transaction and receipt should hold matched error message
 
 func TestReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, 3)
+	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
 	network.SetLogTestHook()
 
@@ -48,13 +48,13 @@ func TestReceipt(t *testing.T) {
 	network.WaitForEstablished()
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[0]
+	payer := seed.Config.TokenDist[testutil.DynastySize]
 
 	tb := bb.Tx()
-	tx1 := tb.Nonce(2).StakeTx(payer, 100).Build()
-	tx2 := tb.Nonce(3).Type(core.TxOpWithdrawVesting).Value(200).SignPair(payer).
+	tx1 := tb.Nonce(1).StakeTx(payer, 100).Build()
+	tx2 := tb.Nonce(2).Type(core.TxOpWithdrawVesting).Value(200).SignPair(payer).
 		Build()
-	tx3 := tb.Nonce(3).Type(core.TxOpWithdrawVesting).Value(50).SignPair(payer).Build()
+	tx3 := tb.Nonce(2).Type(core.TxOpWithdrawVesting).Value(50).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrVestingNotEnough).ExecuteTx(tx3).SignMiner().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
@@ -77,7 +77,7 @@ func TestReceipt(t *testing.T) {
 }
 
 func TestErrorTransactionReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, 3)
+	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
 	network.SetLogTestHook()
 
@@ -88,17 +88,17 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	network.WaitForEstablished()
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[0]
+	payer := seed.Config.TokenDist[testutil.DynastySize]
 
 	tb := bb.Tx()
-	tx1 := tb.Nonce(2).StakeTx(payer, 1000).Build()
+	tx1 := tb.Nonce(1).StakeTx(payer, 1000).Build()
 
 	payload := &core.AddRecordPayload{
 		RecordHash: byteutils.Hex2Bytes("9eca7128409f609b2a72fc24985645665bbb99152b4b14261c3c3c93fb17cf54"),
 	}
 
-	tx2 := tb.Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	tx3 := tb.Nonce(4).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx2 := tb.Nonce(2).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx3 := tb.Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, core.ErrRecordAlreadyAdded).SignMiner().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)

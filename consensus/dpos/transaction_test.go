@@ -79,15 +79,17 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 }
 
 func TestVote(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	dynastySize := 21
 
-	candidate := bb.TokenDist[testutil.DynastySize]
-	voter := bb.TokenDist[testutil.DynastySize+1]
+	bb := blockutil.New(t, dynastySize).Genesis().Child()
+
+	candidate := bb.TokenDist[dynastySize]
+	voter := bb.TokenDist[dynastySize+1]
 
 	votePayload := new(dpos.VotePayload)
 	overSizePayload := new(dpos.VotePayload)
 	duplicatePayload := new(dpos.VotePayload)
-	candidates := append(bb.TokenDist[1:testutil.DynastySize], candidate)
+	candidates := append(bb.TokenDist[1:dynastySize], candidate)
 	for _, v := range candidates {
 		votePayload.Candidates = append(votePayload.Candidates, v.Addr)
 		overSizePayload.Candidates = append(overSizePayload.Candidates, v.Addr)
@@ -118,13 +120,17 @@ func TestVote(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	for _, v := range candidates {
+	for _, v := range candidates[:dynastySize-1] {
 		acc, err := block.State().GetAccount(v.Addr)
 		require.NoError(t, err)
-		assert.Equal(t, blockutil.FloatToUint128(t, 333), acc.VotePower)
-		_, err = acc.Voters.Get(voter.Addr.Bytes())
-		assert.NoError(t, err)
+		assert.Equal(t, blockutil.FloatToUint128(t, 333+100000000), acc.VotePower)
 	}
+
+	acc, err := block.State().GetAccount(candidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, blockutil.FloatToUint128(t, 333), acc.VotePower)
+	_, err = acc.Voters.Get(voter.Addr.Bytes())
+	assert.NoError(t, err)
 
 	// Reset vote to nil
 	bb = bb.
@@ -139,14 +145,13 @@ func TestVote(t *testing.T) {
 		assert.Equal(t, trie.ErrNotFound, err)
 	}
 
-	for _, v := range candidates {
+	for _, v := range candidates[:dynastySize-1] {
 		acc, err := block.State().GetAccount(v.Addr)
 		require.NoError(t, err)
-		assert.Equal(t, util.NewUint128FromUint(0), acc.VotePower)
-		_, err = acc.Voters.Get(voter.Addr.Bytes())
-		assert.Equal(t, trie.ErrNotFound, err)
-		votersRoot, err := acc.Voters.RootHash()
-		require.NoError(t, err)
-		assert.Equal(t, []byte(nil), votersRoot)
+		assert.Equal(t, "100000000000000000000", acc.VotePower.String())
 	}
+
+	acc, err = block.State().GetAccount(candidate.Addr)
+	require.NoError(t, err)
+	assert.Equal(t, blockutil.FloatToUint128(t, 0), acc.VotePower)
 }

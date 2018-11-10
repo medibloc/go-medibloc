@@ -265,8 +265,7 @@ func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 func (tx *VoteTx) Execute(b *core.Block) error {
 	ds := b.State().DposState()
 
-	maxVote := b.Consensus().DynastySize() // TODO: max number of vote @drsleepytiger
-	if len(tx.candidates) > maxVote {
+	if len(tx.candidates) > MaxVote { // TODO: max number of vote @drsleepytiger
 		return ErrOverMaxVote
 	}
 

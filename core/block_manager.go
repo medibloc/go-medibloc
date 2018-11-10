@@ -104,10 +104,11 @@ func (bm *BlockManager) InjectSyncService(syncService SyncService) {
 }
 
 // Setup sets up BlockManager.
-func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus) error {
+func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus, txMap TxFactory) error {
 	bm.consensus = consensus
+	bm.txMap = txMap
 
-	err := bm.bc.Setup(genesis, consensus, stor)
+	err := bm.bc.Setup(genesis, consensus, txMap, stor)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -382,18 +383,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 			continue
 		}
 
-		err = bm.consensus.VerifyProposer(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":       err,
-				"blockData": childData,
-				"parent":    parent,
-			}).Warn("Failed to verifyProposer")
-			fails = append(fails, childData)
-			continue
-		}
-
-		block, err := childData.ExecuteOnParentBlock(parent, bm.txMap)
+		block, err := childData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":    err,

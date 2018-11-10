@@ -484,19 +484,17 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 // VerifyIntegrity verifies if block signature is valid
 func (bd *BlockData) VerifyIntegrity() error {
 	if bd.height == GenesisHeight {
-		if !byteutils.Equal(GenesisHash, bd.hash) {
-			return ErrInvalidBlockHash
-		}
+		//if !byteutils.Equal(GenesisHash, bd.hash) {
+		//	return ErrInvalidBlockHash
+		//}
 		return nil
 	}
-
 	if err := crypto.CheckCryptoAlgorithm(bd.CryptoAlg()); err != nil {
 		return err
 	}
 	if err := hash2.CheckHashAlgorithm(bd.HashAlg()); err != nil {
 		return err
 	}
-
 	for _, tx := range bd.transactions {
 		if err := tx.VerifyIntegrity(bd.chainID); err != nil {
 			return err
@@ -515,7 +513,7 @@ func (bd *BlockData) VerifyIntegrity() error {
 }
 
 // ExecuteOnParentBlock returns Block object with state after block execution
-func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
+func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, txMap TxFactory) (*Block, error) {
 	// Prepare Execution
 	block, err := parent.Child()
 	if err != nil {
@@ -530,7 +528,7 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Bloc
 		return nil, err
 	}
 
-	if err := block.VerifyExecution(parent, txMap); err != nil {
+	if err := block.VerifyExecution(parent, consensus, txMap); err != nil {
 		block.Storage().DisableBatch()
 		return nil, err
 	}
@@ -548,9 +546,8 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	var err error
 	block := &Block{
 		BlockData: bd,
-		consensus: consensus,
 	}
-	if block.state, err = newStates(block.consensus, storage); err != nil {
+	if block.state, err = newStates(consensus, storage); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -598,15 +595,9 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 // Block represents block with actual state tries
 type Block struct {
 	*BlockData
-	storage   storage.Storage
-	state     *BlockState
-	consensus Consensus
-	sealed    bool
-}
-
-//Consensus returns block's consensus
-func (b *Block) Consensus() Consensus {
-	return b.consensus
+	storage storage.Storage
+	state   *BlockState
+	sealed  bool
 }
 
 //Clone clone block
@@ -624,7 +615,6 @@ func (b *Block) Clone() (*Block, error) {
 		BlockData: bd,
 		storage:   b.storage,
 		state:     state,
-		consensus: b.consensus,
 		sealed:    b.sealed,
 	}, nil
 }
@@ -660,10 +650,9 @@ func (b *Block) Child() (*Block, error) {
 			transactions: make([]*Transaction, 0),
 			height:       b.height + 1,
 		},
-		storage:   b.storage,
-		state:     state,
-		consensus: b.consensus,
-		sealed:    false,
+		storage: b.storage,
+		state:   state,
+		sealed:  false,
 	}, nil
 }
 
@@ -984,11 +973,20 @@ func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
+func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFactory) error {
 	b.BeginBatch()
 
-	if err := b.SetMintDynastyState(parent); err != nil {
+	if err := b.SetMintDynastyState(parent, consensus); err != nil {
 		b.RollBack()
+		return err
+	}
+
+	if err := consensus.VerifyProposer(b); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": b.BlockData,
+			"parent":    parent,
+		}).Warn("Failed to verifyProposer")
 		return err
 	}
 
@@ -1092,28 +1090,25 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 // AcceptTransaction consume bandwidth and adds tx in block state
 func (b *Block) AcceptTransaction(transaction *Transaction) error {
 	var err error
-	// Genesis transactions do not have from and receipt
-	if !transaction.from.Equals(common.Address{}) {
-		if transaction.receipt == nil {
-			return ErrNoTransactionReceipt
-		}
+	if transaction.receipt == nil {
+		return ErrNoTransactionReceipt
+	}
 
-		if err := b.consumeBandwidth(transaction); err != nil {
-			return err
-		}
+	if err := b.consumeBandwidth(transaction); err != nil {
+		return err
+	}
 
-		b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
-		if err != nil {
-			return err
-		}
-		b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
-		if err != nil {
-			return err
-		}
+	b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
+	if err != nil {
+		return err
+	}
+	b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
+	if err != nil {
+		return err
+	}
 
-		if err := b.state.accState.incrementNonce(transaction.from); err != nil {
-			return err
-		}
+	if err := b.state.accState.incrementNonce(transaction.from); err != nil {
+		return err
 	}
 
 	if err := b.state.txState.Put(transaction); err != nil {
@@ -1196,8 +1191,12 @@ func (b *Block) SignThis(signer signature.Signature) error {
 }
 
 //SetMintDynastyState set mint dys
-func (b *Block) SetMintDynastyState(parent *Block) error {
-	return b.state.dposState.SetMintDynastyState(b.timestamp, parent, b.consensus.DynastySize())
+func (b *Block) SetMintDynastyState(parent *Block, consensus Consensus) error {
+	mintDynasty, err := consensus.MakeMintDynasty(b.timestamp, parent)
+	if err != nil {
+		return err
+	}
+	return b.state.dposState.SetDynasty(mintDynasty)
 }
 
 // Prepare prepare block state
