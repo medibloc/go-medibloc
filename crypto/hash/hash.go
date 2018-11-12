@@ -60,3 +60,13 @@ func CheckHashAlgorithm(alg algorithm.HashAlgorithm) error {
 		return algorithm.ErrInvalidHashAlgorithm
 	}
 }
+
+// GenHash generates hash
+func GenHash(alg algorithm.HashAlgorithm, args ...[]byte) ([]byte, error) {
+	switch alg {
+	case algorithm.SHA3256:
+		return Sha3256(args...), nil
+	default:
+		return nil, algorithm.ErrInvalidCryptoAlgorithm
+	}
+}

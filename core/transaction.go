@@ -310,22 +310,13 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 		Nonce:     t.nonce,
 		ChainId:   t.chainID,
 		Payload:   t.payload,
-		HashAlg:   uint32(t.hashAlg),
-		CryptoAlg: uint32(t.cryptoAlg),
 	}
 	txHashTargetBytes, err := proto.Marshal(txHashTarget)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := hash.CheckHashAlgorithm(t.hashAlg); err != nil {
-		return nil, err
-	}
-	switch t.hashAlg {
-	case algorithm.SHA3256: // TODO @ggomma use cmd config
-		return hash.Sha3256(txHashTargetBytes), nil
-	}
-	return nil, algorithm.ErrInvalidHashAlgorithm
+	return hash.GenHash(t.hashAlg, txHashTargetBytes)
 }
 
 // SignThis signs tx with given signature interface

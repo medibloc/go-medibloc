@@ -755,14 +755,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := hash.CheckHashAlgorithm(bd.hashAlg); err != nil {
-		return nil, err
-	}
-	switch bd.hashAlg {
-	case algorithm.SHA3256: // TODO @ggomma use cmd config
-		return hash.Sha3256(blockHashTargetBytes), nil
-	}
-	return nil, algorithm.ErrInvalidHashAlgorithm
+	return hash.GenHash(bd.HashAlg(), blockHashTargetBytes)
 }
 
 // ExecuteTransaction on given block state

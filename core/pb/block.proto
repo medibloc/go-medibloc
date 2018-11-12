@@ -83,10 +83,8 @@ message TransactionHashTarget {
   int64 timestamp = 5;
   uint64 nonce = 6;
   uint32 chain_id = 7;
-  uint32 hash_alg = 8;
-  uint32 crypto_alg = 9;
 
-  bytes payload = 11;
+  bytes payload = 10;
 }
 
 message TransactionPayerSignTarget {

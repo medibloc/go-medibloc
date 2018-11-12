@@ -18,10 +18,10 @@ package core
 import (
 	"fmt"
 
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // Receipt struct represents transaction receipt
