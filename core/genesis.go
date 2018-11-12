@@ -202,7 +202,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		if err := tx.FromProto(pbTx); err != nil {
 			return nil, err
 		}
-		if err := genesisBlock.Execute(tx, txMap); err != nil {
+		receipt, err := genesisBlock.ExecuteTransaction(tx, txMap)
+		if err != nil {
+			return nil, err
+		}
+		tx.SetReceipt(receipt)
+
+		if err = genesisBlock.AcceptTransaction(tx); err != nil {
 			return nil, err
 		}
 		genesisBlock.AppendTransaction(tx) // append on block header

@@ -19,17 +19,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/util/byteutils"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/medibloc/go-medibloc/core"
-
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
-
+	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // CASE 1. Receipt store and get from storage
@@ -87,7 +84,8 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	receiver.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
+	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
+		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
 	payer := seed.Config.TokenDist[testutil.DynastySize]
 
 	tb := bb.Tx()
@@ -119,4 +117,23 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, tx3r.Receipt().Executed())
 	assert.Equal(t, string(tx3r.Receipt().Error()[:]), core.ErrRecordAlreadyAdded.Error())
+}
+
+func TestWrongReceipt(t *testing.T) {
+	network := testutil.NewNetwork(t, testutil.DynastySize)
+	defer network.Cleanup()
+	network.SetLogTestHook()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
+		Block(seed.GenesisBlock()).Child()
+
+	b := bb.Tx().RandomTx().Execute().SignMiner().Build()
+
+	b.Transactions()[0].Receipt().SetCPUUsage(util.NewUint128())
+
+	require.Equal(t, core.ErrCannotExecuteOnParentBlock, seed.Med.BlockManager().PushBlockData(b.BlockData))
+
 }

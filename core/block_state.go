@@ -289,9 +289,10 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	expectedNonce := fromAcc.Nonce + 1
 	if tx.nonce > expectedNonce {
 		logging.Console().WithFields(logrus.Fields{
-			"hash":     tx.Hash(),
-			"nonce":    tx.Nonce(),
-			"expected": expectedNonce,
+			"hash":        tx.Hash(),
+			"nonce":       tx.Nonce(),
+			"expected":    expectedNonce,
+			"transaction": tx,
 		}).Info("Transaction nonce gap exist")
 		return ErrLargeTransactionNonce
 	} else if tx.nonce < expectedNonce {

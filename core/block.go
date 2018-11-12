@@ -1037,7 +1037,15 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return err
 	}
 
-	tx.SetReceipt(receipt)
+	if !receipt.Equal(tx.receipt) {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": tx,
+			"block":       b,
+			"receipt":     receipt,
+		}).Warn("transaction receipt is wrong")
+		return ErrWrongReceipt
+	}
 
 	if err := b.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{

@@ -18,6 +18,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
@@ -116,20 +117,18 @@ func (r *Receipt) String() string {
 	return fmt.Sprintf("{executed: %v, cpu: %v, net: %v, err: %v}", r.executed, r.cpuUsage, r.netUsage, r.error)
 }
 
+//Equal returns true if two receipts are equal
+func (r *Receipt) Equal(obj *Receipt) bool {
+	return r.executed == obj.executed &&
+		r.netUsage.Cmp(obj.netUsage) == 0 &&
+		r.cpuUsage.Cmp(obj.cpuUsage) == 0 &&
+		byteutils.Equal(r.error, obj.error)
+}
+
 //NewReceipt returns new receipt
 func NewReceipt() *Receipt {
 	return &Receipt{
 		executed: false,
-		cpuUsage: util.NewUint128(),
-		netUsage: util.NewUint128(),
-		error:    nil,
-	}
-}
-
-//NewGenesisReceipt returns new receipt for genesis transaction
-func NewGenesisReceipt() *Receipt {
-	return &Receipt{
-		executed: true,
 		cpuUsage: util.NewUint128(),
 		netUsage: util.NewUint128(),
 		error:    nil,

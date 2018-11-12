@@ -178,6 +178,7 @@ var (
 	ErrAliasCollateralLimit             = errors.New("not enough transaction value for alias collateral")
 	ErrCannotRecoverSigner              = errors.New("failed to recover payer from sign")
 	ErrCannotRecoverPayer               = errors.New("failed to recover payer from payer sign")
+	ErrWrongReceipt                     = errors.New("transaction receipt is wrong in block data")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
