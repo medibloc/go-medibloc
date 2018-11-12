@@ -77,15 +77,16 @@ message Receipt {
 
 message TransactionHashTarget {
   string tx_type = 1;
-  bytes to = 2;
-  bytes value = 3;
-  int64 timestamp = 4;
-  uint64 nonce = 5;
-  uint32 chain_id = 6;
-  uint32 hash_alg = 7;
-  uint32 crypto_alg = 8;
+  bytes from = 2;
+  bytes to = 3;
+  bytes value = 4;
+  int64 timestamp = 5;
+  uint64 nonce = 6;
+  uint32 chain_id = 7;
+  uint32 hash_alg = 8;
+  uint32 crypto_alg = 9;
 
-  bytes payload = 10;
+  bytes payload = 11;
 }
 
 message TransactionPayerSignTarget {
@@ -95,10 +96,6 @@ message TransactionPayerSignTarget {
 
 message DefaultPayload {
   string message = 1;
-}
-
-message VotePayload {
-  repeated bytes candidates = 1;
 }
 
 message AddCertificationPayload {

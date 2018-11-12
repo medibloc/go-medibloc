@@ -17,16 +17,14 @@ package core
 
 import (
 	"fmt"
-	"hash"
 	"math/big"
 	"time"
-
-	hash2 "github.com/medibloc/go-medibloc/crypto/hash"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
@@ -34,7 +32,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 // BlockHeader is block header
@@ -492,7 +489,7 @@ func (bd *BlockData) VerifyIntegrity() error {
 	if err := crypto.CheckCryptoAlgorithm(bd.CryptoAlg()); err != nil {
 		return err
 	}
-	if err := hash2.CheckHashAlgorithm(bd.HashAlg()); err != nil {
+	if err := hash.CheckHashAlgorithm(bd.HashAlg()); err != nil {
 		return err
 	}
 	for _, tx := range bd.transactions {
@@ -758,17 +755,14 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 
-	var hasher hash.Hash
-	switch bd.hashAlg {
-	case algorithm.SHA3256:
-		hasher = sha3.New256()
-	default:
-		return nil, algorithm.ErrInvalidHashAlgorithm
+	if err := hash.CheckHashAlgorithm(bd.hashAlg); err != nil {
+		return nil, err
 	}
-
-	hasher.Write(blockHashTargetBytes)
-
-	return hasher.Sum(nil), nil
+	switch bd.hashAlg {
+	case algorithm.SHA3256: // TODO @ggomma use cmd config
+		return hash.Sha3256(blockHashTargetBytes), nil
+	}
+	return nil, algorithm.ErrInvalidHashAlgorithm
 }
 
 // ExecuteTransaction on given block state

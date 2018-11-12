@@ -5,3 +5,21 @@ message State {
   bytes candidate_root_hash = 1;
   bytes dynasty_root_hash = 2;
 }
+
+message Candidate {
+  bytes id = 1;
+  bytes tx_hash = 2;
+  bytes addr = 3;
+  bytes collateral = 4;
+  bytes vote_power = 5;
+  string url = 6;
+  int64 timestamp = 7;
+}
+
+message BecomeCandidatePayload {
+  string url = 1;
+}
+
+message VotePayload {
+  repeated bytes candidateIDs = 1;
+}

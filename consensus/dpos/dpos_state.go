@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"sort"
 
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
@@ -32,7 +33,7 @@ import (
 
 //State is a structure for dpos state
 type State struct {
-	candidateState *trie.Batch // key: addr, value: addr
+	candidateState *trie.Batch // key: candidate id(txHash), value: candidate
 	dynastyState   *trie.Batch // key: order, value: bpAddr
 
 	storage storage.Storage
@@ -169,40 +170,36 @@ func (s *State) RootBytes() ([]byte, error) {
 }
 
 //SortByVotePower returns Descending ordered candidate slice
-func (s *State) SortByVotePower(as *core.AccountState) ([]common.Address, error) {
-	//pbCandidates := make([]*dpospb.Candidate, 0)
+func SortByVotePower(candidateState *trie.Batch) ([]common.Address, error) {
+	addresses := make([]common.Address, 0)
+	candidates := make([]*Candidate, 0)
 
-	cs := s.candidateState
-
-	accounts := make([]*core.Account, 0)
-	candidates := make([]common.Address, 0)
-
-	iter, err := cs.Iterator(nil)
+	iter, err := candidateState.Iterator(nil)
 	if err != nil {
 		return nil, err
 	}
 	exist, err := iter.Next()
+	if err != nil {
+		return nil, err
+	}
 	for exist {
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("failed to iterate")
-			return nil, err
-		}
-		addr := common.BytesToAddress(iter.Key())
-		acc, err := as.GetAccount(addr)
+		candidate := new(Candidate)
+		err := candidate.FromBytes(iter.Value())
 		if err != nil {
 			return nil, err
 		}
-		accounts = append(accounts, acc)
+		candidates = append(candidates, candidate)
 
 		exist, err = iter.Next()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var sortErr error
-	sort.Slice(accounts, func(i, j int) bool {
+	sort.Slice(candidates, func(i, j int) bool {
 		// TODO @drSleepyTiger Secondary condition for same voting power
-		return accounts[i].VotePower.Cmp(accounts[j].VotePower) > 0
+		return candidates[i].VotePower.Cmp(candidates[j].VotePower) > 0
 	})
 
 	if sortErr != nil {
@@ -212,11 +209,11 @@ func (s *State) SortByVotePower(as *core.AccountState) ([]common.Address, error)
 		return nil, sortErr
 	}
 
-	for _, v := range accounts {
-		candidates = append(candidates, v.Address)
+	for _, v := range candidates {
+		addresses = append(addresses, v.Addr)
 	}
 
-	return candidates, nil
+	return addresses, nil
 }
 
 //MakeNewDynasty returns new dynasty slice for new block
@@ -224,6 +221,10 @@ func MakeNewDynasty(sortedCandidates []common.Address, dynastySize int) []common
 	dynasty := make([]common.Address, 0)
 
 	for i := 0; i < dynastySize; i++ {
+		if i >= len(sortedCandidates) {
+			dynasty = append(dynasty, common.Address{})
+			continue
+		}
 		addr := sortedCandidates[i]
 		dynasty = append(dynasty, addr)
 	}
@@ -246,9 +247,8 @@ func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64)
 //MakeMintDynasty returns dynasty slice for mint block
 func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]common.Address, error) {
 	if d.checkTransitionDynasty(parent.Timestamp(), ts) || parent.Timestamp() == core.GenesisTimestamp {
-		as := parent.State().AccState()
-		ds := parent.State().DposState()
-		sortedCandidates, err := ds.SortByVotePower(as)
+		cs := parent.State().DposState().CandidateState()
+		sortedCandidates, err := SortByVotePower(cs)
 		if err != nil {
 			return nil, err
 		}
@@ -277,21 +277,6 @@ func (s *State) SetDynasty(dynasty []common.Address) error {
 		}
 	}
 	return nil
-}
-
-// IsCandidate returns true if addr is in candidateState
-func (s *State) IsCandidate(addr common.Address) (bool, error) {
-	cs := s.candidateState
-
-	_, err := cs.Get(addr.Bytes())
-	if err == trie.ErrNotFound {
-		return false, nil
-	}
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
 }
 
 //InDynasty returns true if addr is in dynastyState
@@ -366,12 +351,36 @@ func (s *State) Dynasty() ([]common.Address, error) {
 	return dynasty, nil
 }
 
-//PutCandidate put candidate to candidate state
-func (s *State) PutCandidate(addr common.Address) error {
-	return s.candidateState.Put(addr.Bytes(), addr.Bytes())
+//AddVotePowerToCandidate add vote power to candidate
+func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
+	candidate := new(Candidate)
+	err := s.candidateState.GetData(id, candidate)
+	if err == trie.ErrNotFound {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	candidate.VotePower, err = candidate.VotePower.Add(amount)
+	if err != nil {
+		return err
+	}
+	return s.candidateState.PutData(id, candidate)
 }
 
-//DelCandidate delete candidate from candidate state
-func (s *State) DelCandidate(addr common.Address) error {
-	return s.candidateState.Delete(addr.Bytes())
+//SubVotePowerToCandidate sub vote power from candidate's vote power
+func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
+	candidate := new(Candidate)
+	err := s.candidateState.GetData(id, candidate)
+	if err == trie.ErrNotFound {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	candidate.VotePower, err = candidate.VotePower.Add(amount)
+	if err != nil {
+		return err
+	}
+	return s.candidateState.PutData(id, candidate)
 }

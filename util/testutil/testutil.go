@@ -138,15 +138,10 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		collateral, err := util.NewUint128FromString("1000000000000000000")
 		require.NoError(t, err)
 
-		votePayload := new(dpos.VotePayload)
-		votePayload.Candidates = []common.Address{keypair.Addr}
-		votePayloadBytes, err := votePayload.ToBytes()
-		require.NoError(t, err)
-
 		tx := new(core.Transaction)
 
 		tx.SetChainID(ChainID)
-		tx.SetValue(util.Uint128Zero())
+		tx.SetValue(util.NewUint128())
 		tx.SetTimestamp(core.GenesisTimestamp)
 		tx.SetCryptoAlg(algorithm.SECP256K1)
 		tx.SetHashAlg(algorithm.SHA3256)
@@ -165,11 +160,16 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		txCandidate.SetNonce(2)
 		txCandidate.SignThis(keypair.PrivKey)
 
+		votePayload := new(dpos.VotePayload)
+		candidateIds := make([][]byte, 0)
+		votePayload.CandidateIDs = append(candidateIds, txCandidate.Hash())
+		votePayloadBytes, err := votePayload.ToBytes()
+		require.NoError(t, err)
+
 		txVote, err := tx.Clone()
 		require.NoError(t, err)
 		txVote.SetTxType(dpos.TxOpVote)
 		txVote.SetNonce(3)
-		txVote.SetValue(util.Uint128Zero())
 		txVote.SetPayload(votePayloadBytes)
 		txVote.SignThis(keypair.PrivKey)
 

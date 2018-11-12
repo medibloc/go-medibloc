@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -88,9 +89,9 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse,
 	}, nil
 }
 
-func coreCandidate2rpcCandidate(candidate *core.Account) *rpcpb.Candidate {
+func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 	return &rpcpb.Candidate{
-		Address:   candidate.Address.Hex(),
+		Address:   candidate.Addr.Hex(),
 		Collatral: candidate.Collateral.String(),
 		VotePower: candidate.VotePower.String(),
 	}

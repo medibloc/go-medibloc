@@ -19,6 +19,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/medibloc/go-medibloc/crypto/hash"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -27,7 +29,6 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -43,9 +44,7 @@ var (
 )
 
 func genesisHash(quote string) []byte {
-	hasher := sha3.New256()
-	hasher.Write([]byte(quote))
-	return hasher.Sum(nil)
+	return hash.Sha3256([]byte(quote))
 }
 
 // LoadGenesisConf loads genesis conf file

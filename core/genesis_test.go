@@ -61,9 +61,9 @@ func TestNewGenesisBlock(t *testing.T) {
 	for _, dynasty := range dynasties {
 		addr := dynasty.Addr
 
-		isCandidate, err := genesisBlock.State().DposState().IsCandidate(addr)
+		acc, err := child.State().GetAccount(addr)
 		require.NoError(t, err)
-		assert.True(t, isCandidate)
+		assert.NotNil(t, acc.CandidateID)
 
 		inDynasty, err := child.State().DposState().InDynasty(addr)
 		require.NoError(t, err)

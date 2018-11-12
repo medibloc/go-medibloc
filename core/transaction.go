@@ -17,22 +17,19 @@ package core
 
 import (
 	"fmt"
-	"hash"
 	"unicode"
-
-	hash2 "github.com/medibloc/go-medibloc/crypto/hash"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -306,6 +303,7 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 
 	txHashTarget := &corepb.TransactionHashTarget{
 		TxType:    t.txType,
+		From:      t.from.Bytes(),
 		To:        t.to.Bytes(),
 		Value:     value,
 		Timestamp: t.timestamp,
@@ -320,22 +318,24 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 		return nil, err
 	}
 
-	var hasher hash.Hash
+	if err := hash.CheckHashAlgorithm(t.hashAlg); err != nil {
+		return nil, err
+	}
 	switch t.hashAlg {
 	case algorithm.SHA3256: // TODO @ggomma use cmd config
-		hasher = sha3.New256()
-	default:
-		return nil, algorithm.ErrInvalidHashAlgorithm
+		return hash.Sha3256(txHashTargetBytes), nil
 	}
-
-	hasher.Write(txHashTargetBytes)
-
-	return hasher.Sum(nil), nil
+	return nil, algorithm.ErrInvalidHashAlgorithm
 }
 
 // SignThis signs tx with given signature interface
 func (t *Transaction) SignThis(key signature.PrivateKey) error {
 	var err error
+	t.from, err = common.PublicKeyToAddress(key.PublicKey())
+	if err != nil {
+		return err
+	}
+
 	t.hash, err = t.CalcHash()
 	if err != nil {
 		return err
@@ -365,11 +365,7 @@ func (t *Transaction) getPayerSignTarget() ([]byte, error) {
 		return nil, err
 	}
 
-	hasher := sha3.New256()
-	hasher.Write(payerSignTargetBytes)
-
-	hash := hasher.Sum(nil)
-	return hash, nil
+	return hash.Sha3256(payerSignTargetBytes), nil
 }
 
 func (t *Transaction) recoverPayer() (common.Address, error) {
@@ -422,12 +418,18 @@ func (t *Transaction) SignByPayer(signer signature.Signature) error {
 
 // VerifyIntegrity returns transaction verify result, including Hash and Signature.
 func (t *Transaction) VerifyIntegrity(chainID uint32) error {
+	var err error
 	// check ChainID.
 	if t.chainID != chainID {
 		return ErrInvalidChainID
 	}
 
-	if err := hash2.CheckHashAlgorithm(t.hashAlg); err != nil {
+	// check Signature.
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
+		return err
+	}
+	t.from, err = t.recoverSigner()
+	if err != nil {
 		return err
 	}
 
@@ -437,21 +439,13 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 		return err
 	}
 	if !byteutils.Equal(wantedHash, t.hash) {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": t,
+		}).Warn("invalid tx hash")
 		return ErrInvalidTransactionHash
 	}
 
-	// check Signature.
-	return t.verifySign()
-}
-
-func (t *Transaction) verifySign() error {
-	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
-		return err
-	}
-	_, err := t.recoverSigner()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -479,12 +473,22 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
+	//fromStr := "no sign"
+	//if t.sign != nil {
+	//	from, err := t.recoverSigner()
+	//	if err != nil {
+	//		fromStr = "failed to recover signer"
+	//	} else {
+	//		fromStr = from.Hex()
+	//	}
+	//}
+
 	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, cryptoAlg:%v, hashAlg:%v nonce:%v, 
 timestamp:%v, receipt:%v}`,
 		t.chainID,
 		byteutils.Bytes2Hex(t.hash),
-		t.from,
-		t.to,
+		t.from.Hex(),
+		t.to.Hex(),
 		t.value.String(),
 		t.TxType(),
 		t.cryptoAlg,
@@ -506,6 +510,8 @@ func (t *Transaction) Clone() (*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	newTx.from = t.from
 	return newTx, nil
 }
 
@@ -752,15 +758,7 @@ func (tx *VestTx) Execute(b *Block) error {
 
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
-		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
-		if err != nil {
-			return err
-		}
-		candidate.VotePower, err = candidate.VotePower.Add(tx.amount)
-		if err != nil {
-			return err
-		}
-		err = b.State().PutAccount(candidate)
+		err = b.state.DposState().AddVotePowerToCandidate(v, tx.amount)
 		if err != nil {
 			return err
 		}
@@ -857,15 +855,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
-		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
-		if err != nil {
-			return err
-		}
-		candidate.VotePower, err = candidate.VotePower.Sub(tx.amount)
-		if err != nil {
-			return err
-		}
-		err = b.State().PutAccount(candidate)
+		err = b.state.DposState().SubVotePowerToCandidate(v, tx.amount)
 		if err != nil {
 			return err
 		}

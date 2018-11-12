@@ -21,7 +21,6 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +28,7 @@ import (
 )
 
 func TestBecomeAndQuitCandidate(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	candidate := bb.TokenDist[testutil.DynastySize]
 
@@ -37,100 +36,97 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	bb = bb.
 		Tx().StakeTx(candidate, 100000).Execute().
 		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
-		Tx().Type(txType).Value(10).SignPair(candidate).Execute().
-		Tx().Type(txType).Value(10).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
+		Tx().Type(txType).Value(999999).SignPair(candidate).ExecuteErr(dpos.ErrNotEnoughCandidateCollateral).
+		Tx().Type(txType).Value(1000000).SignPair(candidate).Execute().
+		Tx().Type(txType).Value(1000000).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
 
 	bb.Expect().
-		Balance(candidate.Addr, 400000000-10-100000).
+		Balance(candidate.Addr, 400000000-100000-1000000).
 		Vesting(candidate.Addr, 100000)
 
 	block := bb.Build()
 
-	ds := block.State().DposState()
-	as := block.State().AccState()
-
-	isCandidate, err := ds.IsCandidate(candidate.Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, true, isCandidate)
-
-	acc, err := as.GetAccount(candidate.Addr)
+	acc, err := block.State().GetAccount(candidate.Addr)
 	require.NoError(t, err)
 
-	assert.Equal(t, blockutil.FloatToUint128(t, 10), acc.Collateral)
+	cId := acc.CandidateID
+	require.NotNil(t, cId)
+
+	cs := block.State().DposState().CandidateState()
+	c := new(dpos.Candidate)
+	require.NoError(t, cs.GetData(cId, c))
+
+	assert.Equal(t, candidate.Addr.Hex(), c.Addr.Hex())
+	assert.Equal(t, blockutil.FloatToUint128(t, 1000000), c.Collateral)
 
 	bb = bb.
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).Execute().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
 
+	bb.Expect().Balance(candidate.Addr, 400000000-100000)
+
 	block = bb.Build()
-	as = block.State().AccState()
-	ds = block.State().DposState()
+	cs = block.State().DposState().CandidateState()
 
-	acc, err = as.GetAccount(candidate.Addr)
-	require.NoError(t, err)
-
-	assert.Equal(t, util.NewUint128FromUint(0), acc.Collateral)
-	assert.Equal(t, 0, len(acc.VotersSlice()))
-	assert.Equal(t, util.NewUint128FromUint(0), acc.VotePower)
-
-	isCandidate, err = ds.IsCandidate(candidate.Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, false, isCandidate)
+	require.Equal(t, trie.ErrNotFound, cs.GetData(cId, c))
 }
 
 func TestVote(t *testing.T) {
 	dynastySize := 21
-
 	bb := blockutil.New(t, dynastySize).Genesis().Child()
 
-	candidate := bb.TokenDist[dynastySize]
+	newCandidate := bb.TokenDist[dynastySize]
 	voter := bb.TokenDist[dynastySize+1]
 
 	votePayload := new(dpos.VotePayload)
 	overSizePayload := new(dpos.VotePayload)
 	duplicatePayload := new(dpos.VotePayload)
-	candidates := append(bb.TokenDist[1:dynastySize], candidate)
-	for _, v := range candidates {
-		votePayload.Candidates = append(votePayload.Candidates, v.Addr)
-		overSizePayload.Candidates = append(overSizePayload.Candidates, v.Addr)
-		duplicatePayload.Candidates = append(duplicatePayload.Candidates, v.Addr)
-	}
-	overSizePayload.Candidates = append(overSizePayload.Candidates, bb.TokenDist[0].Addr)
-	duplicatePayload.Candidates[0] = candidate.Addr
+	candidates := append(bb.TokenDist[:dpos.MaxVote], newCandidate)
 
 	bb = bb.
 		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
-		Tx().StakeTx(candidate, 10000).Execute().
-		Tx().Type(dpos.TxOpBecomeCandidate).Value(10).SignPair(candidate).Execute().
+		Tx().StakeTx(newCandidate, 10000).Execute().
+		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
+
+	bb.Expect().Balance(newCandidate.Addr, 400000000-10000-1000000)
+	block := bb.Build()
+
+	candidateIDs := make([][]byte, 0)
+	for _, v := range candidates {
+		acc, err := bb.Build().State().GetAccount(v.Addr)
+		require.NoError(t, err)
+
+		candidateIDs = append(candidateIDs, acc.CandidateID)
+		_, err = block.State().DposState().CandidateState().Get(acc.CandidateID)
+		require.NoError(t, err)
+	}
+
+	votePayload.CandidateIDs = candidateIDs[1:]
+	overSizePayload.CandidateIDs = candidateIDs
+	duplicatePayload.CandidateIDs = candidateIDs[:dpos.MaxVote]
+	duplicatePayload.CandidateIDs[0] = candidateIDs[1]
+
+	bb = bb.
 		Tx().Type(dpos.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(dpos.ErrOverMaxVote).
 		Tx().Type(dpos.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(dpos.ErrDuplicateVote).
 		Tx().Type(dpos.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
-	bb.Expect().Balance(candidate.Addr, 400000000-10-10000)
-	block := bb.Build()
-
-	isCandidate, err := block.State().DposState().IsCandidate(candidate.Addr)
-	assert.NoError(t, err)
-	assert.Equal(t, true, isCandidate)
-
 	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
-	for _, v := range candidates {
-		_, err = voterAcc.Voted.Get(v.Addr.Bytes())
+	for _, v := range votePayload.CandidateIDs {
+		_, err = voterAcc.Voted.Get(v)
 		assert.NoError(t, err)
 	}
 
-	for _, v := range candidates[:dynastySize-1] {
-		acc, err := block.State().GetAccount(v.Addr)
-		require.NoError(t, err)
-		assert.Equal(t, blockutil.FloatToUint128(t, 333+100000000), acc.VotePower)
+	for _, v := range candidateIDs[:dpos.MaxVote-1] {
+		candidate := new(dpos.Candidate)
+		require.NoError(t, block.State().DposState().CandidateState().GetData(v, candidate))
+		assert.Equal(t, blockutil.FloatToUint128(t, 333+100000000), candidate.VotePower)
 	}
 
-	acc, err := block.State().GetAccount(candidate.Addr)
-	require.NoError(t, err)
-	assert.Equal(t, blockutil.FloatToUint128(t, 333), acc.VotePower)
-	_, err = acc.Voters.Get(voter.Addr.Bytes())
-	assert.NoError(t, err)
+	candidate := new(dpos.Candidate)
+	require.NoError(t, block.State().DposState().CandidateState().GetData(candidateIDs[dpos.MaxVote], candidate))
+	assert.Equal(t, blockutil.FloatToUint128(t, 333), candidate.VotePower)
 
 	// Reset vote to nil
 	bb = bb.
@@ -140,18 +136,19 @@ func TestVote(t *testing.T) {
 
 	voterAcc, err = block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
-	for _, v := range candidates {
-		_, err = voterAcc.Voted.Get(v.Addr.Bytes())
-		assert.Equal(t, trie.ErrNotFound, err)
+	for _, v := range votePayload.CandidateIDs {
+		_, err = voterAcc.Voted.Get(v)
+		assert.Error(t, trie.ErrNotFound)
 	}
 
-	for _, v := range candidates[:dynastySize-1] {
-		acc, err := block.State().GetAccount(v.Addr)
-		require.NoError(t, err)
-		assert.Equal(t, "100000000000000000000", acc.VotePower.String())
+	for _, v := range candidateIDs[:dpos.MaxVote-1] {
+		candidate := new(dpos.Candidate)
+		require.NoError(t, block.State().DposState().CandidateState().GetData(v, candidate))
+		assert.Equal(t, blockutil.FloatToUint128(t, 100000000), candidate.VotePower)
 	}
 
-	acc, err = block.State().GetAccount(candidate.Addr)
-	require.NoError(t, err)
-	assert.Equal(t, blockutil.FloatToUint128(t, 0), acc.VotePower)
+	candidate = new(dpos.Candidate)
+	require.NoError(t, block.State().DposState().CandidateState().GetData(candidateIDs[dpos.MaxVote], candidate))
+	assert.Equal(t, blockutil.FloatToUint128(t, 0), candidate.VotePower)
+
 }

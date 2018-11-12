@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -174,10 +173,10 @@ func TestTxsFromTxsTo(t *testing.T) {
 		}).SignPair(from).Execute().
 		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
-		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(from).Execute().
+		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpVote).
 		Payload(&dpos.VotePayload{
-			Candidates: []common.Address{from.Addr},
+			CandidateIDs: [][]byte{},
 		}).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(from).Execute()
 

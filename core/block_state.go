@@ -81,12 +81,6 @@ func (bs *BlockState) DposState() DposState {
 	return bs.dposState
 }
 
-// GetCandidates returns list of candidates (only used in grpc)
-func (bs *BlockState) GetCandidates() ([]common.Address, error) {
-	// TODO: should be deprecate (if candidates are too many, grpc cannot full list of cadidiates. (max msg size)
-	return bs.DposState().Candidates()
-}
-
 // GetDynasty returns list of dynasty (only used in grpc)
 func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecate ?
 

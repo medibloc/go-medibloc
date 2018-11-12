@@ -77,6 +77,13 @@ func (tb *TxBuilder) Hash(hash []byte) *TxBuilder {
 	return n
 }
 
+//From sets from
+func (tb *TxBuilder) From(addr common.Address) *TxBuilder {
+	n := tb.copy()
+	n.tx.SetFrom(addr)
+	return n
+}
+
 //To sets to
 func (tb *TxBuilder) To(addr common.Address) *TxBuilder {
 	n := tb.copy()
@@ -198,7 +205,7 @@ func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 		require.NoError(n.t, err)
 		n = n.Nonce(acc.Nonce + 1)
 	}
-	return n.CalcHash().SignKey(pair.PrivKey)
+	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 
 //RandomTx generate random Tx

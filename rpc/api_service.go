@@ -18,6 +18,8 @@ package rpc
 import (
 	"encoding/hex"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+
 	"github.com/medibloc/go-medibloc/util/math"
 
 	"github.com/medibloc/go-medibloc/common"
@@ -182,16 +184,33 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 	var rpcCandidates []*rpcpb.Candidate
 	block := s.bm.TailBlock()
 
-	candidates, err := block.State().GetCandidates()
+	cs := block.State().DposState().CandidateState()
+	candidates := make([]*dpos.Candidate, 0)
+
+	iter, err := cs.Iterator(nil)
 	if err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
-	for _, candidate := range candidates {
-		acc, err := block.State().GetAccount(candidate)
+	exist, err := iter.Next()
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	for exist {
+		candidate := new(dpos.Candidate)
+		err := candidate.FromBytes(iter.Value())
 		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertAccountFailed)
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
-		rpcCandidates = append(rpcCandidates, coreCandidate2rpcCandidate(acc))
+		candidates = append(candidates, candidate)
+
+		exist, err = iter.Next()
+		if err != nil {
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
+		}
+	}
+
+	for _, candidate := range candidates {
+		rpcCandidates = append(rpcCandidates, dposCandidate2rpcCandidate(candidate))
 	}
 	return &rpcpb.GetCandidatesResponse{
 		Candidates: rpcCandidates,

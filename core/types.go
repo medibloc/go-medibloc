@@ -186,12 +186,6 @@ type HashableBlock interface {
 	ParentHash() []byte
 }
 
-// Serializable interface for serializing/deserializing
-type Serializable interface {
-	Serialize() ([]byte, error)
-	Deserialize([]byte) error
-}
-
 // Consensus is an interface of consensus model
 type Consensus interface {
 	NewConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
@@ -222,15 +216,12 @@ type DposState interface {
 	DynastyState() *trie.Batch
 
 	Candidates() ([]common.Address, error)
-	IsCandidate(addr common.Address) (bool, error)
-	PutCandidate(addr common.Address) error
-	DelCandidate(addr common.Address) error
-
 	Dynasty() ([]common.Address, error)
 	InDynasty(addr common.Address) (bool, error)
 	SetDynasty(dynasty []common.Address) error
 
-	SortByVotePower(as *AccountState) ([]common.Address, error)
+	AddVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error
+	SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error
 }
 
 // Event structure
