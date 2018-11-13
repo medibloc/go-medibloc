@@ -44,7 +44,7 @@ func TestRestartNode(t *testing.T) {
 	testNet.SetLogTestHook()
 
 	seed := testNet.NewSeedNode()
-	testNet.SetMinerFromDynasties(seed)
+	testNet.SetProposerFromDynasties(seed)
 	seed.Start()
 
 	for seed.Tail().Height() < 2 {

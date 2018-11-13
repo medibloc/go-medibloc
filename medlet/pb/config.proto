@@ -52,12 +52,6 @@ message ChainConfig {
     // start mine at launch
     bool start_mine = 20;
 
-    // Coinbase.
-    string coinbase = 21;
-    // Miner.
-    string miner = 22;
-    // Passphrase.
-    string passphrase = 23;
     // Supported signature cipher list. ["ECC_SECP256K1"]
     repeated string signature_ciphers = 24;
 
@@ -71,7 +65,7 @@ message ChainConfig {
     uint32 transaction_pool_size = 28;
 
     // TODO account manager
-    // Miner private key.
+    // Proposer private key.
     string privkey = 29;
 
     // Proposer list for multi proposer

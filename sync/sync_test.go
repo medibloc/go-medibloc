@@ -48,9 +48,9 @@ func TestService_Start(t *testing.T) {
 		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
-			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
-			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
@@ -125,9 +125,9 @@ func TestForkResistance(t *testing.T) {
 		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
-			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
-			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 
@@ -156,9 +156,9 @@ func TestForkResistance(t *testing.T) {
 		tail := minorNodes[0].Tail()
 		var b *core.Block
 		if i == 1 {
-			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
-			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 
 		for _, n := range minorNodes {
@@ -240,9 +240,9 @@ func TestForAutoActivation(t *testing.T) {
 		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
-			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
-			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
@@ -256,7 +256,7 @@ func TestForAutoActivation(t *testing.T) {
 	testNetwork.WaitForEstablished()
 
 	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
-	b := bb.Block(seed.Tail()).ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignMiner().Build()
+	b := bb.Block(seed.Tail()).ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer().Build()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 
 	time.Sleep(time.Unix(b.Timestamp(), 0).Sub(time.Now()))
@@ -297,7 +297,7 @@ func TestForAutoActivation(t *testing.T) {
 	require.True(t, int(newTail.Height()) > nBlocks-chunkSize, "Receiver height is too low")
 
 	nextMintTs = dpos.NextMintSlot2(time.Now().Unix())
-	b = bb.Block(seed.Tail()).ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignMiner().Build()
+	b = bb.Block(seed.Tail()).ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer().Build()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	time.Sleep(time.Unix(b.Timestamp(), 0).Sub(time.Now()))
 	seed.Med.BlockManager().BroadCast(b.BlockData)
@@ -353,9 +353,9 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
-			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
-			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}

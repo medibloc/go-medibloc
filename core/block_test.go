@@ -26,18 +26,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetMiner(t *testing.T) {
+func TestGetProposer(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	proposer, err := bb.Build().Proposer()
 	require.Error(t, err)
 
-	singingMiner := bb.FindMiner()
-	b := bb.SignPair(singingMiner).Build()
+	singingProposer := bb.FindProposer()
+	b := bb.SignPair(singingProposer).Build()
 
 	proposer, err = b.Proposer()
 	require.NoError(t, err)
-	assert.Equal(t, singingMiner.Addr, proposer)
+	assert.Equal(t, singingProposer.Addr, proposer)
 }
 
 func TestBlock_BasicTx(t *testing.T) {
@@ -46,7 +46,7 @@ func TestBlock_BasicTx(t *testing.T) {
 	nt.SetLogTestHook()
 
 	seed := nt.NewSeedNode()
-	nt.SetMinerFromDynasties(seed)
+	nt.SetProposerFromDynasties(seed)
 	seed.Start()
 
 	nt.WaitForEstablished()
@@ -73,15 +73,15 @@ func TestBlock_PayReward(t *testing.T) {
 	parent := bb.Build()
 
 	bb = bb.Child().Stake().Tx().RandomTx().Execute().Flush()
-	miner := bb.FindMiner()
+	proposer := bb.FindProposer()
 
 	// wrong reward value (calculate reward based on wrong supply)
-	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(proposer.PrivKey).Build()
 	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, blockutil.DefaultTxMap)
 	assert.Equal(t, core.ErrInvalidBlockReward, err)
 
 	// wrong supply on header
-	block = bb.Clone().PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(proposer.PrivKey).Build()
 	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, blockutil.DefaultTxMap)
 	assert.Equal(t, core.ErrInvalidBlockSupply, err)
 

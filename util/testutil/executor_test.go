@@ -41,7 +41,7 @@ import (
 //	require.NoError(t, err)
 //
 //	bb := blockutil.New(t, dynastySize).AddKeyPairs(nt.Seed.Config.Dynasties)
-//	block := bb.Block(genesis).Child().SignMiner().Build()
+//	block := bb.Block(genesis).Child().SignProposer().Build()
 //
 //	to := nt.Nodes[1]
 //	ch := make(chan net.Message)
@@ -59,14 +59,14 @@ import (
 //	require.True(t, reflect.DeepEqual(block.GetBlockData(), bd))
 //}
 
-func TestNetworkMiner(t *testing.T) {
+func TestNetworkProposer(t *testing.T) {
 	dynastySize := 3
 	nt := testutil.NewNetwork(t, dynastySize)
 	seed := nt.NewSeedNode()
-	nt.SetMinerFromDynasties(seed)
+	nt.SetProposerFromDynasties(seed)
 	for i := 0; i < dynastySize-1; i++ {
 		node := nt.NewNode()
-		nt.SetMinerFromDynasties(node)
+		nt.SetProposerFromDynasties(node)
 	}
 	nt.Start()
 	defer nt.Cleanup()

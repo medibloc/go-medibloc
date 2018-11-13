@@ -95,7 +95,7 @@ func TestVestAndWithdraw(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance)
 
-	bb = bb.SignMiner().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
+	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(from).Execute()
 	bb.Expect().
 		Balance(from.Addr, 400000000-vestingAmount+withdrawAmount).

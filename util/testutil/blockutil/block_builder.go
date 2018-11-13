@@ -254,15 +254,15 @@ func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
 	return n.Coinbase(pair.Addr).PayReward().Flush().Seal().CalcHash().SignKey(pair.PrivKey)
 }
 
-//SignMiner find proposer and sign with key pair
-func (bb *BlockBuilder) SignMiner() *BlockBuilder {
+//SignProposer find proposer and sign with key pair
+func (bb *BlockBuilder) SignProposer() *BlockBuilder {
 	n := bb.copy()
 
-	return n.SignPair(n.FindMiner())
+	return n.SignPair(n.FindProposer())
 }
 
-//FindMiner finds proposer.
-func (bb *BlockBuilder) FindMiner() *testutil.AddrKeyPair {
+//FindProposer finds proposer.
+func (bb *BlockBuilder) FindProposer() *testutil.AddrKeyPair {
 	require.NotNil(bb.t, bb.proposer)
 	pair := bb.KeyPairs.FindPair(bb.proposer)
 	require.NotNil(bb.t, pair)

@@ -41,11 +41,8 @@ import (
 type Dpos struct {
 	dynastySize int
 
-	startMine bool
-	proposers map[common.Address]*Proposer
-	coinbase  common.Address
-	miner     common.Address
-	minerKey  signature.PrivateKey
+	startPropose bool
+	proposers    map[common.Address]*Proposer
 
 	bm *core.BlockManager
 	tm *core.TransactionManager
@@ -60,16 +57,6 @@ type Proposer struct {
 	ProposerAddress common.Address
 	Privkey         signature.PrivateKey
 	Coinbase        common.Address
-}
-
-//MinerKey returns minerKey
-func (d *Dpos) MinerKey() signature.PrivateKey {
-	return d.minerKey
-}
-
-//Miner returns miner address
-func (d *Dpos) Miner() common.Address {
-	return d.miner
 }
 
 //Proposers returns Proposers
@@ -113,8 +100,8 @@ func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (c
 
 // Setup sets up dpos.
 func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
-	// Setup miner
-	d.startMine = cfg.Chain.StartMine
+	// Setup proposer
+	d.startPropose = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
 		if len(cfg.Chain.Proposers) == 0 {
 			return ErrProposerConfigNotFound
@@ -155,7 +142,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
-					}).Error("Invalid miner private key.")
+					}).Error("Invalid proposer private key.")
 					return err
 				}
 			}
@@ -178,17 +165,17 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	return nil
 }
 
-// Start starts miner.
+// Start starts proposer.
 func (d *Dpos) Start() {
-	if !d.startMine {
+	if !d.startPropose {
 		return
 	}
 	go d.loop()
 }
 
-// Stop stops miner.
+// Stop stops proposer.
 func (d *Dpos) Stop() {
-	if !d.startMine {
+	if !d.startPropose {
 		return
 	}
 	d.quitCh <- 0
@@ -308,7 +295,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	// Check if it is the miner's turn
+	// Check if it is the proposer's turn
 	mintProposer, err := d.FindMintProposer(deadline.Unix(), tail)
 	if err != nil {
 		return err

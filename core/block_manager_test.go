@@ -50,7 +50,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
-		mint := bb.Block(tail).Child().SignMiner().Build()
+		mint := bb.Block(tail).Child().SignProposer().Build()
 		require.NoError(t, bm.PushBlockData(mint.BlockData))
 		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
@@ -72,7 +72,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 
 	var blocks []*core.Block
 	for i := 1; i < nBlocks; i++ {
-		mint := bb.Block(tail).Child().SignMiner().Build()
+		mint := bb.Block(tail).Child().SignProposer().Build()
 		blocks = append(blocks, mint)
 		tail = mint
 	}
@@ -105,9 +105,9 @@ func TestBlockManager_Forked(t *testing.T) {
 	for i := 1; i < mainChainHeight; i++ {
 		var mint *core.Block
 		if i == 1 {
-			mint = bb.Block(tail).Child().Stake().SignMiner().Build()
+			mint = bb.Block(tail).Child().Stake().SignProposer().Build()
 		} else {
-			mint = bb.Block(tail).Child().SignMiner().Build()
+			mint = bb.Block(tail).Child().SignProposer().Build()
 		}
 		mainChainBlocks = append(mainChainBlocks, mint)
 		tail = mint
@@ -120,7 +120,7 @@ func TestBlockManager_Forked(t *testing.T) {
 		if i+1 < forkedHeight {
 			mint = mainChainBlocks[i-1]
 		} else {
-			mint = bb.Block(tail).Child().Tx().RandomTx().Execute().SignMiner().Build()
+			mint = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 			txs = append(txs, mint.BlockData.Transactions()[0])
 		}
 		forkedChainBlocks = append(forkedChainBlocks, mint)
@@ -160,15 +160,15 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
 
-	block1 := bb.Block(tail).Child().SignMiner().Build()
-	block2 := bb.Block(block1).Child().SignMiner().Build()
+	block1 := bb.Block(tail).Child().SignProposer().Build()
+	block2 := bb.Block(block1).Child().SignProposer().Build()
 
 	err := bm.PushBlockData(block1.GetBlockData())
 	require.NoError(t, err)
 
 	bb = bb.Block(block2).Child().Hash(block2.ParentHash()).ParentHash(block2.Hash())
-	miner := testNetwork.FindProposer(bb.B.Timestamp(), block1)
-	block3 := bb.Coinbase(miner.Addr).SignKey(miner.PrivKey).Build()
+	proposer := testNetwork.FindProposer(bb.B.Timestamp(), block1)
+	block3 := bb.Coinbase(proposer.Addr).SignKey(proposer.PrivKey).Build()
 
 	err = bm.PushBlockData(block3.GetBlockData())
 	require.Error(t, core.ErrInvalidBlockHash)
@@ -191,9 +191,9 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	for i := 0; i < dynastySize+2; i++ {
 		var block *core.Block
 		if i == 0 {
-			block = bb.Block(tail).Child().Stake().SignMiner().Build()
+			block = bb.Block(tail).Child().Stake().SignProposer().Build()
 		} else {
-			block = bb.Block(tail).Child().SignMiner().Build()
+			block = bb.Block(tail).Child().SignProposer().Build()
 		}
 		blocks = append(blocks, block)
 		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
@@ -201,25 +201,25 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	}
 	block := bb.Block(blocks[0]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
-		SignMiner().Build()
+		SignProposer().Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 
 	block = bb.Block(blocks[1]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
-		SignMiner().Build()
+		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 
 	block = bb.Block(blocks[dynastySize*2/3]).Child().
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
-		SignMiner().Build()
+		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
 
 	block = bb.Block(blocks[dynastySize*2/3+1]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
-		SignMiner().Build()
+		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
 
@@ -227,7 +227,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	require.NoError(t, err)
 	b := bb.Block(parent).Child().Height(20).
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
-		SignMiner().Build()
+		SignProposer().Build()
 	err = bm.PushBlockData(b.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 }
@@ -247,15 +247,15 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 
 	blocks := make([]*core.Block, 0)
 
-	b1 := bb.Block(tail).Child().Stake().SignMiner().Build()
+	b1 := bb.Block(tail).Child().Stake().SignProposer().Build()
 	blocks = append(blocks, b1)
 
 	b2 := bb.Block(b1).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{RecordHash: []byte("recordHash0")}).SignPair(bb.KeyPairs[0]).Execute().
-		SignMiner().Build()
+		SignProposer().Build()
 	blocks = append(blocks, b2)
 
-	b3 := bb.Block(b1).Child().SignMiner().Build()
+	b3 := bb.Block(b1).Child().SignProposer().Build()
 	blocks = append(blocks, b3)
 
 	for i := 1; i < dynastySize+2; i++ {
@@ -264,7 +264,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 		}
 		block := bb.Block(blocks[i+1]).Child().
 			Tx().Type(core.TxOpAddRecord).Payload(recordPayload).SignPair(bb.KeyPairs[0]).Execute().
-			SignMiner().Build()
+			SignProposer().Build()
 		blocks = append(blocks, block)
 	}
 
@@ -295,11 +295,11 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		if i == 0 {
 			block = bb.Block(tail).Child().Stake().
 				Tx().RandomTx().Execute().
-				SignMiner().Build()
+				SignProposer().Build()
 		} else {
 			block = bb.Block(tail).Child().
 				Tx().RandomTx().Execute().
-				SignMiner().Build()
+				SignProposer().Build()
 		}
 		err := bm.PushBlockData(block.GetBlockData())
 		tail = block
@@ -325,7 +325,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	for _, v := range tests {
 		block := bb.Block(parent).Child().
 			Tx().RandomTx().Execute().
-			Height(v.height).SignMiner().Build()
+			Height(v.height).SignProposer().Build()
 		assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
 	}
 }
@@ -363,7 +363,7 @@ func TestBlockManager_InvalidChainID(t *testing.T) {
 	genesis := seed.GenesisBlock()
 
 	block := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist).
-		Block(genesis).Child().ChainID(959123).SignMiner().Build()
+		Block(genesis).Child().ChainID(959123).SignProposer().Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 }
@@ -389,7 +389,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	blocks := make([]*core.Block, 0)
 	parent := genesis
 	for i := 0; i < 10; i++ {
-		block := bb.Block(parent).Child().SignMiner().Build()
+		block := bb.Block(parent).Child().SignProposer().Build()
 		err := bm.PushBlockData(block.GetBlockData())
 		require.NoError(t, err)
 		blocks = append(blocks, block)
@@ -459,7 +459,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	assert.Equal(t, core.ErrInvalidBlockHash, err)
 
 	// Invalid Block Sign algorithm
-	block = bb.Block(genesis).Child().SignMiner().Alg(11).Build()
+	block = bb.Block(genesis).Child().SignProposer().Alg(11).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
@@ -471,14 +471,14 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 
 	// Invalid Transaction Hash
 	pair = testutil.NewAddrKeyPair(t)
-	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignMiner().Build()
+	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidTransactionHash, err)
 
 	//// Invalid Transaction Signer
 	//pair1 := testutil.NewAddrKeyPair(t)
 	//pair2 := testutil.NewAddrKeyPair(t)
-	//block = bb.Block(genesis).Child().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignMiner().Build()
+	//block = bb.Block(genesis).Child().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignProposer().Build()
 	//err = bm.PushBlockData(block.GetBlockData())
 	//assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
@@ -516,34 +516,34 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
 
-	miner := bb.FindMiner()
-	bb = bb.Coinbase(miner.Addr).PayReward().Flush()
+	proposer := bb.FindProposer()
+	bb = bb.Coinbase(proposer.Addr).PayReward().Flush()
 
-	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Clone().TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Clone().DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Clone().Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 
-	block = bb.Clone().Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(miner.PrivKey).Alg(111).Build()
+	block = bb.Clone().Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(proposer.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
 
-	block = bb.Clone().Coinbase(to.Addr).Seal().CalcHash().SignKey(miner.PrivKey).Build()
+	block = bb.Clone().Coinbase(to.Addr).Seal().CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.NoError(t, err)
 }

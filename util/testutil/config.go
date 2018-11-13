@@ -38,8 +38,8 @@ type NodeConfig struct {
 	t   *testing.T
 	dir string
 
-	Config *medletpb.Config
-	Miner  *AddrKeyPair
+	Config   *medletpb.Config
+	Proposer *AddrKeyPair
 
 	Genesis   *corepb.Genesis
 	Dynasties AddrKeyPairs
@@ -102,26 +102,23 @@ func (cfg *NodeConfig) SetRandomPorts() *NodeConfig {
 	return cfg
 }
 
-// SetMiner sets miner.
-func (cfg *NodeConfig) SetMiner(miner *AddrKeyPair) *NodeConfig {
-	cfg.Miner = miner
-	cfg.Config.Chain.Miner = miner.Address()
-	cfg.Config.Chain.Passphrase = "passphrase"
+// SetProposer sets proposer.
+func (cfg *NodeConfig) SetProposer(proposer *AddrKeyPair) *NodeConfig {
+	cfg.Proposer = proposer
 	cfg.Config.Chain.StartMine = true
-	cfg.Config.Chain.Coinbase = miner.Address()
-	cfg.Config.Chain.Privkey = miner.PrivateKey()
+	cfg.Config.Chain.Privkey = proposer.PrivateKey()
 
 	cfg.Config.Chain.Proposers[0] = &medletpb.ProposerConfig{
-		Proposer: miner.Address(),
-		Privkey:  miner.PrivateKey(),
-		Coinbase: miner.Address(),
+		Proposer: proposer.Address(),
+		Privkey:  proposer.PrivateKey(),
+		Coinbase: proposer.Address(),
 	}
 
 	return cfg
 }
 
-// SetMinerFromDynasties chooses miner from dynasties.
-func (cfg *NodeConfig) SetMinerFromDynasties(exclude []*AddrKeyPair) *NodeConfig {
+// SetProposerFromDynasties chooses proposer from dynasties.
+func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*AddrKeyPair) *NodeConfig {
 	excludeMap := make(map[string]bool)
 	for _, e := range exclude {
 		excludeMap[e.Address()] = true
@@ -129,19 +126,19 @@ func (cfg *NodeConfig) SetMinerFromDynasties(exclude []*AddrKeyPair) *NodeConfig
 
 	for _, d := range cfg.Dynasties {
 		if _, ok := excludeMap[d.Address()]; !ok {
-			cfg.SetMiner(d)
+			cfg.SetProposer(d)
 			return cfg
 		}
 	}
 
-	require.True(cfg.t, false, "No miner left in dynasties.")
+	require.True(cfg.t, false, "No proposer left in dynasties.")
 	return cfg
 }
 
-// SetRandomMiner sets random miner.
-func (cfg *NodeConfig) SetRandomMiner() *NodeConfig {
+// SetRandomProposer sets random proposer.
+func (cfg *NodeConfig) SetRandomProposer() *NodeConfig {
 	keypair := NewAddrKeyPair(cfg.t)
-	return cfg.SetMiner(keypair)
+	return cfg.SetProposer(keypair)
 }
 
 // setGenesis sets genesis configuration.
@@ -222,7 +219,7 @@ func (cfg *NodeConfig) String() string {
 * Net               : %v
 * RPC               : %v
 * HTTP              : %v
-* Miner(addr/key)   : %v
+* Proposer(addr/key)   : %v
 * Dynasties         :
 %v
 * TokenDistribution :
@@ -235,7 +232,7 @@ func (cfg *NodeConfig) String() string {
 		cfg.Config.Network.Listen,
 		cfg.Config.Rpc.RpcListen,
 		cfg.Config.Rpc.HttpListen,
-		cfg.Miner,
+		cfg.Proposer,
 		cfg.Dynasties,
 		cfg.TokenDist)
 }

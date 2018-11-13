@@ -45,7 +45,7 @@ func TestChangeDynasty(t *testing.T) {
 	t.Log(seed.Tail().Hash())
 	t.Log(bb.B.Hash())
 
-	bb = bb.Child().SignMiner()
+	bb = bb.Child().SignProposer()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 
 	bb = bb.Child().Stake().
@@ -54,7 +54,7 @@ func TestChangeDynasty(t *testing.T) {
 		Tx().Type(dpos.TxOpVote).
 		Payload(&dpos.VotePayload{
 			Candidates: []common.Address{newCandidate.Addr},
-		}).SignPair(newCandidate).Execute().SignMiner()
+		}).SignPair(newCandidate).Execute().SignProposer()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 	ds := seed.Tail().State().DposState()
 	isCandidate, err := ds.IsCandidate(newCandidate.Addr)
@@ -65,7 +65,7 @@ func TestChangeDynasty(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, inDynasty)
 
-	bb = bb.ChildNextDynasty().SignMiner()
+	bb = bb.ChildNextDynasty().SignProposer()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 
 	ds = seed.Tail().State().DposState()
@@ -75,7 +75,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb = bb.Child().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
-		SignMiner()
+		SignProposer()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 
 	ds = seed.Tail().State().DposState()
@@ -86,7 +86,7 @@ func TestChangeDynasty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, true, inDynasty)
 
-	bb = bb.ChildNextDynasty().SignMiner()
+	bb = bb.ChildNextDynasty().SignProposer()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
 
 	ds = seed.Tail().State().DposState()

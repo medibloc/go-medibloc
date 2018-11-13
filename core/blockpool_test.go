@@ -43,7 +43,7 @@ func TestBlockPoolEvict(t *testing.T) {
 
 	tail := bb.Build()
 	for i := 0; i < nBlocks; i++ {
-		mint := bb.Block(tail).Child().SignMiner().Build()
+		mint := bb.Block(tail).Child().SignProposer().Build()
 		blocks = append(blocks, mint)
 		tail = mint
 	}
@@ -62,7 +62,7 @@ func TestDuplicatedBlock(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	block := blockutil.New(t, testutil.DynastySize).Genesis().Child().SignMiner().Build()
+	block := blockutil.New(t, testutil.DynastySize).Genesis().Child().SignProposer().Build()
 
 	err = bp.Push(block)
 	assert.Nil(t, err)
@@ -91,7 +91,7 @@ func TestRemove(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Push genesis's child
-	block := bb.Child().SignMiner().Build()
+	block := bb.Child().SignProposer().Build()
 	err = bp.Push(block)
 	assert.Nil(t, err)
 
@@ -136,12 +136,12 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 	genesis := bb.Build()
 
-	bb = bb.Child().Stake().SignMiner()
+	bb = bb.Child().Stake().SignProposer()
 	grandParent := bb.Build()
-	bb = bb.Child().SignMiner()
+	bb = bb.Child().SignProposer()
 	parent := bb.Build()
-	child1 := bb.Child().Tx().RandomTx().Execute().SignMiner().Build()
-	child2 := bb.Child().Tx().RandomTx().Execute().SignMiner().Build()
+	child1 := bb.Child().Tx().RandomTx().Execute().SignProposer().Build()
+	child2 := bb.Child().Tx().RandomTx().Execute().SignProposer().Build()
 
 	err = bp.Push(genesis)
 	assert.Nil(t, err)

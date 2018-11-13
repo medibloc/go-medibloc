@@ -313,7 +313,7 @@ func (b *BlockHeader) NetUsage() *util.Uint128 {
 	return b.netUsage
 }
 
-//Proposer returns miner address from block sign
+//Proposer returns proposer address from block sign
 func (b *BlockHeader) Proposer() (common.Address, error) {
 	if b.sign == nil {
 		return common.Address{}, ErrBlockSignatureNotExist

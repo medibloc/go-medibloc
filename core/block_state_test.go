@@ -33,7 +33,7 @@ import (
 
 func TestCloneState(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	block := bb.SignMiner().Build()
+	block := bb.SignProposer().Build()
 
 	state := block.State()
 	newState, err := state.Clone()
@@ -99,7 +99,7 @@ func TestUpdateBandwidth(t *testing.T) {
 	tx = bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed, err := consumed.Add(blockutil.Bandwidth(t, tx, bb.Build()))
 	require.NoError(t, err)
-	bb = bb.ExecuteTx(tx).SignMiner()
+	bb = bb.ExecuteTx(tx).SignProposer()
 	t.Log(bb.B.BlockData.Transactions())
 	bb.Expect().Bandwidth(from.Addr, consumed)
 
@@ -193,11 +193,11 @@ func TestTxsFromTxsTo(t *testing.T) {
 func TestRefBandwidth(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
-	bb = bb.Child().SignMiner()
+	bb = bb.Child().SignProposer()
 	b := bb.Build()
 	t.Log(b.Height(), b.Reward(), b.Supply(), b.CPURef(), b.NetRef())
 
-	bb = bb.Child().SignMiner()
+	bb = bb.Child().SignProposer()
 	b = bb.Build()
 	t.Log(b.Height(), b.Reward(), b.Supply(), b.CPURef(), b.NetRef())
 }

@@ -226,29 +226,29 @@ func (n *Network) SetLogTestHook() *test.Hook {
 	return logging.SetTestHook()
 }
 
-// SetMinerFromDynasties chooses miner from dynasties.
-func (n *Network) SetMinerFromDynasties(node *Node) {
+// SetProposerFromDynasties chooses proposer from dynasties.
+func (n *Network) SetProposerFromDynasties(node *Node) {
 	require.False(n.t, node.IsStarted())
 
-	exclude := n.assignedMiners()
-	node.Config.SetMinerFromDynasties(exclude)
+	exclude := n.assignedProposers()
+	node.Config.SetProposerFromDynasties(exclude)
 }
 
-// SetRandomMiner sets random miner.
-func (n *Network) SetRandomMiner(node *Node) {
+// SetRandomProposer sets random proposer.
+func (n *Network) SetRandomProposer(node *Node) {
 	require.False(n.t, node.IsStarted())
 
-	node.Config.SetRandomMiner()
+	node.Config.SetRandomProposer()
 }
 
-func (n *Network) assignedMiners() []*AddrKeyPair {
-	miners := make([]*AddrKeyPair, 0)
+func (n *Network) assignedProposers() []*AddrKeyPair {
+	proposers := make([]*AddrKeyPair, 0)
 	for _, node := range n.Nodes {
-		if node.Config.Miner != nil {
-			miners = append(miners, node.Config.Miner)
+		if node.Config.Proposer != nil {
+			proposers = append(proposers, node.Config.Proposer)
 		}
 	}
-	return miners
+	return proposers
 }
 
 //FindProposer returns block proposer for time stamp

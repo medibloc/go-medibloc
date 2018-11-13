@@ -35,7 +35,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(2).StakeTx(payer, 400000000).Build()
-	b := bb.ExecuteTx(tx1).SignMiner().Build()
+	b := bb.ExecuteTx(tx1).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -129,7 +129,7 @@ func TestAPIService_GetBlock(t *testing.T) {
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist)
 	b := bb.Block(seed.GenesisBlock()).
 		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).
-		Stake().Tx().RandomTx().Execute().SignMiner().Build()
+		Stake().Tx().RandomTx().Execute().SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -227,7 +227,7 @@ func TestAPIService_GetBlocks(t *testing.T) {
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist)
 	b := bb.Block(seed.GenesisBlock()).
-		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).SignMiner().Build()
+		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -323,7 +323,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix()))
-	b := bb.SignMiner().Build()
+	b := bb.SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -381,7 +381,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix())).Stake()
 	tx := bb.Tx().RandomTx().Build()
-	b := bb.ExecuteTx(tx).SignMiner().Build()
+	b := bb.ExecuteTx(tx).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -445,7 +445,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 	network.WaitForEstablished()
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake()
-	b := bb.SignMiner().Build()
+	b := bb.SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -506,7 +506,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 	network.WaitForEstablished()
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake()
-	b := bb.SignMiner().Build()
+	b := bb.SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
@@ -567,7 +567,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 		bb.ExecuteTx(tx[i])
 	}
-	b = bb.SignMiner().Build()
+	b = bb.SignProposer().Build()
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
 	time.Sleep(500 * time.Millisecond)
