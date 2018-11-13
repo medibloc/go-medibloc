@@ -87,7 +87,7 @@ func newAccount(stor storage.Storage) (*Account, error) {
 func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 	var err error
 
-	acc.Address = common.BytesToAddress(pbAcc.Address)
+	acc.Address.FromBytes(pbAcc.Address)
 	acc.Balance, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Balance)
 	if err != nil {
 		return err
@@ -166,7 +166,16 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	}, nil
 }
 
-func (acc *Account) toBytes() ([]byte, error) {
+func (acc *Account) FromBytes(b []byte) error {
+	pbAccount := new(corepb.Account)
+	if err := proto.Unmarshal(b, pbAccount); err != nil {
+		return err
+	}
+	return acc.fromProto(pbAccount)
+}
+
+//ToBytes convert account to bytes
+func (acc *Account) ToBytes() ([]byte, error) {
 	pbAcc, err := acc.toProto()
 	if err != nil {
 		return nil, err
@@ -267,7 +276,7 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	accountBytes, err := as.Get(addr.Bytes())
+	err = as.GetData(addr.Bytes(), acc)
 	if err == ErrNotFound {
 		acc.Address = addr
 		return acc, nil
@@ -276,24 +285,12 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 		return nil, err
 	}
 
-	pbAccount := new(corepb.Account)
-	if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
-		return nil, err
-	}
-	if err := acc.fromProto(pbAccount); err != nil {
-		return nil, err
-	}
-
 	return acc, nil
 }
 
 //putAccount put account to trie batch
 func (as *AccountState) putAccount(acc *Account) error {
-	accBytes, err := acc.toBytes()
-	if err != nil {
-		return err
-	}
-	return as.Put(acc.Address.Bytes(), accBytes)
+	return as.PutData(acc.Address.Bytes(), acc)
 }
 
 // incrementNonce increment account's nonce
@@ -399,7 +396,7 @@ func newAliasAccount() (*AliasAccount, error) {
 
 func (aa *AliasAccount) fromProto(pbAcc *corepb.AliasAccount) error {
 	//var err error
-	aa.Account = common.BytesToAddress(pbAcc.Account)
+	aa.Account.FromBytes(pbAcc.Account)
 	return nil
 }
 

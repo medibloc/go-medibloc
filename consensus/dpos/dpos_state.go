@@ -272,7 +272,7 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 //SetDynasty set dynastyState by using dynasty slice
 func (s *State) SetDynasty(dynasty []common.Address) error {
 	for i, addr := range dynasty {
-		if err := s.dynastyState.Put(byteutils.FromInt32(int32(i)), addr.Bytes()); err != nil {
+		if err := s.dynastyState.PutData(byteutils.FromInt32(int32(i)), &addr); err != nil {
 			return err
 		}
 	}

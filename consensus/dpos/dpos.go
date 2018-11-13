@@ -104,25 +104,21 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 		if len(cfg.Chain.Proposers) == 0 {
 			return ErrProposerConfigNotFound
 		}
-		//fmt.Println(cfg.Chain.Proposers)
-		//for i := 0; i < len(cfg.Chain.Proposers); i++ {
-		for _, pc := range cfg.Chain.Proposers {
+		for _, pbProposer := range cfg.Chain.Proposers {
 			p := &Proposer{}
-			//pc := cfg.Chain.Proposers[i]
+			p.Coinbase = common.HexToAddress(pbProposer.Coinbase)
 
-			p.Coinbase = common.HexToAddress(pc.Coinbase)
-
-			if pc.Keydir != "" {
-				ks, err := ioutil.ReadFile(pc.Keydir)
+			if pbProposer.Keydir != "" {
+				ks, err := ioutil.ReadFile(pbProposer.Keydir)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err":    err,
-						"Keydir": pc.Keydir,
+						"Keydir": pbProposer.Keydir,
 					}).Error("failed to read key store file")
 					return keystore.ErrFailedToReadKeystoreFile
 				}
 
-				key, err := keystore.DecryptKey(ks, pc.Passphrase)
+				key, err := keystore.DecryptKey(ks, pbProposer.Passphrase)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -134,9 +130,8 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 
 			} else {
 				var err error
-				p.ProposerAddress = common.HexToAddress(pc.Proposer)
-				p.Privkey, err = secp256k1.NewPrivateKeyFromHex(pc.Privkey)
-				//fmt.Println(pc.Privkey)
+				p.ProposerAddress = common.HexToAddress(pbProposer.Proposer)
+				p.Privkey, err = secp256k1.NewPrivateKeyFromHex(pbProposer.Privkey)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -261,14 +256,12 @@ func (d *Dpos) VerifyProposer(b *core.Block) error {
 
 	proposerIndex := d.calcProposerIndex(b.Timestamp())
 
+	proposer := new(common.Address)
 	ds := b.State().DposState().DynastyState()
-	addrBytes, err := ds.Get(byteutils.FromInt32(int32(proposerIndex)))
-	if err != nil {
+	if err := ds.GetData(byteutils.FromInt32(int32(proposerIndex)), proposer); err != nil {
 		return err
 	}
-
-	proposer := common.BytesToAddress(addrBytes)
-	if !signer.Equals(proposer) {
+	if !signer.Equals(*proposer) {
 		logging.Console().WithFields(logrus.Fields{
 			"blockdata":     b.BlockData,
 			"Proposer":      proposer,

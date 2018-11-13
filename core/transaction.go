@@ -35,8 +35,8 @@ import (
 const (
 	//AliasKey key for find aliasname
 	AliasKey = "alias"
-	//CollateralLimit limit value for register alias
-	CollateralLimit = "1000000"
+	//MinimumAliasCollateral limit value for register alias
+	MinimumAliasCollateral = "1000000"
 )
 
 // Transaction struct represents transaction
@@ -119,7 +119,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 
 	t.hash = pbTx.Hash
 	t.txType = pbTx.TxType
-	t.to = common.BytesToAddress(pbTx.To)
+	t.to.FromBytes(pbTx.To)
 	t.value = value
 	t.timestamp = pbTx.Timestamp
 	t.nonce = pbTx.Nonce
@@ -1162,7 +1162,7 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 
 //Execute RegisterAliasTx
 func (tx *RegisterAliasTx) Execute(b *Block) error {
-	collateralLimit, err := util.NewUint128FromString(CollateralLimit)
+	collateralLimit, err := util.NewUint128FromString(MinimumAliasCollateral)
 	if err != nil {
 		return err
 	}

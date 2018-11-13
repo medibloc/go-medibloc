@@ -120,7 +120,7 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.accStateRoot = msg.AccStateRoot
 		b.txStateRoot = msg.TxStateRoot
 		b.dposRoot = msg.DposRoot
-		b.coinbase = common.BytesToAddress(msg.Coinbase)
+		b.coinbase.FromBytes(msg.Coinbase)
 		reward, err := util.NewUint128FromFixedSizeByteSlice(msg.Reward)
 		if err != nil {
 			return err
