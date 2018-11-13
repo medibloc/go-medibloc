@@ -139,6 +139,11 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 					return err
 				}
 			}
+
+			logging.WithFields(logrus.Fields{
+				"proposerAddr": p.ProposerAddress,
+			}).Info("Proposer set complete.")
+
 			d.proposers[p.ProposerAddress] = p
 		}
 	}
@@ -295,7 +300,8 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	p, ok := d.proposers[mintProposer]
 	if !ok {
 		logging.WithFields(logrus.Fields{
-			"Proposer": mintProposer,
+			"Proposer":    mintProposer,
+			"myProposers": d.proposers,
 		}).Debug("It's not my turn to mint the block.")
 		return ErrInvalidBlockProposer
 	}
