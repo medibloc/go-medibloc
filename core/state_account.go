@@ -42,7 +42,7 @@ type Account struct {
 	Balance     *util.Uint128  // balance account's coin amount
 	Nonce       uint64         // nonce account sequential number
 	Vesting     *util.Uint128  // vesting account's vesting(staking) amount
-	Voted       *trie.Batch    // voted candidates key: addr, value: addr
+	Voted       *trie.Batch    // voted candidates key: candidateID, value: candidateID
 	CandidateID []byte         //
 
 	Bandwidth       *util.Uint128
@@ -166,6 +166,7 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	}, nil
 }
 
+//FromBytes returns Account form bytes
 func (acc *Account) FromBytes(b []byte) error {
 	pbAccount := new(corepb.Account)
 	if err := proto.Unmarshal(b, pbAccount); err != nil {

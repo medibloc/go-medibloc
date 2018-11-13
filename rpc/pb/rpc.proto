@@ -110,7 +110,8 @@ message GetAccountResponse {
 
   string unstaking = 7;
 
-  Data data = 11;
+  string alias = 8;
+  string candidate_id = 9;
   //	// List of record hash.
   //	repeated string records = 6;
   //	// Account addresses that have certificated the account.
@@ -186,9 +187,11 @@ message NonParamRequest {
 }
 
 message Candidate {
-  string address = 1;
-  string collatral = 2;
-  string votePower = 3;
+  string candidate_id = 1;
+  string address = 2;
+  string url = 3;
+  string collateral = 4;
+  string votePower = 5;
 }
 
 message GetCandidatesResponse {

@@ -43,14 +43,15 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 		return nil, err
 	}
 	return &rpcpb.GetAccountResponse{
-		Address:   address,
-		Balance:   account.Balance.String(),
-		Nonce:     account.Nonce,
-		Vesting:   account.Vesting.String(),
-		Voted:     byteutils.BytesSlice2HexSlice(account.VotedSlice()),
-		Bandwidth: account.Bandwidth.String(),
-		Unstaking: account.Unstaking.String(),
-		Data:      &rpcpb.Data{Alias: pbAlias.AliasName},
+		Address:     address,
+		Balance:     account.Balance.String(),
+		Nonce:       account.Nonce,
+		Vesting:     account.Vesting.String(),
+		Voted:       byteutils.BytesSlice2HexSlice(account.VotedSlice()),
+		Bandwidth:   account.Bandwidth.String(),
+		Unstaking:   account.Unstaking.String(),
+		Alias:       pbAlias.AliasName,
+		CandidateId: byteutils.Bytes2Hex(account.CandidateID),
 	}, nil
 }
 
@@ -91,9 +92,11 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse,
 
 func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 	return &rpcpb.Candidate{
-		Address:   candidate.Addr.Hex(),
-		Collatral: candidate.Collateral.String(),
-		VotePower: candidate.VotePower.String(),
+		CandidateId: byteutils.Bytes2Hex(candidate.ID),
+		Address:     candidate.Addr.Hex(),
+		Url:         candidate.URL,
+		Collateral:  candidate.Collateral.String(),
+		VotePower:   candidate.VotePower.String(),
 	}
 }
 
