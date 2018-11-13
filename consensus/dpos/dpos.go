@@ -302,8 +302,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		logging.WithFields(logrus.Fields{
 			"Proposer":    mintProposer,
 			"myProposers": d.proposers,
-			"test":"true",
-		}).Debug("It's not my turn to mint the block.2")
+		}).Debug("It's not my turn to mint the block.")
 		return ErrInvalidBlockProposer
 	}
 
