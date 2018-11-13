@@ -17,6 +17,9 @@ package core
 
 import (
 	"io/ioutil"
+	"os"
+
+	"github.com/medibloc/go-medibloc/crypto/hash"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -24,10 +27,8 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 var (
@@ -43,9 +44,7 @@ var (
 )
 
 func genesisHash(quote string) []byte {
-	hasher := sha3.New256()
-	hasher.Write([]byte(quote))
-	return hasher.Sum(nil)
+	return hash.Sha3256([]byte(quote))
 }
 
 // LoadGenesisConf loads genesis conf file
@@ -63,8 +62,22 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 	return genesis, nil
 }
 
+//SaveGenesisConf save genesis conf to file
+func SaveGenesisConf(conf *corepb.Genesis, filePath string) error {
+	f, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	if err := proto.MarshalText(f, conf); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // NewGenesisBlock generates genesis block
-func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Storage) (*Block, error) {
+func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory, sto storage.Storage) (*Block, error) {
 	if conf == nil {
 		return nil, ErrNilArgument
 	}
@@ -81,7 +94,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				coinbase:   GenesisCoinbase,
 				reward:     util.NewUint128FromUint(0),
 				timestamp:  GenesisTimestamp,
-				alg:        algorithm.SECP256K1,
+				hashAlg:    algorithm.SHA3256,
+				cryptoAlg:  algorithm.SECP256K1,
 				cpuRef:     util.NewUint128FromUint(0),
 				cpuUsage:   util.NewUint128FromUint(0),
 				netRef:     util.NewUint128FromUint(0),
@@ -90,10 +104,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			transactions: make([]*Transaction, 0),
 			height:       GenesisHeight,
 		},
-		storage:   sto,
-		state:     blockState,
-		consensus: consensus,
-		sealed:    false,
+		storage: sto,
+		state:   blockState,
+		sealed:  false,
 	}
 	if err := genesisBlock.Prepare(); err != nil {
 		return nil, err
@@ -101,13 +114,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err := genesisBlock.BeginBatch(); err != nil {
 		return nil, err
 	}
-	dynasty := make([]common.Address, 0)
-	for _, v := range conf.GetConsensus().GetDpos().GetDynasty() {
-		member := common.HexToAddress(v)
-		genesisBlock.State().dposState.PutCandidate(member)
-		dynasty = append(dynasty, member)
-	}
-	genesisBlock.State().dposState.SetDynasty(dynasty)
 
 	initialMessage := "Genesis block of MediBloc"
 	payload := &DefaultPayload{
@@ -125,6 +131,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		timestamp: GenesisTimestamp,
 		chainID:   conf.Meta.ChainId,
 		payload:   payloadBuf,
+		hashAlg:   algorithm.SHA3256,
+		cryptoAlg: algorithm.SECP256K1,
 	}
 
 	hash, err := initialTx.CalcHash()
@@ -133,16 +141,20 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	}
 	initialTx.hash = hash
 
-	err = genesisBlock.AcceptTransaction(initialTx)
-	if err != nil {
+	// Genesis transactions do not consume bandwidth(only put in txState)
+	if err := genesisBlock.state.txState.Put(initialTx); err != nil {
 		return nil, err
 	}
-	genesisBlock.AppendTransaction(initialTx)
+	genesisBlock.AppendTransaction(initialTx) // append on block header
 
 	// Token distribution
 	supply := util.NewUint128()
 	for _, dist := range conf.TokenDistribution {
 		addr := common.HexToAddress(dist.Address)
+		acc, err := genesisBlock.state.GetAccount(addr)
+		if err != nil {
+			return nil, err
+		}
 		balance, err := util.NewUint128FromString(dist.Balance)
 		if err != nil {
 			if err := genesisBlock.RollBack(); err != nil {
@@ -150,146 +162,25 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			}
 			return nil, err
 		}
-		vesting, err := util.NewUint128FromString(dist.Vesting)
+
+		acc.Balance = balance
+		supply, err = supply.Add(balance)
 		if err != nil {
-			if err := genesisBlock.RollBack(); err != nil {
-				return nil, err
-			}
-			return nil, err
-		}
-		acc, err := genesisBlock.state.GetAccount(addr)
-		if err != nil {
-			return nil, err
-		}
-		acc.Balance, err = acc.Balance.Add(balance)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Info("add balance failed at newGenesis")
-			if err := genesisBlock.RollBack(); err != nil {
-				return nil, err
-			}
-			return nil, err
-		}
-		acc.Vesting, err = acc.Vesting.Add(vesting)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Info("add vesting failed at newGenesis")
-			if err := genesisBlock.RollBack(); err != nil {
-				return nil, err
-			}
 			return nil, err
 		}
 
-		total, err := balance.Add(vesting)
-		if err != nil {
-			if err := genesisBlock.RollBack(); err != nil {
-				return nil, err
-			}
-			return nil, err
-		}
-
-		err = acc.Voted.Prepare()
-		if err != nil {
-			return nil, err
-		}
-		err = acc.Voted.BeginBatch()
-		if err != nil {
-			return nil, err
-		}
-		for _, v := range dist.Vote {
-			candAddr := common.HexToAddress(v)
-			err = acc.Voted.Put(candAddr.Bytes(), candAddr.Bytes())
-			if err != nil {
-				return nil, err
-			}
-		}
-		err = acc.Voted.Commit()
-		if err != nil {
-			return nil, err
-		}
-		err = acc.Voted.Flush()
-		if err != nil {
-			return nil, err
-		}
 		if err := genesisBlock.state.PutAccount(acc); err != nil {
 			return nil, err
-		}
-
-		for _, v := range dist.Vote {
-			candAddr := common.HexToAddress(v)
-			isCandidate, err := genesisBlock.state.DposState().IsCandidate(candAddr)
-			if err != nil {
-				return nil, err
-			}
-			if !isCandidate {
-				return nil, ErrCandidateNotFound
-			}
-			candAcc, err := genesisBlock.state.GetAccount(addr)
-			if err != nil {
-				return nil, err
-			}
-			candAcc.VotePower, err = candAcc.VotePower.Add(acc.Vesting)
-			if err != nil {
-				return nil, err
-			}
-			err = candAcc.Voters.Prepare()
-			if err != nil {
-				return nil, err
-			}
-			err = candAcc.Voters.BeginBatch()
-			if err != nil {
-				return nil, err
-			}
-			err = candAcc.Voters.Put(acc.Address.Bytes(), acc.Address.Bytes())
-			if err != nil {
-				return nil, err
-			}
-			err = candAcc.Voters.Commit()
-			if err != nil {
-				return nil, err
-			}
-			err = candAcc.Voters.Flush()
-			if err != nil {
-				return nil, err
-			}
-			err = genesisBlock.state.PutAccount(candAcc)
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		tx := &Transaction{
 			txType:    TxTyGenesis,
 			to:        addr,
-			value:     total,
+			value:     acc.Balance,
 			timestamp: GenesisTimestamp,
-			//nonce:     2 + uint64(i),
-			chainID: conf.Meta.ChainId,
-		}
-		hash, err = tx.CalcHash()
-		if err != nil {
-			return nil, err
-		}
-		tx.hash = hash
-
-		//tx.SetReceipt(NewGenesisReceipt())
-		err = genesisBlock.AcceptTransaction(tx)
-		if err != nil {
-			return nil, err
-		}
-		genesisBlock.AppendTransaction(tx)
-
-		tx = &Transaction{
-			txType:    TxTyGenesisVesting,
-			to:        common.Address{},
-			value:     vesting,
-			timestamp: GenesisTimestamp,
-			nonce:     1,
 			chainID:   conf.Meta.ChainId,
-			from:      addr,
-			payer:     addr,
+			hashAlg:   algorithm.SHA3256,
+			cryptoAlg: algorithm.SECP256K1,
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {
@@ -297,23 +188,31 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.hash = hash
 
-		tx.SetReceipt(NewGenesisReceipt())
-		err = genesisBlock.AcceptTransaction(tx)
-		if err != nil {
+		// Genesis transactions do not consume bandwidth(only put in txState)
+		if err := genesisBlock.state.txState.Put(tx); err != nil {
 			return nil, err
 		}
-		genesisBlock.AppendTransaction(tx)
+		genesisBlock.AppendTransaction(tx) // append on block header
 
-		supply, err = supply.Add(total)
-		if err != nil {
-			if err := genesisBlock.RollBack(); err != nil {
-				return nil, err
-			}
+	}
+	genesisBlock.state.supply = supply
+
+	for _, pbTx := range conf.Transactions {
+		tx := new(Transaction)
+		if err := tx.FromProto(pbTx); err != nil {
 			return nil, err
 		}
+		receipt, err := genesisBlock.ExecuteTransaction(tx, txMap)
+		if err != nil {
+			return nil, err
+		}
+		tx.SetReceipt(receipt)
+
+		if err = genesisBlock.AcceptTransaction(tx); err != nil {
+			return nil, err
+		}
+		genesisBlock.AppendTransaction(tx) // append on block header
 	}
-	genesisBlock.supply = supply
-	genesisBlock.state.supply = supply.DeepCopy()
 
 	if err := genesisBlock.Commit(); err != nil {
 		return nil, err
@@ -322,22 +221,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		return nil, err
 	}
 
-	dposRoot, err := genesisBlock.state.DposState().RootBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	genesisBlock.accStateRoot, err = genesisBlock.state.AccountsRoot()
-	if err != nil {
-		return nil, err
-	}
-	genesisBlock.txStateRoot, err = genesisBlock.state.TxsRoot()
-	if err != nil {
-		return nil, err
-	}
-	genesisBlock.dposRoot = dposRoot
-
-	genesisBlock.sealed = true
+	genesisBlock.Seal()
 
 	return genesisBlock, nil
 }
@@ -347,10 +231,7 @@ func CheckGenesisBlock(block *Block) bool {
 	if block == nil {
 		return false
 	}
-	if byteutils.Equal(block.Hash(), GenesisHash) {
-		return true
-	}
-	return false
+	return true
 }
 
 // CheckGenesisConf checks if block and genesis configuration match
@@ -371,24 +252,6 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		return false
 	}
 
-	dynasty, err := block.state.dposState.Dynasty()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get dynasty from genesis block")
-		return false
-	}
-
-	for i, v := range dynasty {
-		if genesis.Consensus.Dpos.Dynasty[i] != v.Hex() {
-			return false
-		}
-	}
-	dynastyCount := len(dynasty)
-	if uint32(dynastyCount) != genesis.Meta.DynastySize {
-		return false
-	}
-
 	tokenDist := genesis.GetTokenDistribution()
 	if len(accounts) != len(tokenDist) {
 		logging.Console().WithFields(logrus.Fields{
@@ -396,55 +259,6 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 			"tokenCount":   len(tokenDist),
 		}).Error("Size of token distribution accounts does not match.")
 		return false
-	}
-
-	for _, account := range accounts {
-		if account.Address == GenesisCoinbase || account.Address == common.HexToAddress("") {
-			continue
-		}
-		contains := false
-		for _, token := range tokenDist {
-			if token.Address == account.Address.Hex() {
-				balance, err := util.NewUint128FromString(token.Balance)
-				if err != nil {
-					logging.Console().WithFields(logrus.Fields{
-						"err": err,
-					}).Error("Failed to convert balance from string to uint128.")
-					return false
-				}
-				if balance.Cmp(account.Balance) != 0 {
-					logging.Console().WithFields(logrus.Fields{
-						"balanceInBlock": account.Balance,
-						"balanceInConf":  balance,
-						"account":        account.Address.Hex(),
-					}).Error("Genesis's token balance does not match.")
-					return false
-				}
-				vesting, err := util.NewUint128FromString(token.Vesting)
-				if err != nil {
-					logging.Console().WithFields(logrus.Fields{
-						"err": err,
-					}).Error("Failed to convert vesting from string to uint128.")
-					return false
-				}
-				if vesting.Cmp(account.Vesting) != 0 {
-					logging.Console().WithFields(logrus.Fields{
-						"vestingInBlock": account.Vesting,
-						"vestingInConf":  vesting,
-						"account":        account.Address.Hex(),
-					}).Error("Genesis's token vesting does not match.")
-					return false
-				}
-				contains = true
-				break
-			}
-		}
-		if !contains {
-			logging.Console().WithFields(logrus.Fields{
-				"account": account.Address.Hex(),
-			}).Error("Accounts of token distribution don't match.")
-			return false
-		}
 	}
 
 	return true

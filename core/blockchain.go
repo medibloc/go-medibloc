@@ -87,7 +87,7 @@ func (bc *BlockChain) SetEventEmitter(emitter *EventEmitter) {
 }
 
 // Setup sets up BlockChain.
-func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor storage.Storage) error {
+func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap TxFactory, stor storage.Storage) error {
 	bc.genesis = genesis
 	bc.storage = stor
 	bc.consensus = consensus
@@ -101,7 +101,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		return err
 	}
 	if err != nil && err == storage.ErrKeyNotFound {
-		err = bc.initGenesisToStorage()
+		err = bc.initGenesisToStorage(txMap)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
@@ -418,8 +418,8 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 	return blocks, nil
 }
 
-func (bc *BlockChain) initGenesisToStorage() error {
-	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.consensus, bc.storage)
+func (bc *BlockChain) initGenesisToStorage(txMap TxFactory) error {
+	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.consensus, txMap, bc.storage)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,

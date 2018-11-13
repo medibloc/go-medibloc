@@ -24,6 +24,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
@@ -31,7 +32,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 // BlockHeader is block header
@@ -49,8 +49,9 @@ type BlockHeader struct {
 	timestamp int64
 	chainID   uint32
 
-	alg  algorithm.Algorithm
-	sign []byte
+	hashAlg   algorithm.HashAlgorithm
+	cryptoAlg algorithm.CryptoAlgorithm
+	sign      []byte
 
 	cpuRef   *util.Uint128
 	cpuUsage *util.Uint128
@@ -98,7 +99,8 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		Supply:       supply,
 		Timestamp:    b.timestamp,
 		ChainId:      b.chainID,
-		Alg:          uint32(b.alg),
+		CryptoAlg:    uint32(b.cryptoAlg),
+		HashAlg:      uint32(b.hashAlg),
 		Sign:         b.sign,
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
@@ -131,7 +133,8 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.supply = supply
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
-		b.alg = algorithm.Algorithm(msg.Alg)
+		b.hashAlg = algorithm.HashAlgorithm(msg.HashAlg)
+		b.cryptoAlg = algorithm.CryptoAlgorithm(msg.CryptoAlg)
 		b.sign = msg.Sign
 
 		cpuRef, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuRef)
@@ -283,14 +286,24 @@ func (b *BlockHeader) SetNetRef(netRef *util.Uint128) {
 	b.netRef = netRef
 }
 
-//Alg returns signing algorithm
-func (b *BlockHeader) Alg() algorithm.Algorithm {
-	return b.alg
+//HashAlg returns hashing algorithm
+func (b *BlockHeader) HashAlg() algorithm.HashAlgorithm {
+	return b.hashAlg
 }
 
-//SetAlg sets signing algorithm
-func (b *BlockHeader) SetAlg(alg algorithm.Algorithm) {
-	b.alg = alg
+//SetHashAlg sets hashing algorithm
+func (b *BlockHeader) SetHashAlg(alg algorithm.HashAlgorithm) {
+	b.hashAlg = alg
+}
+
+//CryptoAlg returns signing algorithm
+func (b *BlockHeader) CryptoAlg() algorithm.CryptoAlgorithm {
+	return b.cryptoAlg
+}
+
+//SetCryptoAlg sets signing algorithm
+func (b *BlockHeader) SetCryptoAlg(alg algorithm.CryptoAlgorithm) {
+	b.cryptoAlg = alg
 }
 
 //Sign returns sign
@@ -320,11 +333,11 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 	}
 	msg := b.hash
 
-	sig, err := crypto.NewSignature(b.alg)
+	sig, err := crypto.NewSignature(b.cryptoAlg)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
-			"algorithm": b.alg,
+			"algorithm": b.cryptoAlg,
 		}).Debug("Invalid sign algorithm.")
 		return common.Address{}, err
 	}
@@ -460,7 +473,7 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 	if err != nil {
 		return err
 	}
-	bd.alg = signer.Algorithm()
+	bd.cryptoAlg = signer.Algorithm()
 	bd.sign = sig
 	return nil
 }
@@ -468,10 +481,16 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 // VerifyIntegrity verifies if block signature is valid
 func (bd *BlockData) VerifyIntegrity() error {
 	if bd.height == GenesisHeight {
-		if !byteutils.Equal(GenesisHash, bd.hash) {
-			return ErrInvalidBlockHash
-		}
+		//if !byteutils.Equal(GenesisHash, bd.hash) {
+		//	return ErrInvalidBlockHash
+		//}
 		return nil
+	}
+	if err := crypto.CheckCryptoAlgorithm(bd.CryptoAlg()); err != nil {
+		return err
+	}
+	if err := hash.CheckHashAlgorithm(bd.HashAlg()); err != nil {
+		return err
 	}
 	for _, tx := range bd.transactions {
 		if err := tx.VerifyIntegrity(bd.chainID); err != nil {
@@ -491,7 +510,7 @@ func (bd *BlockData) VerifyIntegrity() error {
 }
 
 // ExecuteOnParentBlock returns Block object with state after block execution
-func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Block, error) {
+func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, txMap TxFactory) (*Block, error) {
 	// Prepare Execution
 	block, err := parent.Child()
 	if err != nil {
@@ -506,7 +525,7 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, txMap TxFactory) (*Bloc
 		return nil, err
 	}
 
-	if err := block.VerifyExecution(parent, txMap); err != nil {
+	if err := block.VerifyExecution(parent, consensus, txMap); err != nil {
 		block.Storage().DisableBatch()
 		return nil, err
 	}
@@ -524,9 +543,8 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	var err error
 	block := &Block{
 		BlockData: bd,
-		consensus: consensus,
 	}
-	if block.state, err = newStates(block.consensus, storage); err != nil {
+	if block.state, err = newStates(consensus, storage); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
 			"block": block,
@@ -574,15 +592,9 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 // Block represents block with actual state tries
 type Block struct {
 	*BlockData
-	storage   storage.Storage
-	state     *BlockState
-	consensus Consensus
-	sealed    bool
-}
-
-//Consensus returns block's consensus
-func (b *Block) Consensus() Consensus {
-	return b.consensus
+	storage storage.Storage
+	state   *BlockState
+	sealed  bool
 }
 
 //Clone clone block
@@ -600,7 +612,6 @@ func (b *Block) Clone() (*Block, error) {
 		BlockData: bd,
 		storage:   b.storage,
 		state:     state,
-		consensus: b.consensus,
 		sealed:    b.sealed,
 	}, nil
 }
@@ -626,6 +637,8 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
+				cryptoAlg:  b.CryptoAlg(), // TODO @ggomma use cmd config
+				hashAlg:    b.HashAlg(),   // TODO @ggomma use cmd config
 				cpuRef:     util.NewUint128(),
 				cpuUsage:   util.NewUint128(),
 				netRef:     util.NewUint128(),
@@ -634,10 +647,9 @@ func (b *Block) Child() (*Block, error) {
 			transactions: make([]*Transaction, 0),
 			height:       b.height + 1,
 		},
-		storage:   b.storage,
-		state:     state,
-		consensus: b.consensus,
-		sealed:    false,
+		storage: b.storage,
+		state:   state,
+		sealed:  false,
 	}, nil
 }
 
@@ -700,16 +712,6 @@ func (b *Block) Seal() error {
 
 // HashBlockData returns hash of block
 func HashBlockData(bd *BlockData) ([]byte, error) {
-	hasher := sha3.New256()
-
-	hasher.Write(bd.ParentHash())
-	hasher.Write(bd.Coinbase().Bytes())
-	hasher.Write(bd.AccStateRoot())
-	hasher.Write(bd.TxStateRoot())
-	hasher.Write(bd.DposRoot())
-	hasher.Write(byteutils.FromInt64(bd.Timestamp()))
-	hasher.Write(byteutils.FromUint32(bd.ChainID()))
-
 	rewardBytes, err := bd.Reward().ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -727,19 +729,33 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 
-	hasher.Write(rewardBytes)
-	hasher.Write(supplyBytes)
-	// hasher.Write(bd.Alg())
-	hasher.Write(cpuUsageBytes)
-	hasher.Write(cpuUsageBytes)
-	hasher.Write(netUsageBytes)
-	hasher.Write(netUsageBytes)
-
+	txHash := make([][]byte, len(bd.transactions))
 	for _, tx := range bd.transactions {
-		hasher.Write(tx.Hash())
+		txHash = append(txHash, tx.Hash())
 	}
 
-	return hasher.Sum(nil), nil
+	blockHashTarget := &corepb.BlockHashTarget{
+		ParentHash:   bd.ParentHash(),
+		Coinbase:     bd.Coinbase().Bytes(),
+		AccStateRoot: bd.AccStateRoot(),
+		TxStateRoot:  bd.TxStateRoot(),
+		DposRoot:     bd.DposRoot(),
+		Timestamp:    bd.Timestamp(),
+		ChainId:      bd.ChainID(),
+		HashAlg:      uint32(bd.HashAlg()),
+		CryptoAlg:    uint32(bd.CryptoAlg()),
+		Reward:       rewardBytes,
+		Supply:       supplyBytes,
+		CpuUsage:     cpuUsageBytes,
+		NetUsage:     netUsageBytes,
+		TxHash:       txHash,
+	}
+	blockHashTargetBytes, err := proto.Marshal(blockHashTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	return hash.GenHash(bd.HashAlg(), blockHashTargetBytes)
 }
 
 // ExecuteTransaction on given block state
@@ -944,11 +960,20 @@ func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (b *Block) VerifyExecution(parent *Block, txMap TxFactory) error {
+func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFactory) error {
 	b.BeginBatch()
 
-	if err := b.SetMintDynastyState(parent); err != nil {
+	if err := b.SetMintDynastyState(parent, consensus); err != nil {
 		b.RollBack()
+		return err
+	}
+
+	if err := consensus.VerifyProposer(b); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": b.BlockData,
+			"parent":    parent,
+		}).Warn("Failed to verifyProposer")
 		return err
 	}
 
@@ -1005,7 +1030,15 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return err
 	}
 
-	tx.SetReceipt(receipt)
+	if !receipt.Equal(tx.receipt) {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": tx,
+			"block":       b,
+			"receipt":     receipt,
+		}).Warn("transaction receipt is wrong")
+		return ErrWrongReceipt
+	}
 
 	if err := b.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -1052,28 +1085,25 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 // AcceptTransaction consume bandwidth and adds tx in block state
 func (b *Block) AcceptTransaction(transaction *Transaction) error {
 	var err error
-	// Genesis transactions do not have from and receipt
-	if !transaction.from.Equals(common.Address{}) {
-		if transaction.receipt == nil {
-			return ErrNoTransactionReceipt
-		}
+	if transaction.receipt == nil {
+		return ErrNoTransactionReceipt
+	}
 
-		if err := b.consumeBandwidth(transaction); err != nil {
-			return err
-		}
+	if err := b.consumeBandwidth(transaction); err != nil {
+		return err
+	}
 
-		b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
-		if err != nil {
-			return err
-		}
-		b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
-		if err != nil {
-			return err
-		}
+	b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
+	if err != nil {
+		return err
+	}
+	b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
+	if err != nil {
+		return err
+	}
 
-		if err := b.state.accState.incrementNonce(transaction.from); err != nil {
-			return err
-		}
+	if err := b.state.accState.incrementNonce(transaction.from); err != nil {
+		return err
 	}
 
 	if err := b.state.txState.Put(transaction); err != nil {
@@ -1156,8 +1186,12 @@ func (b *Block) SignThis(signer signature.Signature) error {
 }
 
 //SetMintDynastyState set mint dys
-func (b *Block) SetMintDynastyState(parent *Block) error {
-	return b.state.dposState.SetMintDynastyState(b.timestamp, parent, b.consensus.DynastySize())
+func (b *Block) SetMintDynastyState(parent *Block, consensus Consensus) error {
+	mintDynasty, err := consensus.MakeMintDynasty(b.timestamp, parent)
+	if err != nil {
+		return err
+	}
+	return b.state.dposState.SetDynasty(mintDynasty)
 }
 
 // Prepare prepare block state

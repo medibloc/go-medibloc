@@ -20,8 +20,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/medibloc/go-medibloc/keystore"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
@@ -31,8 +29,10 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
+	"github.com/medibloc/go-medibloc/keystore"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -46,8 +46,6 @@ type Dpos struct {
 
 	bm *core.BlockManager
 	tm *core.TransactionManager
-
-	genesis *corepb.Genesis
 
 	quitCh chan int
 }
@@ -151,8 +149,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	}
 
 	// Setup genesis configuration
-	d.genesis = genesis
-	d.dynastySize = int(d.genesis.Meta.DynastySize)
+	d.dynastySize = int(genesis.Meta.DynastySize)
 	if d.dynastySize < 3 || d.dynastySize > 21 || d.dynastySize%3 != 0 {
 		logging.Console().WithFields(logrus.Fields{
 			"dynastySize": d.dynastySize,
@@ -252,29 +249,31 @@ func (d *Dpos) VerifyInterval(bd *core.BlockData, parent *core.Block) error {
 }
 
 // VerifyProposer verifies block Proposer.
-func (d *Dpos) VerifyProposer(bd *core.BlockData, parent *core.Block) error {
-	signer, err := bd.Proposer()
+func (d *Dpos) VerifyProposer(b *core.Block) error {
+	signer, err := b.BlockData.Proposer()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
-			"blockData": bd,
+			"blockData": b.BlockData,
 		}).Warn("Failed to recover block's signer.")
 		return err
 	}
 
-	proposer, err := d.FindMintProposer(bd.Timestamp(), parent)
+	proposerIndex := d.calcProposerIndex(b.Timestamp())
+
+	ds := b.State().DposState().DynastyState()
+	addrBytes, err := ds.Get(byteutils.FromInt32(int32(proposerIndex)))
 	if err != nil {
 		return err
 	}
+
+	proposer := common.BytesToAddress(addrBytes)
 	if !signer.Equals(proposer) {
-
-		dynasty, _ := d.MakeMintDynasty(bd.Timestamp(), parent)
-
 		logging.Console().WithFields(logrus.Fields{
-			"bd":       bd,
-			"Proposer": proposer,
-			"signer":   signer,
-			"dynasty":  dynasty,
+			"blockdata":     b.BlockData,
+			"Proposer":      proposer,
+			"signer":        signer,
+			"proposerIndex": proposerIndex,
 		}).Warn("Block Proposer and block signer do not match.")
 		return ErrInvalidBlockProposer
 	}
@@ -327,7 +326,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1) // TODO @ggomma use cmd config
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -394,7 +393,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	}
 
 	// Change dynasty state for current block
-	if err := block.SetMintDynastyState(tail); err != nil {
+	if err := block.SetMintDynastyState(tail, d); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")

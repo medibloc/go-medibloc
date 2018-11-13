@@ -32,6 +32,7 @@ import (
 
 const (
 	defaultSignAlg = algorithm.SECP256K1
+	defaultHashAlg = algorithm.SHA3256
 	dynastySize    = 3
 )
 

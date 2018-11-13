@@ -32,7 +32,7 @@ import (
 func TestSend(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	from := bb.TokenDist[0]
+	from := bb.TokenDist[testutil.DynastySize]
 	to := testutil.NewAddrKeyPair(t)
 
 	bb.
@@ -182,7 +182,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 func TestPayerSigner(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	payer := bb.TokenDist[0]
+	payer := bb.TokenDist[testutil.DynastySize]
 	from := testutil.NewAddrKeyPair(t)
 	to := testutil.NewAddrKeyPair(t)
 	bb = bb.
@@ -207,7 +207,7 @@ func TestPayerSigner(t *testing.T) {
 
 func TestRegisterAndDeregisterAlias(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	from := bb.TokenDist[0]
+	from := bb.TokenDist[testutil.DynastySize]
 	const (
 		collateralAmount = 1000
 		testAliasName    = "testalias"

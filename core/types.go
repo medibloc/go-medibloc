@@ -18,10 +18,10 @@ package core
 import (
 	"errors"
 	"math/big"
-
 	"time"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -178,6 +178,7 @@ var (
 	ErrAliasCollateralLimit             = errors.New("not enough transaction value for alias collateral")
 	ErrCannotRecoverSigner              = errors.New("failed to recover payer from sign")
 	ErrCannotRecoverPayer               = errors.New("failed to recover payer from payer sign")
+	ErrWrongReceipt                     = errors.New("transaction receipt is wrong in block data")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -186,22 +187,17 @@ type HashableBlock interface {
 	ParentHash() []byte
 }
 
-// Serializable interface for serializing/deserializing
-type Serializable interface {
-	Serialize() ([]byte, error)
-	Deserialize([]byte) error
-}
-
 // Consensus is an interface of consensus model
 type Consensus interface {
 	NewConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 	LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (DposState, error)
 
 	DynastySize() int
+	MakeMintDynasty(ts int64, parent *Block) ([]common.Address, error)
 
 	ForkChoice(bc *BlockChain) (newTail *Block)
 	VerifyInterval(bd *BlockData, parent *Block) error
-	VerifyProposer(bd *BlockData, parent *Block) error
+	VerifyProposer(b *Block) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
 }
@@ -217,17 +213,16 @@ type DposState interface {
 	Flush() error
 	RootBytes() ([]byte, error)
 
-	Candidates() ([]common.Address, error)
-	IsCandidate(addr common.Address) (bool, error)
-	PutCandidate(addr common.Address) error
-	DelCandidate(addr common.Address) error
+	CandidateState() *trie.Batch
+	DynastyState() *trie.Batch
 
+	Candidates() ([]common.Address, error)
 	Dynasty() ([]common.Address, error)
 	InDynasty(addr common.Address) (bool, error)
 	SetDynasty(dynasty []common.Address) error
-	SetMintDynastyState(ts int64, parent *Block, dynastySize int) error
 
-	SortByVotePower(as *AccountState) ([]common.Address, error)
+	AddVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error
+	SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error
 }
 
 // Event structure

@@ -62,6 +62,9 @@ import (
 func TestNetworkProposer(t *testing.T) {
 	dynastySize := 3
 	nt := testutil.NewNetwork(t, dynastySize)
+	defer nt.Cleanup()
+	nt.SetLogTestHook()
+
 	seed := nt.NewSeedNode()
 	nt.SetProposerFromDynasties(seed)
 	for i := 0; i < dynastySize-1; i++ {
@@ -69,7 +72,7 @@ func TestNetworkProposer(t *testing.T) {
 		nt.SetProposerFromDynasties(node)
 	}
 	nt.Start()
-	defer nt.Cleanup()
+
 	nt.WaitForEstablished()
 
 	waitTime := dpos.BlockInterval + time.Second

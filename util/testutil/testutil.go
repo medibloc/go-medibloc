@@ -33,7 +33,9 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/storage"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -112,16 +114,13 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 			ChainId:     ChainID,
 			DynastySize: uint32(dynastySize),
 		},
-		Consensus: &corepb.GenesisConsensus{
-			Dpos: &corepb.GenesisConsensusDpos{
-				Dynasty: nil,
-			},
-		},
 		TokenDistribution: nil,
+		Transactions:      nil,
 	}
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
+	txs := make([]*core.Transaction, 0)
 
 	for i := 0; i < dynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
@@ -129,12 +128,52 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
 			Address: keypair.Addr.Hex(),
 			Balance: "400000000000000000000",
-			Vesting: "0",
-			Vote:    []string{},
 		})
 
 		dynasties = append(dynasties, keypair)
 		distributed = append(distributed, keypair)
+
+		vesting, err := util.NewUint128FromString("100000000000000000000")
+		require.NoError(t, err)
+		collateral, err := util.NewUint128FromString("1000000000000000000")
+		require.NoError(t, err)
+
+		tx := new(core.Transaction)
+
+		tx.SetChainID(ChainID)
+		tx.SetValue(util.NewUint128())
+		tx.SetTimestamp(core.GenesisTimestamp)
+		tx.SetCryptoAlg(algorithm.SECP256K1)
+		tx.SetHashAlg(algorithm.SHA3256)
+
+		txVest, err := tx.Clone()
+		require.NoError(t, err)
+		txVest.SetTxType(core.TxOpVest)
+		txVest.SetValue(vesting)
+		txVest.SetNonce(1)
+		txVest.SignThis(keypair.PrivKey)
+
+		txCandidate, err := tx.Clone()
+		require.NoError(t, err)
+		txCandidate.SetTxType(dpos.TxOpBecomeCandidate)
+		txCandidate.SetValue(collateral)
+		txCandidate.SetNonce(2)
+		txCandidate.SignThis(keypair.PrivKey)
+
+		votePayload := new(dpos.VotePayload)
+		candidateIds := make([][]byte, 0)
+		votePayload.CandidateIDs = append(candidateIds, txCandidate.Hash())
+		votePayloadBytes, err := votePayload.ToBytes()
+		require.NoError(t, err)
+
+		txVote, err := tx.Clone()
+		require.NoError(t, err)
+		txVote.SetTxType(dpos.TxOpVote)
+		txVote.SetNonce(3)
+		txVote.SetPayload(votePayloadBytes)
+		txVote.SignThis(keypair.PrivKey)
+
+		txs = append(txs, txVest, txCandidate, txVote)
 	}
 
 	distCnt := 40 - dynastySize
@@ -144,14 +183,20 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
 			Address: keypair.Addr.Hex(),
 			Balance: "400000000000000000000",
-			Vesting: "0",
-			Vote:    []string{},
 		})
 		distributed = append(distributed, keypair)
 	}
 
-	conf.Consensus.Dpos.Dynasty = dynasty
 	conf.TokenDistribution = tokenDist
+	conf.Transactions = make([]*corepb.Transaction, 0)
+	for _, v := range txs {
+		pbMsg, err := v.ToProto()
+		require.NoError(t, err)
+		pbTx, ok := pbMsg.(*corepb.Transaction)
+		require.True(t, ok)
+		conf.Transactions = append(conf.Transactions, pbTx)
+	}
+
 	return conf, dynasties, distributed
 }
 
@@ -161,7 +206,7 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	d := dpos.New(dynastySize)
-	genesis, err = core.NewGenesisBlock(conf, d, s)
+	genesis, err = core.NewGenesisBlock(conf, d, medlet.DefaultTxMap, s)
 	require.NoError(t, err)
 
 	return genesis, dynasties, distributed

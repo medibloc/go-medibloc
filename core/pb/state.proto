@@ -8,19 +8,13 @@ message Account{
 
   bytes vesting = 11;
   bytes voted_root_hash = 12;
+  bytes candidate_id = 13;
 
-  bytes bandwidth = 13;
-  int64 last_bandwidth_ts = 14;
+  bytes bandwidth = 14;
+  int64 last_bandwidth_ts = 15;
 
-  bytes unstaking = 15;
-  int64 last_unstaking_ts = 16;
-
-  bytes collateral = 21;
-  bytes voters_root_hash = 22;
-  bytes vote_power = 23;
-
-  bytes txs_from_root_hash = 31;
-  bytes txs_to_root_hash = 32;
+  bytes unstaking = 16;
+  int64 last_unstaking_ts = 17;
 
   bytes data_root_hash = 40;
 }

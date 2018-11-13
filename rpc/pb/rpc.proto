@@ -154,10 +154,12 @@ message GetBlockResponse {
   int64 timestamp = 7;
   // Block chain id
   uint32 chain_id = 8;
+  // Block hash algorithm
+  uint32 hash_alg = 9;
   // Block signature algorithm
-  uint32 alg = 9;
+  uint32 crypto_alg = 10;
   // Block signature
-  string sign = 10;
+  string sign = 11;
 
   // Root hash of accounts trie
   string accs_root = 20;
@@ -239,8 +241,10 @@ message GetTransactionResponse {
   // Transaction payload.
   string payload = 20;
 
-  // Transaction algorithm
-  uint32 alg = 30;
+  // Transaction hash algorithm
+  uint32 hash_alg = 29;
+  // Transaction crypto algorithm
+  uint32 crypto_alg = 30;
   // Transaction sign.
   string sign = 31;
   // Transaction payer's sign.
@@ -282,8 +286,10 @@ message SendTransactionRequest {
   // Transaction payload
   string payload = 20;
 
-  // Transaction algorithm.
-  uint32 alg = 30;
+  // Transaction hash algorithm
+  uint32 hash_alg = 29;
+  // Transaction crypto algorithm.
+  uint32 crypto_alg = 30;
   // Transaction sign.
   string sign = 31;
   // Transaction payer's sign.

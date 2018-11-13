@@ -15,10 +15,23 @@
 
 package algorithm
 
-// Algorithm type alias
-type Algorithm uint8
+import "errors"
+
+// CryptoAlgorithm type alias
+type CryptoAlgorithm uint8
+
+// HashAlgorithm type alias
+type HashAlgorithm uint8
 
 const (
 	// SECP256K1 a type of signer
-	SECP256K1 Algorithm = 1
+	SECP256K1 CryptoAlgorithm = 1
+	// SHA3256 a type of hash
+	SHA3256 HashAlgorithm = 2
+)
+
+// Error types of algorithm package.
+var (
+	ErrInvalidHashAlgorithm   = errors.New("Invalid hash algorithm")
+	ErrInvalidCryptoAlgorithm = errors.New("Invalid crypto algorithm")
 )

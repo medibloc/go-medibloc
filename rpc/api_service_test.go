@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gavv/httpexpect"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
-
-	"github.com/gavv/httpexpect"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAPIService_GetAccount(t *testing.T) {
@@ -29,12 +29,12 @@ func TestAPIService_GetAccount(t *testing.T) {
 	seed.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[3]
+	payer := seed.Config.TokenDist[testutil.DynastySize]
 
 	tb := bb.Tx()
-	tx1 := tb.Nonce(2).StakeTx(payer, 400000000).Build()
+	tx1 := tb.Nonce(1).StakeTx(payer, 400000000).Build()
 	b := bb.ExecuteTx(tx1).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
@@ -49,7 +49,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 		JSON().Object().
 		ValueEqual("address", payer.Address()).
 		ValueEqual("balance", "0").
-		ValueEqual("nonce", "2").
+		ValueEqual("nonce", "1").
 		ValueEqual("vesting", "400000000000000000000").
 		ValueEqual("voted", []string{}).
 		ValueNotEqual("bandwidth", "0").
@@ -63,7 +63,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 		JSON().Object().
 		ValueEqual("address", payer.Address()).
 		ValueEqual("balance", "0").
-		ValueEqual("nonce", "2").
+		ValueEqual("nonce", "1").
 		ValueEqual("vesting", "400000000000000000000").
 		ValueEqual("voted", []string{}).
 		ValueNotEqual("bandwidth", "0").
@@ -186,7 +186,8 @@ func TestAPIService_GetBlock(t *testing.T) {
 		ContainsKey("supply").
 		ContainsKey("timestamp").
 		ContainsKey("chain_id").
-		ContainsKey("alg").
+		ContainsKey("crypto_alg").
+		ContainsKey("hash_alg").
 		ContainsKey("sign").
 		ContainsKey("accs_root").
 		ContainsKey("txs_root").
@@ -300,6 +301,11 @@ func TestAPIService_GetDynasty(t *testing.T) {
 	seed.Start()
 	network.WaitForEstablished()
 
+	b := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).
+		Block(seed.Tail()).Child().SignProposer().Build()
+
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
 	addrs := e.GET("/v1/dynasty").
@@ -321,6 +327,8 @@ func TestAPIService_GetMedState(t *testing.T) {
 	seed.Start()
 	network.WaitForEstablished()
 
+	genesis := seed.Tail()
+
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix()))
 	b := bb.SignProposer().Build()
@@ -332,7 +340,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 	e.GET("/v1/node/medstate").
 		Expect().JSON().Object().
 		ValueEqual("height", "2").
-		ValueEqual("LIB", byteutils.Bytes2Hex(bb.Genesis().B.Hash())).
+		ValueEqual("LIB", byteutils.Bytes2Hex(genesis.Hash())).
 		ValueEqual("tail", byteutils.Bytes2Hex(b.Hash()))
 }
 
@@ -510,10 +518,10 @@ func TestAPIService_Subscribe(t *testing.T) {
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 
-	tx := make([]*core.Transaction, 3)
-	payer := seed.Config.TokenDist[3]
-	for i := 3; i <= 5; i++ {
-		tx[i-3] = bb.Tx().Type(core.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i)).SignPair(payer).Build()
+	tx := make([]*core.Transaction, testutil.DynastySize)
+	payer := seed.Config.TokenDist[testutil.DynastySize]
+	for i := 0; i < testutil.DynastySize; i++ {
+		tx[i] = bb.Tx().Type(core.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i + 2)).SignPair(payer).Build()
 	}
 
 	go func() {
@@ -556,14 +564,14 @@ func TestAPIService_Subscribe(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i <= 2; i++ {
+	for i := 0; i < testutil.DynastySize; i++ {
 		// At least 3 seconds for next block
 		time.Sleep(1000 * time.Millisecond)
 		seed.Med.TransactionManager().Push(tx[i])
 	}
 
 	bb = bb.ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
-	for i := 0; i <= 2; i++ {
+	for i := 0; i < testutil.DynastySize; i++ {
 		time.Sleep(500 * time.Millisecond)
 		bb.ExecuteTx(tx[i])
 	}

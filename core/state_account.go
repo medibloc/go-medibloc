@@ -38,21 +38,18 @@ const (
 
 // Account default item in state
 type Account struct {
-	Address common.Address // address account key
-	Balance *util.Uint128  // balance account's coin amount
-	Nonce   uint64         // nonce account sequential number
-	Vesting *util.Uint128  // vesting account's vesting(staking) amount
-	Voted   *trie.Batch    // voted candidates key: addr, value: addr
+	Address     common.Address // address account key
+	Balance     *util.Uint128  // balance account's coin amount
+	Nonce       uint64         // nonce account sequential number
+	Vesting     *util.Uint128  // vesting account's vesting(staking) amount
+	Voted       *trie.Batch    // voted candidates key: addr, value: addr
+	CandidateID []byte         //
 
 	Bandwidth       *util.Uint128
 	LastBandwidthTs int64
 
 	Unstaking       *util.Uint128
 	LastUnstakingTs int64
-
-	Collateral *util.Uint128 // candidate collateral
-	Voters     *trie.Batch   // voters who voted to me
-	VotePower  *util.Uint128 // sum of voters' vesting
 
 	Data *trie.Batch // contain records, certReceived, certIssued
 
@@ -61,10 +58,6 @@ type Account struct {
 
 func newAccount(stor storage.Storage) (*Account, error) {
 	voted, err := trie.NewBatch(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-	voters, err := trie.NewBatch(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -79,13 +72,11 @@ func newAccount(stor storage.Storage) (*Account, error) {
 		Nonce:           0,
 		Vesting:         util.NewUint128(),
 		Voted:           voted,
+		CandidateID:     nil,
 		Bandwidth:       util.NewUint128(),
 		LastBandwidthTs: 0,
 		Unstaking:       util.NewUint128(),
 		LastUnstakingTs: 0,
-		Collateral:      util.NewUint128(),
-		Voters:          voters,
-		VotePower:       util.NewUint128(),
 		Data:            data,
 		Storage:         stor,
 	}
@@ -111,6 +102,8 @@ func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 		return err
 	}
 
+	acc.CandidateID = pbAcc.CandidateId
+
 	acc.Bandwidth, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Bandwidth)
 	if err != nil {
 		return err
@@ -123,18 +116,6 @@ func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 	}
 	acc.LastUnstakingTs = pbAcc.LastUnstakingTs
 
-	acc.Collateral, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Collateral)
-	if err != nil {
-		return err
-	}
-	acc.Voters, err = trie.NewBatch(pbAcc.VotersRootHash, acc.Storage)
-	if err != nil {
-		return err
-	}
-	acc.VotePower, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.VotePower)
-	if err != nil {
-		return err
-	}
 	acc.Data, err = trie.NewBatch(pbAcc.DataRootHash, acc.Storage)
 	if err != nil {
 		return err
@@ -164,18 +145,7 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	collateral, err := acc.Collateral.ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	votersRootHash, err := acc.Voters.RootHash()
-	if err != nil {
-		return nil, err
-	}
-	votePower, err := acc.VotePower.ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
+
 	dataRootHash, err := acc.Data.RootHash()
 	if err != nil {
 		return nil, err
@@ -187,13 +157,11 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 		Nonce:           acc.Nonce,
 		Vesting:         vesting,
 		VotedRootHash:   votedRootHash,
+		CandidateId:     acc.CandidateID,
 		Bandwidth:       bandwidth,
 		LastBandwidthTs: acc.LastBandwidthTs,
 		Unstaking:       unstaking,
 		LastUnstakingTs: acc.LastUnstakingTs,
-		Collateral:      collateral,
-		VotersRootHash:  votersRootHash,
-		VotePower:       votePower,
 		DataRootHash:    dataRootHash,
 	}, nil
 }
@@ -209,11 +177,6 @@ func (acc *Account) toBytes() ([]byte, error) {
 //VotedSlice returns slice converted from Voted trie
 func (acc *Account) VotedSlice() [][]byte {
 	return KeyTrieToSlice(acc.Voted)
-}
-
-//VotersSlice returns slice converted from Voters trie
-func (acc *Account) VotersSlice() [][]byte {
-	return KeyTrieToSlice(acc.Voters)
 }
 
 //GetData returns value in account's data trie

@@ -9,7 +9,8 @@ message BlockHeader {
   bytes supply = 5;
   int64 timestamp = 6;
   uint32 chain_id = 7;
-  uint32 alg = 11;
+  uint32 hash_alg = 10;
+  uint32 crypto_alg = 11;
   bytes sign = 12;
   bytes acc_state_root = 21;
   bytes tx_state_root = 22;
@@ -31,6 +32,23 @@ message DownloadParentBlock {
   bytes sign = 2;
 }
 
+message BlockHashTarget {
+  bytes parent_hash = 1;
+  bytes coinbase = 2;
+  bytes acc_state_root = 3;
+  bytes tx_state_root = 4;
+  bytes dpos_root = 5;
+  int64 timestamp = 6;
+  uint32 chain_id = 7;
+  bytes reward = 8;
+  bytes supply = 9;
+  uint32 hash_alg = 10;
+  uint32 crypto_alg = 11;
+  bytes cpu_usage = 20;
+  bytes net_usage = 21;
+  repeated bytes tx_hash = 30;
+}
+
 message Transaction {
   bytes hash = 1;
   string tx_type = 2;
@@ -42,7 +60,8 @@ message Transaction {
 
   bytes payload = 10;
 
-  uint32 alg = 21;
+  uint32 hash_alg = 20;
+  uint32 crypto_alg = 21;
   bytes sign = 22;
   bytes payerSign = 23;
 
@@ -58,21 +77,23 @@ message Receipt {
 
 message TransactionHashTarget {
   string tx_type = 1;
-  bytes to = 2;
-  bytes value = 3;
-  int64 timestamp = 4;
-  uint64 nonce = 5;
-  uint32 chain_id = 6;
+  bytes from = 2;
+  bytes to = 3;
+  bytes value = 4;
+  int64 timestamp = 5;
+  uint64 nonce = 6;
+  uint32 chain_id = 7;
 
   bytes payload = 10;
 }
 
-message DefaultPayload {
-  string message = 1;
+message TransactionPayerSignTarget {
+  bytes hash = 1;
+  bytes sign = 2;
 }
 
-message VotePayload {
-  repeated bytes candidates = 1;
+message DefaultPayload {
+  string message = 1;
 }
 
 message AddCertificationPayload {
@@ -91,4 +112,28 @@ message AddRecordPayload {
 
 message RegisterAliasPayload {
   string alias_name = 1;
+}
+
+
+message Genesis {
+  // genesis meta
+  GenesisMeta meta = 1;
+
+  // genesis token distribution address
+  repeated GenesisTokenDistribution token_distribution = 2;
+
+  // genesis transactions
+  repeated Transaction transactions = 3;
+}
+
+message GenesisMeta {
+  // ChainID.
+  uint32 chain_id = 1;
+  // Dynasty size.
+  uint32 dynasty_size = 2;
+}
+
+message GenesisTokenDistribution {
+  string address = 1;
+  string balance = 2;
 }

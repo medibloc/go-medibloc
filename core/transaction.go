@@ -23,13 +23,13 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
+	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -49,7 +49,8 @@ type Transaction struct {
 	nonce     uint64
 	chainID   uint32
 	payload   []byte
-	alg       algorithm.Algorithm
+	hashAlg   algorithm.HashAlgorithm
+	cryptoAlg algorithm.CryptoAlgorithm
 	sign      []byte
 	payerSign []byte
 
@@ -89,7 +90,8 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 		Nonce:     t.nonce,
 		ChainId:   t.chainID,
 		Payload:   t.payload,
-		Alg:       uint32(t.alg),
+		HashAlg:   uint32(t.hashAlg),
+		CryptoAlg: uint32(t.cryptoAlg),
 		Sign:      t.sign,
 		PayerSign: t.payerSign,
 		Receipt:   Receipt,
@@ -123,7 +125,8 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.nonce = pbTx.Nonce
 	t.chainID = pbTx.ChainId
 	t.payload = pbTx.Payload
-	t.alg = algorithm.Algorithm(pbTx.Alg)
+	t.hashAlg = algorithm.HashAlgorithm(pbTx.HashAlg)
+	t.cryptoAlg = algorithm.CryptoAlgorithm(pbTx.CryptoAlg)
 	t.sign = pbTx.Sign
 	t.payerSign = pbTx.PayerSign
 	t.receipt = receipt
@@ -233,14 +236,24 @@ func (t *Transaction) SetChainID(chainID uint32) {
 	t.chainID = chainID
 }
 
-//Alg returns signing algorithm
-func (t *Transaction) Alg() algorithm.Algorithm {
-	return t.alg
+//HashAlg returns hashing algorithm
+func (t *Transaction) HashAlg() algorithm.HashAlgorithm {
+	return t.hashAlg
 }
 
-//SetAlg set signing algorithm
-func (t *Transaction) SetAlg(alg algorithm.Algorithm) {
-	t.alg = alg
+//SetHashAlg set hashing algorithm
+func (t *Transaction) SetHashAlg(alg algorithm.HashAlgorithm) {
+	t.hashAlg = alg
+}
+
+//CryptoAlg returns signing algorithm
+func (t *Transaction) CryptoAlg() algorithm.CryptoAlgorithm {
+	return t.cryptoAlg
+}
+
+//SetCryptoAlg set signing algorithm
+func (t *Transaction) SetCryptoAlg(alg algorithm.CryptoAlgorithm) {
+	t.cryptoAlg = alg
 }
 
 //Sign returns sign
@@ -283,8 +296,6 @@ func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
 
 // CalcHash calculates transaction's hash.
 func (t *Transaction) CalcHash() ([]byte, error) {
-	hasher := sha3.New256()
-
 	value, err := t.value.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -292,6 +303,7 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 
 	txHashTarget := &corepb.TransactionHashTarget{
 		TxType:    t.txType,
+		From:      t.from.Bytes(),
 		To:        t.to.Bytes(),
 		Value:     value,
 		Timestamp: t.timestamp,
@@ -303,50 +315,64 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	hasher.Write(txHashTargetBytes)
 
-	hash := hasher.Sum(nil)
-	return hash, nil
+	return hash.GenHash(t.hashAlg, txHashTargetBytes)
 }
 
 // SignThis signs tx with given signature interface
-func (t *Transaction) SignThis(signer signature.Signature) error {
-	t.alg = signer.Algorithm()
-	hash, err := t.CalcHash()
+func (t *Transaction) SignThis(key signature.PrivateKey) error {
+	var err error
+	t.from, err = common.PublicKeyToAddress(key.PublicKey())
 	if err != nil {
 		return err
 	}
 
-	sig, err := signer.Sign(hash)
+	t.hash, err = t.CalcHash()
 	if err != nil {
 		return err
 	}
-	t.hash = hash
-	t.sign = sig
+
+	signer, err := crypto.NewSignature(t.cryptoAlg)
+	if err != nil {
+		return err
+	}
+	signer.InitSign(key)
+
+	t.sign, err = signer.Sign(t.hash)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (t *Transaction) getPayerSignTarget() []byte {
-	hasher := sha3.New256()
+func (t *Transaction) getPayerSignTarget() ([]byte, error) {
+	payerSignTarget := &corepb.TransactionPayerSignTarget{
+		Hash: t.Hash(),
+		Sign: t.Sign(),
+	}
 
-	hasher.Write(t.hash)
-	hasher.Write(t.sign)
+	payerSignTargetBytes, err := proto.Marshal(payerSignTarget)
+	if err != nil {
+		return nil, err
+	}
 
-	hash := hasher.Sum(nil)
-	return hash
+	return hash.Sha3256(payerSignTargetBytes), nil
 }
 
 func (t *Transaction) recoverPayer() (common.Address, error) {
 	if t.payerSign == nil || len(t.payerSign) == 0 {
 		return common.Address{}, ErrPayerSignatureNotExist
 	}
-	msg := t.getPayerSignTarget()
-
-	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+	msg, err := t.getPayerSignTarget()
+	if err != nil {
 		return common.Address{}, err
 	}
 
-	sig, err := crypto.NewSignature(t.alg)
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
+		return common.Address{}, err
+	}
+
+	sig, err := crypto.NewSignature(t.cryptoAlg)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -368,7 +394,10 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 
 // SignByPayer puts payer's sign in tx
 func (t *Transaction) SignByPayer(signer signature.Signature) error {
-	target := t.getPayerSignTarget()
+	target, err := t.getPayerSignTarget()
+	if err != nil {
+		return err
+	}
 
 	sig, err := signer.Sign(target)
 	if err != nil {
@@ -380,9 +409,19 @@ func (t *Transaction) SignByPayer(signer signature.Signature) error {
 
 // VerifyIntegrity returns transaction verify result, including Hash and Signature.
 func (t *Transaction) VerifyIntegrity(chainID uint32) error {
+	var err error
 	// check ChainID.
 	if t.chainID != chainID {
 		return ErrInvalidChainID
+	}
+
+	// check Signature.
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
+		return err
+	}
+	t.from, err = t.recoverSigner()
+	if err != nil {
+		return err
 	}
 
 	// check Hash.
@@ -391,21 +430,13 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 		return err
 	}
 	if !byteutils.Equal(wantedHash, t.hash) {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": t,
+		}).Warn("invalid tx hash")
 		return ErrInvalidTransactionHash
 	}
 
-	// check Signature.
-	return t.verifySign()
-}
-
-func (t *Transaction) verifySign() error {
-	if err := crypto.CheckAlgorithm(t.alg); err != nil {
-		return err
-	}
-	_, err := t.recoverSigner()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -414,11 +445,11 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 		return common.Address{}, ErrTransactionSignatureNotExist
 	}
 
-	if err := crypto.CheckAlgorithm(t.alg); err != nil {
+	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
 		return common.Address{}, err
 	}
 
-	sig, err := crypto.NewSignature(t.alg)
+	sig, err := crypto.NewSignature(t.cryptoAlg)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -433,15 +464,26 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, alg:%v, nonce:%v, timestamp:%v, 
-receipt:%v}`,
+	//fromStr := "no sign"
+	//if t.sign != nil {
+	//	from, err := t.recoverSigner()
+	//	if err != nil {
+	//		fromStr = "failed to recover signer"
+	//	} else {
+	//		fromStr = from.Hex()
+	//	}
+	//}
+
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, cryptoAlg:%v, hashAlg:%v nonce:%v, 
+timestamp:%v, receipt:%v}`,
 		t.chainID,
 		byteutils.Bytes2Hex(t.hash),
-		t.from,
-		t.to,
+		t.from.Hex(),
+		t.to.Hex(),
 		t.value.String(),
 		t.TxType(),
-		t.alg,
+		t.cryptoAlg,
+		t.hashAlg,
 		t.nonce,
 		t.timestamp,
 		t.receipt,
@@ -459,6 +501,8 @@ func (t *Transaction) Clone() (*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	newTx.from = t.from
 	return newTx, nil
 }
 
@@ -705,15 +749,7 @@ func (tx *VestTx) Execute(b *Block) error {
 
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
-		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
-		if err != nil {
-			return err
-		}
-		candidate.VotePower, err = candidate.VotePower.Add(tx.amount)
-		if err != nil {
-			return err
-		}
-		err = b.State().PutAccount(candidate)
+		err = b.state.DposState().AddVotePowerToCandidate(v, tx.amount)
 		if err != nil {
 			return err
 		}
@@ -810,15 +846,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
-		candidate, err := b.State().GetAccount(common.BytesToAddress(v))
-		if err != nil {
-			return err
-		}
-		candidate.VotePower, err = candidate.VotePower.Sub(tx.amount)
-		if err != nil {
-			return err
-		}
-		err = b.State().PutAccount(candidate)
+		err = b.state.DposState().SubVotePowerToCandidate(v, tx.amount)
 		if err != nil {
 			return err
 		}

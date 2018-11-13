@@ -42,7 +42,8 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	tx := &core.Transaction{}
 	tx.SetChainID(testutil.ChainID)
 	tx.SetValue(util.Uint128Zero())
-	tx.SetAlg(defaultSignAlg)
+	tx.SetCryptoAlg(defaultSignAlg)
+	tx.SetHashAlg(defaultHashAlg)
 
 	tx.SetTimestamp(bb.B.Timestamp())
 
@@ -73,6 +74,13 @@ func (tb *TxBuilder) copy() *TxBuilder {
 func (tb *TxBuilder) Hash(hash []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetHash(hash)
+	return n
+}
+
+//From sets from
+func (tb *TxBuilder) From(addr common.Address) *TxBuilder {
+	n := tb.copy()
+	n.tx.SetFrom(addr)
 	return n
 }
 
@@ -131,9 +139,9 @@ func (tb *TxBuilder) ChainID(chainID uint32) *TxBuilder {
 }
 
 //Alg sets signature algorithm
-func (tb *TxBuilder) Alg(alg algorithm.Algorithm) *TxBuilder {
+func (tb *TxBuilder) Alg(alg algorithm.CryptoAlgorithm) *TxBuilder {
 	n := tb.copy()
-	n.tx.SetAlg(alg)
+	n.tx.SetCryptoAlg(alg)
 	return n
 }
 
@@ -171,7 +179,7 @@ func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 
 	signer := signer(t, key)
 
-	n.tx.SetAlg(signer.Algorithm())
+	n.tx.SetCryptoAlg(signer.Algorithm())
 
 	sig, err := signer.Sign(n.tx.Hash())
 	require.NoError(t, err)
@@ -197,7 +205,7 @@ func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 		require.NoError(n.t, err)
 		n = n.Nonce(acc.Nonce + 1)
 	}
-	return n.CalcHash().SignKey(pair.PrivKey)
+	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 
 //RandomTx generate random Tx

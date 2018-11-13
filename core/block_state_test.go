@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -61,18 +60,19 @@ func TestCloneState(t *testing.T) {
 func TestDynastyState(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	actual, err := bb.Build().State().DposState().Dynasty()
-	assert.NoError(t, err)
+	ds := bb.Build().State().DposState()
 
-	for i, v := range actual {
-		assert.Equal(t, bb.Dynasties[i].Addr, v)
+	for _, v := range bb.Dynasties {
+		in, err := ds.InDynasty(v.Addr)
+		require.NoError(t, err)
+		assert.True(t, in)
 	}
 }
 
 func TestNonceCheck(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	from := bb.TokenDist[0]
+	from := bb.TokenDist[len(bb.TokenDist)-1]
 	to := testutil.NewAddrKeyPair(t)
 
 	bb = bb.
@@ -88,8 +88,8 @@ func TestUpdateBandwidth(t *testing.T) {
 	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().ChildWithTimestamp(nextMintTs)
 
-	from := bb.TokenDist[0]
-	to := bb.TokenDist[1]
+	from := bb.TokenDist[len(bb.TokenDist)-1]
+	to := bb.TokenDist[len(bb.TokenDist)-2]
 
 	tx := bb.Tx().StakeTx(from, 200).Build()
 	consumed := blockutil.Bandwidth(t, tx, bb.Build())
@@ -139,7 +139,7 @@ func TestUpdatePayerBandwidth(t *testing.T) {
 
 func TestBandwidthWhenUnstaking(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	from := bb.TokenDist[0]
+	from := bb.TokenDist[testutil.DynastySize]
 
 	bb.Tx().StakeTx(from, 100).SignPair(from).Execute().
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).ExecuteErr(core.ErrVestingNotEnough).
@@ -173,10 +173,10 @@ func TestTxsFromTxsTo(t *testing.T) {
 		}).SignPair(from).Execute().
 		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
-		Tx().Type(dpos.TxOpBecomeCandidate).Value(0).SignPair(from).Execute().
+		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpVote).
 		Payload(&dpos.VotePayload{
-			Candidates: []common.Address{from.Addr},
+			CandidateIDs: [][]byte{},
 		}).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(from).Execute()
 

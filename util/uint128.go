@@ -18,6 +18,7 @@ package util
 import (
 	"errors"
 	"math/big"
+	"sync"
 )
 
 const (
@@ -239,8 +240,12 @@ func (u *Uint128) Uint64() uint64 {
 	return u.value.Uint64()
 }
 
+var mu sync.Mutex
+
 // MulWithRat multiply uin128 with big.Rat
 func (u *Uint128) MulWithRat(x *big.Rat) (*Uint128, error) {
+	mu.Lock()
+	defer mu.Unlock()
 	tmp := big.NewInt(0).Mul(u.value, x.Num())
 	tmp = big.NewInt(0).Div(tmp, x.Denom())
 

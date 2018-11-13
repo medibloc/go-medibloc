@@ -81,12 +81,6 @@ func (bs *BlockState) DposState() DposState {
 	return bs.dposState
 }
 
-// GetCandidates returns list of candidates (only used in grpc)
-func (bs *BlockState) GetCandidates() ([]common.Address, error) {
-	// TODO: should be deprecate (if candidates are too many, grpc cannot full list of cadidiates. (max msg size)
-	return bs.DposState().Candidates()
-}
-
 // GetDynasty returns list of dynasty (only used in grpc)
 func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecate ?
 
@@ -295,9 +289,10 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	expectedNonce := fromAcc.Nonce + 1
 	if tx.nonce > expectedNonce {
 		logging.Console().WithFields(logrus.Fields{
-			"hash":     tx.Hash(),
-			"nonce":    tx.Nonce(),
-			"expected": expectedNonce,
+			"hash":        tx.Hash(),
+			"nonce":       tx.Nonce(),
+			"expected":    expectedNonce,
+			"transaction": tx,
 		}).Info("Transaction nonce gap exist")
 		return ErrLargeTransactionNonce
 	} else if tx.nonce < expectedNonce {

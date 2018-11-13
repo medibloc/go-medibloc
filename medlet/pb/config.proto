@@ -26,6 +26,10 @@ message GlobalConfig {
     uint32 chain_id = 1;
     // Data dir.
     string datadir = 11;
+    // Crypto algorithm
+    uint32 crypto_alg = 20;
+    // Hash algorithm
+    uint32 hash_alg = 21;
 }
 
 message NetworkConfig {

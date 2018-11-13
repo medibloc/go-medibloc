@@ -418,7 +418,12 @@ const (
           "format": "int64",
           "title": "Block chain id"
         },
-        "alg": {
+        "hash_alg": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Block hash algorithm"
+        },
+        "crypto_alg": {
           "type": "integer",
           "format": "int64",
           "title": "Block signature algorithm"
@@ -570,10 +575,15 @@ const (
           "type": "string",
           "description": "Transaction payload."
         },
-        "alg": {
+        "hash_alg": {
           "type": "integer",
           "format": "int64",
-          "title": "Transaction algorithm"
+          "title": "Transaction hash algorithm"
+        },
+        "crypto_alg": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Transaction crypto algorithm"
         },
         "sign": {
           "type": "string",
@@ -648,10 +658,15 @@ const (
           "type": "string",
           "title": "Transaction payload"
         },
-        "alg": {
+        "hash_alg": {
           "type": "integer",
           "format": "int64",
-          "description": "Transaction algorithm."
+          "title": "Transaction hash algorithm"
+        },
+        "crypto_alg": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction crypto algorithm."
         },
         "sign": {
           "type": "string",

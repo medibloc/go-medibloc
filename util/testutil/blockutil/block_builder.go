@@ -197,9 +197,9 @@ func (bb *BlockBuilder) ChainID(chainID uint32) *BlockBuilder {
 }
 
 // Alg sets crypto algorithm.
-func (bb *BlockBuilder) Alg(alg algorithm.Algorithm) *BlockBuilder {
+func (bb *BlockBuilder) Alg(alg algorithm.CryptoAlgorithm) *BlockBuilder {
 	n := bb.copy()
-	n.B.SetAlg(alg)
+	n.B.SetCryptoAlg(alg)
 	return n
 }
 
@@ -239,7 +239,7 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 
 	signer := signer(t, key)
 
-	n.B.SetAlg(signer.Algorithm())
+	n.B.SetCryptoAlg(signer.Algorithm())
 
 	sig, err := signer.Sign(n.B.Hash())
 	require.NoError(t, err)
@@ -401,7 +401,7 @@ func (bb *BlockBuilder) UpdateDynastyState(parent *core.Block) *BlockBuilder {
 	n.proposer = mintProposer
 
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.SetMintDynastyState(parent))
+	require.NoError(n.t, n.B.SetMintDynastyState(parent, d))
 	require.NoError(n.t, n.B.Commit())
 
 	return n

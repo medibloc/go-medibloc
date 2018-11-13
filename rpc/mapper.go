@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/rpc/pb"
@@ -77,7 +78,8 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse,
 		Supply:       block.Supply().String(),
 		Timestamp:    block.Timestamp(),
 		ChainId:      block.ChainID(),
-		Alg:          uint32(block.Alg()),
+		HashAlg:      uint32(block.HashAlg()),
+		CryptoAlg:    uint32(block.CryptoAlg()),
 		Sign:         byteutils.Bytes2Hex(block.Sign()),
 		AccsRoot:     byteutils.Bytes2Hex(block.AccStateRoot()),
 		TxsRoot:      byteutils.Bytes2Hex(block.TxStateRoot()),
@@ -87,9 +89,9 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse,
 	}, nil
 }
 
-func coreCandidate2rpcCandidate(candidate *core.Account) *rpcpb.Candidate {
+func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 	return &rpcpb.Candidate{
-		Address:   candidate.Address.Hex(),
+		Address:   candidate.Addr.Hex(),
 		Collatral: candidate.Collateral.String(),
 		VotePower: candidate.VotePower.String(),
 	}
@@ -107,7 +109,8 @@ func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionRes
 		Nonce:     tx.Nonce(),
 		ChainId:   tx.ChainID(),
 		Payload:   byteutils.Bytes2Hex(tx.Payload()),
-		Alg:       uint32(tx.Alg()),
+		HashAlg:   uint32(tx.HashAlg()),
+		CryptoAlg: uint32(tx.CryptoAlg()),
 		Sign:      byteutils.Bytes2Hex(tx.Sign()),
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
 		Executed:  executed,
