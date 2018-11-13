@@ -20,7 +20,7 @@ func TestMakeNewDynasty(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("genesis dynasty", dynasty)
 
-	bb = bb.Child().SignMiner()
+	bb = bb.Child().SignProposer()
 	b = bb.Build()
 
 	dynasty, err = b.State().DposState().Dynasty()

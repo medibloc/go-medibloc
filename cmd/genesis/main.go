@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -9,7 +11,6 @@ import (
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"io/ioutil"
 )
 
 func main() {
@@ -18,7 +19,7 @@ func main() {
 		fmt.Println("failed to load genesis conf file")
 		return
 	}
-	pbGenesis:= new(corepb.Genesis)
+	pbGenesis := new(corepb.Genesis)
 	if err := proto.UnmarshalText(string(bytes), pbGenesis); err != nil {
 		fmt.Println("failed unmarshal to corepb.Genesis")
 		return

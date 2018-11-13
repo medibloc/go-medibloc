@@ -55,5 +55,5 @@ var (
 	ErrDuplicateVote                = errors.New("cannot vote multiple vote for same account")
 	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
 	ErrNotEnoughCandidateCollateral = errors.New("candidate collateral is not enough")
-	ErrProposerConfigNotFound = errors.New("proposer config not found")
+	ErrProposerConfigNotFound       = errors.New("proposer config not found")
 )
