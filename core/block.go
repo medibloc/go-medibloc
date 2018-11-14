@@ -637,8 +637,8 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
-				cryptoAlg:  b.CryptoAlg(), // TODO @ggomma use cmd config
-				hashAlg:    b.HashAlg(),   // TODO @ggomma use cmd config
+				cryptoAlg:  b.CryptoAlg(),
+				hashAlg:    b.HashAlg(),
 				cpuRef:     util.NewUint128(),
 				cpuUsage:   util.NewUint128(),
 				netRef:     util.NewUint128(),

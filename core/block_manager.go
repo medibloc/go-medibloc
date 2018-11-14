@@ -302,6 +302,9 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	// Parent block exists in blockchain.
+	// all : All executed blocks (It was in the pool previous) (It includes tails)
+	// tails : All tail blocks incl. forked tail block
+	// fails : Failed blocks
 	all, tails, fails := bm.findDescendantBlocks(parentOnChain)
 	for _, fail := range fails {
 		bm.bp.Remove(fail)
@@ -574,7 +577,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
 			"syncActivationHeight": bm.syncActivationHeight,
-			"err":                  err,
+			"err": err,
 		}).Debug("Failed to activate sync download manager.")
 		return false
 	}
