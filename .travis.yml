@@ -7,6 +7,7 @@ before_install:
   - sudo apt-get update -qq && sudo apt-get install libsnappy-dev zlib1g-dev libbz2-dev -qq
   - git clone https://github.com/facebook/rocksdb.git ${TRAVIS_HOME}/rocksdb
   - cd ${TRAVIS_HOME}/rocksdb
+  - git reset --hard 7e1f37eb4fc711dbf3ecc9610178931f00754de8vv
   - make shared_lib
   - sudo cp --preserve=links ./librocksdb.* /usr/lib/
   - sudo cp -r ./include/rocksdb/ /usr/include/
