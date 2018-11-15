@@ -23,7 +23,7 @@ const (
         "operationId": "GetAccount",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetAccountResponse"
             }
@@ -70,7 +70,7 @@ const (
         "operationId": "GetBlock",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlockResponse"
             }
@@ -110,7 +110,7 @@ const (
         "operationId": "GetBlocks",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlocksResponse"
             }
@@ -142,7 +142,7 @@ const (
         "operationId": "GetCandidates",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetCandidatesResponse"
             }
@@ -158,7 +158,7 @@ const (
         "operationId": "GetDynasty",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetDynastyResponse"
             }
@@ -174,7 +174,7 @@ const (
         "operationId": "HealthCheck",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbHealthCheckResponse"
             }
@@ -190,7 +190,7 @@ const (
         "operationId": "GetMedState",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetMedStateResponse"
             }
@@ -206,7 +206,7 @@ const (
         "operationId": "Subscribe",
         "responses": {
           "200": {
-            "description": "A successful response.(streaming responses)",
+            "description": "(streaming responses)",
             "schema": {
               "$ref": "#/definitions/rpcpbSubscribeResponse"
             }
@@ -233,7 +233,7 @@ const (
         "operationId": "GetTransaction",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionResponse"
             }
@@ -256,7 +256,7 @@ const (
         "operationId": "SendTransaction",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbSendTransactionResponse"
             }
@@ -282,7 +282,7 @@ const (
         "operationId": "GetTransactionReceipt",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionReceiptResponse"
             }
@@ -307,7 +307,7 @@ const (
         "operationId": "GetPendingTransactions",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }
