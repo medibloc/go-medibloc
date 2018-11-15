@@ -32,7 +32,7 @@ func TestMakeNewDynasty(t *testing.T) {
 func TestChangeDynasty(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+	//testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -44,6 +44,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb = bb.ChildNextDynasty().
 		Tx().Type(core.TxOpVest).Value(300000000).SignPair(newCandidate).Execute().
+		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(newCandidate).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
 	acc, err := bb.Build().State().GetAccount(newCandidate.Addr)

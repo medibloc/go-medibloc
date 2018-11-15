@@ -76,7 +76,7 @@ func TestNewGenesisBlock(t *testing.T) {
 		acc, err := accState.GetAccount(addr)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "299000000000000000000", acc.Balance.String())
+		assert.Equal(t, "298000000000000000000", acc.Balance.String())
 	}
 	for _, holder := range dist[21:] {
 		addr := holder.Addr

@@ -153,11 +153,23 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		txVest.SetNonce(1)
 		txVest.SignThis(keypair.PrivKey)
 
+		aliasPayload := &core.RegisterAliasPayload{AliasName: "testbpalias" + string(i)}
+		aliasePayloadBytes, err := aliasPayload.ToBytes()
+		require.NoError(t, err)
+
+		txAlias, err := tx.Clone()
+		require.NoError(t, err)
+		txAlias.SetTxType(core.TxOpRegisterAlias)
+		txAlias.SetValue(collateral)
+		txAlias.SetNonce(2)
+		txAlias.SetPayload(aliasePayloadBytes)
+		txAlias.SignThis(keypair.PrivKey)
+
 		txCandidate, err := tx.Clone()
 		require.NoError(t, err)
 		txCandidate.SetTxType(dpos.TxOpBecomeCandidate)
 		txCandidate.SetValue(collateral)
-		txCandidate.SetNonce(2)
+		txCandidate.SetNonce(3)
 		txCandidate.SignThis(keypair.PrivKey)
 
 		votePayload := new(dpos.VotePayload)
@@ -169,11 +181,12 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		txVote, err := tx.Clone()
 		require.NoError(t, err)
 		txVote.SetTxType(dpos.TxOpVote)
-		txVote.SetNonce(3)
+		txVote.SetNonce(4)
 		txVote.SetPayload(votePayloadBytes)
 		txVote.SignThis(keypair.PrivKey)
 
-		txs = append(txs, txVest, txCandidate, txVote)
+		//txs = append(txs, txVest, txCandidate, txVote)
+		txs = append(txs, txVest, txAlias, txCandidate, txVote)
 	}
 
 	distCnt := 40 - dynastySize

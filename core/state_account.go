@@ -329,17 +329,21 @@ func (as *AccountState) accounts() ([]*Account, error) {
 			return nil, err
 		}
 		accountBytes := iter.Value()
+		exist, err = iter.Next()
 
 		pbAccount := new(corepb.Account)
 		if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
 			return nil, err
 		}
+		if pbAccount.Balance == nil {
+			continue
+		}
 		if err := acc.fromProto(pbAccount); err != nil {
 			return nil, err
 		}
+		//exist, err = iter.Next()
 
 		accounts = append(accounts, acc)
-		exist, err = iter.Next()
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
