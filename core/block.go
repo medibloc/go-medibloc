@@ -525,6 +525,10 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, tx
 		return nil, err
 	}
 
+	if err := bd.verifyBandwidthUsage(parent); err != nil {
+		return nil, err
+	}
+
 	if err := block.VerifyExecution(parent, consensus, txMap); err != nil {
 		block.Storage().DisableBatch()
 		return nil, err
@@ -587,6 +591,39 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 
 	block.storage = storage
 	return block, nil
+}
+
+func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
+	cpuRef, err := calcRefCPU(parent)
+	if err != nil {
+		return err
+	}
+	if cpuRef.Cmp(bd.CPURef()) != 0 {
+		return ErrInvalidCPURef
+	}
+	maxCPU, err := bd.CPURef().Mul(util.NewUint128FromUint(uint64(cpuLimit)))
+	if err != nil {
+		return err
+	}
+	if maxCPU.Cmp(bd.CPUUsage()) < 0 {
+		return ErrInvalidCPUUsage
+	}
+
+	netRef, err := calcRefNet(parent)
+	if err != nil {
+		return err
+	}
+	if netRef.Cmp(bd.NetRef()) != 0 {
+		return ErrInvalidCPURef
+	}
+	maxNet, err := bd.NetRef().Mul(util.NewUint128FromUint(uint64(netLimit)))
+	if err != nil {
+		return err
+	}
+	if maxNet.Cmp(bd.NetUsage()) < 0 {
+		return ErrInvalidNetUsage
+	}
+	return nil
 }
 
 // Block represents block with actual state tries
@@ -1304,6 +1341,7 @@ type calcRefBandwidthArg struct {
 
 func calcRefBandwidth(arg *calcRefBandwidthArg) (*util.Uint128, error) {
 	limit := util.NewUint128FromUint(uint64(arg.limit))
+	// thresholdBandwidth : Total MED amount which can be used for CPU / NET per block
 	thresholdBandwidth, err := arg.previousRef.Mul(limit)
 	if err != nil {
 		return nil, err
