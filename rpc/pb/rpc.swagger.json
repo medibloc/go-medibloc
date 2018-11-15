@@ -20,7 +20,7 @@
         "operationId": "GetAccount",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetAccountResponse"
             }
@@ -67,7 +67,7 @@
         "operationId": "GetBlock",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlockResponse"
             }
@@ -107,7 +107,7 @@
         "operationId": "GetBlocks",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetBlocksResponse"
             }
@@ -139,7 +139,7 @@
         "operationId": "GetCandidates",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetCandidatesResponse"
             }
@@ -155,7 +155,7 @@
         "operationId": "GetDynasty",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetDynastyResponse"
             }
@@ -171,7 +171,7 @@
         "operationId": "HealthCheck",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbHealthCheckResponse"
             }
@@ -187,7 +187,7 @@
         "operationId": "GetMedState",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetMedStateResponse"
             }
@@ -203,7 +203,7 @@
         "operationId": "Subscribe",
         "responses": {
           "200": {
-            "description": "A successful response.(streaming responses)",
+            "description": "(streaming responses)",
             "schema": {
               "$ref": "#/definitions/rpcpbSubscribeResponse"
             }
@@ -230,7 +230,7 @@
         "operationId": "GetTransaction",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionResponse"
             }
@@ -253,7 +253,7 @@
         "operationId": "SendTransaction",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbSendTransactionResponse"
             }
@@ -279,7 +279,7 @@
         "operationId": "GetTransactionReceipt",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionReceiptResponse"
             }
@@ -304,7 +304,7 @@
         "operationId": "GetPendingTransactions",
         "responses": {
           "200": {
-            "description": "A successful response.",
+            "description": "",
             "schema": {
               "$ref": "#/definitions/rpcpbGetTransactionsResponse"
             }

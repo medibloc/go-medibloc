@@ -66,7 +66,7 @@ var InflationRate = big.NewRat(464, 1000000000000) // 4.64e-09
 const InflationRoundDown = 10000000000 //1e10
 
 // Bandwidth limit per block
-const ( // TODO @ggomma change limit to real number
+const (
 	NumberOfBlocksInSingleTimeWindow = 201600  // 7 * 86400 / 3 (time window: 7days, block interval: 3 sec)
 	cpuLimit                         = 3000000 // 1000 TPS (block interval: 3 sec, transfer tx: 1000 )
 	netLimit                         = 3000000 // 3MB
