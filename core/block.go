@@ -775,6 +775,8 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	cpuRefBytes, err := bd.CPURef().ToFixedSizeByteSlice()
+	netRefBytes, err := bd.NetRef().ToFixedSizeByteSlice()
 	cpuUsageBytes, err := bd.CPUUsage().ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -801,7 +803,9 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		CryptoAlg:    uint32(bd.CryptoAlg()),
 		Reward:       rewardBytes,
 		Supply:       supplyBytes,
+		CpuRef:       cpuRefBytes,
 		CpuUsage:     cpuUsageBytes,
+		NetRef:       netRefBytes,
 		NetUsage:     netUsageBytes,
 		TxHash:       txHash,
 	}

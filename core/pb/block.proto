@@ -44,9 +44,11 @@ message BlockHashTarget {
   bytes supply = 9;
   uint32 hash_alg = 10;
   uint32 crypto_alg = 11;
-  bytes cpu_usage = 20;
-  bytes net_usage = 21;
-  repeated bytes tx_hash = 30;
+  bytes cpu_ref = 30;
+  bytes cpu_usage = 31;
+  bytes net_ref = 32;
+  bytes net_usage = 33;
+  repeated bytes tx_hash = 40;
 }
 
 message Transaction {
