@@ -1152,11 +1152,17 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
+
 	return &RegisterAliasTx{
 		addr:       tx.From(),
 		aliasName:  payload.AliasName,
 		collateral: tx.Value(),
 		timestamp:  tx.Timestamp(),
+		size:       size,
 	}, nil
 }
 
@@ -1296,8 +1302,14 @@ func NewDeregisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
+	size, err := tx.Size()
+	if err != nil {
+		return nil, err
+	}
+
 	return &DeregisterAliasTx{
 		addr: tx.From(),
+		size: size,
 	}, nil
 }
 
