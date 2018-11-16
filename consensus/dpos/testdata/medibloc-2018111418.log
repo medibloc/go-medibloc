@@ -1,3 +1,0 @@
-time="2018-11-14T18:38:30+09:00" level=info msg="Logger Configuration." file=loggers.go func=logging.initLogger level=debug line=107 path=testdata
-time="2018-11-14T18:38:30+09:00" level=info msg="Generate New Network Key" file=network_key.go func=net.LoadNetworkKeyFromFileOrCreateNew line=62 privateKeyPath=testdata/node113902649/data/network.key
-time="2018-11-14T18:38:30+09:00" level=info msg="Setting up Medlet..." file=medlet.go func="medlet.(*Medlet).Setup" line=133
