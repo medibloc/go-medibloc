@@ -35,13 +35,15 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	txType := dpos.TxOpBecomeCandidate
 	bb = bb.
 		Tx().StakeTx(candidate, 100000).Execute().
+		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(core.ErrAliasNotExist).
+		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(candidate).Execute().
 		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(core.ErrBalanceNotEnough).
 		Tx().Type(txType).Value(999999).SignPair(candidate).ExecuteErr(dpos.ErrNotEnoughCandidateCollateral).
 		Tx().Type(txType).Value(1000000).SignPair(candidate).Execute().
 		Tx().Type(txType).Value(1000000).SignPair(candidate).ExecuteErr(dpos.ErrAlreadyCandidate)
 
 	bb.Expect().
-		Balance(candidate.Addr, 400000000-100000-1000000).
+		Balance(candidate.Addr, 400000000-100000-1000000-1000000).
 		Vesting(candidate.Addr, 100000)
 
 	block := bb.Build()
@@ -63,7 +65,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).Execute().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(dpos.ErrNotCandidate)
 
-	bb.Expect().Balance(candidate.Addr, 400000000-100000)
+	bb.Expect().Balance(candidate.Addr, 400000000-100000-1000000)
 
 	block = bb.Build()
 	cs = block.State().DposState().CandidateState()
@@ -86,9 +88,10 @@ func TestVote(t *testing.T) {
 	bb = bb.
 		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
 		Tx().StakeTx(newCandidate, 10000).Execute().
+		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(newCandidate).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
-	bb.Expect().Balance(newCandidate.Addr, 400000000-10000-1000000)
+	bb.Expect().Balance(newCandidate.Addr, 400000000-10000-1000000-1000000)
 	block := bb.Build()
 
 	candidateIDs := make([][]byte, 0)

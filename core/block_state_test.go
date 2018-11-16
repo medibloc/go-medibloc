@@ -173,6 +173,7 @@ func TestTxsFromTxsTo(t *testing.T) {
 		}).SignPair(from).Execute().
 		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpVote).
 		Payload(&dpos.VotePayload{

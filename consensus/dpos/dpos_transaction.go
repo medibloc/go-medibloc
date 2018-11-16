@@ -65,10 +65,10 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	if acc.CandidateID != nil {
 		return ErrAlreadyCandidate
 	}
-	//_, err = acc.GetData(core.AliasPrefix, []byte(core.AliasKey))
-	//if err == core.ErrNotFound {
-	//	return core.ErrAliasNotExist
-	//}
+	_, err = acc.GetData(core.AliasPrefix, []byte(core.AliasKey))
+	if err == core.ErrNotFound {
+		return core.ErrAliasNotExist
+	}
 
 	minimumCollateral, err := util.NewUint128FromString(MinimumCandidateCollateral)
 	if err != nil {
