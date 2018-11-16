@@ -301,37 +301,6 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	return nil
 }
 
-// checkBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
-func (bs *BlockState) checkPayerBandwidth(payer *Account, transaction *Transaction, cpuUsage, netUsage *util.Uint128) error {
-	avail, err := payer.Vesting.Sub(payer.Bandwidth)
-	if err != nil {
-		return err
-	}
-	switch transaction.TxType() {
-	case TxOpVest:
-		avail, err = avail.Add(transaction.Value())
-		if err != nil {
-			return err
-		}
-	case TxOpWithdrawVesting:
-		avail, err = avail.Sub(transaction.Value())
-		if err == util.ErrUint128Underflow {
-			return ErrVestingNotEnough
-		}
-		if err != nil {
-			return err
-		}
-	}
-	usage, err := cpuUsage.Add(netUsage)
-	if err != nil {
-		return err
-	}
-	if avail.Cmp(usage) < 0 {
-		return ErrBandwidthNotEnough
-	}
-	return nil
-}
-
 func (bs *BlockState) checkBandwidthLimit(cpu, net *util.Uint128) error {
 	blockCPUUsage, err := bs.cpuUsage.Add(cpu)
 	if err != nil {

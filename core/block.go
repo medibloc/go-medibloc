@@ -606,7 +606,7 @@ func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
 	if err != nil {
 		return err
 	}
-	if bd.NetUsage().Cmp(maxNet) < 0 {
+	if bd.NetUsage().Cmp(maxNet) > 0 {
 		return ErrInvalidNetUsage
 	}
 
@@ -859,7 +859,7 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 	}
 
 	// STEP 5. Check payer's bandwidth
-	if err := b.state.checkPayerBandwidth(payer, transaction, cpuUsage, netUsage); err != nil {
+	if err := payer.checkAccountBandwidth(transaction, cpuUsage, netUsage); err != nil {
 		return nil, err
 	}
 

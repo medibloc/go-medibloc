@@ -240,6 +240,37 @@ func (acc *Account) UpdateUnstaking(timestamp int64) error {
 	return nil
 }
 
+// checkAccountBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
+func (acc *Account) checkAccountBandwidth(transaction *Transaction, cpuUsage, netUsage *util.Uint128) error {
+	avail, err := acc.Vesting.Sub(acc.Bandwidth)
+	if err != nil {
+		return err
+	}
+	switch transaction.TxType() {
+	case TxOpVest:
+		avail, err = avail.Add(transaction.Value())
+		if err != nil {
+			return err
+		}
+	case TxOpWithdrawVesting:
+		avail, err = avail.Sub(transaction.Value())
+		if err == util.ErrUint128Underflow {
+			return ErrVestingNotEnough
+		}
+		if err != nil {
+			return err
+		}
+	}
+	usage, err := cpuUsage.Add(netUsage)
+	if err != nil {
+		return err
+	}
+	if avail.Cmp(usage) < 0 {
+		return ErrBandwidthNotEnough
+	}
+	return nil
+}
+
 //AccountState is a struct for account state
 type AccountState struct {
 	*trie.Batch
