@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) (*rpcpb.GetAccountResponse, error) {
+func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) (*rpcpb.Account, error) {
 	if err := account.UpdateBandwidth(curTs); err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateBandwidth)
 	}
@@ -42,7 +42,7 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 	if err != nil {
 		return nil, err
 	}
-	return &rpcpb.GetAccountResponse{
+	return &rpcpb.Account{
 		Address:     address,
 		Balance:     account.Balance.String(),
 		Nonce:       account.Nonce,
@@ -55,8 +55,8 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 	}, nil
 }
 
-func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse, error) {
-	var txs []*rpcpb.GetTransactionResponse
+func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.Block, error) {
+	var txs []*rpcpb.Transaction
 	var txHashes []string
 	var err error
 	if light {
@@ -70,7 +70,7 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.GetBlockResponse,
 		}
 	}
 
-	return &rpcpb.GetBlockResponse{
+	return &rpcpb.Block{
 		Height:       block.Height(),
 		Hash:         byteutils.Bytes2Hex(block.Hash()),
 		ParentHash:   byteutils.Bytes2Hex(block.ParentHash()),
@@ -101,8 +101,8 @@ func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 }
 
 // CoreTx2rpcTx converts core transaction type to rpcpb response type
-func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionResponse, error) {
-	return &rpcpb.GetTransactionResponse{
+func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.Transaction, error) {
+	return &rpcpb.Transaction{
 		Hash:      byteutils.Bytes2Hex(tx.Hash()),
 		From:      tx.From().Hex(),
 		To:        tx.To().Hex(),
@@ -120,8 +120,8 @@ func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.GetTransactionRes
 	}, nil
 }
 
-func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.GetTransactionResponse, error) {
-	var rpcTxs []*rpcpb.GetTransactionResponse
+func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.Transaction, error) {
+	var rpcTxs []*rpcpb.Transaction
 	for _, tx := range txs {
 		rpcTx, err := CoreTx2rpcTx(tx, executed)
 		if err != nil {
@@ -132,12 +132,12 @@ func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.GetTransac
 	return rpcTxs, nil
 }
 
-func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.GetTransactionReceiptResponse, error) {
+func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.TransactionReceipt, error) {
 	err := byteutils.Bytes2Hex(tx.Receipt().Error())
 	cpuUsage := tx.Receipt().CPUUsage().String()
 	netUsage := tx.Receipt().NetUsage().String()
 
-	return &rpcpb.GetTransactionReceiptResponse{
+	return &rpcpb.TransactionReceipt{
 		Executed: tx.Receipt().Executed(),
 		CpuUsage: cpuUsage,
 		NetUsate: netUsage,

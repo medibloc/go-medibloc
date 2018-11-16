@@ -5,81 +5,81 @@ package rpcpb;
 import "google/api/annotations.proto";
 
 service ApiService {
-  rpc GetAccount (GetAccountRequest) returns (GetAccountResponse) {
+  rpc GetAccountAPI (GetAccount) returns (Account) {
     option (google.api.http) = {
 			get: "/v1/account"
 		};
   }
 
-  rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {
+  rpc GetBlockAPI (GetBlock) returns (Block) {
     option (google.api.http) = {
 			get: "/v1/block"
 		};
   }
 
-  rpc GetBlocks (GetBlocksRequest) returns (GetBlocksResponse) {
+  rpc GetBlocksAPI (GetBlocks) returns (Blocks) {
     option (google.api.http) = {
 			get: "/v1/blocks"
 		};
   }
 
-  rpc GetCandidates (NonParamRequest) returns (GetCandidatesResponse) {
+  rpc GetCandidatesAPI (NonParamRequest) returns (Candidates) {
     option (google.api.http) = {
 			get: "/v1/candidates"
 		};
   }
 
-  rpc GetDynasty (NonParamRequest) returns (GetDynastyResponse) {
+  rpc GetDynastyAPI (NonParamRequest) returns (Dynasty) {
     option (google.api.http) = {
 			get: "/v1/dynasty"
 		};
   }
 
-  rpc GetMedState (NonParamRequest) returns (GetMedStateResponse) {
+  rpc GetMedStateAPI (NonParamRequest) returns (MedState) {
     option (google.api.http) = {
 			get: "/v1/node/medstate"
 		};
   }
 
-  rpc GetPendingTransactions (NonParamRequest) returns (GetTransactionsResponse) {
+  rpc GetPendingTransactionsAPI (NonParamRequest) returns (Transactions) {
     option (google.api.http) = {
 			get: "/v1/transactions/pending"
 		};
   }
 
-  rpc GetTransaction (GetTransactionRequest) returns (GetTransactionResponse) {
+  rpc GetTransactionAPI (GetTransaction) returns (Transaction) {
     option (google.api.http) = {
 			get: "/v1/transaction"
 		};
   }
 
-  rpc GetTransactionReceipt (GetTransactionRequest) returns (GetTransactionReceiptResponse) {
+  rpc GetTransactionReceiptAPI (GetTransaction) returns (TransactionReceipt) {
     option (google.api.http) = {
       get: "/v1/transaction/receipt"
     };
   }
 
-  rpc SendTransaction (SendTransactionRequest) returns (SendTransactionResponse) {
+  rpc SendTransactionAPI (SendTransaction) returns (TransactionHash) {
     option (google.api.http) = {
 			post: "/v1/transaction"
 			body: "*"
 		};
   }
 
-  rpc Subscribe (SubscribeRequest) returns (stream SubscribeResponse) {
+  rpc SubscribeAPI (SubscribeRequest) returns (stream SubscribeResponse) {
     option (google.api.http) = {
 			get: "/v1/subscribe"
 		};
   }
 
-  rpc HealthCheck (NonParamRequest) returns (HealthCheckResponse) {
+  rpc HealthCheckAPI (NonParamRequest) returns (Health) {
     option (google.api.http) = {
 			get: "/v1/healthcheck"
 		};
   }
 }
 
-message GetAccountRequest {
+message GetAccount {
   // Send only one between address and alias
   // Hex string of the account addresss.
   string address = 1;
@@ -93,7 +93,7 @@ message GetAccountRequest {
   uint64 height = 11;
 }
 
-message GetAccountResponse {
+message Account {
   // Hex string of the account address.
   string address = 1;
   // Current balance in unit of 1/(10^8) MED.
@@ -112,23 +112,13 @@ message GetAccountResponse {
 
   string alias = 8;
   string candidate_id = 9;
-  //	// List of record hash.
-  //	repeated string records = 6;
-  //	// Account addresses that have certificated the account.
-  //	repeated string certs_received = 7;
-  //	// Account addresses certificated by the account.
-  //	repeated string certs_issued = 8;
-  //  // Transactions sent from account
-  //  repeated string txs_from = 9;
-  //  // Transactions sent to account
-  //  repeated string txs_to = 10;
 }
 
 message Data {
   string Alias = 1;
 }
 
-message GetBlockRequest {
+message GetBlock {
   // Send only one among hash, type and height
   // Block hash
   string hash = 1;
@@ -138,7 +128,7 @@ message GetBlockRequest {
   uint64 height = 3;
 }
 
-message GetBlockResponse {
+message Block {
   // Block height
   uint64 height = 1;
   // Block hash
@@ -170,17 +160,17 @@ message GetBlockResponse {
   string dpos_root = 22;
 
   // Transactions in block
-  repeated GetTransactionResponse transactions = 30;
+  repeated Transaction transactions = 30;
   repeated string tx_hashes = 31;
 }
 
-message GetBlocksRequest {
+message GetBlocks {
   uint64 from = 1;
   uint64 to = 2;
 }
 
-message GetBlocksResponse {
-  repeated GetBlockResponse blocks = 1;
+message Blocks {
+  repeated Block blocks = 1;
 }
 
 message NonParamRequest {
@@ -194,15 +184,15 @@ message Candidate {
   string votePower = 5;
 }
 
-message GetCandidatesResponse {
+message Candidates {
   repeated Candidate candidates = 1;
 }
 
-message GetDynastyResponse {
+message Dynasty {
   repeated string addresses = 1;
 }
 
-message GetMedStateResponse {
+message MedState {
   // Block chain id
   uint32 chain_id = 1;
   // Current tail block hash
@@ -213,16 +203,16 @@ message GetMedStateResponse {
   string LIB = 4;
 }
 
-message GetTransactionsResponse {
-  repeated GetTransactionResponse transactions = 1;
+message Transactions {
+  repeated Transaction transactions = 1;
 }
 
-message GetTransactionRequest {
+message GetTransaction {
   // Transaction hash
   string hash = 1;
 }
 
-message GetTransactionResponse {
+message Transaction {
   // Transaction hash
   string hash = 1;
   // Hex string of the sender account addresss.
@@ -256,21 +246,14 @@ message GetTransactionResponse {
   bool executed = 33;
 }
 
-message GetTransactionReceiptResponse {
+message TransactionReceipt {
   bool executed = 1;
   string cpuUsage = 2;
   string netUsate = 3;
   string error = 4;
 }
 
-message GetAccountTransactionsRequest {
-  // Hex string of the account addresss.
-  string address = 1;
-  // Whether or not to include pending transactions. Default is true.
-  bool include_pending = 2;
-}
-
-message SendTransactionRequest {
+message SendTransaction {
   // Transaction hash
   string hash = 1;
   // Hex string of the sender account addresss.
@@ -299,7 +282,7 @@ message SendTransactionRequest {
   string payer_sign = 32;
 }
 
-message SendTransactionResponse {
+message TransactionHash {
   // Hex string of transaction hash.
   string hash = 1;
 }
@@ -313,6 +296,6 @@ message SubscribeResponse {
   string hash = 2;
 }
 
-message HealthCheckResponse {
+message Health {
   bool ok = 1;
 }
