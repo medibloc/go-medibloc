@@ -16,7 +16,6 @@
 package blockutil
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -52,7 +51,6 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 func Bandwidth(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
 	execTx, err := DefaultTxMap[tx.TxType()](tx)
 	require.NoError(t, err)
-	fmt.Println(b.State().CPURef(), b.State().NetRef())
 	cpuBw, netBw, err := execTx.Bandwidth(b.State())
 	require.NoError(t, err)
 	bw, err := cpuBw.Add(netBw)

@@ -621,7 +621,6 @@ func (bd *BlockData) verifyTotalBandwidth() error {
 	netUsage := util.NewUint128()
 	var err error
 	for _, tx := range bd.Transactions() {
-		fmt.Println(tx)
 		cpuUsage, err = cpuUsage.Add(tx.Receipt().CPUUsage())
 		if err != nil {
 			return err
