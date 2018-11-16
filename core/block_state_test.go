@@ -190,31 +190,16 @@ func TestTxsFromTxsTo(t *testing.T) {
 
 }
 
-func TestRefBandwidth(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
-
-	bb = bb.Child().SignProposer()
-	b := bb.Build()
-	t.Log(b.Height(), b.Reward(), b.Supply(), b.CPURef(), b.NetRef())
-
-	bb = bb.Child().SignProposer()
-	b = bb.Build()
-	t.Log(b.Height(), b.Reward(), b.Supply(), b.CPURef(), b.NetRef())
-}
-
-func TestBandwidthLimit(t *testing.T) {
+func TestBandwidthUsageAndRef(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
 	bb = bb.Child().Stake().SignProposer()
-	b := bb.Build()
+	b1 := bb.Build()
 
 	to := testutil.NewAddrKeyPair(t)
 	from := bb.TokenDist[testutil.DynastySize]
 
-	maxCPU, err := b.CPURef().Mul(util.NewUint128FromUint(uint64(core.CPULimit)))
-	assert.NoError(t, err)
-
-	maxNet, err := b.CPURef().Mul(util.NewUint128FromUint(uint64(core.NetLimit)))
+	maxCPU, err := b1.CPURef().Mul(util.NewUint128FromUint(uint64(core.CPULimit)))
 	assert.NoError(t, err)
 
 	bb = bb.Child()
@@ -223,7 +208,7 @@ func TestBandwidthLimit(t *testing.T) {
 		tx, err := core.NewTransferTx(TX)
 		assert.NoError(t, err)
 
-		reqCPU, _, err := tx.Bandwidth(b.State())
+		reqCPU, _, err := tx.Bandwidth(b1.State())
 		assert.NoError(t, err)
 
 		maxCPU, err = maxCPU.Sub(reqCPU)
@@ -234,20 +219,23 @@ func TestBandwidthLimit(t *testing.T) {
 		bb.ExecuteTx(TX)
 	}
 
-	b = bb.SignProposer().Build()
+	b2 := bb.SignProposer().Build()
 
-	from = bb.TokenDist[testutil.DynastySize-1]
+	maxNet, err := b2.CPURef().Mul(util.NewUint128FromUint(uint64(core.NetLimit)))
+	assert.NoError(t, err)
+
 	bb = bb.Child()
 	payload := &core.DefaultPayload{
 		Message: "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm",
 	}
+
 	for i := 3; ; i++ {
 		TX := bb.Tx().Type(core.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).
 			Build()
 		tx, err := core.NewTransferTx(TX)
 		assert.NoError(t, err)
 
-		_, reqNet, err := tx.Bandwidth(b.State())
+		_, reqNet, err := tx.Bandwidth(b2.State())
 		assert.NoError(t, err)
 
 		maxNet, err = maxNet.Sub(reqNet)
@@ -257,4 +245,13 @@ func TestBandwidthLimit(t *testing.T) {
 		}
 		bb.ExecuteTx(TX)
 	}
+	b3 := bb.SignProposer().Build()
+
+	bb = bb.Child().SignProposer()
+	b4 := bb.Build()
+
+	assert.True(t, b1.CPUUsage().Cmp(b2.CPUUsage()) < 0)
+	assert.True(t, b2.NetUsage().Cmp(b3.NetUsage()) < 0)
+	assert.True(t, b2.CPURef().Cmp(b3.CPURef()) < 0)
+	assert.True(t, b3.NetRef().Cmp(b4.NetRef()) < 0)
 }
