@@ -33,7 +33,9 @@ const (
 	RecordsPrefix      = "r_"  // records
 	CertReceivedPrefix = "cr_" // certs received
 	CertIssuedPrefix   = "ci_" // certs issued
-	AliasPrefix        = ""    // alias
+	AliasPrefix        = ""    // alias prefix for data trie
+	AccountPrefix      = "ac_" // alias account prefix for account state trie
+	AliasAccountPrefix = "al_" // alias account prefix for account state trie
 )
 
 // Account default item in state
@@ -308,7 +310,8 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = as.GetData(addr.Bytes(), acc)
+	//err = as.GetData(addr.Bytes(), acc)
+	err = as.GetData(append([]byte(AccountPrefix), addr.Bytes()...), acc)
 	if err == ErrNotFound {
 		acc.Address = addr
 		return acc, nil
@@ -322,7 +325,8 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 
 //putAccount put account to trie batch
 func (as *AccountState) putAccount(acc *Account) error {
-	return as.PutData(acc.Address.Bytes(), acc)
+	return as.PutData(append([]byte(AccountPrefix), acc.Address.Bytes()...), acc)
+	//return as.PutData(acc.Address.Bytes(), acc)
 }
 
 // incrementNonce increment account's nonce
@@ -335,10 +339,11 @@ func (as *AccountState) incrementNonce(addr common.Address) error {
 	return as.putAccount(acc)
 }
 
-//accounts returns account slice
+//accounts returns account slice, except alias account
 func (as *AccountState) accounts() ([]*Account, error) {
 	var accounts []*Account
-	iter, err := as.Iterator(nil)
+	//iter, err := as.Iterator(nil)
+	iter, err := as.Iterator([]byte(AccountPrefix))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -355,25 +360,16 @@ func (as *AccountState) accounts() ([]*Account, error) {
 	}
 
 	for exist {
+		accountBytes := iter.Value()
+
 		acc, err := newAccount(as.storage)
 		if err != nil {
 			return nil, err
 		}
-		accountBytes := iter.Value()
+		if err := acc.FromBytes(accountBytes); err != nil {
+			return nil, err
+		}
 		exist, err = iter.Next()
-
-		pbAccount := new(corepb.Account)
-		if err := proto.Unmarshal(accountBytes, pbAccount); err != nil {
-			return nil, err
-		}
-		if pbAccount.Balance == nil {
-			continue
-		}
-		if err := acc.fromProto(pbAccount); err != nil {
-			return nil, err
-		}
-		//exist, err = iter.Next()
-
 		accounts = append(accounts, acc)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
@@ -452,7 +448,8 @@ func (aa *AliasAccount) aliasAccountToBytes() ([]byte, error) {
 
 //GetAliasAccount returns alias account
 func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error) {
-	accountBytes, err := as.Get([]byte(AliasName))
+	//accountBytes, err := as.Get([]byte(AliasName))
+	accountBytes, err := as.Get(append([]byte(AliasAccountPrefix), []byte(AliasName)...))
 	if err != nil {
 		return nil, err
 	}
@@ -477,5 +474,6 @@ func (as *AccountState) PutAliasAccount(acc *AliasAccount, aliasName string) err
 	if err != nil {
 		return err
 	}
-	return as.Put([]byte(aliasName), aaBytes)
+	//return as.Put([]byte(aliasName), aaBytes)
+	return as.Put(append([]byte(AliasAccountPrefix), []byte(aliasName)...), aaBytes)
 }

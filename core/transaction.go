@@ -1338,7 +1338,7 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 
-	err = b.State().accState.Delete([]byte(pbAlias.AliasName))
+	err = b.State().accState.Delete(append([]byte(AliasAccountPrefix), []byte(pbAlias.AliasName)...))
 	if err != nil {
 		return err
 	}
