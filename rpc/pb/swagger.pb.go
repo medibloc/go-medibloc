@@ -20,12 +20,12 @@ const (
   "paths": {
     "/v1/account": {
       "get": {
-        "operationId": "GetAccount",
+        "operationId": "GetAccountAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetAccountResponse"
+              "$ref": "#/definitions/rpcpbAccount"
             }
           }
         },
@@ -67,12 +67,12 @@ const (
     },
     "/v1/block": {
       "get": {
-        "operationId": "GetBlock",
+        "operationId": "GetBlockAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetBlockResponse"
+              "$ref": "#/definitions/rpcpbBlock"
             }
           }
         },
@@ -107,12 +107,12 @@ const (
     },
     "/v1/blocks": {
       "get": {
-        "operationId": "GetBlocks",
+        "operationId": "GetBlocksAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetBlocksResponse"
+              "$ref": "#/definitions/rpcpbBlocks"
             }
           }
         },
@@ -139,12 +139,12 @@ const (
     },
     "/v1/candidates": {
       "get": {
-        "operationId": "GetCandidates",
+        "operationId": "GetCandidatesAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetCandidatesResponse"
+              "$ref": "#/definitions/rpcpbCandidates"
             }
           }
         },
@@ -155,12 +155,12 @@ const (
     },
     "/v1/dynasty": {
       "get": {
-        "operationId": "GetDynasty",
+        "operationId": "GetDynastyAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetDynastyResponse"
+              "$ref": "#/definitions/rpcpbDynasty"
             }
           }
         },
@@ -171,12 +171,12 @@ const (
     },
     "/v1/healthcheck": {
       "get": {
-        "operationId": "HealthCheck",
+        "operationId": "HealthCheckAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbHealthCheckResponse"
+              "$ref": "#/definitions/rpcpbHealth"
             }
           }
         },
@@ -187,12 +187,12 @@ const (
     },
     "/v1/node/medstate": {
       "get": {
-        "operationId": "GetMedState",
+        "operationId": "GetMedStateAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetMedStateResponse"
+              "$ref": "#/definitions/rpcpbMedState"
             }
           }
         },
@@ -203,7 +203,7 @@ const (
     },
     "/v1/subscribe": {
       "get": {
-        "operationId": "Subscribe",
+        "operationId": "SubscribeAPI",
         "responses": {
           "200": {
             "description": "(streaming responses)",
@@ -230,12 +230,12 @@ const (
     },
     "/v1/transaction": {
       "get": {
-        "operationId": "GetTransaction",
+        "operationId": "GetTransactionAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetTransactionResponse"
+              "$ref": "#/definitions/rpcpbTransaction"
             }
           }
         },
@@ -253,12 +253,12 @@ const (
         ]
       },
       "post": {
-        "operationId": "SendTransaction",
+        "operationId": "SendTransactionAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbSendTransactionResponse"
+              "$ref": "#/definitions/rpcpbTransactionHash"
             }
           }
         },
@@ -268,7 +268,7 @@ const (
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/rpcpbSendTransactionRequest"
+              "$ref": "#/definitions/rpcpbSendTransaction"
             }
           }
         ],
@@ -279,12 +279,12 @@ const (
     },
     "/v1/transaction/receipt": {
       "get": {
-        "operationId": "GetTransactionReceipt",
+        "operationId": "GetTransactionReceiptAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetTransactionReceiptResponse"
+              "$ref": "#/definitions/rpcpbTransactionReceipt"
             }
           }
         },
@@ -304,12 +304,12 @@ const (
     },
     "/v1/transactions/pending": {
       "get": {
-        "operationId": "GetPendingTransactions",
+        "operationId": "GetPendingTransactionsAPI",
         "responses": {
           "200": {
             "description": "",
             "schema": {
-              "$ref": "#/definitions/rpcpbGetTransactionsResponse"
+              "$ref": "#/definitions/rpcpbTransactions"
             }
           }
         },
@@ -320,27 +320,7 @@ const (
     }
   },
   "definitions": {
-    "rpcpbCandidate": {
-      "type": "object",
-      "properties": {
-        "candidate_id": {
-          "type": "string"
-        },
-        "address": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        },
-        "collateral": {
-          "type": "string"
-        },
-        "votePower": {
-          "type": "string"
-        }
-      }
-    },
-    "rpcpbGetAccountResponse": {
+    "rpcpbAccount": {
       "type": "object",
       "properties": {
         "address": {
@@ -381,7 +361,7 @@ const (
         }
       }
     },
-    "rpcpbGetBlockResponse": {
+    "rpcpbBlock": {
       "type": "object",
       "properties": {
         "height": {
@@ -448,7 +428,7 @@ const (
         "transactions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/rpcpbGetTransactionResponse"
+            "$ref": "#/definitions/rpcpbTransaction"
           },
           "title": "Transactions in block"
         },
@@ -460,18 +440,38 @@ const (
         }
       }
     },
-    "rpcpbGetBlocksResponse": {
+    "rpcpbBlocks": {
       "type": "object",
       "properties": {
         "blocks": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/rpcpbGetBlockResponse"
+            "$ref": "#/definitions/rpcpbBlock"
           }
         }
       }
     },
-    "rpcpbGetCandidatesResponse": {
+    "rpcpbCandidate": {
+      "type": "object",
+      "properties": {
+        "candidate_id": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "collateral": {
+          "type": "string"
+        },
+        "votePower": {
+          "type": "string"
+        }
+      }
+    },
+    "rpcpbCandidates": {
       "type": "object",
       "properties": {
         "candidates": {
@@ -482,7 +482,7 @@ const (
         }
       }
     },
-    "rpcpbGetDynastyResponse": {
+    "rpcpbDynasty": {
       "type": "object",
       "properties": {
         "addresses": {
@@ -493,7 +493,16 @@ const (
         }
       }
     },
-    "rpcpbGetMedStateResponse": {
+    "rpcpbHealth": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "format": "boolean"
+        }
+      }
+    },
+    "rpcpbMedState": {
       "type": "object",
       "properties": {
         "chain_id": {
@@ -516,25 +525,76 @@ const (
         }
       }
     },
-    "rpcpbGetTransactionReceiptResponse": {
+    "rpcpbSendTransaction": {
       "type": "object",
       "properties": {
-        "executed": {
-          "type": "boolean",
-          "format": "boolean"
+        "hash": {
+          "type": "string",
+          "title": "Transaction hash"
         },
-        "cpuUsage": {
+        "to": {
+          "type": "string",
+          "description": "Hex string of the sender account addresss."
+        },
+        "value": {
+          "type": "string",
+          "description": "Amount of value sending with this transaction."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64",
+          "description": "Transaction timestamp."
+        },
+        "tx_type": {
+          "type": "string",
+          "description": "Transaction type."
+        },
+        "nonce": {
+          "type": "string",
+          "format": "uint64",
+          "description": "Transaction nonce."
+        },
+        "chain_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction chain ID."
+        },
+        "payload": {
+          "type": "string",
+          "title": "Transaction payload"
+        },
+        "hash_alg": {
+          "type": "integer",
+          "format": "int64",
+          "title": "Transaction hash algorithm"
+        },
+        "crypto_alg": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Transaction crypto algorithm."
+        },
+        "sign": {
+          "type": "string",
+          "description": "Transaction sign."
+        },
+        "payer_sign": {
+          "type": "string",
+          "description": "Transaction payer's sign."
+        }
+      }
+    },
+    "rpcpbSubscribeResponse": {
+      "type": "object",
+      "properties": {
+        "topic": {
           "type": "string"
         },
-        "netUsate": {
-          "type": "string"
-        },
-        "error": {
+        "hash": {
           "type": "string"
         }
       }
     },
-    "rpcpbGetTransactionResponse": {
+    "rpcpbTransaction": {
       "type": "object",
       "properties": {
         "hash": {
@@ -601,85 +661,7 @@ const (
         }
       }
     },
-    "rpcpbGetTransactionsResponse": {
-      "type": "object",
-      "properties": {
-        "transactions": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/rpcpbGetTransactionResponse"
-          }
-        }
-      }
-    },
-    "rpcpbHealthCheckResponse": {
-      "type": "object",
-      "properties": {
-        "ok": {
-          "type": "boolean",
-          "format": "boolean"
-        }
-      }
-    },
-    "rpcpbSendTransactionRequest": {
-      "type": "object",
-      "properties": {
-        "hash": {
-          "type": "string",
-          "title": "Transaction hash"
-        },
-        "to": {
-          "type": "string",
-          "description": "Hex string of the sender account addresss."
-        },
-        "value": {
-          "type": "string",
-          "description": "Amount of value sending with this transaction."
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Transaction timestamp."
-        },
-        "tx_type": {
-          "type": "string",
-          "description": "Transaction type."
-        },
-        "nonce": {
-          "type": "string",
-          "format": "uint64",
-          "description": "Transaction nonce."
-        },
-        "chain_id": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Transaction chain ID."
-        },
-        "payload": {
-          "type": "string",
-          "title": "Transaction payload"
-        },
-        "hash_alg": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Transaction hash algorithm"
-        },
-        "crypto_alg": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Transaction crypto algorithm."
-        },
-        "sign": {
-          "type": "string",
-          "description": "Transaction sign."
-        },
-        "payer_sign": {
-          "type": "string",
-          "description": "Transaction payer's sign."
-        }
-      }
-    },
-    "rpcpbSendTransactionResponse": {
+    "rpcpbTransactionHash": {
       "type": "object",
       "properties": {
         "hash": {
@@ -688,14 +670,32 @@ const (
         }
       }
     },
-    "rpcpbSubscribeResponse": {
+    "rpcpbTransactionReceipt": {
       "type": "object",
       "properties": {
-        "topic": {
+        "executed": {
+          "type": "boolean",
+          "format": "boolean"
+        },
+        "cpuUsage": {
           "type": "string"
         },
-        "hash": {
+        "netUsate": {
           "type": "string"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "rpcpbTransactions": {
+      "type": "object",
+      "properties": {
+        "transactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/rpcpbTransaction"
+          }
         }
       }
     }
