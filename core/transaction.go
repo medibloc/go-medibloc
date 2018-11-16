@@ -1254,6 +1254,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 	aa.Account = tx.addr
+	aa.Alias = tx.aliasName
 	b.State().accState.PutAliasAccount(aa, tx.aliasName)
 	return nil
 }

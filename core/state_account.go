@@ -417,11 +417,13 @@ func KeyTrieToSlice(trie *trie.Batch) [][]byte {
 // AliasAccount alias for account
 type AliasAccount struct {
 	Account common.Address
+	Alias   string
 }
 
 func newAliasAccount() (*AliasAccount, error) {
 	acc := &AliasAccount{
 		Account: common.Address{},
+		Alias:   "",
 	}
 	return acc, nil
 }
@@ -429,12 +431,14 @@ func newAliasAccount() (*AliasAccount, error) {
 func (aa *AliasAccount) fromProto(pbAcc *corepb.AliasAccount) error {
 	//var err error
 	aa.Account.FromBytes(pbAcc.Account)
+	aa.Alias = pbAcc.Alias
 	return nil
 }
 
 func (aa *AliasAccount) toProto() (*corepb.AliasAccount, error) {
 	return &corepb.AliasAccount{
 		Account: aa.Account.Bytes(),
+		Alias:   aa.Alias,
 	}, nil
 }
 
@@ -448,7 +452,6 @@ func (aa *AliasAccount) aliasAccountToBytes() ([]byte, error) {
 
 //GetAliasAccount returns alias account
 func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error) {
-	//accountBytes, err := as.Get([]byte(AliasName))
 	accountBytes, err := as.Get(append([]byte(AliasAccountPrefix), []byte(AliasName)...))
 	if err != nil {
 		return nil, err
@@ -474,6 +477,5 @@ func (as *AccountState) PutAliasAccount(acc *AliasAccount, aliasName string) err
 	if err != nil {
 		return err
 	}
-	//return as.Put([]byte(aliasName), aaBytes)
 	return as.Put(append([]byte(AliasAccountPrefix), []byte(aliasName)...), aaBytes)
 }

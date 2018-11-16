@@ -21,6 +21,7 @@ message Account{
 
 message AliasAccount{
   bytes account = 1;
+  string alias = 2;
 }
 
 message DataState {
