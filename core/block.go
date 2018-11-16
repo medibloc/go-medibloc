@@ -606,7 +606,7 @@ func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
 	if err != nil {
 		return err
 	}
-	if maxNet.Cmp(bd.NetUsage()) < 0 {
+	if bd.NetUsage().Cmp(maxNet) < 0 {
 		return ErrInvalidNetUsage
 	}
 
