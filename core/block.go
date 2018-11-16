@@ -659,6 +659,10 @@ func (b *Block) Child() (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	state.cpuUsage = util.NewUint128()
+	state.netUsage = util.NewUint128()
+
 	state.cpuRef, err = calcRefCPU(b)
 	if err != nil {
 		return nil, err
