@@ -179,10 +179,12 @@ var (
 	ErrCannotRecoverSigner              = errors.New("failed to recover payer from sign")
 	ErrCannotRecoverPayer               = errors.New("failed to recover payer from payer sign")
 	ErrWrongReceipt                     = errors.New("transaction receipt is wrong in block data")
-	ErrInvalidCPURef                    = errors.New("invalid Cpu reference")
+	ErrInvalidCPURef                    = errors.New("invalid cpu reference")
 	ErrInvalidNetRef                    = errors.New("invalid Net reference")
 	ErrInvalidCPUUsage                  = errors.New("block uses too much cpu bandwidth")
 	ErrInvalidNetUsage                  = errors.New("block ueses too much net bandwidth")
+	ErrWrongCPUUsage                    = errors.New("block cpu usage is not matched with sum of tx cpu usage")
+	ErrWrongNetUsage                    = errors.New("block net usage is not matched with sum of tx net usage")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

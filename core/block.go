@@ -594,34 +594,49 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 }
 
 func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
-	cpuRef, err := calcRefCPU(parent)
-	if err != nil {
-		return err
-	}
-	if cpuRef.Cmp(bd.CPURef()) != 0 {
-		return ErrInvalidCPURef
-	}
 	maxCPU, err := bd.CPURef().Mul(util.NewUint128FromUint(uint64(cpuLimit)))
 	if err != nil {
 		return err
 	}
-	if maxCPU.Cmp(bd.CPUUsage()) < 0 {
+	if bd.CPUUsage().Cmp(maxCPU) > 0 {
 		return ErrInvalidCPUUsage
 	}
 
-	netRef, err := calcRefNet(parent)
-	if err != nil {
-		return err
-	}
-	if netRef.Cmp(bd.NetRef()) != 0 {
-		return ErrInvalidCPURef
-	}
 	maxNet, err := bd.NetRef().Mul(util.NewUint128FromUint(uint64(netLimit)))
 	if err != nil {
 		return err
 	}
 	if maxNet.Cmp(bd.NetUsage()) < 0 {
 		return ErrInvalidNetUsage
+	}
+
+	if err := bd.verifyTotalBandwidth(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bd *BlockData) verifyTotalBandwidth() error {
+	cpuUsage := util.NewUint128()
+	netUsage := util.NewUint128()
+	var err error
+	for _, tx := range bd.Transactions() {
+		fmt.Println(tx)
+		cpuUsage, err = cpuUsage.Add(tx.Receipt().CPUUsage())
+		if err != nil {
+			return err
+		}
+		netUsage, err = netUsage.Add(tx.Receipt().NetUsage())
+		if err != nil {
+			return err
+		}
+	}
+
+	if bd.CPUUsage().Cmp(cpuUsage) != 0 {
+		return ErrWrongCPUUsage
+	}
+	if bd.NetUsage().Cmp(netUsage) != 0 {
+		return ErrWrongNetUsage
 	}
 	return nil
 }
@@ -1161,6 +1176,21 @@ func (b *Block) AppendTransaction(transaction *Transaction) {
 
 // VerifyState verifies block states comparing with root hashes in header
 func (b *Block) VerifyState() error {
+	if b.state.CPURef().Cmp(b.CPURef()) != 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"state":  b.state.CPURef(),
+			"header": b.CPURef(),
+		}).Warn("Failed to verify CPU ref.")
+		return ErrInvalidCPURef
+	}
+	if b.state.NetRef().Cmp(b.NetRef()) != 0 {
+		logging.Console().WithFields(logrus.Fields{
+			"state":  b.state.NetRef(),
+			"header": b.NetRef(),
+		}).Warn("Failed to verify Net ref.")
+		return ErrInvalidNetRef
+	}
+
 	if b.state.Reward().Cmp(b.Reward()) != 0 {
 		logging.Console().WithFields(logrus.Fields{
 			"state":  b.state.Reward(),
