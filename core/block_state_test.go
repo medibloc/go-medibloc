@@ -201,3 +201,60 @@ func TestRefBandwidth(t *testing.T) {
 	b = bb.Build()
 	t.Log(b.Height(), b.Reward(), b.Supply(), b.CPURef(), b.NetRef())
 }
+
+func TestBandwidthLimit(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+
+	bb = bb.Child().Stake().SignProposer()
+	b := bb.Build()
+
+	to := testutil.NewAddrKeyPair(t)
+	from := bb.TokenDist[testutil.DynastySize]
+
+	maxCPU, err := b.CPURef().Mul(util.NewUint128FromUint(uint64(core.CPULimit)))
+	assert.NoError(t, err)
+
+	maxNet, err := b.CPURef().Mul(util.NewUint128FromUint(uint64(core.NetLimit)))
+	assert.NoError(t, err)
+
+	bb = bb.Child()
+	for i := 2; ; i++ {
+		TX := bb.Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
+		tx, err := core.NewTransferTx(TX)
+		assert.NoError(t, err)
+
+		reqCPU, _, err := tx.Bandwidth(b.State())
+		assert.NoError(t, err)
+
+		maxCPU, err = maxCPU.Sub(reqCPU)
+		if err != nil {
+			bb.ExecuteTxErr(TX, core.ErrExceedBlockMaxCPUUsage)
+			break
+		}
+		bb.ExecuteTx(TX)
+	}
+
+	b = bb.SignProposer().Build()
+
+	from = bb.TokenDist[testutil.DynastySize-1]
+	bb = bb.Child()
+	payload := &core.DefaultPayload{
+		Message: "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm",
+	}
+	for i := 3; ; i++ {
+		TX := bb.Tx().Type(core.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).
+			Build()
+		tx, err := core.NewTransferTx(TX)
+		assert.NoError(t, err)
+
+		_, reqNet, err := tx.Bandwidth(b.State())
+		assert.NoError(t, err)
+
+		maxNet, err = maxNet.Sub(reqNet)
+		if err != nil {
+			bb.ExecuteTxErr(TX, core.ErrExceedBlockMaxNetUsage)
+			break
+		}
+		bb.ExecuteTx(TX)
+	}
+}

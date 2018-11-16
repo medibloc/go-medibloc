@@ -306,7 +306,7 @@ func (bs *BlockState) checkBandwidthLimit(cpu, net *util.Uint128) error {
 	if err != nil {
 		return err
 	}
-	maxCPU, err := bs.cpuRef.Mul(util.NewUint128FromUint(uint64(cpuLimit)))
+	maxCPU, err := bs.cpuRef.Mul(util.NewUint128FromUint(uint64(CPULimit)))
 	if err != nil {
 		return err
 	}
@@ -323,7 +323,7 @@ func (bs *BlockState) checkBandwidthLimit(cpu, net *util.Uint128) error {
 	if err != nil {
 		return err
 	}
-	maxNet, err := bs.netRef.Mul(util.NewUint128FromUint(uint64(netLimit)))
+	maxNet, err := bs.netRef.Mul(util.NewUint128FromUint(uint64(NetLimit)))
 	if err != nil {
 		return err
 	}

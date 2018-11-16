@@ -594,7 +594,7 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 }
 
 func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
-	maxCPU, err := bd.CPURef().Mul(util.NewUint128FromUint(uint64(cpuLimit)))
+	maxCPU, err := bd.CPURef().Mul(util.NewUint128FromUint(uint64(CPULimit)))
 	if err != nil {
 		return err
 	}
@@ -602,7 +602,7 @@ func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
 		return ErrInvalidCPUUsage
 	}
 
-	maxNet, err := bd.NetRef().Mul(util.NewUint128FromUint(uint64(netLimit)))
+	maxNet, err := bd.NetRef().Mul(util.NewUint128FromUint(uint64(NetLimit)))
 	if err != nil {
 		return err
 	}
@@ -1346,7 +1346,7 @@ func calcRefCPU(parent *Block) (*util.Uint128, error) {
 		increaseRate:   BandwidthIncreaseRate,
 		decreaseRate:   BandwidthDecreaseRate,
 		discountRatio:  MinimumDiscountRatio,
-		limit:          cpuLimit,
+		limit:          CPULimit,
 		usage:          parent.cpuUsage,
 		supply:         parent.supply,
 		previousRef:    parent.cpuRef,
@@ -1360,7 +1360,7 @@ func calcRefNet(parent *Block) (*util.Uint128, error) {
 		increaseRate:   BandwidthIncreaseRate,
 		decreaseRate:   BandwidthDecreaseRate,
 		discountRatio:  MinimumDiscountRatio,
-		limit:          netLimit,
+		limit:          NetLimit,
 		usage:          parent.netUsage,
 		supply:         parent.supply,
 		previousRef:    parent.netRef,
