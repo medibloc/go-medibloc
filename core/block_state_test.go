@@ -250,8 +250,15 @@ func TestBandwidthUsageAndRef(t *testing.T) {
 	bb = bb.Child().SignProposer()
 	b4 := bb.Build()
 
+	bb = bb.Child().SignProposer()
+	b5 := bb.Build()
+
 	assert.True(t, b1.CPUUsage().Cmp(b2.CPUUsage()) < 0)
 	assert.True(t, b2.NetUsage().Cmp(b3.NetUsage()) < 0)
 	assert.True(t, b2.CPURef().Cmp(b3.CPURef()) < 0)
 	assert.True(t, b3.NetRef().Cmp(b4.NetRef()) < 0)
+	assert.True(t, b4.CPUUsage().Uint64() == 0)
+	assert.True(t, b4.NetUsage().Uint64() == 0)
+	assert.True(t, b5.CPURef().Cmp(b4.CPURef()) < 0)
+	assert.True(t, b5.NetRef().Cmp(b4.NetRef()) < 0)
 }
