@@ -49,8 +49,8 @@ func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.
 	}
 }
 
-// GetAccountAPI handles GetAccount rpc.
-func (s *APIService) GetAccountAPI(ctx context.Context, req *rpcpb.GetAccount) (*rpcpb.Account,
+// GetAccount handles GetAccount rpc.
+func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountRequest) (*rpcpb.Account,
 	error) {
 	var block *core.Block
 	var err error
@@ -106,8 +106,8 @@ func (s *APIService) GetAccountAPI(ctx context.Context, req *rpcpb.GetAccount) (
 	return coreAccount2rpcAccount(acc, block.Timestamp(), addr)
 }
 
-// GetBlockAPI returns block
-func (s *APIService) GetBlockAPI(ctx context.Context, req *rpcpb.GetBlock) (*rpcpb.Block, error) {
+// GetBlock returns block
+func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.Block, error) {
 	var block *core.Block
 	var err error
 
@@ -146,8 +146,8 @@ func (s *APIService) GetBlockAPI(ctx context.Context, req *rpcpb.GetBlock) (*rpc
 	return coreBlock2rpcBlock(block, false)
 }
 
-// GetBlocksAPI returns blocks
-func (s *APIService) GetBlocksAPI(ctx context.Context, req *rpcpb.GetBlocks) (*rpcpb.Blocks, error) {
+// GetBlocks returns blocks
+func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest) (*rpcpb.Blocks, error) {
 	var rpcBlocks []*rpcpb.Block
 
 	if req.From > req.To || req.From < 1 {
@@ -180,8 +180,8 @@ func (s *APIService) GetBlocksAPI(ctx context.Context, req *rpcpb.GetBlocks) (*r
 	}, nil
 }
 
-// GetCandidatesAPI returns all candidates
-func (s *APIService) GetCandidatesAPI(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Candidates,
+// GetCandidates returns all candidates
+func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Candidates,
 	error) {
 	var rpcCandidates []*rpcpb.Candidate
 	block := s.bm.TailBlock()
@@ -219,8 +219,8 @@ func (s *APIService) GetCandidatesAPI(ctx context.Context, req *rpcpb.NonParamRe
 	}, nil
 }
 
-// GetDynastyAPI returns all dynasty accounts
-func (s *APIService) GetDynastyAPI(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Dynasty, error) {
+// GetDynasty returns all dynasty accounts
+func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Dynasty, error) {
 	var addresses []string
 
 	block := s.bm.TailBlock()
@@ -236,8 +236,8 @@ func (s *APIService) GetDynastyAPI(ctx context.Context, req *rpcpb.NonParamReque
 	}, nil
 }
 
-// GetMedStateAPI return mednet state
-func (s *APIService) GetMedStateAPI(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.MedState,
+// GetMedState return mednet state
+func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.MedState,
 	error) {
 	tailBlock := s.bm.TailBlock()
 	lib := s.bm.LIB()
@@ -246,12 +246,12 @@ func (s *APIService) GetMedStateAPI(ctx context.Context, req *rpcpb.NonParamRequ
 		ChainId: tailBlock.ChainID(),
 		Tail:    byteutils.Bytes2Hex(tailBlock.Hash()),
 		Height:  tailBlock.Height(),
-		LIB:     byteutils.Bytes2Hex(lib.Hash()),
+		Lib:     byteutils.Bytes2Hex(lib.Hash()),
 	}, nil
 }
 
-// GetPendingTransactionsAPI sends all transactions in the transaction pool
-func (s *APIService) GetPendingTransactionsAPI(ctx context.Context,
+// GetPendingTransactions sends all transactions in the transaction pool
+func (s *APIService) GetPendingTransactions(ctx context.Context,
 	req *rpcpb.NonParamRequest) (*rpcpb.Transactions, error) {
 	txs := s.tm.GetAll()
 	rpcTxs, err := coreTxs2rpcTxs(txs, false)
@@ -264,8 +264,8 @@ func (s *APIService) GetPendingTransactionsAPI(ctx context.Context,
 	}, nil
 }
 
-// GetTransactionAPI returns transaction
-func (s *APIService) GetTransactionAPI(ctx context.Context, req *rpcpb.GetTransaction) (*rpcpb.
+// GetTransaction returns transaction
+func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.
 	Transaction, error) {
 	if len(req.Hash) != 64 {
 		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
@@ -292,8 +292,8 @@ func (s *APIService) GetTransactionAPI(ctx context.Context, req *rpcpb.GetTransa
 	return CoreTx2rpcTx(tx, true)
 }
 
-// GetTransactionReceiptAPI returns transaction receipt
-func (s *APIService) GetTransactionReceiptAPI(ctx context.Context, req *rpcpb.GetTransaction) (*rpcpb.
+// GetTransactionReceipt returns transaction receipt
+func (s *APIService) GetTransactionReceipt(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.
 	TransactionReceipt, error) {
 	if len(req.Hash) != 64 {
 		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
@@ -315,8 +315,8 @@ func (s *APIService) GetTransactionReceiptAPI(ctx context.Context, req *rpcpb.Ge
 	return coreReceipt2rpcReceipt(tx)
 }
 
-// SendTransactionAPI sends transaction
-func (s *APIService) SendTransactionAPI(ctx context.Context, req *rpcpb.SendTransaction) (*rpcpb.
+// SendTransaction sends transaction
+func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.
 	TransactionHash, error) {
 	value, err := util.NewUint128FromString(req.Value)
 	if err != nil {
@@ -361,8 +361,8 @@ func (s *APIService) SendTransactionAPI(ctx context.Context, req *rpcpb.SendTran
 	}, nil
 }
 
-// SubscribeAPI to listen event
-func (s *APIService) SubscribeAPI(req *rpcpb.SubscribeRequest, stream rpcpb.ApiService_SubscribeAPIServer) error {
+// Subscribe to listen event
+func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiService_SubscribeServer) error {
 
 	eventSub, err := core.NewEventSubscriber(1024, req.Topics)
 	if err != nil {
@@ -389,8 +389,8 @@ func (s *APIService) SubscribeAPI(req *rpcpb.SubscribeRequest, stream rpcpb.ApiS
 	}
 }
 
-// HealthCheckAPI returns success.
-func (s *APIService) HealthCheckAPI(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Health,
+// HealthCheck returns success.
+func (s *APIService) HealthCheck(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Health,
 	error) {
 	return &rpcpb.Health{
 		Ok: true,

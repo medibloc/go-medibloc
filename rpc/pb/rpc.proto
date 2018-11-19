@@ -5,81 +5,81 @@ package rpcpb;
 import "google/api/annotations.proto";
 
 service ApiService {
-  rpc GetAccountAPI (GetAccount) returns (Account) {
+  rpc GetAccount (GetAccountRequest) returns (Account) {
     option (google.api.http) = {
 			get: "/v1/account"
 		};
   }
 
-  rpc GetBlockAPI (GetBlock) returns (Block) {
+  rpc GetBlock (GetBlockRequest) returns (Block) {
     option (google.api.http) = {
 			get: "/v1/block"
 		};
   }
 
-  rpc GetBlocksAPI (GetBlocks) returns (Blocks) {
+  rpc GetBlocks (GetBlocksRequest) returns (Blocks) {
     option (google.api.http) = {
 			get: "/v1/blocks"
 		};
   }
 
-  rpc GetCandidatesAPI (NonParamRequest) returns (Candidates) {
+  rpc GetCandidates (NonParamRequest) returns (Candidates) {
     option (google.api.http) = {
 			get: "/v1/candidates"
 		};
   }
 
-  rpc GetDynastyAPI (NonParamRequest) returns (Dynasty) {
+  rpc GetDynasty (NonParamRequest) returns (Dynasty) {
     option (google.api.http) = {
 			get: "/v1/dynasty"
 		};
   }
 
-  rpc GetMedStateAPI (NonParamRequest) returns (MedState) {
+  rpc GetMedState (NonParamRequest) returns (MedState) {
     option (google.api.http) = {
 			get: "/v1/node/medstate"
 		};
   }
 
-  rpc GetPendingTransactionsAPI (NonParamRequest) returns (Transactions) {
+  rpc GetPendingTransactions (NonParamRequest) returns (Transactions) {
     option (google.api.http) = {
 			get: "/v1/transactions/pending"
 		};
   }
 
-  rpc GetTransactionAPI (GetTransaction) returns (Transaction) {
+  rpc GetTransaction (GetTransactionRequest) returns (Transaction) {
     option (google.api.http) = {
 			get: "/v1/transaction"
 		};
   }
 
-  rpc GetTransactionReceiptAPI (GetTransaction) returns (TransactionReceipt) {
+  rpc GetTransactionReceipt (GetTransactionRequest) returns (TransactionReceipt) {
     option (google.api.http) = {
       get: "/v1/transaction/receipt"
     };
   }
 
-  rpc SendTransactionAPI (SendTransaction) returns (TransactionHash) {
+  rpc SendTransaction (SendTransactionRequest) returns (TransactionHash) {
     option (google.api.http) = {
 			post: "/v1/transaction"
 			body: "*"
 		};
   }
 
-  rpc SubscribeAPI (SubscribeRequest) returns (stream SubscribeResponse) {
+  rpc Subscribe (SubscribeRequest) returns (stream SubscribeResponse) {
     option (google.api.http) = {
 			get: "/v1/subscribe"
 		};
   }
 
-  rpc HealthCheckAPI (NonParamRequest) returns (Health) {
+  rpc HealthCheck (NonParamRequest) returns (Health) {
     option (google.api.http) = {
 			get: "/v1/healthcheck"
 		};
   }
 }
 
-message GetAccount {
+message GetAccountRequest {
   // Send only one between address and alias
   // Hex string of the account addresss.
   string address = 1;
@@ -115,10 +115,10 @@ message Account {
 }
 
 message Data {
-  string Alias = 1;
+  string alias = 1;
 }
 
-message GetBlock {
+message GetBlockRequest {
   // Send only one among hash, type and height
   // Block hash
   string hash = 1;
@@ -164,7 +164,7 @@ message Block {
   repeated string tx_hashes = 31;
 }
 
-message GetBlocks {
+message GetBlocksRequest {
   uint64 from = 1;
   uint64 to = 2;
 }
@@ -181,7 +181,7 @@ message Candidate {
   string address = 2;
   string url = 3;
   string collateral = 4;
-  string votePower = 5;
+  string vote_power = 5;
 }
 
 message Candidates {
@@ -200,14 +200,14 @@ message MedState {
   // Current tail block height
   uint64 height = 3;
   // Current LIB hash
-  string LIB = 4;
+  string lib = 4;
 }
 
 message Transactions {
   repeated Transaction transactions = 1;
 }
 
-message GetTransaction {
+message GetTransactionRequest {
   // Transaction hash
   string hash = 1;
 }
@@ -248,12 +248,12 @@ message Transaction {
 
 message TransactionReceipt {
   bool executed = 1;
-  string cpuUsage = 2;
-  string netUsate = 3;
+  string cpu_usage = 2;
+  string net_usage = 3;
   string error = 4;
 }
 
-message SendTransaction {
+message SendTransactionRequest {
   // Transaction hash
   string hash = 1;
   // Hex string of the sender account addresss.

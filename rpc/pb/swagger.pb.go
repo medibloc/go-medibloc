@@ -20,7 +20,7 @@ const (
   "paths": {
     "/v1/account": {
       "get": {
-        "operationId": "GetAccountAPI",
+        "operationId": "GetAccount",
         "responses": {
           "200": {
             "description": "",
@@ -67,7 +67,7 @@ const (
     },
     "/v1/block": {
       "get": {
-        "operationId": "GetBlockAPI",
+        "operationId": "GetBlock",
         "responses": {
           "200": {
             "description": "",
@@ -107,7 +107,7 @@ const (
     },
     "/v1/blocks": {
       "get": {
-        "operationId": "GetBlocksAPI",
+        "operationId": "GetBlocks",
         "responses": {
           "200": {
             "description": "",
@@ -139,7 +139,7 @@ const (
     },
     "/v1/candidates": {
       "get": {
-        "operationId": "GetCandidatesAPI",
+        "operationId": "GetCandidates",
         "responses": {
           "200": {
             "description": "",
@@ -155,7 +155,7 @@ const (
     },
     "/v1/dynasty": {
       "get": {
-        "operationId": "GetDynastyAPI",
+        "operationId": "GetDynasty",
         "responses": {
           "200": {
             "description": "",
@@ -171,7 +171,7 @@ const (
     },
     "/v1/healthcheck": {
       "get": {
-        "operationId": "HealthCheckAPI",
+        "operationId": "HealthCheck",
         "responses": {
           "200": {
             "description": "",
@@ -187,7 +187,7 @@ const (
     },
     "/v1/node/medstate": {
       "get": {
-        "operationId": "GetMedStateAPI",
+        "operationId": "GetMedState",
         "responses": {
           "200": {
             "description": "",
@@ -203,7 +203,7 @@ const (
     },
     "/v1/subscribe": {
       "get": {
-        "operationId": "SubscribeAPI",
+        "operationId": "Subscribe",
         "responses": {
           "200": {
             "description": "(streaming responses)",
@@ -230,7 +230,7 @@ const (
     },
     "/v1/transaction": {
       "get": {
-        "operationId": "GetTransactionAPI",
+        "operationId": "GetTransaction",
         "responses": {
           "200": {
             "description": "",
@@ -253,7 +253,7 @@ const (
         ]
       },
       "post": {
-        "operationId": "SendTransactionAPI",
+        "operationId": "SendTransaction",
         "responses": {
           "200": {
             "description": "",
@@ -268,7 +268,7 @@ const (
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/rpcpbSendTransaction"
+              "$ref": "#/definitions/rpcpbSendTransactionRequest"
             }
           }
         ],
@@ -279,7 +279,7 @@ const (
     },
     "/v1/transaction/receipt": {
       "get": {
-        "operationId": "GetTransactionReceiptAPI",
+        "operationId": "GetTransactionReceipt",
         "responses": {
           "200": {
             "description": "",
@@ -304,7 +304,7 @@ const (
     },
     "/v1/transactions/pending": {
       "get": {
-        "operationId": "GetPendingTransactionsAPI",
+        "operationId": "GetPendingTransactions",
         "responses": {
           "200": {
             "description": "",
@@ -466,7 +466,7 @@ const (
         "collateral": {
           "type": "string"
         },
-        "votePower": {
+        "vote_power": {
           "type": "string"
         }
       }
@@ -519,13 +519,13 @@ const (
           "format": "uint64",
           "title": "Current tail block height"
         },
-        "LIB": {
+        "lib": {
           "type": "string",
           "title": "Current LIB hash"
         }
       }
     },
-    "rpcpbSendTransaction": {
+    "rpcpbSendTransactionRequest": {
       "type": "object",
       "properties": {
         "hash": {
@@ -677,10 +677,10 @@ const (
           "type": "boolean",
           "format": "boolean"
         },
-        "cpuUsage": {
+        "cpu_usage": {
           "type": "string"
         },
-        "netUsate": {
+        "net_usage": {
           "type": "string"
         },
         "error": {

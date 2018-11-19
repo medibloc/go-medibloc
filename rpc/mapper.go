@@ -140,7 +140,7 @@ func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.TransactionReceipt, er
 	return &rpcpb.TransactionReceipt{
 		Executed: tx.Receipt().Executed(),
 		CpuUsage: cpuUsage,
-		NetUsate: netUsage,
+		NetUsage: netUsage,
 		Error:    err,
 	}, nil
 }

@@ -340,7 +340,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 	e.GET("/v1/node/medstate").
 		Expect().JSON().Object().
 		ValueEqual("height", "2").
-		ValueEqual("LIB", byteutils.Bytes2Hex(genesis.Hash())).
+		ValueEqual("lib", byteutils.Bytes2Hex(genesis.Hash())).
 		ValueEqual("tail", byteutils.Bytes2Hex(b.Hash()))
 }
 
