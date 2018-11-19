@@ -306,6 +306,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	// tails : All tail blocks incl. forked tail block
 	// fails : Failed blocks
 	all, tails, fails := bm.findDescendantBlocks(parentOnChain)
+
 	for _, fail := range fails {
 		bm.bp.Remove(fail)
 	}
@@ -355,59 +356,94 @@ func (bm *BlockManager) push(bd *BlockData) error {
 
 func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails []*Block, fails []*BlockData) {
 	children := bm.bp.FindChildren(parent)
+
+	failCh := make(chan *BlockData)
+	allCh := make(chan *Block)
+	tailCh := make(chan *Block)
+	quitCh := make(chan bool)
+
 	for _, v := range children {
-		childData := v.(*BlockData)
+		go func(v HashableBlock) {
+			childData := v.(*BlockData)
 
-		err := verifyBlockHeight(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Warn("Failed to verifyBlockHeight")
-			fails = append(fails, childData)
-			continue
+			err := verifyBlockHeight(childData, parent)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Warn("Failed to verifyBlockHeight")
+				failCh <- childData
+				quitCh <- true
+				return
+			}
+
+			err = verifyTimestamp(childData, parent)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Warn("Failed to verifyTimestamp")
+				failCh <- childData
+				quitCh <- true
+				return
+			}
+
+			err = bm.consensus.VerifyInterval(childData, parent)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err":       err,
+					"timestamp": childData.timestamp,
+				}).Warn("Block timestamp is wrong")
+				failCh <- childData
+				quitCh <- true
+				return
+			}
+
+			block, err := childData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err":    err,
+					"parent": parent,
+				}).Warn("Failed to execute on a parent block.")
+				failCh <- childData
+				quitCh <- true
+				return
+			}
+
+			childAll, childTails, childFails := bm.findDescendantBlocks(block)
+
+			allCh <- block
+
+			for _, c := range childAll {
+				allCh <- c
+			}
+
+			if len(childTails) == 0 {
+				tailCh <- block
+			} else {
+				for _, c := range childTails {
+					tailCh <- c
+				}
+			}
+
+			for _, f := range childFails {
+				failCh <- f
+			}
+			quitCh <- true
+		}(v)
+	}
+
+	if len(children) != 0 {
+		for count := len(children); count > 0; {
+			select {
+			case fail := <-failCh:
+				fails = append(fails, fail)
+			case block := <-allCh:
+				all = append(all, block)
+			case block := <-tailCh:
+				tails = append(tails, block)
+			case <-quitCh:
+				count = count - 1
+			}
 		}
-
-		err = verifyTimestamp(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Warn("Failed to verifyTimestamp")
-			fails = append(fails, childData)
-			continue
-		}
-
-		err = bm.consensus.VerifyInterval(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":       err,
-				"timestamp": childData.timestamp,
-			}).Warn("Block timestamp is wrong")
-			fails = append(fails, childData)
-			continue
-		}
-
-		block, err := childData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":    err,
-				"parent": parent,
-			}).Warn("Failed to execute on a parent block.")
-			fails = append(fails, childData)
-			continue
-		}
-
-		childAll, childTails, childFail := bm.findDescendantBlocks(block)
-
-		all = append(all, block)
-		all = append(all, childAll...)
-
-		if len(childTails) == 0 {
-			tails = append(tails, block)
-		} else {
-			tails = append(tails, childTails...)
-		}
-
-		fails = append(fails, childFail...)
 	}
 	return all, tails, fails
 }
