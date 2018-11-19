@@ -357,13 +357,13 @@ func (bm *BlockManager) push(bd *BlockData) error {
 func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails []*Block, fails []*BlockData) {
 	children := bm.bp.FindChildren(parent)
 
-	failCh := make(chan *BlockData)
-	allCh := make(chan *Block)
-	tailCh := make(chan *Block)
-	quitCh := make(chan bool)
+	var wg sync.WaitGroup
+	mu := &sync.Mutex{}
 
 	for _, v := range children {
+		wg.Add(1)
 		go func(v HashableBlock) {
+			defer wg.Done()
 			childData := v.(*BlockData)
 
 			err := verifyBlockHeight(childData, parent)
@@ -371,8 +371,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Warn("Failed to verifyBlockHeight")
-				failCh <- childData
-				quitCh <- true
+				fails = append(fails, childData)
 				return
 			}
 
@@ -381,8 +380,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Warn("Failed to verifyTimestamp")
-				failCh <- childData
-				quitCh <- true
+				fails = append(fails, childData)
 				return
 			}
 
@@ -392,8 +390,7 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 					"err":       err,
 					"timestamp": childData.timestamp,
 				}).Warn("Block timestamp is wrong")
-				failCh <- childData
-				quitCh <- true
+				fails = append(fails, childData)
 				return
 			}
 
@@ -403,48 +400,28 @@ func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails
 					"err":    err,
 					"parent": parent,
 				}).Warn("Failed to execute on a parent block.")
-				failCh <- childData
-				quitCh <- true
+				fails = append(fails, childData)
 				return
 			}
 
 			childAll, childTails, childFails := bm.findDescendantBlocks(block)
 
-			allCh <- block
-
-			for _, c := range childAll {
-				allCh <- c
-			}
+			mu.Lock()
+			all = append(all, block)
+			all = append(all, childAll...)
 
 			if len(childTails) == 0 {
-				tailCh <- block
+				tails = append(tails, block)
 			} else {
-				for _, c := range childTails {
-					tailCh <- c
-				}
+				tails = append(tails, childTails...)
 			}
 
-			for _, f := range childFails {
-				failCh <- f
-			}
-			quitCh <- true
+			fails = append(fails, childFails...)
+			mu.Unlock()
 		}(v)
 	}
 
-	if len(children) != 0 {
-		for count := len(children); count > 0; {
-			select {
-			case fail := <-failCh:
-				fails = append(fails, fail)
-			case block := <-allCh:
-				all = append(all, block)
-			case block := <-tailCh:
-				tails = append(tails, block)
-			case <-quitCh:
-				count = count - 1
-			}
-		}
-	}
+	wg.Wait()
 	return all, tails, fails
 }
 func verifyTimestamp(bd *BlockData, parent *Block) error {
