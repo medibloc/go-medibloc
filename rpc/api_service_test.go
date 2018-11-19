@@ -426,6 +426,63 @@ func TestAPIService_GetTransaction(t *testing.T) {
 		ValueEqual("error", rpc.ErrMsgTransactionNotFound)
 }
 
+func TestAPIService_GetTransactionReceipt(t *testing.T) {
+	network := testutil.NewNetwork(t, testutil.DynastySize)
+	defer network.Cleanup()
+	network.SetLogTestHook()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+		NextMintSlot2(time.Now().Unix())).Stake()
+
+	payer := seed.Config.TokenDist[testutil.DynastySize]
+	payload := &core.AddRecordPayload{
+		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+	}
+
+	tx1 := bb.Tx().Nonce(2).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx2 := bb.Tx().Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrRecordAlreadyAdded).SignProposer().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	e.GET("/v1/transaction/receipt").
+		WithQuery("hash", byteutils.Bytes2Hex(tx1.Hash())).
+		Expect().
+		JSON().Object().
+		ValueEqual("error", "").
+		ValueEqual("executed", true).
+		ValueEqual("cpu_usage", tx1.Receipt().CPUUsage().String()).
+		ValueEqual("net_usage", tx1.Receipt().NetUsage().String())
+
+	e.GET("/v1/transaction/receipt").
+		WithQuery("hash", byteutils.Bytes2Hex(tx2.Hash())).
+		Expect().
+		JSON().Object().
+		ValueEqual("executed", false).
+		ValueEqual("error", byteutils.Bytes2Hex(tx2.Receipt().Error())).
+		ValueEqual("cpu_usage", tx2.Receipt().CPUUsage().String()).
+		ValueEqual("net_usage", tx2.Receipt().NetUsage().String())
+
+	e.GET("/v1/transaction/receipt").
+		WithQuery("hash", "0123456789").
+		Expect().
+		Status(http.StatusNotFound).
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
+
+	e.GET("/v1/transaction/receipt").
+		WithQuery("hash", "0123456789012345678901234567890123456789012345678901234567890123").
+		Expect().
+		JSON().Object().
+		ValueEqual("error", rpc.ErrMsgTransactionNotFound)
+}
+
 func TestAPIService_HealthCheck(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
