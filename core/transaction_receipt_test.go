@@ -137,7 +137,7 @@ func TestWrongReceipt(t *testing.T) {
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, seed.Med.BlockManager().PushBlockData(b.BlockData))
 }
 
-func TestErrVoteTransactionReceipt(t *testing.T) {
+func TestVoteTransactionReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
 	network.SetLogTestHook()
@@ -152,19 +152,41 @@ func TestErrVoteTransactionReceipt(t *testing.T) {
 		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix())).Stake()
 
-	payload := &dpos.VotePayload{
+	payer := seed.Config.TokenDist[testutil.DynastySize]
+	aliasPayload := &core.RegisterAliasPayload{"helloworld"}
+	aliasTx := bb.Tx().Nonce(2).Payload(aliasPayload).Value(1000000).Type(core.TxOpRegisterAlias).SignPair(payer).Build()
+
+	candidateTx := bb.Tx().Value(1000000).Nonce(3).Type(dpos.TxOpBecomeCandidate).SignPair(payer).Build()
+
+	invalidPayload := &dpos.VotePayload{
 		[][]byte{byteutils.Hex2Bytes("e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")},
 	}
-	payer := seed.Config.TokenDist[testutil.DynastySize]
-	tx := bb.Tx().Nonce(2).Type(dpos.TxOpVote).Payload(payload).SignPair(payer).Build()
-	b := bb.ExecuteTxErr(tx, dpos.ErrNotCandidate).SignProposer().Build()
+	invalidTx := bb.Tx().Nonce(4).Type(dpos.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
+
+	validPayload := &dpos.VotePayload{
+		[][]byte{candidateTx.Hash()},
+	}
+	validTx := bb.Tx().Nonce(5).Type(dpos.TxOpVote).Payload(validPayload).SignPair(payer).Build()
+
+	b := bb.
+		ExecuteTx(aliasTx).
+		ExecuteTx(candidateTx).
+		ExecuteTxErr(invalidTx, dpos.ErrNotCandidate).
+		ExecuteTx(validTx).
+		SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 	seed.Med.BlockManager().BroadCast(b.BlockData)
 
 	time.Sleep(1000 * time.Millisecond)
-	txr, err := receiver.Tail().State().GetTx(tx.Hash())
+	invalidTxr, err := receiver.Tail().State().GetTx(invalidTx.Hash())
 	assert.NoError(t, err)
-	assert.False(t, txr.Receipt().Executed())
-	assert.Equal(t, string(txr.Receipt().Error()), dpos.ErrNotCandidate.Error())
+	assert.False(t, invalidTxr.Receipt().Executed())
+	assert.Equal(t, dpos.ErrNotCandidate.Error(), string(invalidTxr.Receipt().Error()))
+
+	time.Sleep(1000 * time.Millisecond)
+	validTxr, err := receiver.Tail().State().GetTx(validTx.Hash())
+	assert.NoError(t, err)
+	assert.True(t, validTxr.Receipt().Executed())
+	assert.Equal(t, "", string(validTxr.Receipt().Error()))
 }
