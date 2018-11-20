@@ -154,8 +154,8 @@ func TestVoteTransactionReceipt(t *testing.T) {
 
 	payer := seed.Config.TokenDist[testutil.DynastySize]
 	payer2 := seed.Config.TokenDist[testutil.DynastySize+1]
-	aliasPayload1 := &core.RegisterAliasPayload{"helloworld1"}
-	aliasPayload2 := &core.RegisterAliasPayload{"helloworld2"}
+	aliasPayload1 := &core.RegisterAliasPayload{AliasName: "helloworld1"}
+	aliasPayload2 := &core.RegisterAliasPayload{AliasName: "helloworld2"}
 	aliasTx1 := bb.Tx().Nonce(2).Payload(aliasPayload1).Value(1000000).Type(core.TxOpRegisterAlias).SignPair(payer).Build()
 	aliasTx2 := bb.Tx().Nonce(2).Payload(aliasPayload2).Value(1000000).Type(core.TxOpRegisterAlias).SignPair(payer2).Build()
 
@@ -163,12 +163,12 @@ func TestVoteTransactionReceipt(t *testing.T) {
 	candidateTx2 := bb.Tx().Value(1000000).Nonce(3).Type(dpos.TxOpBecomeCandidate).SignPair(payer2).Build()
 
 	invalidPayload := &dpos.VotePayload{
-		[][]byte{byteutils.Hex2Bytes("e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")},
+		CandidateIDs: [][]byte{byteutils.Hex2Bytes("e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")},
 	}
 	invalidTx := bb.Tx().Nonce(4).Type(dpos.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
 
 	validPayload := &dpos.VotePayload{
-		[][]byte{candidateTx1.Hash(), candidateTx2.Hash()},
+		CandidateIDs: [][]byte{candidateTx1.Hash(), candidateTx2.Hash()},
 	}
 	validTx := bb.Tx().Nonce(5).Type(dpos.TxOpVote).Payload(validPayload).SignPair(payer).Build()
 
