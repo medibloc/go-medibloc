@@ -465,7 +465,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 		Expect().
 		JSON().Object().
 		ValueEqual("executed", false).
-		ValueEqual("error", byteutils.Bytes2Hex(tx2.Receipt().Error())).
+		ValueEqual("error", core.ErrRecordAlreadyAdded.Error()).
 		ValueEqual("cpu_usage", tx2.Receipt().CPUUsage().String()).
 		ValueEqual("net_usage", tx2.Receipt().NetUsage().String())
 

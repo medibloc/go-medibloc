@@ -133,7 +133,7 @@ func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.Transactio
 }
 
 func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.TransactionReceipt, error) {
-	err := byteutils.Bytes2Hex(tx.Receipt().Error())
+	err := string(tx.Receipt().Error())
 	cpuUsage := tx.Receipt().CPUUsage().String()
 	netUsage := tx.Receipt().NetUsage().String()
 
