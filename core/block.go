@@ -1035,7 +1035,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 		}).Warn("Failed to verifyProposer")
 		return err
 	}
-
+	b.Commit()
 	if err := b.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -1044,6 +1044,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 		return err
 	}
 
+	b.BeginBatch()
 	if err := b.PayReward(b.coinbase, b.State().Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -1051,7 +1052,6 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 		}).Error("Failed to pay block reward.")
 		return err
 	}
-
 	b.Commit()
 
 	if err := b.VerifyState(); err != nil {
@@ -1079,6 +1079,8 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
+	b.BeginBatch()
+
 	receipt, err := b.ExecuteTransaction(tx, txMap)
 	if receipt == nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -1087,6 +1089,12 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 			"block":       b,
 		}).Warn("No Receipt from transaction execution")
 		return err
+	}
+
+	if err != nil {
+		b.RollBack()
+	} else {
+		b.Commit()
 	}
 
 	if !receipt.Equal(tx.receipt) {
@@ -1099,6 +1107,8 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return ErrWrongReceipt
 	}
 
+	b.BeginBatch()
+
 	if err := b.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
@@ -1107,6 +1117,8 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		}).Warn("Failed to accept a transaction.")
 		return err
 	}
+	b.Commit()
+
 	return nil
 }
 
