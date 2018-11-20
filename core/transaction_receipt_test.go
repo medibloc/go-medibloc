@@ -135,5 +135,36 @@ func TestWrongReceipt(t *testing.T) {
 	b.Transactions()[0].Receipt().SetCPUUsage(util.NewUint128())
 
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, seed.Med.BlockManager().PushBlockData(b.BlockData))
+}
 
+func TestErrVoteTransactionReceipt(t *testing.T) {
+	network := testutil.NewNetwork(t, testutil.DynastySize)
+	defer network.Cleanup()
+	network.SetLogTestHook()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	receiver := network.NewNode()
+	receiver.Start()
+	network.WaitForEstablished()
+
+	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
+		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+		NextMintSlot2(time.Now().Unix())).Stake()
+
+	payload := &dpos.VotePayload{
+		[][]byte{byteutils.Hex2Bytes("e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")},
+	}
+	payer := seed.Config.TokenDist[testutil.DynastySize]
+	tx := bb.Tx().Nonce(2).Type(dpos.TxOpVote).Payload(payload).SignPair(payer).Build()
+	b := bb.ExecuteTxErr(tx, dpos.ErrNotCandidate).SignProposer().Build()
+
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	seed.Med.BlockManager().BroadCast(b.BlockData)
+
+	time.Sleep(1000 * time.Millisecond)
+	txr, err := receiver.Tail().State().GetTx(tx.Hash())
+	assert.NoError(t, err)
+	assert.False(t, txr.Receipt().Executed())
+	assert.Equal(t, string(txr.Receipt().Error()), dpos.ErrNotCandidate.Error())
 }
