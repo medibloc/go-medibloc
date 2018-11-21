@@ -243,7 +243,7 @@ message Transaction {
   // Transaction payer's sign.
   string payer_sign = 32;
   // If transaction is included in the block, it returns true. otherwise, false.
-  bool onChain = 33;
+  bool on_chain = 33;
   // Transaction receipt
   TransactionReceipt receipt = 40;
 }

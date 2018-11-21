@@ -654,7 +654,7 @@ const (
           "type": "string",
           "description": "Transaction payer's sign."
         },
-        "onChain": {
+        "on_chain": {
           "type": "boolean",
           "format": "boolean",
           "description": "If transaction is included in the block, it returns true. otherwise, false."
