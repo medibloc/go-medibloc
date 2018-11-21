@@ -242,8 +242,10 @@ message Transaction {
   string sign = 31;
   // Transaction payer's sign.
   string payer_sign = 32;
-  // If transaction is executed and included in the block, it returns true. otherwise, false.
-  bool executed = 33;
+  // If transaction is included in the block, it returns true. otherwise, false.
+  bool onChain = 33;
+  // Transaction receipt
+  TransactionReceipt receipt = 40;
 }
 
 message TransactionReceipt {

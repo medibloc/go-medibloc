@@ -43,6 +43,13 @@ var (
 	GenesisHeight = uint64(1)
 )
 
+// genesisTxReceipt is a receipt for genesis transaction
+func genesisTxReceipt() *Receipt {
+	receipt := NewReceipt()
+	receipt.SetExecuted(true)
+	return receipt
+}
+
 func genesisHash(quote string) []byte {
 	return hash.Sha3256([]byte(quote))
 }
@@ -133,6 +140,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		payload:   payloadBuf,
 		hashAlg:   algorithm.SHA3256,
 		cryptoAlg: algorithm.SECP256K1,
+		receipt:   genesisTxReceipt(),
 	}
 
 	hash, err := initialTx.CalcHash()
@@ -181,6 +189,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 			chainID:   conf.Meta.ChainId,
 			hashAlg:   algorithm.SHA3256,
 			cryptoAlg: algorithm.SECP256K1,
+			receipt:   genesisTxReceipt(),
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {

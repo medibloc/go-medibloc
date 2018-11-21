@@ -101,7 +101,17 @@ func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 }
 
 // CoreTx2rpcTx converts core transaction type to rpcpb response type
-func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.Transaction, error) {
+func CoreTx2rpcTx(tx *core.Transaction, onChain bool) (*rpcpb.Transaction, error) {
+	var rpcReceipt *rpcpb.TransactionReceipt
+	var err error
+
+	if onChain {
+		rpcReceipt, err = coreReceipt2rpcReceipt(tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &rpcpb.Transaction{
 		Hash:      byteutils.Bytes2Hex(tx.Hash()),
 		From:      tx.From().Hex(),
@@ -116,14 +126,15 @@ func CoreTx2rpcTx(tx *core.Transaction, executed bool) (*rpcpb.Transaction, erro
 		CryptoAlg: uint32(tx.CryptoAlg()),
 		Sign:      byteutils.Bytes2Hex(tx.Sign()),
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
-		Executed:  executed,
+		OnChain:   onChain,
+		Receipt:   rpcReceipt,
 	}, nil
 }
 
-func coreTxs2rpcTxs(txs []*core.Transaction, executed bool) ([]*rpcpb.Transaction, error) {
+func coreTxs2rpcTxs(txs []*core.Transaction, onChain bool) ([]*rpcpb.Transaction, error) {
 	var rpcTxs []*rpcpb.Transaction
 	for _, tx := range txs {
-		rpcTx, err := CoreTx2rpcTx(tx, executed)
+		rpcTx, err := CoreTx2rpcTx(tx, onChain)
 		if err != nil {
 			return nil, err
 		}

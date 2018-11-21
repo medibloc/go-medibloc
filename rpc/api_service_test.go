@@ -400,7 +400,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 		Expect().
 		JSON().Object().
 		ValueEqual("hash", byteutils.Bytes2Hex(tx.Hash())).
-		ValueEqual("executed", true)
+		ValueEqual("onChain", true)
 
 	e.GET("/v1/transaction").
 		WithQuery("hash", "0123456789").
@@ -417,7 +417,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 		Expect().
 		JSON().Object().
 		ValueEqual("hash", byteutils.Bytes2Hex(tx.Hash())).
-		ValueEqual("executed", false)
+		ValueEqual("onChain", false)
 
 	e.GET("/v1/transaction").
 		WithQuery("hash", "0123456789012345678901234567890123456789012345678901234567890123").
