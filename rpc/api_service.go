@@ -168,7 +168,8 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
 
-		rpcBlock, err := coreBlock2rpcBlock(block, true)
+		//rpcBlock, err := coreBlock2rpcBlock(block, true) // TODO @ggomma update explorer to get light blocks
+		rpcBlock, err := coreBlock2rpcBlock(block, false)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 		}
