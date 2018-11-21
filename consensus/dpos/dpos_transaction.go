@@ -299,6 +299,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err != nil && err != trie.ErrNotFound {
 			return err
 		} else if err == nil { // Already in oldVoted
+			exist, err = iter.Next()
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -334,6 +338,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err != nil && err != trie.ErrNotFound {
 			return err
 		} else if err == trie.ErrNotFound {
+			exist, err = iter.Next()
+			if err != nil {
+				return err
+			}
 			continue // candidate quited
 		}
 
@@ -341,6 +349,10 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err != nil && err != trie.ErrNotFound {
 			return err
 		} else if err == nil { // in new voted
+			exist, err = iter.Next()
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
