@@ -51,7 +51,6 @@ const (
 	ErrMsgAliasNotFound              = "alias not found"
 	ErrMsgInvalidAcddress            = "invalid account address"
 	ErrMsgInvalidBlockType           = "invalid block type"
-	ErrMsgAlreadyExistedTransaction  = "transaction already exists"
 )
 
 // Limit for get blocks request

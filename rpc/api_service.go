@@ -354,7 +354,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 	}
 
 	if err = s.tm.PushAndRelay(tx); err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgAlreadyExistedTransaction)
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 	return &rpcpb.TransactionHash{
 		Hash: byteutils.Bytes2Hex(tx.Hash()),
