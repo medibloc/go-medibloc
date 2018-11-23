@@ -120,6 +120,7 @@ var (
 	ErrLargeTransactionNonce            = errors.New("transaction nonce is larger than expected")
 	ErrSmallTransactionNonce            = errors.New("transaction nonce is smaller than expected")
 	ErrMissingParentBlock               = errors.New("cannot find the block's parent block in storage")
+	ErrCannotFindParentBlockOnChain     = errors.New("cannot find the block's parent block on chain")
 	ErrBlockNotExist                    = errors.New("block not exist")
 	ErrBlockNotSealed                   = errors.New("block should be sealed first to be signed")
 	ErrInvalidBlockHeight               = errors.New("block height should be one block higher than the parent")
@@ -185,6 +186,7 @@ var (
 	ErrInvalidNetUsage                  = errors.New("block ueses too much net bandwidth")
 	ErrWrongCPUUsage                    = errors.New("block cpu usage is not matched with sum of tx cpu usage")
 	ErrWrongNetUsage                    = errors.New("block net usage is not matched with sum of tx net usage")
+	ErrAlreadyOnTheChain                = errors.New("block is already on the chain")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

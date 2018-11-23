@@ -196,6 +196,29 @@ func (bc *BlockChain) TailBlocks() []*Block {
 	return blocks
 }
 
+func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
+	if bc.BlockByHash(parent.Hash()) == nil {
+		logging.WithFields(logrus.Fields{
+			"block": parent,
+		}).Error("Failed to find parent block.")
+		return ErrBlockNotExist
+	}
+
+	if err := bc.storeBlock(child); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err":   err,
+			"block": child,
+		}).Error("Failed to store the verified block")
+		return err
+	}
+	logging.WithFields(logrus.Fields{
+		"block": child,
+	}).Info("Accepted the new block on chain")
+	bc.addToTailBlocks(child)
+	bc.removeFromTailBlocks(parent)
+	return nil
+}
+
 // PutVerifiedNewBlocks put verified blocks and change tailBlocks
 func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks []*Block) error {
 	if bc.BlockByHash(parent.Hash()) == nil {
