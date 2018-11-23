@@ -151,6 +151,14 @@ message Block {
   uint32 crypto_alg = 10;
   // Block signature
   string sign = 11;
+  // Block cpu reference
+  string cpu_ref = 12;
+  // Block cpu usage
+  string cpu_usage = 13;
+  // Block net reference
+  string net_ref = 14;
+  // Block net usage
+  string net_usage = 15;
 
   // Root hash of accounts trie
   string accs_root = 20;

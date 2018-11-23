@@ -20,7 +20,7 @@
         "operationId": "GetAccount",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbAccount"
             }
@@ -67,7 +67,7 @@
         "operationId": "GetBlock",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbBlock"
             }
@@ -107,7 +107,7 @@
         "operationId": "GetBlocks",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbBlocks"
             }
@@ -139,7 +139,7 @@
         "operationId": "GetCandidates",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbCandidates"
             }
@@ -155,7 +155,7 @@
         "operationId": "GetDynasty",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbDynasty"
             }
@@ -171,7 +171,7 @@
         "operationId": "HealthCheck",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbHealth"
             }
@@ -187,7 +187,7 @@
         "operationId": "GetMedState",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbMedState"
             }
@@ -203,7 +203,7 @@
         "operationId": "Subscribe",
         "responses": {
           "200": {
-            "description": "(streaming responses)",
+            "description": "A successful response.(streaming responses)",
             "schema": {
               "$ref": "#/definitions/rpcpbSubscribeResponse"
             }
@@ -230,7 +230,7 @@
         "operationId": "GetTransaction",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbTransaction"
             }
@@ -253,7 +253,7 @@
         "operationId": "SendTransaction",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbTransactionHash"
             }
@@ -279,7 +279,7 @@
         "operationId": "GetTransactionReceipt",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbTransactionReceipt"
             }
@@ -304,7 +304,7 @@
         "operationId": "GetPendingTransactions",
         "responses": {
           "200": {
-            "description": "",
+            "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/rpcpbTransactions"
             }
@@ -409,6 +409,22 @@
         "sign": {
           "type": "string",
           "title": "Block signature"
+        },
+        "cpu_ref": {
+          "type": "string",
+          "title": "Block cpu reference"
+        },
+        "cpu_usage": {
+          "type": "string",
+          "title": "Block cpu usage"
+        },
+        "net_ref": {
+          "type": "string",
+          "title": "Block net reference"
+        },
+        "net_usage": {
+          "type": "string",
+          "title": "Block net usage"
         },
         "accs_root": {
           "type": "string",

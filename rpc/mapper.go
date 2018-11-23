@@ -69,7 +69,6 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.Block, error) {
 			return nil, err
 		}
 	}
-
 	return &rpcpb.Block{
 		Height:       block.Height(),
 		Hash:         byteutils.Bytes2Hex(block.Hash()),
@@ -87,6 +86,10 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.Block, error) {
 		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
 		Transactions: txs,
 		TxHashes:     txHashes,
+		CpuRef:       block.BlockData.BlockHeader.CPURef().String(),
+		CpuUsage:     block.BlockData.BlockHeader.CPUUsage().String(),
+		NetRef:       block.BlockData.BlockHeader.NetRef().String(),
+		NetUsage:     block.BlockData.BlockHeader.NetUsage().String(),
 	}, nil
 }
 
