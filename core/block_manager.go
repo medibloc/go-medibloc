@@ -653,10 +653,8 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 	v := bm.bp.FindUnlinkedAncestor(bd)
 	unlinkedBlock := v.(*BlockData)
 
-	for _, bd := range bm.workQ {
-		if bd == unlinkedBlock {
-			return nil
-		}
+	if b := bm.bc.BlockByHash(unlinkedBlock.ParentHash()); b != nil {
+		return nil
 	}
 
 	downloadMsg := &corepb.DownloadParentBlock{
