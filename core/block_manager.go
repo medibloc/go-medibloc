@@ -16,6 +16,7 @@
 package core
 
 import (
+	"bytes"
 	"sync"
 	"time"
 
@@ -294,12 +295,7 @@ func (bm *BlockManager) runDistributor() {
 		case result := <-bm.finishWorkCh:
 			// remove from workQ
 			bm.mu.Lock()
-			for i, blockData := range bm.workQ {
-				if blockData == result.block {
-					bm.workQ = append(bm.workQ[0:i], bm.workQ[i+1:]...)
-				}
-			}
-
+			bm.removeBlockInWorkQ(result.block)
 			bm.bp.Remove(result.block)
 			bm.mu.Unlock()
 
@@ -320,7 +316,7 @@ func (bm *BlockManager) runDistributor() {
 			bm.mu.Lock()
 
 			// skip if ancestor is already on workQ
-			if err := bm.checkBlockInWorkQ(blockPackage.newBlock); err != nil {
+			if bm.hasBlockInWorkQ(blockPackage.newBlock) {
 				bm.mu.Unlock()
 				continue
 			}
@@ -342,13 +338,22 @@ func (bm *BlockManager) runDistributor() {
 	}
 }
 
-func (bm *BlockManager) checkBlockInWorkQ(bd *BlockData) error {
+func (bm *BlockManager) hasBlockInWorkQ(bd *BlockData) bool {
 	for _, b := range bm.workQ {
-		if b == bd {
-			return ErrAlreadyOnTheWorkQ
+		if bytes.Equal(b.Hash(), bd.Hash()) {
+			return true
 		}
 	}
-	return nil
+	return false
+}
+
+func (bm *BlockManager) removeBlockInWorkQ(bd *BlockData) {
+	for i, v := range bm.workQ {
+		if bytes.Equal(v.Hash(), bd.Hash()) {
+			bm.workQ = append(bm.workQ[:i], bm.workQ[i+1:]...)
+			return
+		}
+	}
 }
 
 func (bm *BlockManager) registerInNetwork() {
@@ -763,7 +768,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
 			"syncActivationHeight": bm.syncActivationHeight,
-			"err": err,
+			"err":                  err,
 		}).Debug("Failed to activate sync download manager.")
 		return false
 	}
