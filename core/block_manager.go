@@ -318,6 +318,17 @@ func (bm *BlockManager) runDistributor() {
 			}
 		case blockPackage := <-bm.newBlockCh:
 			bm.mu.Lock()
+
+			// skip if ancestor is already on workQ
+			if err := bm.checkBlockInWorkQ(blockPackage.newBlock); err != nil {
+				continue
+			}
+
+			// skip if ancestor's parent is not on the chain
+			if bd := bm.bc.BlockByHash(blockPackage.newBlock.ParentHash()); bd == nil {
+				continue
+			}
+
 			bm.workQ = append(bm.workQ, blockPackage.newBlock)
 			bm.mu.Unlock()
 
@@ -458,6 +469,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	bm.mu.Lock()
 
 	if bm.bc.chainID != bd.ChainID() {
+		bm.mu.Unlock()
 		return ErrInvalidChainID
 	}
 
@@ -465,6 +477,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
 		}).Debug("Found duplicated blockData.")
+		bm.mu.Unlock()
 		return ErrDuplicatedBlock
 	}
 
@@ -472,6 +485,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
 		}).Debug("Received a block forked before current LIB.")
+		bm.mu.Unlock()
 		return ErrCannotRevertLIB
 	}
 
@@ -492,15 +506,6 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	}
 
 	ancestor := bm.bp.FindUnlinkedAncestor(bd)
-	// return if ancestor is already on workQ
-	if err := bm.checkBlockInWorkQ(ancestor.(*BlockData)); err != nil {
-		return err
-	}
-
-	// return if ancestor's parent is not on the chain
-	if bd := bm.bc.BlockByHash(ancestor.ParentHash()); bd == nil {
-		return ErrCannotFindParentBlockOnChain
-	}
 
 	blockPackage := &blockPackage{
 		ancestor.(*BlockData),
