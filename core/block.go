@@ -776,7 +776,13 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 	cpuRefBytes, err := bd.CPURef().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
 	netRefBytes, err := bd.NetRef().ToFixedSizeByteSlice()
+	if err != nil {
+		return nil, err
+	}
 	cpuUsageBytes, err := bd.CPUUsage().ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
