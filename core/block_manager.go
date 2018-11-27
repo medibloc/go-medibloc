@@ -66,8 +66,8 @@ type blockPackage struct {
 }
 
 type blockResult struct {
-	block      *BlockData
-	blockError bool
+	block   *BlockData
+	isValid bool
 }
 
 //TxMap returns txMap
@@ -163,7 +163,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 
 	result := &blockResult{
 		newData,
-		true,
+		false,
 	}
 
 	if b := bm.bc.BlockByHash(newData.Hash()); b != nil {
@@ -282,25 +282,25 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 
 	// TODO @ggomma what if worker makes error?
 	bm.mu.Unlock()
-	result.blockError = true
+	result.isValid = true
 	bm.finishWorkCh <- result
 	return
 }
 
 func (bm *BlockManager) runDistributor() {
-	// SETUP WORKER
+	wm := newWorkQ()
 
 	for {
 		select {
 		case result := <-bm.finishWorkCh:
 			// remove from workQ
 			bm.mu.Lock()
-			bm.removeBlockInWorkQ(result.block)
+			wm.removeBlock(result.block)
 			bm.bp.Remove(result.block)
 			bm.mu.Unlock()
 
 			// if block is invalid, remove block from pool
-			if result.blockError {
+			if !result.isValid {
 				continue
 			}
 
@@ -309,48 +309,32 @@ func (bm *BlockManager) runDistributor() {
 			bm.mu.Unlock()
 
 			for _, c := range children {
-				bm.workQ[len(bm.workQ)] = c.(*BlockData)
+				wm.addBlock(c.(*BlockData))
 				go bm.runWorker(c.(*BlockData))
 			}
 		case blockPackage := <-bm.newBlockCh:
 			bm.mu.Lock()
 
 			// skip if ancestor is already on workQ
-			if bm.hasBlockInWorkQ(blockPackage.newBlock) {
+			if wm.hasBlock(blockPackage.newBlock) {
 				bm.mu.Unlock()
+				blockPackage.okCh <- false
 				continue
 			}
 
 			// skip if ancestor's parent is not on the chain
 			if bd := bm.bc.BlockByHash(blockPackage.newBlock.ParentHash()); bd == nil {
 				bm.mu.Unlock()
+				blockPackage.okCh <- false
 				continue
 			}
 
-			bm.workQ = append(bm.workQ, blockPackage.newBlock)
 			bm.mu.Unlock()
+			wm.addBlock(blockPackage.newBlock)
 
 			go bm.runWorker(blockPackage.newBlock)
 			blockPackage.okCh <- true
 		case <-bm.quitCh:
-			return
-		}
-	}
-}
-
-func (bm *BlockManager) hasBlockInWorkQ(bd *BlockData) bool {
-	for _, b := range bm.workQ {
-		if bytes.Equal(b.Hash(), bd.Hash()) {
-			return true
-		}
-	}
-	return false
-}
-
-func (bm *BlockManager) removeBlockInWorkQ(bd *BlockData) {
-	for i, v := range bm.workQ {
-		if bytes.Equal(v.Hash(), bd.Hash()) {
-			bm.workQ = append(bm.workQ[:i], bm.workQ[i+1:]...)
 			return
 		}
 	}
@@ -768,7 +752,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
 			"syncActivationHeight": bm.syncActivationHeight,
-			"err":                  err,
+			"err": err,
 		}).Debug("Failed to activate sync download manager.")
 		return false
 	}
@@ -856,4 +840,33 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		"block":  block,
 		"parent": parent,
 	}).Debug("Responded to the download request.")
+}
+
+type workQ []*BlockData
+
+func newWorkQ() workQ {
+	return make(workQ, 0)
+}
+
+func (wq workQ) hasBlock(bd *BlockData) bool {
+	for _, b := range wq {
+		if bytes.Equal(b.Hash(), bd.Hash()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (wq workQ) removeBlock(bd *BlockData) {
+	for i, v := range wq {
+		if bytes.Equal(v.Hash(), bd.Hash()) {
+			wq = append(wq[:i], wq[i+1:]...)
+			return
+		}
+	}
+}
+
+func (wq workQ) addBlock(bd *BlockData) {
+	wq[len(wq)] = bd
+	return
 }
