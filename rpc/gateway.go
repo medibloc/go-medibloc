@@ -60,6 +60,7 @@ func NewHTTPServer(httpAddr string, grpcAddr string) (*HTTPServer, error) {
 	httpMux.HandleFunc("/swagger.json", func(w http.ResponseWriter, req *http.Request) {
 		io.Copy(w, strings.NewReader(pb.Swagger))
 	})
+	httpMux.Handle("/swagger/", http.StripPrefix("/swagger/", http.FileServer(http.Dir("./rpc/swaggerui"))))
 
 	httpMux.Handle("/", mux)
 
