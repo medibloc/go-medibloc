@@ -53,15 +53,20 @@ type BlockManager struct {
 
 	// If worker finishes it's work and new block is accepted on the chain distributor put children blockdata on the
 	// workQ
-	finishWorkCh chan *BlockData
+	finishWorkCh chan *blockResult
 	// NewBlock from network
-	newBlockCh chan *BlockData
+	newBlockCh chan *blockPackage
 	workQ      []*BlockData
 }
 
-type pushedBlock struct {
+type blockPackage struct {
 	newBlock *BlockData
-	errCh    chan error
+	okCh     chan bool
+}
+
+type blockResult struct {
+	block      *BlockData
+	blockError bool
 }
 
 //TxMap returns txMap
@@ -96,8 +101,8 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		syncActivationHeight:  cfg.Sync.SyncActivationHeight,
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
-		finishWorkCh:          make(chan *BlockData, 100), // TODO @ggomma use config
-		newBlockCh:            make(chan *BlockData, 100),
+		finishWorkCh:          make(chan *blockResult, 100), // TODO @ggomma use config
+		newBlockCh:            make(chan *blockPackage, 100),
 		workQ:                 make([]*BlockData, 0, 100),
 		quitCh:                make(chan int),
 	}, nil
@@ -159,12 +164,18 @@ func (bm *BlockManager) Stop() {
 func (bm *BlockManager) runWorker(newData *BlockData) {
 	bm.mu.Lock()
 
+	result := &blockResult{
+		newData,
+		true,
+	}
+
 	// CONC - RW
 	if b := bm.bc.BlockByHash(newData.Hash()); b != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
 		}).Warn("Block is already on the chain")
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 
@@ -176,6 +187,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"block": newData,
 		}).Warn("Failed to find parent block on the chain")
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 
@@ -184,6 +196,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"blockData": newData,
 		}).Debug("Received a block forked before current LIB.")
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 	bm.mu.Unlock()
@@ -193,6 +206,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyBlockHeight")
+		bm.finishWorkCh <- result
 		return
 	}
 
@@ -201,6 +215,8 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyTimestamp")
+		bm.finishWorkCh <- result
+		return
 	}
 
 	err = bm.consensus.VerifyInterval(newData, parent)
@@ -209,6 +225,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"err":       err,
 			"timestamp": newData.timestamp,
 		}).Warn("Block timestamp is wrong")
+		bm.finishWorkCh <- result
 		return
 	}
 
@@ -218,7 +235,8 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"err":    err,
 			"parent": parent,
 		}).Error("Failed to execute on a parent block.")
-		bm.mu.Unlock()
+		bm.finishWorkCh <- result
+		return
 	}
 
 	bm.mu.Lock()
@@ -229,6 +247,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"child":  child,
 		}).Error("Failed to put block on the chain.")
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 
@@ -240,10 +259,12 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"err": err,
 		}).Error("Failed to set new tail block.")
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 
@@ -254,6 +275,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 			"err": err,
 		}).Error("Failed to set LIB.")
 		bm.mu.Unlock()
+		bm.finishWorkCh <- result
 		return
 	}
 	logging.Console().WithFields(logrus.Fields{
@@ -265,7 +287,8 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 
 	// TODO @ggomma what if worker makes error?
 	bm.mu.Unlock()
-	bm.finishWorkCh <- newData
+	result.blockError = true
+	bm.finishWorkCh <- result
 	return
 }
 
@@ -274,28 +297,54 @@ func (bm *BlockManager) runDistributor() {
 
 	for {
 		select {
-		case parent := <-bm.finishWorkCh:
+		case result := <-bm.finishWorkCh:
+			// remove from workQ
 			for i, blockData := range bm.workQ {
-				if blockData == parent {
+				if blockData == result.block {
 					bm.workQ = append(bm.workQ[0:i], bm.workQ[i+1:]...)
-					continue
 				}
 			}
+
 			bm.mu.Lock()
-			children := bm.bp.FindChildren(parent)
-			bm.bp.Remove(parent)
+			bm.bp.Remove(result.block)
+			bm.mu.Lock()
+
+			// if block is invalid, remove block from pool
+			if result.blockError {
+				continue
+			}
+
+			bm.mu.Lock()
+			children := bm.bp.FindChildren(result.block)
 			bm.mu.Unlock()
+
 			for _, c := range children {
 				bm.workQ[len(bm.workQ)] = c.(*BlockData)
 				go bm.runWorker(c.(*BlockData))
 			}
-		case newData := <-bm.newBlockCh:
-			bm.workQ = append(bm.workQ, newData)
-			go bm.runWorker(newData)
+		case blockPackage := <-bm.newBlockCh:
+			bm.mu.Lock()
+			bm.workQ = append(bm.workQ, blockPackage.newBlock)
+			bm.mu.Unlock()
+
+			go bm.runWorker(blockPackage.newBlock)
+			blockPackage.okCh <- true
 		case <-bm.quitCh:
 			return
 		}
 	}
+}
+
+func (bm *BlockManager) checkBlockInWorkQ(bd *BlockData) error {
+	bm.mu.Lock()
+	defer bm.mu.Unlock()
+
+	for _, b := range bm.workQ {
+		if b == bd {
+			return ErrAlreadyOnTheWorkQ
+		}
+	}
+	return nil
 }
 
 func (bm *BlockManager) registerInNetwork() {
@@ -451,9 +500,25 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		}).Error("Failed to push to block pool.")
 		return err
 	}
-	ancestor := bm.bp.FindUnlinkedAncestor(bd)
 
-	bm.newBlockCh <- ancestor.(*BlockData)
+	ancestor := bm.bp.FindUnlinkedAncestor(bd)
+	// return if ancestor is already on workQ
+	if err := bm.checkBlockInWorkQ(ancestor.(*BlockData)); err != nil {
+		return err
+	}
+
+	// return if ancestor's parent is not on the chain
+	if bd := bm.bc.BlockByHash(ancestor.ParentHash()); bd == nil {
+		return ErrCannotFindParentBlockOnChain
+	}
+
+	blockPackage := &blockPackage{
+		ancestor.(*BlockData),
+		make(chan bool),
+	}
+	bm.newBlockCh <- blockPackage
+	<-blockPackage.okCh
+
 	return nil
 }
 
@@ -590,6 +655,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 
 	v := bm.bp.FindUnlinkedAncestor(bd)
 	unlinkedBlock := v.(*BlockData)
+
 	for _, bd := range bm.workQ {
 		if bd == unlinkedBlock {
 			return nil
