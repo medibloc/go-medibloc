@@ -219,36 +219,6 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 	return nil
 }
 
-// PutVerifiedNewBlocks put verified blocks and change tailBlocks
-func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks []*Block) error {
-	if bc.BlockByHash(parent.Hash()) == nil {
-		logging.WithFields(logrus.Fields{
-			"block": parent,
-		}).Error("Failed to find parent block.")
-		return ErrBlockNotExist
-	}
-
-	for _, block := range allBlocks {
-		if err := bc.storeBlock(block); err != nil {
-			logging.WithFields(logrus.Fields{
-				"err":   err,
-				"block": block,
-			}).Error("Failed to store the verified block")
-			return err
-		}
-		logging.WithFields(logrus.Fields{
-			"block": block,
-		}).Info("Accepted the new block on chain")
-	}
-
-	for _, block := range tailBlocks {
-		bc.addToTailBlocks(block)
-	}
-	bc.removeFromTailBlocks(parent)
-
-	return nil
-}
-
 // SetLIB sets LIB.
 func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	err := bc.storeLIBHashToStorage(newLIB)

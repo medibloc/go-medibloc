@@ -146,10 +146,6 @@ func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns 
 // Start starts BlockManager service.
 func (bm *BlockManager) Start() {
 	logging.Console().Info("Starting BlockManager...")
-	// TODO @ggomma run workers based on config
-	//go bm.runWorker()
-	//go bm.runWorker()
-	//go bm.runWorker()
 	go bm.runDistributor()
 	go bm.loop()
 }
@@ -169,7 +165,6 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		true,
 	}
 
-	// CONC - RW
 	if b := bm.bc.BlockByHash(newData.Hash()); b != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
@@ -179,7 +174,6 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		return
 	}
 
-	// CONC - RW
 	// Worker only handles the block data which parent is already on the chain
 	parent := bm.bc.BlockByHash(newData.ParentHash())
 	if parent == nil {
@@ -307,7 +301,7 @@ func (bm *BlockManager) runDistributor() {
 
 			bm.mu.Lock()
 			bm.bp.Remove(result.block)
-			bm.mu.Lock()
+			bm.mu.Unlock()
 
 			// if block is invalid, remove block from pool
 			if result.blockError {
@@ -336,9 +330,6 @@ func (bm *BlockManager) runDistributor() {
 }
 
 func (bm *BlockManager) checkBlockInWorkQ(bd *BlockData) error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
-
 	for _, b := range bm.workQ {
 		if b == bd {
 			return ErrAlreadyOnTheWorkQ
@@ -429,7 +420,7 @@ func (bm *BlockManager) directPush(b *Block) error {
 		return ErrFailedToDirectPush
 	}
 
-	if err := bm.bc.PutVerifiedNewBlocks(parentOnChain, []*Block{b}, []*Block{b}); err != nil {
+	if err := bm.bc.PutVerifiedNewBlock(parentOnChain, b); err != nil {
 		return ErrFailedToDirectPush
 	}
 
@@ -465,7 +456,6 @@ func (bm *BlockManager) directPush(b *Block) error {
 
 func (bm *BlockManager) push(bd *BlockData) error {
 	bm.mu.Lock()
-	defer bm.mu.Unlock()
 
 	if bm.bc.chainID != bd.ChainID() {
 		return ErrInvalidChainID
@@ -516,6 +506,8 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		ancestor.(*BlockData),
 		make(chan bool),
 	}
+
+	bm.mu.Unlock()
 	bm.newBlockCh <- blockPackage
 	<-blockPackage.okCh
 
