@@ -293,13 +293,13 @@ func (bm *BlockManager) runDistributor() {
 		select {
 		case result := <-bm.finishWorkCh:
 			// remove from workQ
+			bm.mu.Lock()
 			for i, blockData := range bm.workQ {
 				if blockData == result.block {
 					bm.workQ = append(bm.workQ[0:i], bm.workQ[i+1:]...)
 				}
 			}
 
-			bm.mu.Lock()
 			bm.bp.Remove(result.block)
 			bm.mu.Unlock()
 
@@ -321,11 +321,13 @@ func (bm *BlockManager) runDistributor() {
 
 			// skip if ancestor is already on workQ
 			if err := bm.checkBlockInWorkQ(blockPackage.newBlock); err != nil {
+				bm.mu.Unlock()
 				continue
 			}
 
 			// skip if ancestor's parent is not on the chain
 			if bd := bm.bc.BlockByHash(blockPackage.newBlock.ParentHash()); bd == nil {
+				bm.mu.Unlock()
 				continue
 			}
 
@@ -494,6 +496,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Debug("Failed to verify block signatures.")
+		bm.mu.Unlock()
 		return err
 	}
 
@@ -502,6 +505,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 			"err":       err,
 			"blockData": bd,
 		}).Error("Failed to push to block pool.")
+		bm.mu.Unlock()
 		return err
 	}
 
