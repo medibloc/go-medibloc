@@ -378,7 +378,7 @@ func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 		return err
 	}
 
-	candidate.VotePower, err = candidate.VotePower.Add(amount)
+	candidate.VotePower, err = candidate.VotePower.Sub(amount)
 	if err != nil {
 		return err
 	}
