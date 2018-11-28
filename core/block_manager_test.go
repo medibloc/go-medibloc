@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/consensus/dpos"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
@@ -563,6 +565,75 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
 	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+}
+
+func TestBlockManagerImprovement(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	tn := testutil.NewNetwork(t, dynastySize)
+	defer tn.Cleanup()
+	tn.SetLogTestHook()
+	seed1 := tn.NewSeedNode()
+	seed1.Start()
+
+	bm := seed1.Med.BlockManager()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed1.Config.TokenDist).AddKeyPairs(seed1.Config.Dynasties).Block(
+		seed1.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake().SignProposer()
+
+	block := bb.Build()
+	assert.NoError(t, bm.PushBlockData(block.BlockData))
+	assert.NoError(t, seed1.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+
+	blocks := make([]*core.Block, 100)
+	for i := 0; i < 100; i++ {
+		bb = bb.Child()
+		for j := 0; j < 100; j++ {
+			bb = bb.Tx().RandomTx().Execute()
+		}
+		blocks[i] = bb.SignProposer().Build()
+	}
+
+	//Sequential Test
+	start := time.Now()
+	for _, bbb := range blocks {
+		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
+		seed1.WaitUntilBlockAcceptedOnChain(bbb.Hash(), 2000)
+	}
+	sequentialElapsed := time.Since(start).Seconds()
+	t.Log("SEQUENTIAL : ", sequentialElapsed)
+
+	seed2 := tn.NewSeedNode()
+	seed2.Start()
+
+	bm = seed2.Med.BlockManager()
+	bb = blockutil.New(t, dynastySize).AddKeyPairs(seed2.Config.TokenDist).AddKeyPairs(seed2.Config.Dynasties).Block(
+		seed2.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake().SignProposer()
+
+	block = bb.Build()
+	assert.NoError(t, bm.PushBlockData(block.BlockData))
+	assert.NoError(t, seed2.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+
+	blocks = make([]*core.Block, 100)
+	for i := 0; i < 100; i++ {
+		bbT := bb.Child()
+		for j := 0; j < 100; j++ {
+			bbT = bbT.Tx().RandomTx().Execute()
+		}
+		blocks[i] = bbT.SignProposer().Build()
+		if i == 99 {
+			blocks = append(blocks, bbT.Child().SignProposer().Build())
+		}
+	}
+
+	start = time.Now()
+	for _, bbb := range blocks {
+		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
+	}
+	assert.NoError(t, seed2.WaitUntilTailHeight(4, 6000))
+	parallelElapsed := time.Since(start).Seconds()
+	t.Log("PARALLEL : ", parallelElapsed)
+
+	assert.Equal(t, true, sequentialElapsed > parallelElapsed)
 }
 
 func foundInLog(hook *test.Hook, s string) bool {
