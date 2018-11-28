@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -26,7 +28,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // CASE 1. Receipt store and get from storage
@@ -134,6 +135,6 @@ func TestWrongReceipt(t *testing.T) {
 
 	b.Transactions()[0].Receipt().SetCPUUsage(util.NewUint128())
 
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, seed.Med.BlockManager().PushBlockData(b.BlockData))
-
+	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	require.Error(t, testutil.ErrExecutionTimeout, seed.WaitUntilTailHeight(b.Height(), 1000))
 }

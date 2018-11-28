@@ -196,6 +196,7 @@ func (bc *BlockChain) TailBlocks() []*Block {
 	return blocks
 }
 
+// PutVerifiedNewBlock put verified block on the chain
 func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 	if bc.BlockByHash(parent.Hash()) == nil {
 		logging.WithFields(logrus.Fields{

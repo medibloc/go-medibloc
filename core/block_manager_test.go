@@ -51,6 +51,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 		tail := seed.Tail()
 		mint := bb.Block(tail).Child().SignProposer().Build()
 		require.NoError(t, bm.PushBlockData(mint.BlockData))
+		assert.NoError(t, seed.WaitUntilTailHeight(mint.Height(), 3000))
 		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
 }
@@ -79,6 +80,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
 	}
+	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 3000))
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
@@ -136,12 +138,14 @@ func TestBlockManager_Forked(t *testing.T) {
 	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
 		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 2000))
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, 0, len(tm.GetAll()))
 
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
 		assert.NoError(t, bm.PushBlockData(mainChainBlocks[i].BlockData))
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight), 2000))
 	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, len(txs), len(tm.GetAll()))
 
@@ -170,7 +174,7 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	block3 := bb.Coinbase(proposer.Addr).SignKey(proposer.PrivKey).Build()
 
 	err = bm.PushBlockData(block3.GetBlockData())
-	require.Error(t, core.ErrInvalidBlockHash)
+	require.Equal(t, core.ErrDuplicatedBlock, err)
 }
 
 func TestBlockManager_FilterByLIB(t *testing.T) {
@@ -198,6 +202,8 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
 		tail = block
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
+
 	block := bb.Block(blocks[0]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
@@ -224,7 +230,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 
 	parent, err := bm.BlockByHeight(3)
 	require.NoError(t, err)
-	b := bb.Block(parent).Child().Height(20).
+	b := bb.Block(parent).Child().
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(b.GetBlockData())
@@ -272,6 +278,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height(), 1000))
 	assert.Nil(t, bm.BlockByHash(blocks[1].Hash()))
 	assert.NotNil(t, bm.BlockByHash(blocks[2].Hash()))
 }
@@ -304,6 +311,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		tail = block
 		assert.NoError(t, err)
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 
 	parent, err := bm.BlockByHeight(3)
 	require.Nil(t, err)
@@ -314,18 +322,22 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	}{
 		{0, core.ErrCannotRevertLIB},
 		{1, core.ErrCannotRevertLIB},
-		{2, core.ErrCannotExecuteOnParentBlock},
-		{3, core.ErrCannotExecuteOnParentBlock},
-		{5, core.ErrCannotExecuteOnParentBlock},
-		{6, core.ErrCannotExecuteOnParentBlock},
-		{999, core.ErrCannotExecuteOnParentBlock},
+		{2, testutil.ErrExecutionTimeout},
+		{3, testutil.ErrExecutionTimeout},
+		{5, testutil.ErrExecutionTimeout},
+		{6, testutil.ErrExecutionTimeout},
+		{999, testutil.ErrExecutionTimeout},
 		{4, nil},
 	}
 	for _, v := range tests {
 		block := bb.Block(parent).Child().
 			Tx().RandomTx().Execute().
 			Height(v.height).SignProposer().Build()
-		assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
+		if v.err != testutil.ErrExecutionTimeout {
+			assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
+		} else {
+			assert.Equal(t, v.err, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+		}
 	}
 }
 
@@ -466,7 +478,8 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	invalidPair := testutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	// Invalid Transaction Hash
 	pair = testutil.NewAddrKeyPair(t)
@@ -520,31 +533,36 @@ func TestBlockManager_InvalidState(t *testing.T) {
 
 	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrInvalidChainID, err)
+	assert.Equal(t, core.ErrInvalidChainID, err)
 
 	block = bb.Clone().Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(proposer.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
+	assert.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
 
 	block = bb.Clone().Coinbase(to.Addr).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 }
 
 func foundInLog(hook *test.Hook, s string) bool {

@@ -60,7 +60,9 @@ func TestChangeDynasty(t *testing.T) {
 	bb = bb.
 		Tx().Type(dpos.TxOpVote).
 		Payload(votePayload).SignPair(newCandidate).Execute().SignProposer()
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
+	block := bb.Build().BlockData
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
 	t.Log(seed.Tail().State().DposState().Dynasty())
 
 	ok, err := seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
@@ -68,7 +70,9 @@ func TestChangeDynasty(t *testing.T) {
 	assert.False(t, ok)
 
 	bb = bb.ChildNextDynasty().SignProposer()
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
+	block = bb.Build().BlockData
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
 	t.Log(seed.Tail().State().DposState().Dynasty())
 
 	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
@@ -78,7 +82,9 @@ func TestChangeDynasty(t *testing.T) {
 	bb = bb.Child().
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
 		SignProposer()
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
+	block = bb.Build().BlockData
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
 
 	acc, err = bb.Build().State().GetAccount(newCandidate.Addr)
 	require.NoError(t, err)
@@ -92,7 +98,9 @@ func TestChangeDynasty(t *testing.T) {
 	assert.True(t, ok)
 
 	bb = bb.ChildNextDynasty().SignProposer()
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(bb.Build().BlockData))
+	block = bb.Build().BlockData
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
 
 	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
 	require.NoError(t, err)

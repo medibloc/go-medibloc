@@ -27,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,16 +45,18 @@ func TestService_Start(t *testing.T) {
 	seed.Start()
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist)
+	tail := seed.Tail()
 	for i := 1; i < nBlocks; i++ {
-		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
 			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
+		tail = b
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 1000))
 
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
@@ -129,10 +132,15 @@ func TestForkResistance(t *testing.T) {
 		} else {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
+
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+		assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 500))
 
 		for _, n := range majorNodes {
+			b, err := b.Clone()
+			assert.NoError(t, err)
 			require.NoError(t, n.Med.BlockManager().PushBlockData(b.BlockData))
+			assert.NoError(t, n.WaitUntilBlockAcceptedOnChain(b.Hash(), 500))
 		}
 	}
 
@@ -161,8 +169,13 @@ func TestForkResistance(t *testing.T) {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 
+		seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000)
+
 		for _, n := range minorNodes {
+			b, err := b.Clone()
+			assert.NoError(t, err)
 			require.NoError(t, n.Med.BlockManager().PushBlockData(b.BlockData))
+			n.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000)
 		}
 	}
 
@@ -235,17 +248,20 @@ func TestForAutoActivation(t *testing.T) {
 	seed.Start()
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist)
+	tail := seed.Tail()
+
 	// generate blocks (height:2~nBlocks-1) on seedTester
 	for i := 1; i < nBlocks-1; i++ {
-		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
 			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
+		tail = b
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
 
 	cfg := testutil.NewConfig(t)
@@ -349,17 +365,18 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 	seedingMinChunkSize := seed.Config.Config.Sync.SeedingMinChunkSize
 	seedingMaxChunkSize := seed.Config.Config.Sync.SeedingMaxChunkSize
 
+	tail := seed.Tail()
 	for i := 1; i < nBlocks; i++ {
-		tail := seed.Tail()
 		var b *core.Block
 		if i == 1 {
 			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
 		} else {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
+		tail = b
 		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	}
-
+	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
 

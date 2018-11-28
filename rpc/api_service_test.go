@@ -132,6 +132,7 @@ func TestAPIService_GetBlock(t *testing.T) {
 		Stake().Tx().RandomTx().Execute().SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -231,6 +232,7 @@ func TestAPIService_GetBlocks(t *testing.T) {
 		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -305,6 +307,7 @@ func TestAPIService_GetDynasty(t *testing.T) {
 		Block(seed.Tail()).Child().SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -334,6 +337,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 	b := bb.SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -392,6 +396,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -456,6 +461,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 	b := bb.SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	payer := seed.Config.TokenDist[3]
 	receiver := seed.Config.TokenDist[4]
@@ -517,6 +523,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 	b := bb.SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	tx := make([]*core.Transaction, testutil.DynastySize)
 	payer := seed.Config.TokenDist[testutil.DynastySize]
@@ -578,5 +585,5 @@ func TestAPIService_Subscribe(t *testing.T) {
 	b = bb.SignProposer().Build()
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	time.Sleep(500 * time.Millisecond)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 }
