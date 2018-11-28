@@ -867,6 +867,6 @@ func (wq workQ) removeBlock(bd *BlockData) {
 }
 
 func (wq workQ) addBlock(bd *BlockData) {
-	wq[len(wq)] = bd
+	wq = append(wq, bd)
 	return
 }
