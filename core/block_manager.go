@@ -56,8 +56,9 @@ type BlockManager struct {
 	// workQ
 	finishWorkCh chan *blockResult
 	// NewBlock from network
-	newBlockCh chan *blockPackage
-	workQ      []*BlockData
+	newBlockCh     chan *blockPackage
+	closeWorkersCh chan bool
+	workFinishedCh chan bool
 }
 
 type blockPackage struct {
@@ -104,8 +105,9 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		finishWorkCh:          make(chan *blockResult, 100), // TODO @ggomma use config
 		newBlockCh:            make(chan *blockPackage, 100),
-		workQ:                 make([]*BlockData, 0, 100),
 		quitCh:                make(chan int),
+		closeWorkersCh:        make(chan bool),
+		workFinishedCh:        make(chan bool),
 	}, nil
 }
 
@@ -154,7 +156,9 @@ func (bm *BlockManager) Start() {
 // Stop stops BlockManager service.
 func (bm *BlockManager) Stop() {
 	logging.Console().Info("Stopping BlockManager...")
-	//bm.quitCh <- 0
+
+	bm.closeWorkersCh <- true
+	<-bm.workFinishedCh
 	close(bm.quitCh)
 }
 
@@ -235,6 +239,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 	}
 
 	bm.mu.Lock()
+
 	if err := bm.bc.PutVerifiedNewBlock(parent, child); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":    err,
@@ -300,8 +305,8 @@ func (bm *BlockManager) runDistributor() {
 			bm.mu.Unlock()
 
 			// if block is invalid, remove block from pool
-			if !result.isValid {
-				continue
+			if !result.isValid || wm.finish {
+				break
 			}
 
 			bm.mu.Lock()
@@ -334,7 +339,12 @@ func (bm *BlockManager) runDistributor() {
 
 			go bm.runWorker(blockPackage.newBlock)
 			blockPackage.okCh <- true
-		case <-bm.quitCh:
+		case <-bm.closeWorkersCh:
+			wm.finishWork()
+		}
+
+		if wm.finish && len(wm.q) == 0 {
+			bm.workFinishedCh <- true
 			return
 		}
 	}
@@ -842,14 +852,20 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 	}).Debug("Responded to the download request.")
 }
 
-type workQ []*BlockData
-
-func newWorkQ() workQ {
-	return make(workQ, 0)
+type workManager struct {
+	q      []*BlockData
+	finish bool
 }
 
-func (wq workQ) hasBlock(bd *BlockData) bool {
-	for _, b := range wq {
+func newWorkQ() *workManager {
+	return &workManager{
+		q:      make([]*BlockData, 0),
+		finish: false,
+	}
+}
+
+func (wm *workManager) hasBlock(bd *BlockData) bool {
+	for _, b := range wm.q {
 		if bytes.Equal(b.Hash(), bd.Hash()) {
 			return true
 		}
@@ -857,16 +873,21 @@ func (wq workQ) hasBlock(bd *BlockData) bool {
 	return false
 }
 
-func (wq workQ) removeBlock(bd *BlockData) {
-	for i, v := range wq {
+func (wm *workManager) removeBlock(bd *BlockData) {
+	for i, v := range wm.q {
 		if bytes.Equal(v.Hash(), bd.Hash()) {
-			wq = append(wq[:i], wq[i+1:]...)
+			wm.q = append(wm.q[:i], wm.q[i+1:]...)
 			return
 		}
 	}
 }
 
-func (wq workQ) addBlock(bd *BlockData) {
-	wq = append(wq, bd)
+func (wm *workManager) addBlock(bd *BlockData) {
+	wm.q = append(wm.q, bd)
+	return
+}
+
+func (wm *workManager) finishWork() {
+	wm.finish = true
 	return
 }
