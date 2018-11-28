@@ -38,6 +38,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 	b := bb.ExecuteTx(tx1).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
