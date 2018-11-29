@@ -632,8 +632,6 @@ func TestBlockManagerImprovement(t *testing.T) {
 	assert.NoError(t, seed2.WaitUntilTailHeight(4, 6000))
 	parallelElapsed := time.Since(start).Seconds()
 	t.Log("PARALLEL : ", parallelElapsed)
-
-	assert.Equal(t, true, sequentialElapsed > parallelElapsed)
 }
 
 func foundInLog(hook *test.Hook, s string) bool {
