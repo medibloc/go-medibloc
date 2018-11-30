@@ -217,6 +217,11 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 	}).Info("Accepted the new block on chain")
 	bc.addToTailBlocks(child)
 	bc.removeFromTailBlocks(parent)
+
+	if bc.eventEmitter != nil {
+		child.EmitTxExecutionEvent(bc.eventEmitter)
+	}
+
 	return nil
 }
 
@@ -236,6 +241,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 		event := &Event{
 			Topic: TopicLibBlock,
 			Data:  byteutils.Bytes2Hex(newLIB.Hash()),
+			Type:  "",
 		}
 		bc.eventEmitter.Trigger(event)
 	}
@@ -296,6 +302,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 		event := &Event{
 			Topic: TopicNewTailBlock,
 			Data:  byteutils.Bytes2Hex(newTail.Hash()),
+			Type:  "",
 		}
 		bc.eventEmitter.Trigger(event)
 	}
@@ -399,10 +406,6 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 		}
 		blocks = append(blocks, to)
 		// TODO @cl9200 Remove tx in block from tx pool.
-
-		if bc.eventEmitter != nil {
-			to.EmitTxExecutionEvent(bc.eventEmitter)
-		}
 
 		to, err = bc.parentBlock(to)
 		if err != nil {
