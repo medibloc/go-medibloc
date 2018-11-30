@@ -530,7 +530,6 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, tx
 	}
 
 	if err := block.VerifyExecution(parent, consensus, txMap); err != nil {
-		block.Storage().DisableBatch()
 		return nil, err
 	}
 	err = block.Flush()

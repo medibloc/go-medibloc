@@ -387,7 +387,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			"err":   err,
 			"block": block,
 		}).Error("Failed to begin batch of new block.")
-		block.Storage().DisableBatch()
 		return nil, err
 	}
 
@@ -396,7 +395,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")
-		block.Storage().DisableBatch()
 		return nil, err
 	}
 
@@ -404,7 +402,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	// Even though block Proposer doesn't have enough time for including transactions below,
 	// states changed above need to be safely saved.
 	if err := block.Commit(); err != nil {
-		block.Storage().DisableBatch()
 		return nil, err
 	}
 
@@ -423,7 +420,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}
 
 		if err := block.BeginBatch(); err != nil {
-			block.Storage().DisableBatch()
 			return nil, err
 		}
 
@@ -434,7 +430,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
-				block.Storage().DisableBatch()
 				return nil, err
 			}
 			if err == core.ErrLargeTransactionNonce || err == core.ErrExceedBlockMaxCPUUsage || err == core.ErrExceedBlockMaxNetUsage {
@@ -450,7 +445,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to commit execution result")
-				block.Storage().DisableBatch()
 				return nil, err
 			}
 		}
@@ -464,7 +458,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}
 
 		if err := block.BeginBatch(); err != nil {
-			block.Storage().DisableBatch()
 			return nil, err
 		}
 
@@ -481,7 +474,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to rollback new block.")
-				block.Storage().DisableBatch()
 				return nil, err
 			}
 			continue
@@ -495,7 +487,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				"err":   err,
 				"block": block,
 			}).Error("Failed to commit new block.")
-			block.Storage().DisableBatch()
 			return nil, err
 		}
 	}
