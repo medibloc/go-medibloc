@@ -61,7 +61,7 @@ func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
 
 	for _, topic := range topics {
 		// If topic is the account address
-		if len(topic) == 33 {
+		if len(topic) == 66 {
 			continue
 		}
 
