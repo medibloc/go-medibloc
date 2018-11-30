@@ -1304,8 +1304,27 @@ func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 		event := &Event{
 			Topic: TopicTransactionExecutionResult,
 			Data:  byteutils.Bytes2Hex(tx.Hash()),
+			Type:  "",
 		}
 		emitter.Trigger(event)
+
+		if tx.From().String() != "" {
+			event = &Event{
+				Topic: tx.From().String(),
+				Data:  byteutils.Bytes2Hex(tx.Hash()),
+				Type:  TypeAccountTransactionExecution,
+			}
+			emitter.Trigger(event)
+		}
+
+		if tx.To().String() != "" {
+			event = &Event{
+				Topic: tx.To().String(),
+				Data:  byteutils.Bytes2Hex(tx.Hash()),
+				Type:  TypeAccountTransactionReceived,
+			}
+			emitter.Trigger(event)
+		}
 	}
 }
 

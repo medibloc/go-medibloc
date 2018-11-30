@@ -128,6 +128,7 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 		event := &Event{
 			Topic: TopicPendingTransaction,
 			Data:  byteutils.Bytes2Hex(tx.Hash()),
+			Type:  "",
 		}
 		pool.eventEmitter.Trigger(event)
 	}

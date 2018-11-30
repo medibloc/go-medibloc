@@ -45,6 +45,7 @@ func TestEventEmitter(t *testing.T) {
 			e := &core.Event{
 				Topic: topic,
 				Data:  fmt.Sprintf("%d", i),
+				Type:  "",
 			}
 			emitter.Trigger(e)
 		}
@@ -104,6 +105,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 			e := &core.Event{
 				Topic: topic,
 				Data:  fmt.Sprintf("%d", i),
+				Type:  "",
 			}
 			emitter.Trigger(e)
 		}

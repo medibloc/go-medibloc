@@ -591,6 +591,9 @@ const (
         },
         "hash": {
           "type": "string"
+        },
+        "type": {
+          "type": "string"
         }
       }
     },

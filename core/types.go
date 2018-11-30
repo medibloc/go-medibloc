@@ -232,12 +232,6 @@ type DposState interface {
 	SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error
 }
 
-// Event structure
-type Event struct {
-	Topic string
-	Data  string
-}
-
 //SyncService interface for sync
 type SyncService interface {
 	ActiveDownload(targetHeight uint64) error

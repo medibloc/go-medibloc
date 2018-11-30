@@ -294,6 +294,7 @@ message SubscribeRequest {
 message SubscribeResponse {
   string topic = 1;
   string hash = 2;
+  string type = 3;
 }
 
 message Health {

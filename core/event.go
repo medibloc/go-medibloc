@@ -24,6 +24,22 @@ const (
 	TopicTransactionExecutionResult = "chain.transactionResult"
 )
 
+// Type for account transaction result
+const (
+	TypeAccountTransactionReverted  = "revertTransaction"
+	TypeAccountTransactionInLIB     = "LIBTransaction"
+	TypeAccountTransactionExecution = "executedTransaction"
+	TypeAccountTransactionPending   = "pendingTransaction"
+	TypeAccountTransactionReceived  = "receivedTransaction"
+)
+
+// Event structure
+type Event struct {
+	Topic string
+	Data  string
+	Type  string
+}
+
 // EventSubscriber structure
 type EventSubscriber struct {
 	eventCh chan *Event
@@ -45,6 +61,11 @@ func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
 	topicList := topicList()
 
 	for _, topic := range topics {
+		// If topic is the account address
+		if len(topic) == 33 {
+			continue
+		}
+
 		if topicList[topic] != true {
 			return nil, ErrWrongEventTopic
 		}

@@ -380,6 +380,7 @@ func (s *APIService) SubscribeAPI(req *rpcpb.SubscribeRequest, stream rpcpb.ApiS
 			err := stream.Send(&rpcpb.SubscribeResponse{
 				Topic: event.Topic,
 				Hash:  event.Data,
+				Type:  event.Type,
 			})
 			// TODO : Send timeout
 			if err != nil {

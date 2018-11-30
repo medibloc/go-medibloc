@@ -631,6 +631,7 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 			event := &Event{
 				Topic: TopicRevertBlock,
 				Data:  byteutils.Bytes2Hex(block.Hash()),
+				Type:  "",
 			}
 			bm.bc.eventEmitter.Trigger(event)
 		}
