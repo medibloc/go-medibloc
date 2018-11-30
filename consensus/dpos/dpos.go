@@ -451,25 +451,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 					}).Error("failed to push back transaction to tx poll")
 				}
 				continue
-			} else {
-				// Transaction deleted
-				if d.eventEmitter != nil {
-					event := &core.Event{
-						Topic: transaction.From().String(),
-						Data:  byteutils.Bytes2Hex(transaction.Hash()),
-						Type:  core.TypeAccountTransactionDeleted,
-					}
-					d.eventEmitter.Trigger(event)
-
-					if transaction.To().String() != "" {
-						event := &core.Event{
-							Topic: transaction.To().String(),
-							Data:  byteutils.Bytes2Hex(transaction.Hash()),
-							Type:  core.TypeAccountTransactionDeleted,
-						}
-						d.eventEmitter.Trigger(event)
-					}
-				}
 			}
 		} else {
 			if err := block.Commit(); err != nil {
@@ -486,6 +467,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				"transaction": transaction.Hash(),
 				"err":         err,
 			}).Info("failed to execute transaction")
+			d.triggerTxDeleteEvent(transaction)
 			continue
 		}
 
@@ -545,6 +527,27 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	}
 
 	return block, nil
+}
+
+func (d *Dpos) triggerTxDeleteEvent(tx *core.Transaction) {
+	// Transaction deleted
+	if d.eventEmitter != nil {
+		event := &core.Event{
+			Topic: tx.From().String(),
+			Data:  byteutils.Bytes2Hex(tx.Hash()),
+			Type:  core.TypeAccountTransactionDeleted,
+		}
+		d.eventEmitter.Trigger(event)
+
+		if tx.To().String() != "" {
+			event := &core.Event{
+				Topic: tx.To().String(),
+				Data:  byteutils.Bytes2Hex(tx.Hash()),
+				Type:  core.TypeAccountTransactionDeleted,
+			}
+			d.eventEmitter.Trigger(event)
+		}
+	}
 }
 
 func lastMintSlot(ts time.Time) time.Time {

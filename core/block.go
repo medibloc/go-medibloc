@@ -1308,14 +1308,12 @@ func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 		}
 		emitter.Trigger(event)
 
-		if tx.From().String() != "" {
-			event = &Event{
-				Topic: tx.From().String(),
-				Data:  byteutils.Bytes2Hex(tx.Hash()),
-				Type:  TypeAccountTransactionExecution,
-			}
-			emitter.Trigger(event)
+		event = &Event{
+			Topic: tx.From().String(),
+			Data:  byteutils.Bytes2Hex(tx.Hash()),
+			Type:  TypeAccountTransactionExecution,
 		}
+		emitter.Trigger(event)
 
 		if tx.To().String() != "" {
 			event = &Event{
