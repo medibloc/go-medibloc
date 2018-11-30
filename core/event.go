@@ -26,11 +26,10 @@ const (
 
 // Type for account transaction result
 const (
-	TypeAccountTransactionReverted  = "revertTransaction"
-	TypeAccountTransactionInLIB     = "LIBTransaction"
 	TypeAccountTransactionExecution = "executedTransaction"
 	TypeAccountTransactionPending   = "pendingTransaction"
 	TypeAccountTransactionReceived  = "receivedTransaction"
+	TypeAccountTransactionDeleted   = "deletedTransaction"
 )
 
 // Event structure

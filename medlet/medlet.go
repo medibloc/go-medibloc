@@ -150,6 +150,7 @@ func (m *Medlet) Setup() error {
 		return err
 	}
 
+	m.consensus.SetEventEmitter(m.eventEmitter)
 	m.transactionManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectTransactionManager(m.transactionManager)
