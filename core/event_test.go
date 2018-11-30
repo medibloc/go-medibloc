@@ -300,7 +300,7 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 	seed.Start()
 
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
-		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
+		TokenDist).Block(seed.GenesisBlock()).Child()
 
 	emitter := seed.Med.EventEmitter()
 	topics := []string{core.TopicTransactionExecutionResult}
@@ -309,11 +309,60 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 	tx := bb.Tx().RandomTx().Build()
 
 	go func() {
-		bb.ExecuteTx(tx).Build()
+		b := bb.ExecuteTx(tx).SignProposer().Build()
+		seed.Med.BlockManager().PushBlockData(b.BlockData)
 		return
 	}()
 
 	event := <-subscriber.EventChan()
 	assert.Equal(t, core.TopicTransactionExecutionResult, event.Topic)
 	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+}
+
+func TestTypeAccountTransaction(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child()
+
+	tx := bb.Tx().RandomTx().Build()
+
+	emitter := seed.Med.EventEmitter()
+	topics := []string{tx.From().Hex(), tx.To().Hex()}
+	subscriber := register(emitter, topics[0], topics[1])
+
+	b := bb.ExecuteTx(tx).SignProposer().Build()
+	go func() {
+		seed.Med.TransactionManager().Push(tx)
+		bm.PushBlockData(b.BlockData)
+		return
+	}()
+	seed.WaitUntilTailHeight(uint64(b.Height()), 1000)
+
+	event := <-subscriber.EventChan()
+	assert.Equal(t, topics[0], event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+	assert.Equal(t, core.TypeAccountTransactionPending, event.Type)
+
+	event = <-subscriber.EventChan()
+	assert.Equal(t, topics[1], event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+	assert.Equal(t, core.TypeAccountTransactionPending, event.Type)
+
+	event = <-subscriber.EventChan()
+	assert.Equal(t, topics[0], event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+	assert.Equal(t, core.TypeAccountTransactionExecution, event.Type)
+
+	event = <-subscriber.EventChan()
+	assert.Equal(t, topics[1], event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+	assert.Equal(t, core.TypeAccountTransactionReceived, event.Type)
 }
