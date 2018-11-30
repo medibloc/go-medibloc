@@ -629,7 +629,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 	for _, bbb := range blocks {
 		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
 	}
-	assert.NoError(t, seed2.WaitUntilTailHeight(4, 6000))
+	seed2.WaitUntilTailHeight(4, 6000)
 	parallelElapsed := time.Since(start).Seconds()
 	t.Log("PARALLEL : ", parallelElapsed)
 }
