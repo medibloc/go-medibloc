@@ -90,11 +90,13 @@ func DefaultConfig() *medletpb.Config {
 			Datadir: "data.db",
 		},
 		Network: &medletpb.NetworkConfig{
-			Seed:                       nil,
-			Listen:                     []string{"127.0.0.1:9900", "127.0.0.1:9910"},
-			PrivateKey:                 "",
-			NetworkId:                  0,
-			RouteTableSyncLoopInterval: 2000,
+			Listens:            nil,
+			NetworkKeyFile:     "",
+			Seeds:              nil,
+			BootstrapPeriod:    5,
+			MinimumConnections: 5,
+			CacheFile:          "net.cache",
+			CachePeriod:        60 * 3,
 		},
 		Chain: &medletpb.ChainConfig{
 			Genesis:             "",

@@ -1,6 +1,8 @@
 syntax = "proto3";
 package medletpb;
 
+import "github.com/medibloc/go-medibloc/net/pb/message.proto";
+
 // Med global configurations.
 message Config {
     // Global config
@@ -33,16 +35,23 @@ message GlobalConfig {
 }
 
 message NetworkConfig {
-    // Med seed node address.
-    repeated string seed = 1;
-    // Listen addresses.
-    repeated string listen = 2;
+    // Listen addresses. 	ie: "/ip4/0.0.0.0/tcp/9000"
+    repeated string listens = 1;
     // Network node privateKey address. If nil, generate a new node.
-    string private_key = 3;
-    // Network ID
-    uint32 network_id = 4;
-    // Rount table syncing interval - Millisecond
-    uint32 route_table_sync_loop_interval = 5;
+    string network_key_file = 2;
+
+
+    // Seed node's peerID and address
+    repeated netpb.PeerInfo seeds = 11;
+    // bootstrap trying period - seconds
+    uint32 bootstrap_period = 12;
+    // If connection is lower than minimum, try bootstrap
+    uint32 minimum_connections = 13;
+
+    // file name of peer store cache
+    string cache_file = 21;
+    // saving cache period
+    uint32 cache_period = 22;
 }
 
 message ChainConfig {

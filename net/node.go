@@ -17,258 +17,387 @@ package net
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
+	"path"
+	"time"
 
-	"errors"
-
-	crypto "github.com/libp2p/go-libp2p-crypto"
-	libnet "github.com/libp2p/go-libp2p-net"
-	peer "github.com/libp2p/go-libp2p-peer"
-	swarm "github.com/libp2p/go-libp2p-swarm"
-	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	"github.com/gogo/protobuf/proto"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-connmgr"
+	"github.com/libp2p/go-libp2p-host"
+	"github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-kad-dht/opts"
+	inet "github.com/libp2p/go-libp2p-net"
+	"github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
+	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
-// Error types
-var (
-	ErrPeerIsNotConnected = errors.New("peer is not connected")
-)
-
-// Node the node can be used as both the client and the server
+// Node the host can be used as both the client and the server
 type Node struct {
-	synchronizing bool
-	quitCh        chan bool
-	netService    *MedService
-	config        *Config
-	context       context.Context
-	id            peer.ID
-	networkKey    crypto.PrivKey
-	network       *swarm.Network
-	host          *basichost.BasicHost
-	streamManager *StreamManager
-	routeTable    *RouteTable
-	bloomFilter   *BloomFilter
+	host.Host
+	context context.Context
+
+	dht       *dht.IpfsDHT
+	dhtTicker chan time.Time
+
+	messageSender   *messageSender
+	messageReceiver *messageReceiver
+
+	chainID         uint32
+	bloomFilter     *BloomFilter
+	bootstrapConfig *BootstrapConfig
+	cacheFile       string
+	cachePeriod     time.Duration
 }
 
-// NewNode return new Node according to the config.
-func NewNode(config *Config) (*Node, error) {
+func (node *Node) Addrs() []multiaddr.Multiaddr {
+	addrs := make([]multiaddr.Multiaddr, 0)
+	for _, v := range node.Host.Addrs() {
+		if v.String() == "/p2p-circuit" {
+			continue
+		}
+		addrs = append(addrs, v)
+	}
+	return addrs
+}
+
+func (node *Node) DHT() *dht.IpfsDHT {
+	return node.dht
+}
+
+// PeersCount return stream count.
+// Depreciated
+func (node *Node) PeersCount() int32 {
+	return int32(len(node.Network().Conns()))
+}
+
+// EstablishedPeersCount return handShakeSucceed steam count.
+// Depreciated
+func (node *Node) EstablishedPeersCount() int32 {
+	return node.PeersCount()
+}
+
+func (node *Node) Connected() []peer.ID {
+	connections := node.Network().Conns()
+	peers := make([]peer.ID, len(connections))
+	for i, n := range connections {
+		peers[i] = n.RemotePeer()
+	}
+	return peers
+}
+
+// NewNode return new Node according receiver the config.
+func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Message) (*Node, error) {
 	// check Listen port.
-	if err := checkPortAvailable(config.Listen); err != nil {
+	if err := checkPortAvailable(cfg.Network.Listens); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":    err,
-			"listen": config.Listen,
+			"listen": cfg.Network.Listens,
 		}).Error("Listen port is not available.")
 		return nil, err
 	}
 
-	node := &Node{
-		quitCh:        make(chan bool, 10),
-		config:        config,
-		context:       context.Background(),
-		streamManager: NewStreamManager(),
-		synchronizing: false,
-		bloomFilter: NewBloomFilter(
-			bloomFilterOfRecvMessageArgM,
-			bloomFilterOfRecvMessageArgK,
-			maxCountOfRecvMessageInBloomFiler,
-		),
-	}
-
-	initP2PNetworkKey(config, node)
-	initP2PRouteTable(config, node)
-
-	if err := initP2PSwarmNetwork(config, node); err != nil {
+	networkKey, err := LoadOrNewNetworkKey(cfg)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed receiver load network key")
 		return nil, err
 	}
 
-	return node, nil
+	connm := connmgr.NewConnManager(DefaultConnMgrLowWater, DefaultConnMgrHighWater, DefaultConnMgrGracePeriod)
+
+	host, err := libp2p.New(ctx,
+		libp2p.Identity(networkKey),
+		libp2p.ListenAddrStrings(cfg.Network.Listens...),
+		libp2p.ConnectionManager(connm),
+		//libp2p.BandwidthReporter()
+	)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed receiver init libp2p host")
+		return nil, err
+	}
+
+	logging.Console().WithFields(logrus.Fields{
+		"id":    host.ID().Pretty(),
+		"addrs": host.Addrs(),
+	}).Info("New host started")
+
+	dht, err := dht.New(ctx, host, dhtopts.Protocols(MedDHTProtocolID))
+	if err != nil {
+		return nil, err
+	}
+
+	bCfg, err := NewBootstrapConfig(cfg)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"medletCfg": cfg,
+			"err":       err,
+		}).Error("failed receiver make new bootstrap config")
+		return nil, err
+	}
+
+	cache := path.Join(cfg.Global.Datadir, DefaultCacheFile)
+	if cfg.Network.CacheFile != "" {
+		cache = cfg.Network.CacheFile
+	}
+
+	cachePeriod := DefaultCachePeriod
+	if cfg.Network.CachePeriod != 0 {
+		cachePeriod = time.Duration(cfg.Network.CachePeriod) * time.Second
+	}
+
+	bf := NewBloomFilter(
+		bloomFilterOfRecvMessageArgM,
+		bloomFilterOfRecvMessageArgK,
+		maxCountOfRecvMessageInBloomFiler,
+	)
+
+	return &Node{
+		Host:            host,
+		context:         ctx,
+		dht:             dht,
+		dhtTicker:       make(chan time.Time),
+		messageSender:   newMessageSender(ctx, host),
+		messageReceiver: newMessageReceiver(ctx, recvMessageCh, bf),
+		chainID:         cfg.Global.ChainId,
+		bloomFilter:     bf,
+		bootstrapConfig: bCfg,
+		cacheFile:       cache,
+		cachePeriod:     cachePeriod,
+	}, nil
 }
 
 // Start host & route table discovery
 func (node *Node) Start() error {
 	logging.Console().Info("Starting MedService Node...")
 
-	node.streamManager.Start()
+	node.SetStreamHandler(MedProtocolID, node.receiveMessage)
 
-	if err := node.startHost(); err != nil {
+	proc, err := node.dht.BootstrapOnSignal(dht.DefaultBootstrapConfig, node.dhtTicker)
+	if err != nil {
 		return err
 	}
+	go func() {
+		defer proc.Close()
+		select {
+		case <-node.context.Done():
+		case <-node.dht.Context().Done():
+		}
+	}()
 
-	node.routeTable.Start()
+	node.messageSender.Start()
+	node.messageReceiver.Start()
+	node.Bootstrap()
+	node.DHTSync()
+
+	go node.loop()
 
 	logging.Console().WithFields(logrus.Fields{
 		"id":                node.ID(),
-		"listening address": node.host.Addrs(),
+		"listening address": node.Addrs(),
 	}).Info("Started MedService Node.")
 
 	return nil
 }
 
-// Stop stop a node.
-func (node *Node) Stop() {
-	logging.Console().WithFields(logrus.Fields{
-		"id":                node.ID(),
-		"listening address": node.host.Addrs(),
-	}).Info("Stopping MedService Node...")
-
-	node.routeTable.Stop()
-	node.stopHost()
-	node.streamManager.Stop()
+func (node *Node) loop() {
+	cacheTicker := time.NewTicker(node.cachePeriod)
+	bootstrapTicker := time.NewTicker(node.bootstrapConfig.Period)
+	dhtTicker := time.NewTicker(dht.DefaultBootstrapConfig.Period)
+	for {
+		// route table sync ticker
+		select {
+		case <-node.context.Done():
+			logging.Console().WithFields(logrus.Fields{
+				"id":                node.ID(),
+				"listening address": node.Addrs(),
+			}).Info("Stopping MedService Node...")
+			node.Close()
+			return
+		case <-cacheTicker.C:
+			node.SaveCache()
+		case <-bootstrapTicker.C:
+			node.Bootstrap()
+		case <-dhtTicker.C:
+			node.DHTSync()
+		}
+	}
 }
 
-func (node *Node) startHost() error {
-	// add nat manager
-	options := &basichost.HostOpts{}
-	options.NATManager = basichost.NewNATManager(node.network)
-	host, err := basichost.NewHost(node.context, node.network, options)
+func (node *Node) DHTSync() {
+	node.dhtTicker <- time.Now()
+}
+
+func (node *Node) receiveMessage(s inet.Stream) {
+	node.messageReceiver.streamCh <- s
+}
+
+func (node *Node) sendMessage(msg *SendMessage) {
+	node.messageSender.msgCh <- msg
+}
+
+// SendMessageToPeer send message receiver a peer.
+func (node *Node) SendMessageToPeer(msgType string, data []byte, priority int, peerID string) {
+	id, err := peer.IDB58Decode(peerID)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"err":            err,
-			"listen address": node.config.Listen,
-		}).Error("Failed to start node.")
-		return err
+			"err":     err,
+			"peerID":  peerID,
+			"msgType": msgType,
+		}).Error("invalid peer id")
+		return // ignore
 	}
 
-	host.SetStreamHandler(MedProtocolID, node.onStreamConnected)
-	node.host = host
+	err = node.Connect(node.context, node.Peerstore().PeerInfo(id))
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"id":  id.Pretty(),
+			"err": err,
+		}).Debug("failed receiver connect receiver peer")
+		return // TODO
+	}
 
-	return nil
-}
-
-func (node *Node) stopHost() {
-	node.network.Close()
-
-	if node.host == nil {
+	msg, err := newSendMessage(node.chainID, msgType, data, priority, id)
+	if err != nil {
+		logging.Console().Debug("failed to make new sendMessage")
 		return
 	}
 
-	node.host.Close()
+	node.sendMessage(msg)
 }
 
-// Config return node config.
-func (node *Node) Config() *Config {
-	return node.config
-}
-
-// SetMedService set netService
-func (node *Node) SetMedService(ns *MedService) {
-	node.netService = ns
-}
-
-// ID return node ID.
-func (node *Node) ID() string {
-	return node.id.Pretty()
-}
-
-// IsSynchronizing return node synchronizing
-func (node *Node) IsSynchronizing() bool {
-	return node.synchronizing
-}
-
-// SetSynchronizing set node synchronizing.
-func (node *Node) SetSynchronizing(synchronizing bool) {
-	node.synchronizing = synchronizing
-}
-
-// PeersCount return stream count.
-func (node *Node) PeersCount() int32 {
-	return node.streamManager.Count()
-}
-
-// EstablishedPeersCount return handShakeSucceed steam count.
-func (node *Node) EstablishedPeersCount() int32 {
-	return node.streamManager.EstablishedCount()
-}
-
-// RouteTable return route table.
-func (node *Node) RouteTable() *RouteTable {
-	return node.routeTable
-}
-
-func initP2PNetworkKey(config *Config, node *Node) {
-	// init p2p network key.
-	networkKey, err := LoadNetworkKeyFromFileOrCreateNew(config)
+func (node *Node) SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) (peers []string) {
+	msg, err := newSendMessage(node.chainID, msgType, data, priority, "")
 	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":        err,
-			"NetworkKey": config.PrivateKeyPath,
-		}).Warn("Failed to load network private key from file.")
+		logging.Console().Debug("failed to make new sendMessage")
+		return
 	}
 
-	node.networkKey = networkKey
-	node.id, err = peer.IDFromPublicKey(networkKey.GetPublic())
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":        err,
-			"NetworkKey": config.PrivateKeyPath,
-		}).Warn("Failed to generate ID from network key file.")
-	}
-}
-
-func initP2PRouteTable(config *Config, node *Node) error {
-	// init p2p route table.
-	node.routeTable = NewRouteTable(config, node)
-	return nil
-}
-
-func initP2PSwarmNetwork(config *Config, node *Node) error {
-	// init p2p multiaddr and swarm network.
-
-	multiaddrs, err := convertListenAddrToMultiAddr(node.config.Listen)
-
-	network, err := swarm.NewNetwork(
-		node.context,
-		multiaddrs,
-		node.id,
-		node.routeTable.peerStore,
-		nil, // TODO: integrate metrics.Reporter.
-	)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":            err,
-			"listen address": config.Listen,
-			"node.id":        node.id.Pretty(),
-		}).Error("Failed to create swarm network.")
-		return err
-	}
-	node.network = network
-	return nil
-}
-
-func (node *Node) onStreamConnected(s libnet.Stream) {
-	node.streamManager.Add(s, node)
-}
-
-// SendMessageToPeer send message to a peer.
-func (node *Node) SendMessageToPeer(messageName string, data []byte, priority int, peerID string) error {
-	stream := node.streamManager.FindByPeerID(peerID)
-	if stream == nil {
-		logging.WithFields(logrus.Fields{
-			"pid": peerID,
-			"err": ErrPeerIsNotConnected,
-		}).Debug("Failed to send msg")
-		return ErrPeerIsNotConnected
+	receivers := filter.Filter(node.Connected())
+	for _, p := range receivers {
+		msg := msg.copy()
+		msg.SetReceiver(p)
+		node.sendMessage(msg)
 	}
 
-	return stream.SendMessage(messageName, data, priority)
+	ids := make([]string, len(receivers))
+	for i, p := range receivers {
+		ids[i] = p.Pretty()
+	}
+	return ids
 }
 
 // BroadcastMessage broadcast message.
-func (node *Node) BroadcastMessage(messageName string, data Serializable, priority int) {
-	// node can not broadcast or relay message if it is in synchronizing.
-	if node.synchronizing {
+func (node *Node) BroadcastMessage(msgType string, data []byte, priority int) {
+	tempMsg, err := newSendMessage(node.chainID, msgType, data, priority, "")
+	if err != nil {
+		logging.Console().Debug("failed to make new sendMessage")
 		return
 	}
 
-	node.streamManager.BroadcastMessage(messageName, data, priority)
+	receivers := node.Connected() //TODO: minimize broadcast target @drsleepytiger
+	for _, p := range receivers {
+		msg := tempMsg.copy()
+		msg.SetReceiver(p)
+		if node.bloomFilter.HasRecvMessage(msg) {
+			logging.Console().WithFields(logrus.Fields{
+				"hash":   msg.Hash(),
+				"peerID": msg.receiver.Pretty(),
+				"msgType": msg.MessageType(),
+			}).Debug("avoid duplicate message broadcast")
+			continue
+		}
+		node.sendMessage(msg)
+	}
 }
 
-// RelayMessage relay message.
-func (node *Node) RelayMessage(messageName string, data Serializable, priority int) {
-	// node can not broadcast or relay message if it is in synchronizing.
-	if node.synchronizing {
-		return
+func (node *Node) ClosePeer(peerID string, reason error) {
+	id, err := peer.IDB58Decode(peerID)
+	if err != nil {
+		return // ignore
+	}
+	for _, c := range node.Network().ConnsToPeer(id) {
+		c.Close()
+	}
+}
+
+func (node *Node) addPeer(pi peerstore.PeerInfo, ttl time.Duration) {
+	node.Peerstore().AddAddrs(pi.ID, pi.Addrs, ttl)
+	go func() {
+		ctx, cancel := context.WithTimeout(node.context, 1*time.Second)
+		defer cancel()
+		pings, err := ping.Ping(ctx, node, pi.ID)
+		if err != nil {
+			node.Peerstore().ClearAddrs(pi.ID)
+			return
+		}
+		_, ok := <-pings
+		if !ok {
+			node.Peerstore().ClearAddrs(pi.ID)
+			return
+		}
+		node.dht.Update(node.context, pi.ID)
+	}()
+}
+
+func (node *Node) addPeersFromProto(peers *netpb.Peers) error {
+	for _, p := range peers.Peers {
+		pid, err := peer.IDB58Decode(p.Id)
+		if err != nil {
+			logging.WithFields(logrus.Fields{
+				"pid": p.Id,
+				"err": err,
+			}).Warn("failed receiver decode pid")
+			return err
+		}
+		addrs := make([]multiaddr.Multiaddr, len(p.Addrs))
+		for i, addr := range p.Addrs {
+			addrs[i], err = multiaddr.NewMultiaddr(addr)
+			if err != nil {
+				logging.WithFields(logrus.Fields{
+					"add": p.Id,
+					"err": err,
+				}).Warn("failed receiver convert multiaddr")
+				return err
+			}
+		}
+		node.addPeer(peerstore.PeerInfo{ID: pid, Addrs: addrs}, peerstore.PermanentAddrTTL)
+	}
+	return nil
+}
+
+// loadPeerStoreFromCache load peerstore from cache file
+func (node *Node) loadPeerStoreFromCache(cacheFile string) error {
+	_, err := os.Stat(cacheFile)
+	if err == os.ErrNotExist {
+		return nil
+	} else if err != nil {
+		return err
 	}
 
-	node.streamManager.RelayMessage(messageName, data, priority)
+	b, err := ioutil.ReadFile(cacheFile)
+	if err != nil {
+		return err
+	}
+	str := string(b)
+
+	peers := new(netpb.Peers)
+	if err := proto.UnmarshalText(str, peers); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("failed receiver unmarshal peers from cache file")
+		return err
+	}
+
+	return node.addPeersFromProto(peers)
 }

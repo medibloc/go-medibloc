@@ -129,6 +129,15 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	return nil
 }
 
+//ToBytes convert transaction to
+func (t *Transaction) ToBytes() ([]byte, error) {
+	pb, err := t.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(pb)
+}
+
 //Hash returns hash
 func (t *Transaction) Hash() []byte {
 	return t.hash

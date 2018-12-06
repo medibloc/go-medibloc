@@ -73,8 +73,8 @@ func (s *seeding) setup(netService net.Service, bm BlockManager) {
 
 func (s *seeding) start() {
 	logging.Console().Info("Sync: Seeding manager is started.")
-	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncMetaRequest, net.MessageWeightZero))
-	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, net.SyncBlockChunkRequest, net.MessageWeightZero))
+	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, SyncMetaRequest, net.MessageWeightZero))
+	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, SyncBlockChunkRequest, net.MessageWeightZero))
 
 	s.mu.Lock()
 	s.activated = true
@@ -84,8 +84,8 @@ func (s *seeding) start() {
 }
 
 func (s *seeding) stop() {
-	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, net.SyncMetaRequest, net.MessageWeightZero))
-	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, net.SyncBlockChunkRequest, net.MessageWeightZero))
+	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, SyncMetaRequest, net.MessageWeightZero))
+	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, SyncBlockChunkRequest, net.MessageWeightZero))
 	s.quitCh <- true
 }
 
@@ -100,9 +100,9 @@ func (s *seeding) startLoop() {
 			return
 		case message := <-s.messageCh:
 			switch message.MessageType() {
-			case net.SyncMetaRequest:
+			case SyncMetaRequest:
 				s.sendRootHashMeta(message)
-			case net.SyncBlockChunkRequest:
+			case SyncBlockChunkRequest:
 				select {
 				case s.semaphore <- true:
 					go func() {
@@ -233,7 +233,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 	}
 
 	s.netService.SendMessageToPeer(
-		net.SyncMeta,
+		SyncMeta,
 		sendData,
 		net.MessagePriorityLow,
 		message.MessageFrom(),
@@ -309,7 +309,7 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 	}
 
 	s.netService.SendMessageToPeer(
-		net.SyncBlockChunk,
+		SyncBlockChunk,
 		sendData,
 		net.MessagePriorityLow,
 		message.MessageFrom(),

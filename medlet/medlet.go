@@ -16,6 +16,7 @@
 package medlet
 
 import (
+	"context"
 	goNet "net"
 
 	"net/http"
@@ -80,7 +81,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		return nil, err
 	}
 
-	ns, err := net.NewMedService(cfg)
+	ns, err := net.NewMedService(context.Background(), cfg)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -223,7 +224,7 @@ func (m *Medlet) Start() error {
 func (m *Medlet) Stop() {
 	m.eventEmitter.Stop()
 
-	m.netService.Stop()
+	//m.netService.Stop()
 
 	m.blockManager.Stop()
 

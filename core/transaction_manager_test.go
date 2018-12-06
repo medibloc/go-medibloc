@@ -52,7 +52,7 @@ func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
 	}
 
 	tx = tb.RandomTx().Build()
-	node.Med.TransactionManager().Relay(tx)
+	node.Med.TransactionManager().Broadcast(tx)
 
 	actual = nil
 	startTime = time.Now()

@@ -20,11 +20,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/multiformats/go-multiaddr"
+
+	"github.com/libp2p/go-libp2p-peerstore"
+	"github.com/medibloc/go-medibloc/net"
+
 	"io/ioutil"
 
 	"os"
-
-	"net"
 
 	"github.com/gogo/protobuf/proto"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -49,7 +52,7 @@ type NodeConfig struct {
 func defaultConfig(t *testing.T) *NodeConfig {
 	cfg := &NodeConfig{
 		t:      t,
-		dir:    tempDir(t),
+		dir:    TempDir(t),
 		Config: medlet.DefaultConfig(),
 	}
 	return cfg.SetRandomPorts().SetRandomDataDir()
@@ -82,12 +85,12 @@ func (cfg *NodeConfig) SetRandomDataDir() *NodeConfig {
 
 // GetListenAddrs returns listen address of a node.
 func (cfg *NodeConfig) GetListenAddrs() []string {
-	return cfg.Config.Network.Listen
+	return cfg.Config.Network.Listens
 }
 
 // SetPorts sets ports.
 func (cfg *NodeConfig) SetPorts(baseport int) *NodeConfig {
-	cfg.Config.Network.Listen = []string{fmt.Sprintf("127.0.0.1:%v", baseport)}
+	cfg.Config.Network.Listens = []string{fmt.Sprintf("/ip4/127.0.0.1/tcp/%v", baseport)}
 	cfg.Config.Rpc.RpcListen = []string{fmt.Sprintf("127.0.0.1:%v", baseport+1)}
 	cfg.Config.Rpc.HttpListen = []string{fmt.Sprintf("127.0.0.1:%v", baseport+2)}
 	return cfg
@@ -96,7 +99,7 @@ func (cfg *NodeConfig) SetPorts(baseport int) *NodeConfig {
 // SetRandomPorts sets random ports.
 func (cfg *NodeConfig) SetRandomPorts() *NodeConfig {
 	ports := FindRandomListenPorts(3)
-	cfg.Config.Network.Listen = []string{fmt.Sprintf("127.0.0.1:%v", ports[0])}
+	cfg.Config.Network.Listens = []string{fmt.Sprintf("/ip4/127.0.0.1/tcp/%v", ports[0])}
 	cfg.Config.Rpc.RpcListen = []string{fmt.Sprintf("127.0.0.1:%v", ports[1])}
 	cfg.Config.Rpc.HttpListen = []string{fmt.Sprintf("127.0.0.1:%v", ports[2])}
 	return cfg
@@ -168,17 +171,20 @@ func (cfg *NodeConfig) SetGenesisFrom(c *Node) *NodeConfig {
 
 // SetSeed sets a seed node address.
 func (cfg *NodeConfig) SetSeed(seed *Node) *NodeConfig {
-	addrs := seed.Config.GetListenAddrs()
-	var seeds []string
-	for _, addr := range addrs {
-		_, port, err := net.SplitHostPort(addr)
-		require.NoError(cfg.t, err)
 
-		id := seed.Med.NetService().Node().ID()
-		s := fmt.Sprintf("/ip4/127.0.0.1/tcp/%v/ipfs/%v", port, id)
-		seeds = append(seeds, s)
+	addrs := make([]multiaddr.Multiaddr, 0)
+	for _, v := range seed.Med.NetService().Node().Network().ListenAddresses() {
+		if v.String() == "/p2p-circuit" {
+			continue
+		}
+		addrs = append(addrs, v)
 	}
-	cfg.Config.Network.Seed = seeds
+
+	seedInfo := peerstore.PeerInfo{
+		ID:    seed.Med.NetService().Node().ID(),
+		Addrs: addrs,
+	}
+	cfg.Config.Network.Seeds = net.PeersToProto(seedInfo)
 	return cfg
 }
 
@@ -228,8 +234,8 @@ func (cfg *NodeConfig) String() string {
 	return fmt.Sprintf(format,
 		cfg.Config.Global.ChainId,
 		cfg.Config.Global.Datadir,
-		cfg.Config.Network.Seed,
-		cfg.Config.Network.Listen,
+		cfg.Config.Network.Seeds,
+		cfg.Config.Network.Listens,
 		cfg.Config.Rpc.RpcListen,
 		cfg.Config.Rpc.HttpListen,
 		cfg.Proposer,
@@ -237,7 +243,7 @@ func (cfg *NodeConfig) String() string {
 		cfg.TokenDist)
 }
 
-func tempDir(t *testing.T) string {
+func TempDir(t *testing.T) string {
 	err := os.MkdirAll(filepath.Join("testdata", t.Name()), 0755)
 	require.NoError(t, err)
 	dir, err := ioutil.TempDir(filepath.Join("testdata", t.Name()), "node")
