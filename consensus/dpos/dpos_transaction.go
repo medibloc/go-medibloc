@@ -227,7 +227,6 @@ func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 
 //Execute VoteTx
 func (tx *VoteTx) Execute(b *core.Block) error {
-	// TODO: max number of vote @drsleepytiger
 	if len(tx.candidateIDs) > MaxVote {
 		return ErrOverMaxVote
 	}
@@ -272,101 +271,51 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		return err
 	}
 
-	oldVoted := acc.Voted
-	cs := b.State().DposState().CandidateState()
+	ds := b.State().DposState()
 
 	// Add vote power to new voted
 	iter, err := newVoted.Iterator(nil)
 	if err != nil {
 		return err
 	}
-	exist, err := iter.Next()
-	if err != nil {
-		return err
-	}
-	for exist {
+	for {
+		exist, err := iter.Next()
+		if err != nil {
+			return err
+		}
+		if !exist {
+			break
+		}
+
 		candidateID := iter.Key()
-
-		c := new(Candidate)
-		err = cs.GetData(candidateID, c)
-		if err != nil && err != trie.ErrNotFound {
-			return err
-		} else if err == trie.ErrNotFound {
+		err = ds.AddVotePowerToCandidate(candidateID, acc.Vesting)
+		if err == core.ErrCandidateNotFound {
 			return ErrNotCandidate
-		}
-
-		_, err := oldVoted.Get(candidateID)
-		if err != nil && err != trie.ErrNotFound {
-			return err
-		} else if err == nil { // Already in oldVoted
-			exist, err = iter.Next()
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		c.VotePower, err = c.VotePower.Add(acc.Vesting)
-		if err != nil {
-			return err
-		}
-
-		if err := cs.PutData(candidateID, c); err != nil {
-			return err
-		}
-
-		exist, err = iter.Next()
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
 	}
 
+	oldVoted := acc.Voted
 	// Subtract vote power from old voted
 	iter, err = oldVoted.Iterator(nil)
 	if err != nil {
 		return err
 	}
-	exist, err = iter.Next()
-	if err != nil {
-		return err
-	}
-	for exist {
+	for {
+		exist, err := iter.Next()
+		if err != nil {
+			return err
+		}
+		if !exist {
+			break
+		}
+
 		candidateID := iter.Key()
-
-		c := new(Candidate)
-		err = cs.GetData(candidateID, c)
-		if err != nil && err != trie.ErrNotFound {
-			return err
-		} else if err == trie.ErrNotFound {
-			exist, err = iter.Next()
-			if err != nil {
-				return err
-			}
+		err = ds.SubVotePowerToCandidate(candidateID, acc.Vesting)
+		if err == core.ErrCandidateNotFound {
 			continue // candidate quited
-		}
-
-		_, err := newVoted.Get(candidateID)
-		if err != nil && err != trie.ErrNotFound {
-			return err
-		} else if err == nil { // in new voted
-			exist, err = iter.Next()
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		c.VotePower, err = c.VotePower.Sub(acc.Vesting)
-		if err != nil {
-			return err
-		}
-
-		if err := cs.PutData(candidateID, c); err != nil {
-			return err
-		}
-
-		exist, err = iter.Next()
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
 	}

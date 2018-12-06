@@ -356,7 +356,7 @@ func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
 	err := s.candidateState.GetData(id, candidate)
 	if err == trie.ErrNotFound {
-		return nil
+		return core.ErrCandidateNotFound
 	} else if err != nil {
 		return err
 	}
@@ -373,7 +373,7 @@ func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
 	err := s.candidateState.GetData(id, candidate)
 	if err == trie.ErrNotFound {
-		return nil
+		return core.ErrCandidateNotFound
 	} else if err != nil {
 		return err
 	}

@@ -740,7 +740,9 @@ func (tx *VestTx) Execute(b *Block) error {
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
 		err = b.state.DposState().AddVotePowerToCandidate(v, tx.amount)
-		if err != nil {
+		if err == ErrCandidateNotFound {
+			continue
+		} else if err != nil {
 			return err
 		}
 	}
@@ -836,7 +838,9 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	// Add user's vesting to candidates' votePower
 	for _, v := range voted {
 		err = b.state.DposState().SubVotePowerToCandidate(v, tx.amount)
-		if err != nil {
+		if err == ErrCandidateNotFound {
+			continue
+		} else if err != nil {
 			return err
 		}
 	}

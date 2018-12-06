@@ -31,7 +31,7 @@ const (
 const (
 	BlockInterval  = 3 * time.Second
 	NumberOfRounds = 1
-	MaxVote        = 21
+	MaxVote        = 15
 
 	miningTickInterval = 100 * time.Millisecond
 	minMintDuration    = 500 * time.Millisecond
