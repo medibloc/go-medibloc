@@ -4,8 +4,9 @@ GO = $(PB:.proto=.pb.go)
 all: $(GO)
 
 %.pb.go: %.proto
-	protoc --gogo_out=. $<
-
+	protoc \
+	-I .:$(GOPATH)/src \
+	--gogo_out=. $<
 %.proto:
 
 clean:

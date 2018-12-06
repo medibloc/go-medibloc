@@ -99,8 +99,8 @@ func (d *download) setup(netService net.Service, bm BlockManager) {
 }
 
 func (d *download) start(targetHeight uint64) {
-	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
-	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
+	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, SyncMeta, net.MessageWeightZero))
+	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, SyncBlockChunk, net.MessageWeightZero))
 
 	d.from = d.bm.LIB().Height()
 	if targetHeight-d.from+1 > maxNumberOfBlocks {
@@ -193,9 +193,9 @@ func (d *download) subscribeLoop() {
 			return
 		case message := <-d.messageCh:
 			switch message.MessageType() {
-			case net.SyncMeta:
+			case SyncMeta:
 				d.updateMeta(message)
-			case net.SyncBlockChunk:
+			case SyncBlockChunk:
 				d.findTaskForBlockChunk(message)
 			}
 		}
@@ -375,7 +375,7 @@ func (d *download) sendMetaQuery() error {
 	}
 	filter := new(net.ChainSyncPeersFilter)
 	filter.SetExcludedPIDs(d.respondingPeers)
-	peers := d.netService.SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, filter)
+	peers := d.netService.SendMessageToPeers(SyncMetaRequest, sendData, net.MessagePriorityLow, filter)
 	logging.Console().WithFields(logrus.Fields{
 		"mq":                       mq,
 		"filter":                   filter,
@@ -446,8 +446,8 @@ func (d *download) deregisterSubscriber() {
 	d.mu.Unlock()
 	d.flush()
 
-	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncMeta, net.MessageWeightZero))
-	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, net.SyncBlockChunk, net.MessageWeightZero))
+	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, SyncMeta, net.MessageWeightZero))
+	d.netService.Deregister(net.NewSubscriber(d, d.messageCh, false, SyncBlockChunk, net.MessageWeightZero))
 }
 
 // taskList manages finished tasks.

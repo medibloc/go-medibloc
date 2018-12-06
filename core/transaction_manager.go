@@ -123,13 +123,19 @@ func (mgr *TransactionManager) GetByAddress(address common.Address) []*Transacti
 }
 
 // Relay relays transaction to network.
-func (mgr *TransactionManager) Relay(tx *Transaction) {
-	mgr.ns.Relay(MessageTypeNewTx, tx, net.MessagePriorityNormal)
-}
+//func (mgr *TransactionManager) Relay(tx *Transaction) {
+//	mgr.ns.Relay(MessageTypeNewTx, tx, net.MessagePriorityNormal)
+//}
 
 // Broadcast broadcasts transaction to network.
-func (mgr *TransactionManager) Broadcast(tx *Transaction) {
-	mgr.ns.Broadcast(MessageTypeNewTx, tx, net.MessagePriorityNormal)
+func (mgr *TransactionManager) Broadcast(tx *Transaction) error {
+	b, err := tx.ToBytes()
+	if err != nil {
+		return err
+	}
+
+	mgr.ns.Broadcast(MessageTypeNewTx, b, net.MessagePriorityNormal)
+	return nil
 }
 
 func (mgr *TransactionManager) loop() {
@@ -155,7 +161,7 @@ func (mgr *TransactionManager) PushAndRelay(tx *Transaction) error {
 	if err := mgr.Push(tx); err != nil {
 		return err
 	}
-	mgr.Relay(tx)
+	mgr.Broadcast(tx)
 	return nil
 }
 

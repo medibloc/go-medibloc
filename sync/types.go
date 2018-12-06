@@ -21,6 +21,14 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 )
 
+// SyncService messages
+const (
+	SyncMetaRequest       = "meta_req"
+	SyncMeta              = "meta"
+	SyncBlockChunkRequest = "chunk_req"
+	SyncBlockChunk        = "chunk"
+)
+
 // ErrAlreadyDownlaodActivated occurred sync is already activated
 var (
 	ErrAlreadyDownlaodActivated = errors.New("download manager is already activated")
@@ -35,5 +43,5 @@ type BlockManager interface {
 	ForceLIB(b *core.Block) error
 	TailBlock() *core.Block
 	PushBlockData(block *core.BlockData) error
-	BroadCast(block *core.BlockData)
+	BroadCast(block *core.BlockData) error
 }

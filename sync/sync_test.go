@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/sync"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -229,10 +231,11 @@ func TestForAutoActivation(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, 3)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+	//testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
+	t.Log("Seed ")
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist)
 	// generate blocks (height:2~nBlocks-1) on seedTester
@@ -380,7 +383,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err := proto.Marshal(mq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	// Error on wrong hash
 	mq = new(syncpb.MetaQuery)
@@ -390,7 +393,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	// Error on chunksize check
 	mq = new(syncpb.MetaQuery)
@@ -400,7 +403,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	mq = new(syncpb.MetaQuery)
 	mq.From = receiver.Tail().Height()
@@ -409,7 +412,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	// Too close to make one chunk
 	mq = new(syncpb.MetaQuery)
@@ -419,7 +422,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err = proto.Marshal(mq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(net.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
 
 	cq := new(syncpb.BlockChunkQuery)
 	cq.From = receiver.Tail().Height()
@@ -427,7 +430,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err = proto.Marshal(cq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID())
+	receiver.Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID().Pretty())
 
 	// From + chunk size > tail height
 	cq = new(syncpb.BlockChunkQuery)
@@ -436,7 +439,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 
 	sendData, err = proto.Marshal(cq)
 	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID())
+	receiver.Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID().Pretty())
 
 	time.Sleep(3 * time.Second)
 	require.True(t, seed.Med.SyncService().IsSeedActivated(), "SeedTester is shutdown")
@@ -456,7 +459,7 @@ func TestForUnmarshalFailedMsg(t *testing.T) {
 	abuseNodes := make([]*testutil.Node, nTesters)
 	for i := 0; i < nTesters; i++ {
 		abuseNodes[i] = testNetwork.NewNode()
-		t.Logf("Tester #%v listen:%v", i, abuseNodes[i].Config.Config.Network.Listen)
+		t.Logf("Tester #%v listen:%v", i, abuseNodes[i].Config.Config.Network.Listens)
 		abuseNodes[i].Start()
 	}
 
@@ -466,12 +469,12 @@ func TestForUnmarshalFailedMsg(t *testing.T) {
 
 	// Error on unmarshal
 	dummyData := []byte{72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100}
-	abuseNodes[0].Med.NetService().SendMessageToPeer(net.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedID)
-	abuseNodes[1].Med.NetService().SendMessageToPeer(net.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedID)
+	abuseNodes[0].Med.NetService().SendMessageToPeer(sync.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedID.Pretty())
+	abuseNodes[1].Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedID.Pretty())
 
 	seed.Med.SyncService().ActiveDownload(100)
-	abuseNodes[2].Med.NetService().SendMessageToPeer(net.SyncMeta, dummyData, net.MessagePriorityLow, seedID)
-	abuseNodes[3].Med.NetService().SendMessageToPeer(net.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedID)
+	abuseNodes[2].Med.NetService().SendMessageToPeer(sync.SyncMeta, dummyData, net.MessagePriorityLow, seedID.Pretty())
+	abuseNodes[3].Med.NetService().SendMessageToPeer(sync.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedID.Pretty())
 
 	count := 0
 	for {

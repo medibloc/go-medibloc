@@ -17,11 +17,25 @@ package net
 
 import (
 	"errors"
-	"fmt"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/crypto/hash"
-	"github.com/medibloc/go-medibloc/util/byteutils"
+	inet "github.com/libp2p/go-libp2p-net"
+	"github.com/libp2p/go-libp2p-peer"
+)
+
+// DefaultConnMgrHighWater is the default value for the connection managers
+// values from "ipfs/go-ipfs-config"
+const (
+	DefaultConnMgrHighWater   = 900
+	DefaultConnMgrLowWater    = 600
+	DefaultConnMgrGracePeriod = time.Second * 20
+)
+
+// Network system parameters
+const (
+	MaxMessageSize = inet.MessageSizeMax
+	StreamTTL      = 1024 * time.Second
 )
 
 // Message Priority.
@@ -31,13 +45,24 @@ const (
 	MessagePriorityLow
 )
 
-// Sync Errors
-var (
-	ErrPeersIsNotEnough = errors.New("peers is not enough")
+// Default Config
+const (
+	DefaultPrivateKeyFile  = "network.key"
+	DefaultBootstrapPeriod = 30 * time.Second
+	DefaultCacheFile       = "network.cache"
+	DefaultCachePeriod     = 3 * time.Minute
 )
 
-// MessageType a string for message type.
-type MessageType string
+// Protocols
+const (
+	MedProtocolID    = "/med/1.0.0"
+	MedDHTProtocolID = "/med/kad/1.0.0"
+)
+
+// Error types
+var (
+	ErrPeerIsNotConnected = errors.New("peer is not connected")
+)
 
 // Message interface for message.
 type Message interface {
@@ -53,36 +78,27 @@ type Serializable interface {
 	FromProto(proto.Message) error
 }
 
-// PeersSlice is a slice which contains peers
-type PeersSlice []interface{}
-
-// PeerFilterAlgorithm is the algorithm used to filter peers
+// PeerFilterAlgorithm is the algorithm used receiver filter peers
 type PeerFilterAlgorithm interface {
-	Filter(PeersSlice) PeersSlice
+	Filter([]peer.ID) []peer.ID
 }
 
 // Service net Service interface
 type Service interface {
 	Start() error
-	Stop()
 
 	Node() *Node
 
+	// dispatcher
 	Register(...*Subscriber)
 	Deregister(...*Subscriber)
 
-	Broadcast(string, Serializable, int)
-	Relay(string, Serializable, int)
-	SendMsg(string, []byte, string, int) error
-
-	SendMessageToPeers(messageName string, data []byte, priority int, filter PeerFilterAlgorithm) []string
-	SendMessageToPeer(messageName string, data []byte, priority int, peerID string) error
-
+	// host
+	SendMessageToPeer(msgType string, data []byte, priority int, peerID string)
+	SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) []string
+	Broadcast(msgType string, data []byte, priority int)
+	//Relay(string, Serializable, int)
 	ClosePeer(peerID string, reason error)
-
-	BroadcastNetworkID([]byte)
-
-	BuildRawMessageData([]byte, string) []byte
 }
 
 // MessageWeight float64
@@ -98,14 +114,6 @@ const (
 	MessageWeightChainChunkData
 )
 
-// SyncService messages
-const (
-	SyncMetaRequest       = "meta_req"
-	SyncMeta              = "meta"
-	SyncBlockChunkRequest = "chunk_req"
-	SyncBlockChunk        = "chunk"
-)
-
 // Subscriber subscriber.
 type Subscriber struct {
 	// id usually the owner/creator, used for troubleshooting .
@@ -114,7 +122,7 @@ type Subscriber struct {
 	// msgChan chan for subscribed message.
 	msgChan chan Message
 
-	// msgType message type to subscribe
+	// msgType message type receiver subscribe
 	msgType string
 
 	// msgWeight weight of msgType
@@ -156,45 +164,4 @@ func (s *Subscriber) MessageWeight() MessageWeight {
 // DoFilter return doFilter
 func (s *Subscriber) DoFilter() bool {
 	return s.doFilter
-}
-
-// BaseMessage base message
-type BaseMessage struct {
-	t    string
-	from string
-	data []byte
-}
-
-// NewBaseMessage new base message
-func NewBaseMessage(t string, from string, data []byte) Message {
-	return &BaseMessage{t: t, from: from, data: data}
-}
-
-// MessageType get message type
-func (msg *BaseMessage) MessageType() string {
-	return msg.t
-}
-
-// MessageFrom get message who send
-func (msg *BaseMessage) MessageFrom() string {
-	return msg.from
-}
-
-// Data get the message data
-func (msg *BaseMessage) Data() []byte {
-	return msg.data
-}
-
-// Hash return the message hash
-func (msg *BaseMessage) Hash() string {
-	return byteutils.Bytes2Hex(hash.Sha3256(msg.data))
-}
-
-// String get the message to string
-func (msg *BaseMessage) String() string {
-	return fmt.Sprintf("BaseMessage {type:%s; data:%s; from:%s}",
-		msg.t,
-		msg.data,
-		msg.from,
-	)
 }

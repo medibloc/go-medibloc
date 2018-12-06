@@ -399,7 +399,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 
 	// Invalid Protobuf
 	bytes := []byte("invalid protobuf")
-	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	node.Med.NetService().SendMessageToPeer(core.MessageTypeRequestBlock, bytes, 1, seedID.Pretty())
 	assert.True(t, foundInLog(hook, "Failed to unmarshal download parent block msg."))
 	hook.Reset()
 
@@ -410,7 +410,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	}
 	bytes, err := proto.Marshal(invalid)
 	require.NoError(t, err)
-	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	node.Med.NetService().SendMessageToPeer(core.MessageTypeRequestBlock, bytes, 1, seedID.Pretty())
 	assert.True(t, foundInLog(hook, "Asked to download genesis's parent, ignore it."))
 	hook.Reset()
 
@@ -421,7 +421,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	}
 	bytes, err = proto.Marshal(invalid)
 	require.NoError(t, err)
-	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	node.Med.NetService().SendMessageToPeer(core.MessageTypeRequestBlock, bytes, 1, seedID.Pretty())
 	assert.True(t, foundInLog(hook, "Failed to find the block asked for."))
 	hook.Reset()
 
@@ -432,7 +432,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 	}
 	bytes, err = proto.Marshal(invalid)
 	require.NoError(t, err)
-	node.Med.NetService().SendMsg(core.MessageTypeRequestBlock, bytes, seedID, 1)
+	node.Med.NetService().SendMessageToPeer(core.MessageTypeRequestBlock, bytes, 1, seedID.Pretty())
 	assert.True(t, foundInLog(hook, "Failed to check the block's signature."))
 	hook.Reset()
 }

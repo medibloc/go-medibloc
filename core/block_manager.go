@@ -184,17 +184,23 @@ func (bm *BlockManager) ForceLIB(b *Block) error {
 }
 
 // Relay relays BlockData to network.
-func (bm *BlockManager) Relay(bd *BlockData) {
-	bm.ns.Relay(MessageTypeNewBlock, bd, net.MessagePriorityHigh)
-}
+//func (bm *BlockManager) Relay(bd *BlockData) {
+//	bm.ns.Relay(MessageTypeNewBlock, bd, net.MessagePriorityHigh)
+//}
 
 // BroadCast broadcasts BlockData to network.
-func (bm *BlockManager) BroadCast(bd *BlockData) {
+func (bm *BlockManager) BroadCast(bd *BlockData) error {
 	logging.Console().WithFields(logrus.Fields{
 		"hash":   bd.Hash(),
 		"height": bd.height,
 	}).Info("block is broadcasted")
-	bm.ns.Broadcast(MessageTypeNewBlock, bd, net.MessagePriorityHigh)
+
+	b, err := bd.ToBytes()
+	if err != nil {
+		return err
+	}
+	bm.ns.Broadcast(MessageTypeNewBlock, b, net.MessagePriorityHigh)
+	return nil
 }
 
 // PushBlockData pushes block data.
@@ -489,10 +495,12 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 	}
 
 	logging.Console().WithFields(logrus.Fields{
-		"bm": bm,
+		"blockHeight": bd.height,
+		"to":          sender,
 	}).Info("request missing parent block")
 
-	return bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
+	bm.ns.SendMessageToPeer(MessageTypeRequestBlock, bytes, net.MessagePriorityNormal, sender)
+	return nil
 }
 
 func (bm *BlockManager) loop() {
@@ -554,7 +562,7 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 	}
 
 	if msg.MessageType() == MessageTypeNewBlock {
-		bm.Relay(bd)
+		bm.BroadCast(bd)
 	}
 }
 
@@ -643,7 +651,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	bytes, err := net.SerializableToBytes(parent)
+	bytes, err := parent.ToBytes()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"parent": parent,
@@ -652,14 +660,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	err = bm.ns.SendMsg(MessageTypeResponseBlock, bytes, msg.MessageFrom(), net.MessagePriorityNormal)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"receiver": msg.MessageFrom(),
-			"err":      err,
-		}).Error("Failed to send block response message..")
-		return
-	}
+	bm.ns.SendMessageToPeer(MessageTypeResponseBlock, bytes, net.MessagePriorityNormal, msg.MessageFrom())
 
 	logging.WithFields(logrus.Fields{
 		"block":  block,

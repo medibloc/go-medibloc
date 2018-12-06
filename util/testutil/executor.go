@@ -199,8 +199,9 @@ func (n *Network) Start() {
 // WaitForEstablished waits until connections between peers are established.
 func (n *Network) WaitForEstablished() {
 	for _, node := range n.Nodes {
-		for int(node.Med.NetService().Node().EstablishedPeersCount()) != len(n.Nodes)-1 {
-			time.Sleep(10 * time.Millisecond)
+		for len(node.Med.NetService().Node().Peerstore().Peers()) != len(n.Nodes) {
+			node.Med.NetService().Node().DHTSync()
+			time.Sleep(1000 * time.Millisecond)
 		}
 	}
 }

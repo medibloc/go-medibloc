@@ -412,6 +412,27 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 	return ErrInvalidProtoToBlock
 }
 
+//ToBytes convert block data to byte slice
+func (bd *BlockData) ToBytes() ([]byte, error) {
+	pb, err := bd.ToProto()
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(pb)
+}
+
+//FromBytes convert byte slice to
+func (bd *BlockData) FromBytes(bytes []byte) error {
+	pb := new(corepb.Block)
+	if err := proto.Unmarshal(bytes, pb); err != nil {
+		return err
+	}
+	if err := bd.FromProto(pb); err != nil {
+		return err
+	}
+	return nil
+}
+
 //Clone copy block data
 func (bd *BlockData) Clone() (*BlockData, error) {
 	protoBd, err := bd.ToProto()

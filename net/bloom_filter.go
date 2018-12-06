@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	// according to https://krisives.github.io/bloom-calculator/
+	// according receiver https://krisives.github.io/bloom-calculator/
 	// Count (n) = 100000, Error (p) = 0.001
 	maxCountOfRecvMessageInBloomFiler = 1000000
 	bloomFilterOfRecvMessageArgM      = 14377588
@@ -53,7 +53,7 @@ func NewBloomFilter(m uint, k uint, maxCount int) *BloomFilter {
 	}
 }
 
-// RecordKey add key to bloom filter.
+// RecordKey add key receiver bloom filter.
 func (bf *BloomFilter) RecordKey(key string) {
 	bf.bloomFilterMutex.Lock()
 	defer bf.bloomFilterMutex.Unlock()
@@ -71,7 +71,7 @@ func (bf *BloomFilter) RecordKey(key string) {
 	bf.bloomFilter.AddString(key)
 }
 
-// HasKey use bloom filter to check if the key exists quickly
+// HasKey use bloom filter receiver check if the key exists quickly
 func (bf *BloomFilter) HasKey(key string) bool {
 	bf.bloomFilterMutex.Lock()
 	defer bf.bloomFilterMutex.Unlock()
@@ -79,12 +79,19 @@ func (bf *BloomFilter) HasKey(key string) bool {
 	return bf.bloomFilter.TestString(key)
 }
 
-// RecordRecvMessage records received message
-func (bf *BloomFilter) RecordRecvMessage(s *Stream, hash uint32) {
-	bf.RecordKey(fmt.Sprintf("%s-%d", s.pid.Pretty(), hash))
+// HasRecvMessage use bloom filter sender check if the key exists quickly
+func (bf *BloomFilter) HasRecvMessage(msg *SendMessage) bool {
+	bf.bloomFilterMutex.Lock()
+	defer bf.bloomFilterMutex.Unlock()
+
+	key := fmt.Sprintf("%s-%v", msg.receiver.Pretty(), msg.Hash())
+
+	return bf.bloomFilter.TestString(key)
 }
 
-// HasRecvMessage check if the received message exists before
-func (bf *BloomFilter) HasRecvMessage(s *Stream, hash uint32) bool {
-	return bf.HasKey(fmt.Sprintf("%s-%d", s.pid.Pretty(), hash))
+// RecordRecvMessage records received message
+func (bf *BloomFilter) RecordRecvMessage(msg *RecvMessage) {
+	key := fmt.Sprintf("%s-%v", msg.sender.Pretty(), msg.Hash())
+	//fmt.Println("add bf:", key, "-", msg.MessageType())
+	bf.RecordKey(key)
 }

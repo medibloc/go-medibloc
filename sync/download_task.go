@@ -176,7 +176,7 @@ func (dt *downloadTask) sendBlockChunkRequest() {
 		index++
 	}
 	dt.startTime = time.Now()
-	dt.netService.SendMessageToPeer(net.SyncBlockChunkRequest, dt.query, net.MessagePriorityLow, randomPeer)
+	dt.netService.SendMessageToPeer(SyncBlockChunkRequest, dt.query, net.MessagePriorityLow, randomPeer)
 	logging.Console().WithFields(logrus.Fields{
 		"block from (height)": dt.from,
 		"to (peerID)":         randomPeer,

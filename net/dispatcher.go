@@ -16,6 +16,7 @@
 package net
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -34,18 +35,23 @@ var (
 // Dispatcher a message dispatcher service.
 type Dispatcher struct {
 	subscribersMap     *sync.Map
-	quitCh             chan bool
+	context            context.Context
 	receivedMessageCh  chan Message
 	dispatchedMessages *lru.Cache
 	filters            *sync.Map
 	//filters            map[string]bool
 }
 
+//ReceivedMessageCh return dispatcher's received message channel
+func (dp *Dispatcher) ReceivedMessageCh() chan<- Message {
+	return dp.receivedMessageCh
+}
+
 // NewDispatcher create Dispatcher instance.
-func NewDispatcher() *Dispatcher {
+func NewDispatcher(ctx context.Context) *Dispatcher {
 	dp := &Dispatcher{
 		subscribersMap:    new(sync.Map),
-		quitCh:            make(chan bool, 10),
+		context:           ctx,
 		receivedMessageCh: make(chan Message, 65536),
 		filters:           new(sync.Map),
 		//filters:           make(map[string]bool),
@@ -96,12 +102,13 @@ func (dp *Dispatcher) loop() {
 		select {
 		case <-timerChan:
 			metricsDispatcherCached.Update(int64(len(dp.receivedMessageCh)))
-		case <-dp.quitCh:
+		case <-dp.context.Done():
 			logging.Console().Info("Stopped MedService Dispatcher.")
 			return
 		case msg := <-dp.receivedMessageCh:
-			msgType := msg.MessageType()
+			dp.handleNewMessage(msg)
 
+			msgType := msg.MessageType()
 			v, _ := dp.subscribersMap.Load(msgType)
 			if v == nil {
 				continue
@@ -114,7 +121,7 @@ func (dp *Dispatcher) loop() {
 				default:
 					logging.WithFields(logrus.Fields{
 						"msgType": msgType,
-					}).Debug("timeout to dispatch message.")
+					}).Debug("timeout receiver dispatch message.")
 				}
 				return true
 			})
@@ -122,16 +129,9 @@ func (dp *Dispatcher) loop() {
 	}
 }
 
-// Stop stop goroutine.
-func (dp *Dispatcher) Stop() {
-	logging.Console().Info("Stopping MedService Dispatcher...")
+// handleNewMessage handle new message receiver chan, then subscribers will be notified receiver process.
+func (dp *Dispatcher) handleNewMessage(msg Message) {
 
-	dp.quitCh <- true
-}
-
-// PutMessage put new message to chan, then subscribers will be notified to process.
-func (dp *Dispatcher) PutMessage(msg Message) {
-	// it's a optimize strategy for message dispatch, according to https://github.com/nebulasio/go-nebulas/issues/50
 	hash := msg.Hash()
 	mt := msg.MessageType()
 	v, ok := dp.filters.Load(mt)
@@ -151,8 +151,6 @@ func (dp *Dispatcher) PutMessage(msg Message) {
 			return
 		}
 	}
-
-	dp.receivedMessageCh <- msg
 }
 
 func metricsDuplicatedMessage(messageName string) {

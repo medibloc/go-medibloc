@@ -3,9 +3,10 @@ global: <
   datadir: "data.db"
 >
 network: <
-  listen: "127.0.0.1:9900"
-  listen: "127.0.0.1:9910"
-  route_table_sync_loop_interval: 2000
+  bootstrap_period: 5
+  minimum_connections: 5
+  cache_file: "net.cache"
+  cache_period: 180
 >
 chain: <
   block_cache_size: 128

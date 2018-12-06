@@ -17,6 +17,8 @@ package net
 
 import (
 	"math/rand"
+
+	"github.com/libp2p/go-libp2p-peer"
 )
 
 // ChainSyncPeersFilter will filter some peers randomly
@@ -30,18 +32,18 @@ func (filter *ChainSyncPeersFilter) SetExcludedPIDs(excludedPIDs map[string]stru
 }
 
 // Filter implements PeerFilterAlgorithm interface
-func (filter *ChainSyncPeersFilter) Filter(peers PeersSlice) PeersSlice {
-	if filter.excludedPIDs != nil {
-		filteredPeersSlice := make(PeersSlice, 0)
-		for _, p := range peers {
-			if _, ok := filter.excludedPIDs[p.(*Stream).PID()]; ok {
-				continue
-			}
-			filteredPeersSlice = append(filteredPeersSlice, p)
-		}
-		return filteredPeersSlice
+func (filter *ChainSyncPeersFilter) Filter(peers []peer.ID) []peer.ID {
+	if filter.excludedPIDs == nil {
+		return peers
 	}
-	return peers
+	filteredPeersSlice := make([]peer.ID, 0)
+	for _, p := range peers {
+		if _, ok := filter.excludedPIDs[p.Pretty()]; ok {
+			continue
+		}
+		filteredPeersSlice = append(filteredPeersSlice, p)
+	}
+	return filteredPeersSlice
 }
 
 // RandomPeerFilter will filter a peer randomly
@@ -49,7 +51,7 @@ type RandomPeerFilter struct {
 }
 
 // Filter implements PeerFilterAlgorithm interface
-func (filter *RandomPeerFilter) Filter(peers PeersSlice) PeersSlice {
+func (filter *RandomPeerFilter) Filter(peers []peer.ID) []peer.ID {
 	if len(peers) == 0 {
 		return peers
 	}
