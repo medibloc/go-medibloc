@@ -432,7 +432,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				}).Error("Failed to rollback new block.")
 				return nil, err
 			}
-			if err == core.ErrLargeTransactionNonce || err == core.ErrExceedBlockMaxCPUUsage || err == core.ErrExceedBlockMaxNetUsage {
+			if isRetryable(err) {
 				if err = d.tm.Push(transaction); err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -440,64 +440,73 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				}
 				continue
 			}
-		} else {
+			if receipt == nil {
+				logging.Console().WithFields(logrus.Fields{
+					"transaction": transaction.Hash(),
+					"err":         err,
+				}).Info("failed to execute transaction")
+				continue
+			}
+			if err := block.BeginBatch(); err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to begin batch.")
+				return nil, err
+			}
+			if err := includeTransaction(block, transaction, receipt); err != nil {
+				if err := block.RollBack(); err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"err": err,
+					}).Error("Failed to rollback.")
+					return nil, err
+				}
+				continue
+			}
 			if err := block.Commit(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
-				}).Error("Failed to commit execution result")
+				}).Error("Failed to commit.")
 				return nil, err
 			}
-		}
-
-		if receipt == nil {
-			logging.Console().WithFields(logrus.Fields{
-				"transaction": transaction.Hash(),
-				"err":         err,
-			}).Info("failed to execute transaction")
 			continue
 		}
 
-		if err := block.BeginBatch(); err != nil {
-			return nil, err
-		}
-
-		transaction.SetReceipt(receipt)
-
-		err = block.AcceptTransaction(transaction)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":         err,
-				"transaction": transaction,
-			}).Error("Failed to accept transaction.")
-
+		if err := includeTransaction(block, transaction, receipt); err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
-				}).Error("Failed to rollback new block.")
+				}).Error("Failed to rollback.")
 				return nil, err
 			}
 			continue
 		}
 
-		block.AppendTransaction(transaction)
-
-		err = block.Commit()
-		if err != nil {
+		if err := block.Commit(); err != nil {
 			logging.Console().WithFields(logrus.Fields{
-				"err":   err,
-				"block": block,
-			}).Error("Failed to commit new block.")
+				"err": err,
+			}).Error("Failed to commit execution result")
 			return nil, err
 		}
 	}
 
-	block.BeginBatch()
+	if err := block.BeginBatch(); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to begin batch.")
+		return nil, err
+	}
 	block.SetCoinbase(coinbase)
 	if err := block.PayReward(coinbase, tail.Supply()); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to pay reward.")
 		return nil, err
 	}
 	err = block.Commit()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to commit.")
 		return nil, err
 	}
 
@@ -510,6 +519,26 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	}
 
 	return block, nil
+}
+
+func isRetryable(err error) bool {
+	return err == core.ErrLargeTransactionNonce || err == core.ErrExceedBlockMaxCPUUsage || err == core.ErrExceedBlockMaxNetUsage
+}
+
+func includeTransaction(block *core.Block, transaction *core.Transaction, receipt *core.Receipt) error {
+	transaction.SetReceipt(receipt)
+
+	err := block.AcceptTransaction(transaction)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":         err,
+			"transaction": transaction,
+		}).Error("Failed to accept transaction.")
+		return err
+	}
+
+	block.AppendTransaction(transaction)
+	return nil
 }
 
 func lastMintSlot(ts time.Time) time.Time {
