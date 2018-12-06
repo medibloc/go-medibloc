@@ -464,16 +464,6 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	//fromStr := "no sign"
-	//if t.sign != nil {
-	//	from, err := t.recoverSigner()
-	//	if err != nil {
-	//		fromStr = "failed to recover signer"
-	//	} else {
-	//		fromStr = from.Hex()
-	//	}
-	//}
-
 	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, cryptoAlg:%v, hashAlg:%v nonce:%v, 
 timestamp:%v, receipt:%v}`,
 		t.chainID,
@@ -763,7 +753,6 @@ func (tx *VestTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *u
 	if err != nil {
 		return nil, nil, err
 	}
-	//fmt.Println("txSize:",uint64(tx.size))
 	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
 	if err != nil {
 		return nil, nil, err
