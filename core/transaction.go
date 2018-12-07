@@ -1279,7 +1279,7 @@ func checkAliasCondition(an string) error {
 			return ErrAliasInvalidChar
 		}
 		if i == 0 && unicode.IsNumber(ch) {
-			return ErrAliasFirsLetter
+			return ErrAliasFirstLetter
 		}
 	}
 	return nil

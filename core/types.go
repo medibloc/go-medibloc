@@ -173,7 +173,7 @@ var (
 	ErrAliasEmptyString                 = errors.New("aliasname should not be empty string")
 	ErrAliasLengthLimit                 = errors.New("aliasname should not be longer than 12 letters")
 	ErrAliasInvalidChar                 = errors.New("aliasname should contain only lowercase letters and numbers")
-	ErrAliasFirsLetter                  = errors.New("first letter of alias name should not be a number")
+	ErrAliasFirstLetter                 = errors.New("first letter of alias name should not be a number")
 	ErrAliasNotExist                    = errors.New("doesn't have any alias")
 	ErrAliasCollateralLimit             = errors.New("not enough transaction value for alias collateral")
 	ErrCannotRecoverSigner              = errors.New("failed to recover payer from sign")
