@@ -44,13 +44,10 @@ const (
 var (
 	ErrAlreadyCandidate             = errors.New("account is already a candidate")
 	ErrBlockMintedInNextSlot        = errors.New("cannot mint block now, there is a block minted in current slot")
-	ErrInvalidBlockForgeTime        = errors.New("invalid time to forge block")
 	ErrInvalidBlockInterval         = errors.New("invalid block interval")
 	ErrInvalidBlockProposer         = errors.New("invalid block proposer")
-	ErrInvalidBlockReward           = errors.New("invalid block reward")
 	ErrInvalidDynastySize           = errors.New("invalid dynasty size")
 	ErrNotCandidate                 = errors.New("account is not a candidate")
-	ErrNoVote                       = errors.New("vote to no one")
 	ErrOverMaxVote                  = errors.New("too many vote")
 	ErrDuplicateVote                = errors.New("cannot vote multiple vote for same account")
 	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
