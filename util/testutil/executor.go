@@ -16,8 +16,10 @@
 package testutil
 
 import (
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"sync"
@@ -135,7 +137,8 @@ func (node *Node) Tail() *core.Block {
 
 // Network is set of nodes.
 type Network struct {
-	t *testing.T
+	t       *testing.T
+	logHook *test.Hook
 
 	DynastySize int
 	Seed        *Node
@@ -144,9 +147,10 @@ type Network struct {
 
 // NewNetwork creates network.
 func NewNetwork(t *testing.T, dynastySize int) *Network {
-	logging.Init("testdata", "debug", 0)
+	logHook := logging.InitTestLogger(filepath.Join("testdata", t.Name()))
 	return &Network{
 		t:           t,
+		logHook:     logHook,
 		DynastySize: dynastySize,
 	}
 }
@@ -215,15 +219,34 @@ func (n *Network) Stop() {
 // Cleanup cleans up directories and files.
 func (n *Network) Cleanup() {
 	n.Stop()
-	size, err := DirSize("testdata")
+	n.logHook.Reset()
+
+	size, err := DirSize(filepath.Join("testdata", n.t.Name()))
 	require.NoError(n.t, err)
 	n.t.Log("TestData size:", size)
-	require.NoError(n.t, os.RemoveAll("testdata"))
+
+	if n.t.Failed() {
+		wd, err := os.Getwd()
+		require.NoError(n.t, err)
+		n.t.Logf("Test Failed. LogDir:%s/%s", wd, filepath.Join("testdata", n.t.Name()))
+		logdata, err := ioutil.ReadFile(filepath.Join("testdata", n.t.Name(), "medibloc.log"))
+		require.NoError(n.t, err)
+		n.t.Log(string(logdata))
+		return
+	}
+
+	require.NoError(n.t, os.RemoveAll(filepath.Join("testdata", n.t.Name())))
+
+	infos, err := ioutil.ReadDir("testdata")
+	require.NoError(n.t, err)
+	if len(infos) == 0 {
+		require.NoError(n.t, os.RemoveAll("testdata"))
+	}
 }
 
-// SetLogTestHook sets test hook for log messages.
-func (n *Network) SetLogTestHook() *test.Hook {
-	return logging.SetTestHook()
+// LogTestHook returns test hook for log messages.
+func (n *Network) LogTestHook() *test.Hook {
+	return n.logHook
 }
 
 // SetProposerFromDynasties chooses proposer from dynasties.

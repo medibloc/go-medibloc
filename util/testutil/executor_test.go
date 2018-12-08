@@ -34,7 +34,6 @@ import (
 //	}
 //	nt.Start()
 //	defer nt.Cleanup()
-//	nt.SetLogTestHook()
 //	nt.WaitForEstablished()
 //
 //	genesis, err := nt.Nodes[0].Med.BlockManager().BlockByHeight(core.GenesisHeight)
@@ -63,7 +62,6 @@ func TestNetworkProposer(t *testing.T) {
 	dynastySize := 3
 	nt := testutil.NewNetwork(t, dynastySize)
 	defer nt.Cleanup()
-	nt.SetLogTestHook()
 
 	seed := nt.NewSeedNode()
 	nt.SetProposerFromDynasties(seed)

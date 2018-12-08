@@ -101,7 +101,6 @@ func TestDposSetup(t *testing.T) {
 
 	tn := testutil.NewNetwork(t, testutil.DynastySize)
 	defer tn.Cleanup()
-	tn.SetLogTestHook()
 
 	for i := 0; i < 3; i++ {
 		pair := testutil.NewAddrKeyPair(t)

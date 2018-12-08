@@ -238,9 +238,9 @@ func (cfg *NodeConfig) String() string {
 }
 
 func tempDir(t *testing.T) string {
-	err := os.MkdirAll("testdata", 0755)
+	err := os.MkdirAll(filepath.Join("testdata", t.Name()), 0755)
 	require.NoError(t, err)
-	dir, err := ioutil.TempDir("testdata", "node")
+	dir, err := ioutil.TempDir(filepath.Join("testdata", t.Name()), "node")
 	require.NoError(t, err)
 	return dir
 }

@@ -41,7 +41,6 @@ func TestNewBlockChain(t *testing.T) {
 func TestRestartNode(t *testing.T) {
 	testNet := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNet.Cleanup()
-	testNet.SetLogTestHook()
 
 	seed := testNet.NewSeedNode()
 	testNet.SetProposerFromDynasties(seed)

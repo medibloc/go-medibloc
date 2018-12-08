@@ -120,17 +120,25 @@ func SetNullLogger() {
 	clog = logger
 }
 
-// SetTestHook returns hook for testing log entry.
-func SetTestHook() *test.Hook {
+// InitTestLogger returns hook for testing log entry.
+func InitTestLogger(path string) *test.Hook {
 	mu.Lock()
 	defer mu.Unlock()
 
-	hook := new(test.Hook)
+	funcHooker := NewFunctionHooker()
+	fileHooker := NewFileRotateHooker(path, 0)
+	testHooker := new(test.Hook)
+
 	logger := logrus.New()
-	logger.Level = logrus.DebugLevel
+	logger.Hooks.Add(funcHooker)
+	logger.Hooks.Add(fileHooker)
+	logger.Hooks.Add(testHooker)
 	logger.Out = ioutil.Discard
-	logger.Hooks.Add(hook)
+	logger.Formatter = &logrus.TextFormatter{FullTimestamp: true}
+	logger.Level = logrus.DebugLevel
+
 	clog = logger
 	vlog = logger
-	return hook
+
+	return testHooker
 }

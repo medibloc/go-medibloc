@@ -42,7 +42,8 @@ func TestLogger(t *testing.T) {
 }
 
 func TestHook(t *testing.T) {
-	hook := log.SetTestHook()
+	hook := log.InitTestLogger("test_hook")
+	defer os.RemoveAll("test_hook")
 	log.Console().Info("Test Hook")
 	assert.Equal(t, 1, len(hook.Entries))
 	assert.Regexp(t, ".*Test Hook.*", hook.LastEntry().Message)

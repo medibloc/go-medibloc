@@ -31,7 +31,6 @@ import (
 func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -67,7 +66,6 @@ func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
 func TestTransactionManager_Push(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -108,7 +106,6 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()

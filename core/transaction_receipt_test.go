@@ -36,7 +36,6 @@ import (
 func TestReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
-	network.SetLogTestHook()
 
 	seed := network.NewSeedNode()
 	seed.Start()
@@ -76,7 +75,6 @@ func TestReceipt(t *testing.T) {
 func TestErrorTransactionReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
-	network.SetLogTestHook()
 
 	seed := network.NewSeedNode()
 	seed.Start()
@@ -122,7 +120,6 @@ func TestErrorTransactionReceipt(t *testing.T) {
 func TestWrongReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
-	network.SetLogTestHook()
 
 	seed := network.NewSeedNode()
 	seed.Start()
@@ -140,7 +137,6 @@ func TestWrongReceipt(t *testing.T) {
 func TestVoteTransactionReceipt(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()
-	network.SetLogTestHook()
 
 	seed := network.NewSeedNode()
 	seed.Start()

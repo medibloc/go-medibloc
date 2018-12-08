@@ -45,7 +45,6 @@ func TestGetProposer(t *testing.T) {
 func TestBlock_BasicTx(t *testing.T) {
 	nt := testutil.NewNetwork(t, 3)
 	defer nt.Cleanup()
-	nt.SetLogTestHook()
 
 	seed := nt.NewSeedNode()
 	nt.SetProposerFromDynasties(seed)
