@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"

@@ -19,8 +19,8 @@ import (
 	"net"
 
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/medibloc/go-medibloc/rpc/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"

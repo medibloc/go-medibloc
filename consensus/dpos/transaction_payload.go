@@ -2,7 +2,7 @@ package dpos
 
 import (
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
 )
 
 // BecomeCandidatePayload is payload type for BecomeCandidate

@@ -16,14 +16,14 @@
 package core
 
 import (
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 )
 

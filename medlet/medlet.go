@@ -24,14 +24,14 @@ import (
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/sync"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/rcrowley/go-metrics"
+	metrics "github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
 )
 

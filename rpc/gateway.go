@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/medibloc/go-medibloc/rpc/pb"
 	pb "github.com/medibloc/go-medibloc/rpc/pb"
+	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"

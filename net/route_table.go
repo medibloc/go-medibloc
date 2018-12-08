@@ -27,16 +27,16 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/medibloc/go-medibloc/net/pb"
+	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 
 	"sync/atomic"
 
 	"sync"
 
-	"github.com/libp2p/go-libp2p-kbucket"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-peerstore"
+	kbucket "github.com/libp2p/go-libp2p-kbucket"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
