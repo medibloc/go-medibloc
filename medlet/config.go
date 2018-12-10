@@ -97,6 +97,13 @@ func DefaultConfig() *medletpb.Config {
 			MinimumConnections: 5,
 			CacheFile:          "net.cache",
 			CachePeriod:        60 * 3,
+
+			ConnMgrLowWaterMark:  900,
+			ConnMgrHighWaterMark: 600,
+			ConnMgrGracePeriod:   20,
+
+			MaxReadConcurrency:  100,
+			MaxWriteConcurrency: 100,
 		},
 		Chain: &medletpb.ChainConfig{
 			Genesis:             "",

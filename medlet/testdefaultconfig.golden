@@ -7,6 +7,11 @@ network: <
   minimum_connections: 5
   cache_file: "net.cache"
   cache_period: 180
+  conn_mgr_low_water_mark: 900
+  conn_mgr_high_water_mark: 600
+  conn_mgr_grace_period: 20
+  max_read_concurrency: 100
+  max_write_concurrency: 100
 >
 chain: <
   block_cache_size: 128
