@@ -288,6 +288,31 @@ func TestAPIService_GetCandidates(t *testing.T) {
 		Array().Length().Equal(3)
 }
 
+func TestAPIService_GetCandidate(t *testing.T) {
+	network := testutil.NewNetwork(t, testutil.DynastySize)
+	defer network.Cleanup()
+
+	seed := network.NewSeedNode()
+	seed.Start()
+	network.WaitForEstablished()
+
+	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
+
+	TX := &core.Transaction{}
+	for _, tx := range seed.GenesisBlock().Transactions() {
+		if tx.TxType() == dpos.TxOpBecomeCandidate {
+			TX = tx
+			break
+		}
+	}
+
+	e.GET("/v1/candidate").
+		WithQuery("candidate_id", byteutils.Bytes2Hex(TX.Hash())).
+		Expect().JSON().Object().
+		ValueEqual("candidate_id", byteutils.Bytes2Hex(TX.Hash())).
+		ValueEqual("address", TX.From().String())
+}
+
 func TestAPIService_GetDynasty(t *testing.T) {
 	network := testutil.NewNetwork(t, testutil.DynastySize)
 	defer network.Cleanup()

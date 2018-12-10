@@ -168,8 +168,7 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
 
-		//rpcBlock, err := coreBlock2rpcBlock(block, true) // TODO @ggomma update explorer to get light blocks
-		rpcBlock, err := coreBlock2rpcBlock(block, false)
+		rpcBlock, err := coreBlock2rpcBlock(block, true)
 		if err != nil {
 			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
 		}
@@ -179,6 +178,30 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 	return &rpcpb.Blocks{
 		Blocks: rpcBlocks,
 	}, nil
+}
+
+// GetCandidate returns matched candidate information
+func (s *APIService) GetCandidate(ctx context.Context, req *rpcpb.GetCandidateRequest) (*rpcpb.Candidate, error) {
+	block := s.bm.TailBlock()
+
+	if len(req.CandidateId) != 64 {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
+	}
+
+	candidateID := byteutils.Hex2Bytes(req.CandidateId)
+	candidate, err := block.State().DposState().CandidateState().Get(candidateID)
+	if err == trie.ErrNotFound {
+		return nil, status.Error(codes.NotFound, ErrMsgCandidateNotFound)
+	}
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	cd := &dpos.Candidate{}
+	if err := cd.FromBytes(candidate); err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+
+	return dposCandidate2rpcCandidate(cd), nil
 }
 
 // GetCandidates returns all candidates

@@ -24,6 +24,12 @@ service ApiService {
 		};
   }
 
+  rpc GetCandidate (GetCandidateRequest) returns (Candidate) {
+    option (google.api.http) = {
+            get: "/v1/candidate"
+        };
+  }
+
   rpc GetCandidates (NonParamRequest) returns (Candidates) {
     option (google.api.http) = {
 			get: "/v1/candidates"
@@ -183,6 +189,10 @@ message Blocks {
 }
 
 message NonParamRequest {
+}
+
+message GetCandidateRequest {
+  string candidate_id = 1;
 }
 
 message Candidate {

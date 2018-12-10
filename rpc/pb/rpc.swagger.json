@@ -134,6 +134,30 @@
         ]
       }
     },
+    "/v1/candidate": {
+      "get": {
+        "operationId": "GetCandidate",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "$ref": "#/definitions/rpcpbCandidate"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "candidate_id",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApiService"
+        ]
+      }
+    },
     "/v1/candidates": {
       "get": {
         "operationId": "GetCandidates",

@@ -51,6 +51,7 @@ const (
 	ErrMsgAliasNotFound              = "alias not found"
 	ErrMsgInvalidAcddress            = "invalid account address"
 	ErrMsgInvalidBlockType           = "invalid block type"
+	ErrMsgCandidateNotFound          = "candidate not found"
 )
 
 // Limit for get blocks request
