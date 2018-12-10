@@ -25,26 +25,30 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const MaxWriteConcurrency = 10
-
 type messageSender struct {
 	host    host.Host
 	context context.Context
 
-	messageQ *sendMessageQ
-	sending  int32
-	msgCh    chan *SendMessage
-	doneCh   chan error
+	messageQ   *sendMessageQ
+	sending    int32
+	maxSending int32
+
+	msgCh  chan *SendMessage
+	doneCh chan error
 }
 
-func newMessageSender(ctx context.Context, host host.Host) *messageSender {
+func newMessageSender(ctx context.Context, host host.Host, maxConcurrency int32) *messageSender {
+	if maxConcurrency == 0 {
+		maxConcurrency = DefaultMaxWriteConcurrency
+	}
 	return &messageSender{
-		host:     host,
-		context:  ctx,
-		messageQ: newMessageQ(),
-		sending:  0,
-		msgCh:    make(chan *SendMessage),
-		doneCh:   make(chan error),
+		host:       host,
+		context:    ctx,
+		messageQ:   newMessageQ(),
+		sending:    0,
+		maxSending: maxConcurrency,
+		msgCh:      make(chan *SendMessage),
+		doneCh:     make(chan error),
 	}
 }
 
@@ -70,7 +74,7 @@ func (ms *messageSender) loop() {
 
 func (ms *messageSender) handelNewMessage(msg *SendMessage) {
 	// writing concurrency is fulfilled. put message receiver queue
-	if ms.sending >= MaxWriteConcurrency {
+	if ms.sending >= ms.maxSending {
 		ms.messageQ.put(msg)
 		return
 	}

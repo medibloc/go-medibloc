@@ -243,6 +243,7 @@ func (cfg *NodeConfig) String() string {
 		cfg.TokenDist)
 }
 
+//TempDir make temporary directory for test
 func TempDir(t *testing.T) string {
 	err := os.MkdirAll(filepath.Join("testdata", t.Name()), 0755)
 	require.NoError(t, err)

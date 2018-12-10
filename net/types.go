@@ -27,9 +27,11 @@ import (
 // DefaultConnMgrHighWater is the default value for the connection managers
 // values from "ipfs/go-ipfs-config"
 const (
-	DefaultConnMgrHighWater   = 900
-	DefaultConnMgrLowWater    = 600
-	DefaultConnMgrGracePeriod = time.Second * 20
+	DefaultConnMgrHighWater    = 900
+	DefaultConnMgrLowWater     = 600
+	DefaultConnMgrGracePeriod  = time.Second * 20
+	DefaultMaxReadConcurrency  = 100
+	DefaultMaxWriteConcurrency = 100
 )
 
 // Network system parameters

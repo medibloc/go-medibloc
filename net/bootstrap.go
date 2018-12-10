@@ -127,7 +127,7 @@ func savePeerStoreToCache(ps pstore.Peerstore, cacheFile string) {
 	pbPeers := new(netpb.Peers)
 	for _, id := range ps.Peers() {
 		p := ps.PeerInfo(id)
-		pbPeer := peerInfoToProto(p)
+		pbPeer := PeerInfoToProto(p)
 		pbPeers.Peers = append(pbPeers.Peers, pbPeer)
 	}
 
@@ -141,18 +141,6 @@ func savePeerStoreToCache(ps pstore.Peerstore, cacheFile string) {
 		}).Warn("failed receiver save peers receiver cache file")
 		return
 	}
-}
-
-func peerInfoToProto(p pstore.PeerInfo) *netpb.PeerInfo {
-	pb := new(netpb.PeerInfo)
-	pb.Id = p.ID.Pretty()
-
-	addrs := p.Addrs
-	pb.Addrs = make([]string, len(addrs))
-	for i, addr := range addrs {
-		pb.Addrs[i] = addr.String()
-	}
-	return pb
 }
 
 func peerInfoFromProto(pb *netpb.PeerInfo) (pstore.PeerInfo, error) {

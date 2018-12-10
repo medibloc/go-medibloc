@@ -20,38 +20,73 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/libp2p/go-libp2p-peerstore"
 	"github.com/medibloc/go-medibloc/medlet"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/medibloc/go-medibloc/util/testutil"
 )
 
-func TestManyConnections(t *testing.T) {
+func TestBroadCastStorm(t *testing.T) {
 	logging.SetTestHook()
-	const NumberOfNet = 100
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)
 
-	seed, _ := NewTestNode(t, ctx)
+	seed, seedMsgCh := NewTestNode(t, ctx)
+	node, nodeMsgCh := NewTestNodeWithSeed(t, ctx, seed)
 
-	for i := 0; i < NumberOfNet; i++ {
+	waitForConnection(t, 5*time.Second, seed, 1)
+
+	seed.BroadcastMessage("bcast", TestMessageData, net.MessagePriorityNormal)
+	msg := <-waitForMessage(1*time.Second, nodeMsgCh)
+	require.NotNil(t, msg)
+	require.Equal(t, "bcast", msg.MessageType())
+
+	node.BroadcastMessage("bcast", TestMessageData, net.MessagePriorityNormal)
+	msg = <-waitForMessage(1*time.Second, seedMsgCh)
+	require.Nil(t, msg)
+}
+
+func TestTrimConnections(t *testing.T) {
+	logging.SetTestHook()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	defer cleanup(t)
+
+	const (
+		LowWaterMark  = 5
+		HighWaterMark = 10
+		GracePeriod   = 1
+	)
+
+	cfg := newDefalutConfig(t)
+	cfg.Network.ConnMgrLowWaterMark = LowWaterMark
+	cfg.Network.ConnMgrHighWaterMark = HighWaterMark
+	cfg.Network.ConnMgrGracePeriod = GracePeriod
+
+	seed, _ := NewTestNodeWithConfig(t, ctx, cfg)
+
+	for i := 0; i < HighWaterMark; i++ {
 		node, _ := NewTestNode(t, ctx)
 		node.Peerstore().AddAddrs(seed.ID(), seed.Addrs(), peerstore.PermanentAddrTTL)
 		node.SendMessageToPeer(TestMessageType, TestMessageData, net.MessagePriorityNormal, seed.ID().Pretty())
+		fmt.Println(len(seed.Network().Conns()))
 	}
-
-	//time.Sleep(net.DefaultConnMgrGracePeriod)
-	t.Log(seed.PeersCount())
+	time.Sleep(GracePeriod * time.Second)
+	seed.ConnManager().TrimOpenConns(ctx)
+	assert.Equal(t, LowWaterMark, len(seed.Network().Conns()))
 }
 
 func TestLargeMessage(t *testing.T) {
-	//logging.SetTestHook()
+	logging.SetTestHook()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)
@@ -61,21 +96,77 @@ func TestLargeMessage(t *testing.T) {
 	node, _ := NewTestNode(t, ctx)
 	node.Peerstore().AddAddrs(seed.ID(), seed.Addrs(), peerstore.PermanentAddrTTL)
 
-	largeMessage := make([]byte, net.MaxMessageSize/2)
+	testMsg := make([]byte, net.MaxMessageSize)
+	node.SendMessageToPeer(TestMessageType, testMsg, net.MessagePriorityNormal, seed.ID().Pretty())
+	recvMsg := <-waitForMessage(1*time.Second, seedMsgCh)
+	require.Nil(t, recvMsg)
 
-	node.SendMessageToPeer(TestMessageType, largeMessage, net.MessagePriorityNormal, seed.ID().Pretty())
-	msg := <-seedMsgCh
+	testMsg = make([]byte, net.MaxMessageSize-13) // header size : 13
+	node.SendMessageToPeer(TestMessageType, testMsg, net.MessagePriorityNormal, seed.ID().Pretty())
+	recvMsg = <-waitForMessage(1*time.Second, seedMsgCh)
+	require.NotNil(t, recvMsg)
+}
 
-	fmt.Println(len(msg.Data()))
+func waitForMessage(timeout time.Duration, nodeRecvMsgCh chan net.Message) chan net.Message {
+	recv := make(chan net.Message)
+	go func() {
+		timer := time.NewTimer(timeout)
+		select {
+		case <-timer.C:
+			recv <- nil
+			return
+		case msg := <-nodeRecvMsgCh:
+			recv <- msg
+			return
+		}
+	}()
+	return recv
+}
+
+func waitForConnection(t *testing.T, timeout time.Duration, node *net.Node, targeNum int) {
+	for {
+		timer := time.NewTimer(timeout)
+		ticker := time.NewTicker(100 * time.Millisecond)
+		select {
+		case <-timer.C:
+			t.Error("Timeout to reach target connection number ", targeNum)
+		case <-ticker.C:
+			if len(node.Network().Conns()) >= targeNum {
+				return
+			}
+		}
+	}
+}
+
+func newDefalutConfig(t *testing.T) *medletpb.Config {
+	cfg := medlet.DefaultConfig()
+	cfg.Global.Datadir = testutil.TempDir(t)
+	return cfg
+}
+
+func newConfigWithSeed(t *testing.T, seed *net.Node) *medletpb.Config {
+	cfg := newDefalutConfig(t)
+	pi := peerstore.PeerInfo{
+		ID:    seed.ID(),
+		Addrs: seed.Addrs(),
+	}
+	seeds := make([]*netpb.PeerInfo, 0)
+	seeds = append(seeds, net.PeerInfoToProto(pi))
+	cfg.Network.Seeds = seeds
+	return cfg
 }
 
 func NewTestNode(t *testing.T, ctx context.Context) (*net.Node, chan net.Message) {
-	logging.SetTestHook()
+	return NewTestNodeWithConfig(t, ctx, newDefalutConfig(t))
+}
+
+func NewTestNodeWithSeed(t *testing.T, ctx context.Context, seed *net.Node) (*net.Node, chan net.Message) {
+	cfg := newConfigWithSeed(t, seed)
+	return NewTestNodeWithConfig(t, ctx, cfg)
+}
+
+func NewTestNodeWithConfig(t *testing.T, ctx context.Context, cfg *medletpb.Config) (*net.Node, chan net.Message) {
 	receiveMsgCh := make(chan net.Message)
-
-	cfg := medlet.DefaultConfig()
-	cfg.Global.Datadir = testutil.TempDir(t)
-
 	node, err := net.NewNode(ctx, cfg, receiveMsgCh)
 	require.NoError(t, err)
 	require.NoError(t, node.Start()) // start net service

@@ -40,7 +40,6 @@ message NetworkConfig {
     // Network node privateKey address. If nil, generate a new node.
     string network_key_file = 2;
 
-
     // Seed node's peerID and address
     repeated netpb.PeerInfo seeds = 11;
     // bootstrap trying period - seconds
@@ -52,10 +51,16 @@ message NetworkConfig {
     string cache_file = 21;
     // saving cache period
     uint32 cache_period = 22;
+
+    uint32 conn_mgr_low_water_mark = 31;
+    uint32 conn_mgr_high_water_mark = 32;
+    uint32 conn_mgr_grace_period = 33;
+
+    uint32 max_read_concurrency = 34;
+    uint32 max_write_concurrency = 35;
 }
 
 message ChainConfig {
-
     // genesis conf file path
     string genesis = 2;
 

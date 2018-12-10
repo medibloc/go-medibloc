@@ -57,6 +57,7 @@ type Node struct {
 	cachePeriod     time.Duration
 }
 
+//Addrs returns opened addrs (w/o p2p-circuit)
 func (node *Node) Addrs() []multiaddr.Multiaddr {
 	addrs := make([]multiaddr.Multiaddr, 0)
 	for _, v := range node.Host.Addrs() {
@@ -68,6 +69,7 @@ func (node *Node) Addrs() []multiaddr.Multiaddr {
 	return addrs
 }
 
+//DHT returns distributed hashed table
 func (node *Node) DHT() *dht.IpfsDHT {
 	return node.dht
 }
@@ -84,6 +86,7 @@ func (node *Node) EstablishedPeersCount() int32 {
 	return node.PeersCount()
 }
 
+//Connected returns connected peer ids
 func (node *Node) Connected() []peer.ID {
 	connections := node.Network().Conns()
 	peers := make([]peer.ID, len(connections))
@@ -112,12 +115,24 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 		return nil, err
 	}
 
-	connm := connmgr.NewConnManager(DefaultConnMgrLowWater, DefaultConnMgrHighWater, DefaultConnMgrGracePeriod)
+	lw := int(cfg.Network.ConnMgrLowWaterMark)
+	if lw == 0 {
+		lw = DefaultConnMgrLowWater
+	}
+	hw := int(cfg.Network.ConnMgrHighWaterMark)
+	if hw == 0 {
+		hw = DefaultConnMgrHighWater
+	}
+	gp := time.Duration(cfg.Network.ConnMgrGracePeriod) * time.Second
+	if gp == 0 {
+		gp = DefaultConnMgrGracePeriod
+	}
+	connMgr := connmgr.NewConnManager(lw, hw, gp)
 
 	host, err := libp2p.New(ctx,
 		libp2p.Identity(networkKey),
 		libp2p.ListenAddrStrings(cfg.Network.Listens...),
-		libp2p.ConnectionManager(connm),
+		libp2p.ConnectionManager(connMgr),
 		//libp2p.BandwidthReporter()
 	)
 	if err != nil {
@@ -167,8 +182,8 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 		context:         ctx,
 		dht:             dht,
 		dhtTicker:       make(chan time.Time),
-		messageSender:   newMessageSender(ctx, host),
-		messageReceiver: newMessageReceiver(ctx, recvMessageCh, bf),
+		messageSender:   newMessageSender(ctx, host, int32(cfg.Network.MaxWriteConcurrency)),
+		messageReceiver: newMessageReceiver(ctx, recvMessageCh, bf, int32(cfg.Network.MaxReadConcurrency)),
 		chainID:         cfg.Global.ChainId,
 		bloomFilter:     bf,
 		bootstrapConfig: bCfg,
@@ -234,6 +249,7 @@ func (node *Node) loop() {
 	}
 }
 
+//DHTSync run dht bootstrap
 func (node *Node) DHTSync() {
 	node.dhtTicker <- time.Now()
 }
@@ -276,6 +292,7 @@ func (node *Node) SendMessageToPeer(msgType string, data []byte, priority int, p
 	node.sendMessage(msg)
 }
 
+//SendMessageToPeers send messages to filtered peers
 func (node *Node) SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) (peers []string) {
 	msg, err := newSendMessage(node.chainID, msgType, data, priority, "")
 	if err != nil {
@@ -311,8 +328,8 @@ func (node *Node) BroadcastMessage(msgType string, data []byte, priority int) {
 		msg.SetReceiver(p)
 		if node.bloomFilter.HasRecvMessage(msg) {
 			logging.Console().WithFields(logrus.Fields{
-				"hash":   msg.Hash(),
-				"peerID": msg.receiver.Pretty(),
+				"hash":    msg.Hash(),
+				"peerID":  msg.receiver.Pretty(),
 				"msgType": msg.MessageType(),
 			}).Debug("avoid duplicate message broadcast")
 			continue
@@ -321,6 +338,7 @@ func (node *Node) BroadcastMessage(msgType string, data []byte, priority int) {
 	}
 }
 
+//ClosePeer close the connection to peer
 func (node *Node) ClosePeer(peerID string, reason error) {
 	id, err := peer.IDB58Decode(peerID)
 	if err != nil {

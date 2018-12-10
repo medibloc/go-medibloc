@@ -27,25 +27,28 @@ import (
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 
-const MaxReadConcurrency = 10
-
 type messageReceiver struct {
 	context context.Context
 
-	streamQ   *streamQ
-	receiving int32
-	streamCh  chan inet.Stream
+	streamQ      *streamQ
+	receiving    int32
+	maxReceiving int32
+	streamCh     chan inet.Stream
 
 	recvMessageCh chan<- Message
 	doneCh        chan error
 	bloomFilter   *BloomFilter
 }
 
-func newMessageReceiver(ctx context.Context, recvMessageCh chan<- Message, bf *BloomFilter) *messageReceiver {
+func newMessageReceiver(ctx context.Context, recvMessageCh chan<- Message, bf *BloomFilter, maxConcurrency int32) *messageReceiver {
+	if maxConcurrency == 0 {
+		maxConcurrency = DefaultMaxReadConcurrency
+	}
 	return &messageReceiver{
 		context:       ctx,
 		streamQ:       newStreamQ(),
 		receiving:     0,
+		maxReceiving:  maxConcurrency,
 		streamCh:      make(chan inet.Stream),
 		recvMessageCh: recvMessageCh,
 		doneCh:        make(chan error),
@@ -74,7 +77,7 @@ func (mr *messageReceiver) loop() {
 
 func (mr *messageReceiver) handelNewStream(s inet.Stream) {
 	// writing concurrency is fulfilled. put message receiver queue
-	if atomic.LoadInt32(&mr.receiving) >= MaxReadConcurrency {
+	if atomic.LoadInt32(&mr.receiving) >= mr.maxReceiving {
 		logging.Console().Debug("Read concurrency is full")
 		mr.streamQ.put(s)
 		return
