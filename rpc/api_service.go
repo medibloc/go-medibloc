@@ -63,9 +63,9 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if req.Type != "" {
 		switch req.GetType() {
 		case GENESIS:
-			block, err = s.bm.BlockByHeight(1)
+			block, err = s.bm.BlockByHeight(core.GenesisHeight)
 			if err != nil {
-				return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+				return nil, status.Error(codes.Internal, ErrMsgInternalError)
 			}
 		case CONFIRMED:
 			block = s.bm.LIB()
