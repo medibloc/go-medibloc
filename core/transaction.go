@@ -36,7 +36,7 @@ const (
 	//AliasKey key for find aliasname
 	AliasKey = "alias"
 	//MinimumAliasCollateral limit value for register alias
-	MinimumAliasCollateral = "1000000"
+	MinimumAliasCollateral = "1000000000000000000"
 )
 
 // Transaction struct represents transaction
