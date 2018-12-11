@@ -532,12 +532,9 @@ func TestAPIService_SendTransaction(t *testing.T) {
 	receiver := seed.Config.TokenDist[4]
 	tx := bb.Tx().Type(core.TxOpTransfer).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
 
-	_, err := rpc.CoreTx2rpcTx(tx, false)
-	assert.NoError(t, err)
-
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
-	TX, _ := rpc.CoreTx2rpcTx(tx, false)
+	TX := rpc.CoreTx2rpcTx(tx, false)
 
 	e.POST("/v1/transaction").
 		WithJSON(TX).

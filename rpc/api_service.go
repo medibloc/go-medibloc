@@ -120,7 +120,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
-		return coreBlock2rpcBlock(block, false)
+		return coreBlock2rpcBlock(block, false), nil
 	}
 
 	switch req.Type {
@@ -143,7 +143,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 	}
 
-	return coreBlock2rpcBlock(block, false)
+	return coreBlock2rpcBlock(block, false), nil
 }
 
 // GetBlocks returns blocks
@@ -168,10 +168,7 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
 
-		rpcBlock, err := coreBlock2rpcBlock(block, true)
-		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgConvertBlockFailed)
-		}
+		rpcBlock := coreBlock2rpcBlock(block, true)
 		rpcBlocks = append(rpcBlocks, rpcBlock)
 	}
 
@@ -278,10 +275,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 func (s *APIService) GetPendingTransactions(ctx context.Context,
 	req *rpcpb.NonParamRequest) (*rpcpb.Transactions, error) {
 	txs := s.tm.GetAll()
-	rpcTxs, err := coreTxs2rpcTxs(txs, false)
-	if err != nil {
-		return nil, err
-	}
+	rpcTxs := coreTxs2rpcTxs(txs, false)
 
 	return &rpcpb.Transactions{
 		Transactions: rpcTxs,
@@ -310,10 +304,10 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		if tx == nil {
 			return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 		}
-		return CoreTx2rpcTx(tx, false)
+		return CoreTx2rpcTx(tx, false), nil
 	}
 	// If tx is already included in a block
-	return CoreTx2rpcTx(tx, true)
+	return CoreTx2rpcTx(tx, true), nil
 }
 
 // GetTransactionReceipt returns transaction receipt
@@ -336,7 +330,7 @@ func (s *APIService) GetTransactionReceipt(ctx context.Context, req *rpcpb.GetTr
 		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
 	// If tx is already included in a block
-	return coreReceipt2rpcReceipt(tx)
+	return coreReceipt2rpcReceipt(tx), nil
 }
 
 // SendTransaction sends transaction

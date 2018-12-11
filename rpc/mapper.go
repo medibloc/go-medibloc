@@ -55,19 +55,16 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 	}, nil
 }
 
-func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.Block, error) {
+func coreBlock2rpcBlock(block *core.Block, light bool) *rpcpb.Block {
 	var txs []*rpcpb.Transaction
 	var txHashes []string
-	var err error
+
 	if light {
 		for _, tx := range block.Transactions() {
 			txHashes = append(txHashes, byteutils.Bytes2Hex(tx.Hash()))
 		}
 	} else {
-		txs, err = coreTxs2rpcTxs(block.Transactions(), true)
-		if err != nil {
-			return nil, err
-		}
+		txs = coreTxs2rpcTxs(block.Transactions(), true)
 	}
 	return &rpcpb.Block{
 		Height:       block.Height(),
@@ -90,7 +87,7 @@ func coreBlock2rpcBlock(block *core.Block, light bool) (*rpcpb.Block, error) {
 		CpuUsage:     block.BlockData.BlockHeader.CPUUsage().String(),
 		NetRef:       block.BlockData.BlockHeader.NetRef().String(),
 		NetUsage:     block.BlockData.BlockHeader.NetUsage().String(),
-	}, nil
+	}
 }
 
 func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
@@ -104,15 +101,11 @@ func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 }
 
 // CoreTx2rpcTx converts core transaction type to rpcpb response type
-func CoreTx2rpcTx(tx *core.Transaction, onChain bool) (*rpcpb.Transaction, error) {
+func CoreTx2rpcTx(tx *core.Transaction, onChain bool) *rpcpb.Transaction {
 	var rpcReceipt *rpcpb.TransactionReceipt
-	var err error
 
 	if onChain {
-		rpcReceipt, err = coreReceipt2rpcReceipt(tx)
-		if err != nil {
-			return nil, err
-		}
+		rpcReceipt = coreReceipt2rpcReceipt(tx)
 	}
 
 	return &rpcpb.Transaction{
@@ -131,22 +124,19 @@ func CoreTx2rpcTx(tx *core.Transaction, onChain bool) (*rpcpb.Transaction, error
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
 		OnChain:   onChain,
 		Receipt:   rpcReceipt,
-	}, nil
+	}
 }
 
-func coreTxs2rpcTxs(txs []*core.Transaction, onChain bool) ([]*rpcpb.Transaction, error) {
+func coreTxs2rpcTxs(txs []*core.Transaction, onChain bool) []*rpcpb.Transaction {
 	var rpcTxs []*rpcpb.Transaction
 	for _, tx := range txs {
-		rpcTx, err := CoreTx2rpcTx(tx, onChain)
-		if err != nil {
-			return nil, err
-		}
+		rpcTx := CoreTx2rpcTx(tx, onChain)
 		rpcTxs = append(rpcTxs, rpcTx)
 	}
-	return rpcTxs, nil
+	return rpcTxs
 }
 
-func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.TransactionReceipt, error) {
+func coreReceipt2rpcReceipt(tx *core.Transaction) *rpcpb.TransactionReceipt {
 	err := string(tx.Receipt().Error())
 	cpuUsage := tx.Receipt().CPUUsage().String()
 	netUsage := tx.Receipt().NetUsage().String()
@@ -156,5 +146,5 @@ func coreReceipt2rpcReceipt(tx *core.Transaction) (*rpcpb.TransactionReceipt, er
 		CpuUsage: cpuUsage,
 		NetUsage: netUsage,
 		Error:    err,
-	}, nil
+	}
 }
