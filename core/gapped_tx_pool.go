@@ -28,12 +28,22 @@ type GappedTxPool struct {
 	size int
 
 	//candidates *hashheap.HashedHeap
-	buckets    *hashheap.HashedHeap
+	buckets *hashheap.HashedHeap
 	//all        map[string]*Transaction
 
-	counter uint64
+	counter        uint64
+	accountCounter map[string]uint64
 
 	eventEmitter *EventEmitter
+}
+
+// NewGappedTxPool returns new gapped Tx pool.
+func NewGappedTxPool(size int) *GappedTxPool {
+	return &GappedTxPool{
+		size:           size,
+		buckets:        hashheap.New(),
+		accountCounter: make(map[string]uint64),
+	}
 }
 
 // Push pushes transaction to the gapped tx pool.
@@ -42,6 +52,9 @@ func (gp *GappedTxPool) Push(tx *Transaction) error {
 	defer gp.mu.Unlock()
 
 	from := tx.From().Str()
+	if gp.accountCounter[from] >= GappedTransactionPoolAccountLimit {
+		return ErrTxPoolAccountLimitExceeded
+	}
 
 	// push to bucket
 	var bkt *bucket
@@ -52,14 +65,15 @@ func (gp *GappedTxPool) Push(tx *Transaction) error {
 	} else {
 		bkt = newBucket()
 	}
-	// TODO check max tx limit
 	bkt.push(tx)
 	gp.buckets.Set(from, bkt)
+	gp.accountCounter[from]++
+	gp.counter++
 
 	return nil
 }
 
-// ContinuousTx return PopContinuousTxs.
+// PopContinuousTxs return PopContinuousTxs.
 func (gp *GappedTxPool) PopContinuousTxs(tx *Transaction) []*Transaction {
 	gp.mu.Lock()
 	defer gp.mu.Unlock()
@@ -75,9 +89,10 @@ func (gp *GappedTxPool) PopContinuousTxs(tx *Transaction) []*Transaction {
 	bkt := v.(*bucket)
 	for {
 		minTx := bkt.peekFirst()
-		if minTx != nil && (nonce + 1 == minTx.nonce) {
-			nonce ++
+		if minTx != nil && (nonce+1 == minTx.nonce) {
+			nonce++
 			bkt.minTxs.Pop()
+			gp.counter--
 			Txs = append(Txs, minTx)
 			continue
 		}

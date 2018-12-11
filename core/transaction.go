@@ -41,18 +41,19 @@ const (
 
 // Transaction struct represents transaction
 type Transaction struct {
-	hash      []byte
-	txType    string
-	to        common.Address
-	value     *util.Uint128
-	timestamp int64
-	nonce     uint64
-	chainID   uint32
-	payload   []byte
-	hashAlg   algorithm.HashAlgorithm
-	cryptoAlg algorithm.CryptoAlgorithm
-	sign      []byte
-	payerSign []byte
+	hash         []byte
+	txType       string
+	to           common.Address
+	value        *util.Uint128
+	timestamp    int64
+	nonce        uint64
+	nonceCounter uint64
+	chainID      uint32
+	payload      []byte
+	hashAlg      algorithm.HashAlgorithm
+	cryptoAlg    algorithm.CryptoAlgorithm
+	sign         []byte
+	payerSign    []byte
 
 	receipt *Receipt
 
@@ -82,19 +83,20 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 	}
 
 	return &corepb.Transaction{
-		Hash:      t.hash,
-		TxType:    t.txType,
-		To:        t.to.Bytes(),
-		Value:     value,
-		Timestamp: t.timestamp,
-		Nonce:     t.nonce,
-		ChainId:   t.chainID,
-		Payload:   t.payload,
-		HashAlg:   uint32(t.hashAlg),
-		CryptoAlg: uint32(t.cryptoAlg),
-		Sign:      t.sign,
-		PayerSign: t.payerSign,
-		Receipt:   Receipt,
+		Hash:         t.hash,
+		TxType:       t.txType,
+		To:           t.to.Bytes(),
+		Value:        value,
+		Timestamp:    t.timestamp,
+		Nonce:        t.nonce,
+		NonceCounter: t.nonceCounter,
+		ChainId:      t.chainID,
+		Payload:      t.payload,
+		HashAlg:      uint32(t.hashAlg),
+		CryptoAlg:    uint32(t.cryptoAlg),
+		Sign:         t.sign,
+		PayerSign:    t.payerSign,
+		Receipt:      Receipt,
 	}, nil
 }
 
@@ -123,6 +125,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.value = value
 	t.timestamp = pbTx.Timestamp
 	t.nonce = pbTx.Nonce
+	t.nonceCounter = pbTx.NonceCounter
 	t.chainID = pbTx.ChainId
 	t.payload = pbTx.Payload
 	t.hashAlg = algorithm.HashAlgorithm(pbTx.HashAlg)
@@ -436,7 +439,6 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 		}).Warn("invalid tx hash")
 		return ErrInvalidTransactionHash
 	}
-
 	return nil
 }
 

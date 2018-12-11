@@ -31,22 +31,29 @@ type TransactionPool struct {
 
 	size int
 
-	candidates *hashheap.HashedHeap
-	buckets    *hashheap.HashedHeap
-	all        map[string]*Transaction
-
-	counter uint64
+	candidates  *hashheap.HashedHeap
+	buckets     *hashheap.HashedHeap
+	all         map[string]*Transaction
+	accountInfo map[string]*bandwidthSum
+	counter     uint64
 
 	eventEmitter *EventEmitter
+}
+
+type bandwidthSum struct {
+	counter uint64
+	cpuSum  uint64
+	netSum  uint64
 }
 
 // NewTransactionPool returns TransactionPool.
 func NewTransactionPool(size int) *TransactionPool {
 	return &TransactionPool{
-		size:       size,
-		candidates: hashheap.New(),
-		buckets:    hashheap.New(),
-		all:        make(map[string]*Transaction),
+		size:        size,
+		candidates:  hashheap.New(),
+		buckets:     hashheap.New(),
+		all:         make(map[string]*Transaction),
+		accountInfo: make(map[string]*bandwidthSum),
 	}
 }
 
@@ -101,7 +108,6 @@ func (pool *TransactionPool) GetByAddress(address common.Address) []*Transaction
 			txs = append(txs, tx)
 		}
 	}
-
 	return txs
 }
 
@@ -131,7 +137,6 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 		}
 		pool.eventEmitter.Trigger(event)
 	}
-
 	return nil
 }
 
@@ -156,6 +161,11 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; ok {
 		return ErrDuplicatedTransaction
 	}
+	err := pool.addAccountInfo(tx)
+	if err != nil {
+		return err
+	}
+
 	pool.all[byteutils.Bytes2Hex(tx.Hash())] = tx
 
 	from := tx.From().Str()
@@ -202,6 +212,64 @@ func (pool *TransactionPool) del(tx *Transaction) {
 	}
 
 	pool.replaceCandidate(bkt, from)
+	pool.subAccountInfo(tx)
+}
+
+func (pool *TransactionPool) deleteReplaceTxTarget(tx *Transaction) error {
+	txs := pool.GetByAddress(tx.From())
+	for _, oldTx := range txs {
+		if oldTx.nonce == tx.nonce && oldTx.nonceCounter < tx.nonceCounter {
+			pool.del(oldTx)
+			return nil
+		}
+	}
+	return ErrCannotFindSameNonce
+}
+
+func (pool *TransactionPool) getAccountInfo(from string) *bandwidthSum {
+	//pool.mu.RLock()
+	//defer pool.mu.RUnlock() // ???
+	ai, ok := pool.accountInfo[from]
+	if !ok {
+		return &bandwidthSum{0, 0, 0}
+	}
+	return ai
+}
+
+func (pool *TransactionPool) setAccountInfo(from string, ai *bandwidthSum) error {
+	pool.accountInfo[from] = ai
+	return nil
+}
+
+func (pool *TransactionPool) addAccountInfo(tx *Transaction) error {
+	from := tx.From().Str()
+	ai := pool.getAccountInfo(from)
+	cpuUsage, netUsage := uint64(1000), uint64(2000) //TODO replace with tx.Bandwidth
+	if ai.counter >= TransactionPoolAccountLimit {
+		return ErrTxPoolAccountLimitExceeded
+	}
+	ai.counter++
+	ai.cpuSum += cpuUsage
+	ai.netSum += netUsage
+	err := pool.setAccountInfo(from, ai)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (pool *TransactionPool) subAccountInfo(tx *Transaction) error {
+	from := tx.From().Str()
+	ai := pool.getAccountInfo(from)
+	cpuUsage, netUsage := uint64(1000), uint64(2000) //TODO replace with tx.Bandwidth
+	ai.counter--
+	ai.cpuSum -= cpuUsage
+	ai.netSum -= netUsage
+	err := pool.setAccountInfo(from, ai)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {

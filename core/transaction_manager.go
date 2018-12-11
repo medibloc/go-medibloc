@@ -17,6 +17,9 @@ package core
 
 import (
 	"errors"
+	"fmt"
+
+	"github.com/medibloc/go-medibloc/util"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -32,12 +35,14 @@ var defaultTransactionMessageChanSize = 128
 // TransactionManager manages transactions' pool and network service.
 type TransactionManager struct {
 	chainID uint32
+	bm      *BlockManager
 
 	receivedMessageCh chan net.Message
 	quitCh            chan int
 
-	pool *TransactionPool
-	ns   net.Service
+	pool         *TransactionPool
+	gappedTxPool *GappedTxPool
+	ns           net.Service
 }
 
 // NewTransactionManager create a new TransactionManager.
@@ -51,7 +56,8 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 }
 
 // Setup sets up TransactionManager.
-func (mgr *TransactionManager) Setup(ns net.Service) {
+func (mgr *TransactionManager) Setup(ns net.Service, bm *BlockManager) {
+	mgr.bm = bm
 	if ns != nil {
 		mgr.ns = ns
 		mgr.registerInNetwork()
@@ -83,16 +89,58 @@ func (mgr *TransactionManager) registerInNetwork() {
 }
 
 // Push pushes transaction to TransactionManager.
-func (mgr *TransactionManager) Push(tx *Transaction) error {
-	if err := tx.VerifyIntegrity(mgr.chainID); err != nil {
+func (mgr *TransactionManager) Push(tx *Transaction) error { // TODO change name? @jiseob
+	from := tx.From().Str()
+
+	fmt.Println(mgr.bm.bc.mainTailBlock)
+	//fmt.Println(mgr.bm.TailBlock())
+	//fmt.Println(mgr.bm.TailBlock().State())
+	//state := mgr.bm.TailBlock().State()
+	state := mgr.bm.bc.mainTailBlock.State()
+	acc, err := state.AccState().GetAccount(tx.From())
+	if err != nil {
+		return err
+	}
+	cpuUsage, netUsage := uint64(1000), uint64(2000) //TODO replace with tx.Bandwidth
+	ai := mgr.pool.getAccountInfo(from)
+	cpuSum := ai.cpuSum + cpuUsage
+	netSum := ai.netSum + netUsage //TODO lock
+	cpuCost, err := state.cpuRef.Mul(util.NewUint128FromUint(cpuSum))
+	if err != nil {
+		return err
+	}
+	netCost, err := state.cpuRef.Mul(util.NewUint128FromUint(netSum))
+	if err != nil {
+		return err
+	}
+	cost, err := cpuCost.Add(netCost)
+	if err != nil {
+		return err
+	}
+	avail, err := acc.Vesting.Sub(acc.Bandwidth)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to calculate available usage.")
+		return err
+	}
+	if avail.Cmp(cost) < 0 {
+		return ErrBandwidthNotEnough
+	}
+	if err := mgr.pool.Push(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"tx":  tx,
 			"err": err,
-		}).Debug("Failed to verify tx.")
+		}).Info("Failed to push tx.")
 		return err
 	}
+	return nil
+}
 
-	if err := mgr.pool.Push(tx); err != nil {
+// PushGappedTxPool pushes gapped future transaction to gappedTxPool of TransactionManager.
+func (mgr *TransactionManager) PushGappedTxPool(tx *Transaction) error {
+
+	if err := mgr.gappedTxPool.Push(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"tx":  tx,
 			"err": err,
@@ -156,6 +204,66 @@ func (mgr *TransactionManager) PushAndRelay(tx *Transaction) error {
 		return err
 	}
 	mgr.Relay(tx)
+	return nil
+}
+
+//DisposeTx disposes transaction
+func (mgr *TransactionManager) DisposeTx(tx *Transaction) error {
+	if err := tx.VerifyIntegrity(mgr.chainID); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"tx":  tx,
+			"err": err,
+		}).Debug("Failed to verify tx.")
+		return err
+	}
+
+	block := mgr.bm.TailBlock() // TODO lock check @jiseob
+	err := block.state.checkNonce(tx)
+	if err == ErrSmallTransactionNonce {
+		return err
+	}
+	from := tx.From()
+	v := mgr.pool.buckets.Get(from.String()) // TODO make method (bucket 호출 말것)
+	poolMaxNonce := v.(*bucket).peekLast().nonce
+	if tx.nonce <= poolMaxNonce {
+		err = mgr.replaceTx(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	if tx.nonce == poolMaxNonce+1 {
+		var txs []*Transaction
+		txs = append(txs, tx)
+		txs = append(txs, mgr.gappedTxPool.PopContinuousTxs(tx)...)
+		for _, tx := range txs {
+			err := mgr.PushAndBroadcast(tx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	mgr.PushGappedTxPool(tx)
+	return nil
+}
+
+//PushAndBroadcast push and broadcast transaction
+func (mgr *TransactionManager) PushAndBroadcast(tx *Transaction) error {
+	if err := mgr.Push(tx); err != nil {
+		return err
+	}
+	mgr.Broadcast(tx)
+	return nil
+}
+
+//replaceTx replaceTx from tx pool
+func (mgr *TransactionManager) replaceTx(tx *Transaction) error {
+	err := mgr.pool.deleteReplaceTxTarget(tx)
+	if err != nil {
+		return err
+	}
+	mgr.Push(tx)
 	return nil
 }
 

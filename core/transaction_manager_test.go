@@ -75,16 +75,16 @@ func TestTransactionManager_Push(t *testing.T) {
 
 	// Wrong chainID
 	wrongChainIDTx := randomTb.ChainID(testutil.ChainID + 1).Build()
-	assert.Equal(t, core.ErrInvalidChainID, tm.Push(wrongChainIDTx))
+	assert.Equal(t, core.ErrInvalidChainID, tm.DisposeTx(wrongChainIDTx))
 
 	// Wrong hash
 	wrongHash := byteutils.Hex2Bytes("1234567890123456789012345678901234567890123456789012345678901234")
 	wrongHashTx := randomTb.Hash(wrongHash).Build()
-	assert.Equal(t, core.ErrInvalidTransactionHash, tm.Push(wrongHashTx))
+	assert.Equal(t, core.ErrInvalidTransactionHash, tm.DisposeTx(wrongHashTx))
 
 	// No signature
 	noSignTx := randomTb.Sign([]byte{}).Build()
-	assert.Equal(t, core.ErrTransactionSignatureNotExist, tm.Push(noSignTx))
+	assert.Equal(t, core.ErrTransactionSignatureNotExist, tm.DisposeTx(noSignTx))
 
 	//// Invalid signature
 	//invalidSigner := testutil.NewAddrKeyPair(t)

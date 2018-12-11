@@ -140,7 +140,7 @@ func (m *Medlet) Setup() error {
 		return err
 	}
 
-	m.transactionManager.Setup(m.netService)
+	m.transactionManager.Setup(m.netService, m.blockManager)
 
 	err = m.consensus.Setup(m.config, m.genesis, m.blockManager, m.transactionManager)
 	if err != nil {

@@ -71,6 +71,12 @@ const (
 	NetLimit                         = 3000000 // 3MB
 )
 
+// consts for pool account limit
+const (
+	TransactionPoolAccountLimit       = 64
+	GappedTransactionPoolAccountLimit = 64 //TODO set Limits @jiseob
+)
+
 // Points Price related defaults
 var (
 	MinimumDiscountRatio  = big.NewRat(1, 100)
@@ -86,6 +92,7 @@ const (
 
 // Error types of core package.
 var (
+<<<<<<< HEAD
 	ErrNotFound                     = storage.ErrKeyNotFound
 	ErrBalanceNotEnough             = errors.New("balance is not enough")
 	ErrBeginAgainInBatch            = errors.New("cannot begin with a batch task unfinished")
@@ -161,6 +168,8 @@ var (
 	ErrInvalidNetUsage              = errors.New("block ueses too much net bandwidth")
 	ErrWrongCPUUsage                = errors.New("block cpu usage is not matched with sum of tx cpu usage")
 	ErrWrongNetUsage                = errors.New("block net usage is not matched with sum of tx net usage")
+	ErrCannotFindSameNonce          = errors.New("cannot find same nonce transaction to replaceTx")
+	ErrTxPoolAccountLimitExceeded   = errors.New("txpool limit per account exceeded")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

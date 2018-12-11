@@ -61,6 +61,7 @@ message Transaction {
   int64 timestamp = 5;
   uint64 nonce = 6;
   uint32 chain_id = 7;
+  uint64 nonce_counter = 8;
 
   bytes payload = 10;
 
