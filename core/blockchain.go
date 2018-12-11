@@ -16,14 +16,16 @@
 package core
 
 import (
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	"sync"
+
+	corepb "github.com/medibloc/go-medibloc/core/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,6 +36,8 @@ const (
 
 // BlockChain manages blockchain structure.
 type BlockChain struct {
+	mu sync.RWMutex
+
 	chainID uint32
 
 	genesis *corepb.Genesis
@@ -137,6 +141,8 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 	bc.addToTailBlocks(bc.mainTailBlock)
 
 	// Load LIB
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
 	bc.lib, err = bc.loadLIBFromStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -163,9 +169,12 @@ func (bc *BlockChain) BlockByHash(hash []byte) *Block {
 
 // BlockByHeight returns a block of given height.
 func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
+	bc.mu.RLock()
 	if height > bc.mainTailBlock.Height() {
 		return nil, ErrBlockNotExist
 	}
+	bc.mu.RUnlock()
+
 	block, err := bc.loadBlockByHeight(height)
 	if err != nil {
 		return nil, ErrBlockNotExist
@@ -175,11 +184,15 @@ func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
 
 // MainTailBlock returns MainTailBlock.
 func (bc *BlockChain) MainTailBlock() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	return bc.mainTailBlock
 }
 
 // LIB returns latest irreversible block.
 func (bc *BlockChain) LIB() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	return bc.lib
 }
 
@@ -235,7 +248,10 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 		}).Error("Failed to store LIB hash to storage.")
 		return err
 	}
+
+	bc.mu.Lock()
 	bc.lib = newLIB
+	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
 		event := &Event{
@@ -263,6 +279,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 
 // SetTailBlock sets tail block.
 func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
+	bc.mu.RLock()
 	ancestor, err := bc.FindAncestorOnCanonical(newTail, true)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -278,6 +295,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	bc.mu.RUnlock()
 
 	newBlocks, err := bc.buildIndexByBlockHeight(ancestor, newTail)
 	if err != nil {
@@ -296,7 +314,10 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 		}).Error("Failed to store tail hash to storage.")
 		return nil, nil, err
 	}
+
+	bc.mu.Lock()
 	bc.mainTailBlock = newTail
+	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
 		event := &Event{
@@ -314,7 +335,10 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*Block, error) {
 	var err error
 
+	bc.mu.RLock()
 	tail := bc.mainTailBlock
+	bc.mu.RUnlock()
+
 	for tail.Height() < block.Height() {
 		block, err = bc.parentBlock(block)
 		if err != nil {
