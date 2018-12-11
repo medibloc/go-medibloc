@@ -1217,7 +1217,7 @@ func checkAliasCondition(an string) error {
 	for i := 0; i < len(an); i++ {
 		ch := rune(an[i])
 
-		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
+		if !(unicode.IsNumber(ch) || unicode.IsLower(ch)) {
 			return ErrAliasInvalidChar
 		}
 		if i == 0 && unicode.IsNumber(ch) {
