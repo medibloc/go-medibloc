@@ -168,7 +168,7 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	}, nil
 }
 
-//FromBytes returns Account form bytes
+// FromBytes returns Account form bytes
 func (acc *Account) FromBytes(b []byte) error {
 	pbAccount := new(corepb.Account)
 	if err := proto.Unmarshal(b, pbAccount); err != nil {
@@ -177,7 +177,7 @@ func (acc *Account) FromBytes(b []byte) error {
 	return acc.fromProto(pbAccount)
 }
 
-//ToBytes convert account to bytes
+// ToBytes convert account to bytes
 func (acc *Account) ToBytes() ([]byte, error) {
 	pbAcc, err := acc.toProto()
 	if err != nil {
@@ -186,22 +186,22 @@ func (acc *Account) ToBytes() ([]byte, error) {
 	return proto.Marshal(pbAcc)
 }
 
-//VotedSlice returns slice converted from Voted trie
+// VotedSlice returns slice converted from Voted trie
 func (acc *Account) VotedSlice() [][]byte {
 	return KeyTrieToSlice(acc.Voted)
 }
 
-//GetData returns value in account's data trie
+// GetData returns value in account's data trie
 func (acc *Account) GetData(prefix string, key []byte) ([]byte, error) {
 	return acc.Data.Get(append([]byte(prefix), key...))
 }
 
-//PutData put value to account's data trie
+// PutData put value to account's data trie
 func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
 	return acc.Data.Put(append([]byte(prefix), key...), value)
 }
 
-//UpdatePoints update points
+// UpdatePoints update points
 func (acc *Account) UpdatePoints(timestamp int64) error {
 	var err error
 
@@ -214,7 +214,7 @@ func (acc *Account) UpdatePoints(timestamp int64) error {
 	return nil
 }
 
-//UpdateUnstaking update unstaking and balance
+// UpdateUnstaking update unstaking and balance
 func (acc *Account) UpdateUnstaking(timestamp int64) error {
 	var err error
 	// Unstaking action does not exist
@@ -267,13 +267,13 @@ func (acc *Account) checkAccountPoints(transaction *Transaction, points *util.Ui
 	return nil
 }
 
-//AccountState is a struct for account state
+// AccountState is a struct for account state
 type AccountState struct {
 	*trie.Batch
 	storage storage.Storage
 }
 
-//NewAccountState returns new AccountState
+// NewAccountState returns new AccountState
 func NewAccountState(rootHash []byte, stor storage.Storage) (*AccountState, error) {
 	trieBatch, err := trie.NewBatch(rootHash, stor)
 	if err != nil {
@@ -286,7 +286,7 @@ func NewAccountState(rootHash []byte, stor storage.Storage) (*AccountState, erro
 	}, nil
 }
 
-//Clone clones state
+// Clone clones state
 func (as *AccountState) Clone() (*AccountState, error) {
 	newBatch, err := as.Batch.Clone()
 	if err != nil {
@@ -298,13 +298,12 @@ func (as *AccountState) Clone() (*AccountState, error) {
 	}, nil
 }
 
-//GetAccount returns account
+// GetAccount returns account
 func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	acc, err := newAccount(as.storage)
 	if err != nil {
 		return nil, err
 	}
-	//err = as.GetData(addr.Bytes(), acc)
 	err = as.GetData(append([]byte(AccountPrefix), addr.Bytes()...), acc)
 	if err == ErrNotFound {
 		acc.Address = addr
@@ -317,10 +316,9 @@ func (as *AccountState) GetAccount(addr common.Address) (*Account, error) {
 	return acc, nil
 }
 
-//putAccount put account to trie batch
+// putAccount put account to trie batch
 func (as *AccountState) putAccount(acc *Account) error {
 	return as.PutData(append([]byte(AccountPrefix), acc.Address.Bytes()...), acc)
-	//return as.PutData(acc.Address.Bytes(), acc)
 }
 
 // incrementNonce increment account's nonce
@@ -333,10 +331,9 @@ func (as *AccountState) incrementNonce(addr common.Address) error {
 	return as.putAccount(acc)
 }
 
-//accounts returns account slice, except alias account
+// accounts returns account slice, except alias account
 func (as *AccountState) accounts() ([]*Account, error) {
 	var accounts []*Account
-	//iter, err := as.Iterator(nil)
 	iter, err := as.Iterator([]byte(AccountPrefix))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -345,15 +342,18 @@ func (as *AccountState) accounts() ([]*Account, error) {
 		return nil, err
 	}
 
-	exist, err := iter.Next()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to iterate account trie.")
-		return nil, err
-	}
+	for {
+		exist, err := iter.Next()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to iterate account trie.")
+			return nil, err
+		}
+		if !exist {
+			break
+		}
 
-	for exist {
 		accountBytes := iter.Value()
 
 		acc, err := newAccount(as.storage)
@@ -363,19 +363,12 @@ func (as *AccountState) accounts() ([]*Account, error) {
 		if err := acc.FromBytes(accountBytes); err != nil {
 			return nil, err
 		}
-		exist, err = iter.Next()
 		accounts = append(accounts, acc)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Failed to iterate account trie.")
-			return nil, err
-		}
 	}
 	return accounts, nil
 }
 
-//KeyTrieToSlice generate slice from trie (slice of key)
+// KeyTrieToSlice generate slice from trie (slice of key)
 func KeyTrieToSlice(trie *trie.Batch) [][]byte {
 	var slice [][]byte
 	iter, err := trie.Iterator(nil)
@@ -423,7 +416,6 @@ func newAliasAccount() (*AliasAccount, error) {
 }
 
 func (aa *AliasAccount) fromProto(pbAcc *corepb.AliasAccount) error {
-	//var err error
 	aa.Account.FromBytes(pbAcc.Account)
 	aa.Alias = pbAcc.Alias
 	return nil
@@ -444,7 +436,7 @@ func (aa *AliasAccount) aliasAccountToBytes() ([]byte, error) {
 	return proto.Marshal(pbAcc)
 }
 
-//GetAliasAccount returns alias account
+// GetAliasAccount returns alias account
 func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error) {
 	accountBytes, err := as.Get(append([]byte(AliasAccountPrefix), []byte(AliasName)...))
 	if err != nil {
@@ -465,7 +457,7 @@ func (as *AccountState) GetAliasAccount(AliasName string) (*AliasAccount, error)
 	return aa, nil
 }
 
-//PutAliasAccount put alias account to trie batch
+// PutAliasAccount put alias account to trie batch
 func (as *AccountState) PutAliasAccount(acc *AliasAccount, aliasName string) error {
 	aaBytes, err := acc.aliasAccountToBytes()
 	if err != nil {
