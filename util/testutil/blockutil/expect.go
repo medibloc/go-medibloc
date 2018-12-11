@@ -53,11 +53,11 @@ func (e *Expect) Balance(addr common.Address, med float64) *Expect {
 	return e
 }
 
-//Vesting compare vesting of account to expected value
-func (e *Expect) Vesting(addr common.Address, med float64) *Expect {
+//Staking compare staking of account to expected value
+func (e *Expect) Staking(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
-	vest := FloatToUint128(e.t, med)
-	require.Zero(e.t, acc.Vesting.Cmp(vest))
+	stake := FloatToUint128(e.t, med)
+	require.Zero(e.t, acc.Staking.Cmp(stake))
 	return e
 }
 
@@ -83,16 +83,16 @@ func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	return e
 }
 
-//Bandwidth compares bandwidth of account to expected value
-func (e *Expect) Bandwidth(addr common.Address, bandwidth *util.Uint128) *Expect {
+//Points compares points of account to expected value
+func (e *Expect) Points(addr common.Address, bandwidth *util.Uint128) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, bandwidth.String(), acc.Bandwidth.String())
+	require.Equal(e.t, bandwidth.String(), acc.Points.String())
 	return e
 }
 
-//LastBandwidthTs compares last update time of bandwidth
-func (e *Expect) LastBandwidthTs(addr common.Address, ts int64) *Expect {
+//LastPointsTs compares last update time of points
+func (e *Expect) LastPointsTs(addr common.Address, ts int64) *Expect {
 	acc := e.account(addr)
-	require.Equal(e.t, acc.LastBandwidthTs, ts)
+	require.Equal(e.t, acc.LastPointsTs, ts)
 	return e
 }

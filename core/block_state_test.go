@@ -84,7 +84,7 @@ func TestNonceCheck(t *testing.T) {
 		Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute()
 }
 
-func TestUpdateBandwidth(t *testing.T) {
+func TestUpdatePoints(t *testing.T) {
 	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().ChildWithTimestamp(nextMintTs)
 
@@ -92,26 +92,33 @@ func TestUpdateBandwidth(t *testing.T) {
 	to := bb.TokenDist[len(bb.TokenDist)-2]
 
 	tx := bb.Tx().StakeTx(from, 200).Build()
-	consumed := blockutil.Bandwidth(t, tx, bb.Build())
+	staking := tx.Value().DeepCopy()
+
+	consumed := blockutil.Points(t, tx, bb.Build())
 	bb = bb.ExecuteTx(tx)
-	bb.Expect().Balance(from.Addr, 400000000-200).Vesting(from.Addr, 200)
+	bb.Expect().Balance(from.Addr, 400000000-200).Staking(from.Addr, 200)
 
 	tx = bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
-	consumed, err := consumed.Add(blockutil.Bandwidth(t, tx, bb.Build()))
+	consumed, err := consumed.Add(blockutil.Points(t, tx, bb.Build()))
 	require.NoError(t, err)
 	bb = bb.ExecuteTx(tx).SignProposer()
 	t.Log(bb.B.BlockData.Transactions())
-	bb.Expect().Bandwidth(from.Addr, consumed)
+	remain, err := staking.Sub(consumed)
+	require.NoError(t, err)
+	bb.Expect().Points(from.Addr, remain)
 
 	afterWeek := dpos.NextMintSlot2(nextMintTs + 7*24*60*60)
 	tx = bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
-	consumed = blockutil.Bandwidth(t, tx, bb.Build())
+	consumed = blockutil.Points(t, tx, bb.Build())
+	remain, err = staking.Sub(consumed)
+	require.NoError(t, err)
+
 	bb.ChildWithTimestamp(afterWeek).
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Execute().
-		Expect().Bandwidth(from.Addr, consumed)
+		Expect().Points(from.Addr, remain)
 }
 
-func TestUpdatePayerBandwidth(t *testing.T) {
+func TestUpdatePayerPoints(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	user := testutil.NewAddrKeyPair(t)
@@ -122,19 +129,15 @@ func TestUpdatePayerBandwidth(t *testing.T) {
 		RecordHash: recordHash,
 	}
 
-	txs := []*core.Transaction{
-		bb.Tx().StakeTx(payer, 10000).Build(),
-		bb.Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(user).SignPayerKey(payer.PrivKey).Build(),
-	}
+	tx := bb.Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(user).SignPayerKey(payer.PrivKey).Build()
+	bb = bb.ExecuteTx(tx)
 
-	consumed := util.NewUint128()
-	for _, tx := range txs {
-		var err error
-		bb = bb.ExecuteTx(tx)
-		consumed, err = consumed.Add(blockutil.Bandwidth(t, tx, bb.Build()))
-		require.NoError(t, err)
-	}
-	bb.Expect().Bandwidth(payer.Addr, consumed).Bandwidth(user.Addr, util.NewUint128())
+	consumed := blockutil.Points(t, tx, bb.Build())
+	staking, err := util.NewUint128FromString("100000000000000000000")
+	require.NoError(t, err)
+	remain, err := staking.Sub(consumed)
+	require.NoError(t, err)
+	bb.Expect().Points(payer.Addr, remain).Points(user.Addr, util.NewUint128())
 }
 
 func TestBandwidthWhenUnstaking(t *testing.T) {
@@ -142,11 +145,11 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 	from := bb.TokenDist[testutil.DynastySize]
 
 	bb.Tx().StakeTx(from, 100).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).ExecuteErr(core.ErrVestingNotEnough).
-		Tx().Type(core.TxOpWithdrawVesting).Value(40).SignPair(from).Execute().
+		Tx().Type(core.TxOpUnstake).Value(100).SignPair(from).ExecuteErr(core.ErrStakingNotEnough).
+		Tx().Type(core.TxOpUnstake).Value(40).SignPair(from).Execute().
 		Expect().
 		Unstaking(from.Addr, 40).
-		Vesting(from.Addr, 60)
+		Staking(from.Addr, 60)
 }
 
 func TestTxsFromTxsTo(t *testing.T) {
@@ -171,8 +174,8 @@ func TestTxsFromTxsTo(t *testing.T) {
 		Payload(&core.RevokeCertificationPayload{
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpStake).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpUnstake).Value(100).SignPair(from).Execute().
 		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(from).Execute().
 		Tx().Type(dpos.TxOpVote).
@@ -191,75 +194,70 @@ func TestTxsFromTxsTo(t *testing.T) {
 
 }
 
-func TestBandwidthUsageAndRef(t *testing.T) {
+func TestBandwidthUsageAndPrice(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
 	bb = bb.Child().Stake().SignProposer()
-	b1 := bb.Build()
 
 	to := testutil.NewAddrKeyPair(t)
 	from := bb.TokenDist[testutil.DynastySize]
 
-	maxCPU, err := b1.CPURef().Mul(util.NewUint128FromUint(uint64(core.CPULimit)))
-	assert.NoError(t, err)
-
 	bb = bb.Child()
-	for i := 2; ; i++ {
-		TX := bb.Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
-		tx, err := core.NewTransferTx(TX)
-		assert.NoError(t, err)
-
-		reqCPU, _, err := tx.Bandwidth(b1.State())
-		assert.NoError(t, err)
-
-		maxCPU, err = maxCPU.Sub(reqCPU)
-		if err != nil {
-			bb.ExecuteTxErr(TX, core.ErrExceedBlockMaxCPUUsage)
-			break
-		}
-		bb.ExecuteTx(TX)
+	for i := 0; i < 3000; i++ {
+		tx := bb.Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
+		bb = bb.ExecuteTx(tx)
 	}
+	tx := bb.Tx().Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
+	bb = bb.ExecuteTxErr(tx, core.ErrExceedBlockMaxCPUUsage)
+	bb = bb.SignProposer()
+	b1 := bb.Build()
 
-	b2 := bb.SignProposer().Build()
-
-	maxNet, err := b2.CPURef().Mul(util.NewUint128FromUint(uint64(core.NetLimit)))
-	assert.NoError(t, err)
+	t.Log("Number of txs:", len(b1.Transactions()))
+	t.Log("CPU usage:", b1.CPUUsage())
+	t.Log("Net usage:", b1.NetUsage())
+	assert.Equal(t, uint64(core.CPULimit), b1.CPUUsage())
 
 	bb = bb.Child()
+
+	dummyMsg := byteutils.Bytes2Hex(make([]byte, 2000))
 	payload := &core.DefaultPayload{
-		Message: "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm",
+		Message: dummyMsg,
 	}
 
-	for i := 3; ; i++ {
-		TX := bb.Tx().Type(core.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).
-			Build()
-		tx, err := core.NewTransferTx(TX)
-		assert.NoError(t, err)
-
-		_, reqNet, err := tx.Bandwidth(b2.State())
-		assert.NoError(t, err)
-
-		maxNet, err = maxNet.Sub(reqNet)
-		if err != nil {
-			bb.ExecuteTxErr(TX, core.ErrExceedBlockMaxNetUsage)
+	remainNet := core.NetLimit
+	for {
+		tx := bb.Tx().Type(core.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).Build()
+		net, err := tx.Size()
+		require.NoError(t, err)
+		bb = bb.ExecuteTx(tx)
+		remainNet -= net
+		if remainNet < net {
 			break
 		}
-		bb.ExecuteTx(TX)
 	}
-	b3 := bb.SignProposer().Build()
+	tx = bb.Tx().Type(core.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).Build()
+	net, err := tx.Size()
+	require.NoError(t, err)
+
+	bb = bb.ExecuteTxErr(tx, core.ErrExceedBlockMaxNetUsage)
+	bb = bb.SignProposer()
+	b2 := bb.Build()
+
+	t.Log("Single Tx net:", net)
+	t.Log("Number of txs:", len(b2.Transactions()))
+	t.Log("CPU usage:", b2.CPUUsage())
+	t.Log("Net usage:", b2.NetUsage())
+	assert.True(t, core.NetLimit < b2.NetUsage()+uint64(net))
 
 	bb = bb.Child().SignProposer()
-	b4 := bb.Build()
+	b3 := bb.Build()
 
-	bb = bb.Child().SignProposer()
-	b5 := bb.Build()
+	assert.Equal(t, uint64(0), b3.CPUUsage())
+	assert.Equal(t, uint64(0), b3.NetUsage())
 
-	assert.True(t, b1.CPUUsage().Cmp(b2.CPUUsage()) < 0)
-	assert.True(t, b2.NetUsage().Cmp(b3.NetUsage()) < 0)
-	assert.True(t, b2.CPURef().Cmp(b3.CPURef()) < 0)
-	assert.True(t, b3.NetRef().Cmp(b4.NetRef()) < 0)
-	assert.True(t, b4.CPUUsage().Uint64() == 0)
-	assert.True(t, b4.NetUsage().Uint64() == 0)
-	assert.True(t, b5.CPURef().Cmp(b4.CPURef()) < 0)
-	assert.True(t, b5.NetRef().Cmp(b4.NetRef()) < 0)
+	expect, err := b1.CPUPrice().MulWithRat(core.BandwidthIncreaseRate)
+	assert.Equal(t, expect.String(), b2.CPUPrice().String())
+
+	expect, err = b2.NetPrice().MulWithRat(core.BandwidthIncreaseRate)
+	assert.Equal(t, expect.String(), b3.NetPrice().String())
 }

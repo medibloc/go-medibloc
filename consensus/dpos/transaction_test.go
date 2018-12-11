@@ -44,7 +44,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	bb.Expect().
 		Balance(candidate.Addr, 400000000-100000-1000000-1000000).
-		Vesting(candidate.Addr, 100000)
+		Staking(candidate.Addr, 100000)
 
 	block := bb.Build()
 
@@ -86,7 +86,7 @@ func TestVote(t *testing.T) {
 	candidates := append(bb.TokenDist[:dpos.MaxVote], newCandidate)
 
 	bb = bb.
-		Tx().Type(core.TxOpVest).Value(333).SignPair(voter).Execute().
+		Tx().Type(core.TxOpStake).Value(333).SignPair(voter).Execute().
 		Tx().StakeTx(newCandidate, 10000).Execute().
 		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(newCandidate).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()

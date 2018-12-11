@@ -43,8 +43,8 @@ var (
 var DefaultTxMap = core.TxFactory{
 	core.TxOpTransfer:            core.NewTransferTx,
 	core.TxOpAddRecord:           core.NewAddRecordTx,
-	core.TxOpVest:                core.NewVestTx,
-	core.TxOpWithdrawVesting:     core.NewWithdrawVestingTx,
+	core.TxOpStake:               core.NewStakeTx,
+	core.TxOpUnstake:             core.NewUnstakeTx,
 	core.TxOpAddCertification:    core.NewAddCertificationTx,
 	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
 	core.TxOpRegisterAlias:       core.NewRegisterAliasTx,

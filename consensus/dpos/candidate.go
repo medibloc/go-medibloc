@@ -12,7 +12,7 @@ type Candidate struct {
 	ID         []byte // candidate id = txHash
 	Addr       common.Address
 	Collateral *util.Uint128 // candidate collateral
-	VotePower  *util.Uint128 // sum of voters' vesting
+	VotePower  *util.Uint128 // sum of voters' staking
 	URL        string
 	Timestamp  int64
 }

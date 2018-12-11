@@ -17,10 +17,10 @@ message BlockHeader {
   bytes acc_state_root = 21;
   bytes tx_state_root = 22;
   bytes dpos_root = 23;
-  bytes cpu_ref = 30;
-  bytes cpu_usage = 31;
-  bytes net_ref = 32;
-  bytes net_usage = 33;
+  bytes cpu_price = 30;
+  uint64 cpu_usage = 31;
+  bytes net_price = 32;
+  uint64 net_usage = 33;
 }
 
 message Block {
@@ -46,10 +46,10 @@ message BlockHashTarget {
   bytes supply = 9;
   uint32 hash_alg = 10;
   uint32 crypto_alg = 11;
-  bytes cpu_ref = 30;
-  bytes cpu_usage = 31;
-  bytes net_ref = 32;
-  bytes net_usage = 33;
+  bytes cpu_price = 30;
+  uint64 cpu_usage = 31;
+  bytes net_price = 32;
+  uint64 net_usage = 33;
   repeated bytes tx_hash = 40;
 }
 
@@ -74,9 +74,10 @@ message Transaction {
 
 message Receipt {
   bool executed = 1;
-  bytes cpu_usage = 2;
-  bytes net_usage = 3;
-  bytes error = 4;
+  uint64 cpu_usage = 2;
+  uint64 net_usage = 3;
+  bytes points = 4;
+  bytes error = 5;
 }
 
 message TransactionHashTarget {

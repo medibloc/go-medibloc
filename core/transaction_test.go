@@ -42,7 +42,7 @@ func TestSend(t *testing.T) {
 		Expect().
 		Balance(to.Addr, 10).
 		Balance(from.Addr, 399989990).
-		Vesting(from.Addr, 10000)
+		Staking(from.Addr, 10000)
 
 }
 
@@ -69,27 +69,27 @@ func TestAddRecord(t *testing.T) {
 	assert.Equal(t, recordHash, pbRecord.RecordHash)
 }
 
-func TestVestAndWithdraw(t *testing.T) {
+func TestStakingAndUnstaking(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	from := bb.TokenDist[testutil.DynastySize]
-	vestingAmount := 1000.0
-	withdrawAmount := 301.0
+	stakingAmount := 1000.0
+	unstakingAmount := 301.0
 
 	bb = bb.
-		Tx().Type(core.TxOpVest).Value(vestingAmount).SignPair(from).Execute()
+		Tx().Type(core.TxOpStake).Value(stakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, 400000000-vestingAmount).
-		Vesting(from.Addr, vestingAmount)
+		Balance(from.Addr, 400000000-stakingAmount).
+		Staking(from.Addr, stakingAmount)
 
 	bb = bb.
-		Tx().Type(core.TxOpWithdrawVesting).Value(withdrawAmount).SignPair(from).Execute()
+		Tx().Type(core.TxOpUnstake).Value(unstakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, 400000000-vestingAmount).
-		Vesting(from.Addr, vestingAmount-withdrawAmount).
-		Unstaking(from.Addr, withdrawAmount)
+		Balance(from.Addr, 400000000-stakingAmount).
+		Staking(from.Addr, stakingAmount-unstakingAmount).
+		Unstaking(from.Addr, unstakingAmount)
 
 	acc, err := bb.B.State().GetAccount(from.Addr)
 	require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestVestAndWithdraw(t *testing.T) {
 	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(from).Execute()
 	bb.Expect().
-		Balance(from.Addr, 400000000-vestingAmount+withdrawAmount).
+		Balance(from.Addr, 400000000-stakingAmount+unstakingAmount).
 		Unstaking(from.Addr, 0)
 }
 
@@ -188,20 +188,20 @@ func TestPayerSigner(t *testing.T) {
 	bb = bb.
 		Tx().StakeTx(payer, 10000).Execute().
 		Tx().Type(core.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrBandwidthNotEnough).
+		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrPointNotEnough).
 		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
 	bb.
 		Expect().
 		Balance(to.Addr, 300).
 		Balance(from.Addr, 700).
-		Vesting(from.Addr, 0)
+		Staking(from.Addr, 0)
 
 	payerAcc, err := bb.B.State().GetAccount(payer.Addr)
 	require.NoError(t, err)
 
-	//require.NoError(t,payerAcc.UpdateBandwidth(bb.B.Timestamp()))
+	//require.NoError(t,payerAcc.UpdatePoints(bb.B.Timestamp()))
 
-	t.Log("Payer's bandwidth after payer sign", payerAcc.Bandwidth)
+	t.Log("Payer's points after payer sign", payerAcc.Points)
 
 }
 

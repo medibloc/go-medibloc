@@ -48,10 +48,10 @@ func TestReceipt(t *testing.T) {
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 100).Build()
-	tx2 := tb.Nonce(2).Type(core.TxOpWithdrawVesting).Value(200).SignPair(payer).
+	tx2 := tb.Nonce(2).Type(core.TxOpUnstake).Value(200).SignPair(payer).
 		Build()
-	tx3 := tb.Nonce(2).Type(core.TxOpWithdrawVesting).Value(50).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrVestingNotEnough).ExecuteTx(tx3).SignProposer().Build()
+	tx3 := tb.Nonce(2).Type(core.TxOpUnstake).Value(50).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
 	seed.Med.BlockManager().BroadCast(b.BlockData)
@@ -129,7 +129,7 @@ func TestWrongReceipt(t *testing.T) {
 
 	b := bb.Tx().RandomTx().Execute().SignProposer().Build()
 
-	b.Transactions()[0].Receipt().SetCPUUsage(util.NewUint128())
+	b.Transactions()[0].Receipt().SetPoints(util.NewUint128())
 
 	require.Equal(t, core.ErrCannotExecuteOnParentBlock, seed.Med.BlockManager().PushBlockData(b.BlockData))
 }

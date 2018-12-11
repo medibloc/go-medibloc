@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package rpcpb;
-option java_package="org.med4j.core.protobuf";
+option java_package = "org.med4j.core.protobuf";
 
 import "google/api/annotations.proto";
 
@@ -103,17 +103,17 @@ message GetAccountRequest {
 message Account {
   // Hex string of the account address.
   string address = 1;
-  // Current balance in unit of 1/(10^8) MED.
+  // Current balance in unit of 1/(10^12) MED.
   string balance = 2; // uint128, len=16
   // Current transaction count.
   uint64 nonce = 3;
-  // Current vesting in unit of 1/(10^8) MED.
-  string vesting = 4;
+  // Current staking in unit of 1/(10^12) MED.
+  string staking = 4;
 
   // Voted address.
   repeated string voted = 5;
 
-  string bandwidth = 6;
+  string points = 6;
 
   string unstaking = 7;
 
@@ -159,13 +159,13 @@ message Block {
   // Block signature
   string sign = 11;
   // Block cpu reference
-  string cpu_ref = 12;
+  string cpu_price = 12;
   // Block cpu usage
-  string cpu_usage = 13;
+  uint64 cpu_usage = 13;
   // Block net reference
-  string net_ref = 14;
+  string net_price = 14;
   // Block net usage
-  string net_usage = 15;
+  uint64 net_usage = 15;
 
   // Root hash of accounts trie
   string accs_root = 20;
@@ -269,9 +269,10 @@ message Transaction {
 
 message TransactionReceipt {
   bool executed = 1;
-  string cpu_usage = 2;
-  string net_usage = 3;
-  string error = 4;
+  uint64 cpu_usage = 2;
+  uint64 net_usage = 3;
+  string points = 4;
+  string error = 5;
 }
 
 message SendTransactionRequest {

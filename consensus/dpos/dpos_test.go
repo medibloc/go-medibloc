@@ -42,7 +42,7 @@ func TestChangeDynasty(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
 
 	bb = bb.ChildNextDynasty().
-		Tx().Type(core.TxOpVest).Value(300000000).SignPair(newCandidate).Execute().
+		Tx().Type(core.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
 		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(newCandidate).Execute().
 		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 

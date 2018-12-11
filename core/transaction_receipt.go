@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
@@ -27,9 +27,41 @@ import (
 // Receipt struct represents transaction receipt
 type Receipt struct {
 	executed bool
-	cpuUsage *util.Uint128
-	netUsage *util.Uint128
-	error    []byte
+	cpuUsage uint64
+	netUsage uint64
+	points   *util.Uint128
+
+	error []byte
+}
+
+//CPUUsage returns cpu usage
+func (r *Receipt) CPUUsage() uint64 {
+	return r.cpuUsage
+}
+
+//SetCPUUsage sets cpu usage
+func (r *Receipt) SetCPUUsage(cpuUsage uint64) {
+	r.cpuUsage = cpuUsage
+}
+
+//NetUsage returns net usage
+func (r *Receipt) NetUsage() uint64 {
+	return r.netUsage
+}
+
+//SetNetUsage sets net usage
+func (r *Receipt) SetNetUsage(netUsage uint64) {
+	r.netUsage = netUsage
+}
+
+//Points returns consumed points by transaction
+func (r *Receipt) Points() *util.Uint128 {
+	return r.points
+}
+
+//SetPoints sets points
+func (r *Receipt) SetPoints(points *util.Uint128) {
+	r.points = points
 }
 
 // SetError sets error occurred during transaction execution
@@ -42,70 +74,43 @@ func (r *Receipt) Error() []byte {
 	return r.error
 }
 
-// SetCPUUsage transaction's cpu bandwidth
-func (r *Receipt) SetCPUUsage(cpuUsage *util.Uint128) {
-	r.cpuUsage = cpuUsage
-}
-
-// CPUUsage returns cpuUsage
-func (r *Receipt) CPUUsage() *util.Uint128 {
-	return r.cpuUsage
-}
-
-// SetNetUsage sets transaction's net bandwidth
-func (r *Receipt) SetNetUsage(netUsage *util.Uint128) {
-	r.netUsage = netUsage
-}
-
-// NetUsage returns cpuUsage
-func (r *Receipt) NetUsage() *util.Uint128 {
-	return r.netUsage
-}
-
 // SetExecuted sets transaction execution status
 func (r *Receipt) SetExecuted(executed bool) {
 	r.executed = executed
 }
 
-// Executed returns cpuUsage
+// Executed returns cpuPoints
 func (r *Receipt) Executed() bool {
 	return r.executed
 }
 
 // ToProto transform receipt struct to proto message
 func (r *Receipt) ToProto() (proto.Message, error) {
-	cpuUsage, err := r.cpuUsage.ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	netUsage, err := r.netUsage.ToFixedSizeByteSlice()
+	points, err := r.points.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 
 	return &corepb.Receipt{
 		Executed: r.executed,
-		CpuUsage: cpuUsage,
-		NetUsage: netUsage,
+		CpuUsage: r.cpuUsage,
+		NetUsage: r.netUsage,
+		Points:   points,
 		Error:    r.error,
 	}, nil
 }
 
 // FromProto transform receipt proto message to receipt struct
 func (r *Receipt) FromProto(msg proto.Message) error {
+	var err error
 	if msg, ok := msg.(*corepb.Receipt); ok {
-		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
-		if err != nil {
-			return err
-		}
-		netUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.NetUsage)
-		if err != nil {
-			return err
-		}
-
 		r.executed = msg.Executed
-		r.cpuUsage = cpuUsage
-		r.netUsage = netUsage
+		r.cpuUsage = msg.CpuUsage
+		r.netUsage = msg.NetUsage
+		r.points, err = util.NewUint128FromFixedSizeByteSlice(msg.Points)
+		if err != nil {
+			return err
+		}
 		r.error = msg.Error
 
 		return nil
@@ -114,14 +119,14 @@ func (r *Receipt) FromProto(msg proto.Message) error {
 }
 
 func (r *Receipt) String() string {
-	return fmt.Sprintf("{executed: %v, cpu: %v, net: %v, err: %v}", r.executed, r.cpuUsage, r.netUsage, r.error)
+	return fmt.Sprintf("{executed: %v, cpu: %v, net: %v, points: %v, err: %v}", r.executed, r.cpuUsage, r.netUsage, r.points.String(), r.error)
 }
 
 //Equal returns true if two receipts are equal
 func (r *Receipt) Equal(obj *Receipt) bool {
 	return r.executed == obj.executed &&
-		r.netUsage.Cmp(obj.netUsage) == 0 &&
-		r.cpuUsage.Cmp(obj.cpuUsage) == 0 &&
+		r.cpuUsage == obj.cpuUsage &&
+		r.netUsage == obj.netUsage &&
 		byteutils.Equal(r.error, obj.error)
 }
 
@@ -129,8 +134,9 @@ func (r *Receipt) Equal(obj *Receipt) bool {
 func NewReceipt() *Receipt {
 	return &Receipt{
 		executed: false,
-		cpuUsage: util.NewUint128(),
-		netUsage: util.NewUint128(),
+		cpuUsage: 0,
+		netUsage: 0,
+		points:   util.NewUint128(),
 		error:    nil,
 	}
 }

@@ -19,15 +19,15 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) (*rpcpb.Account, error) {
-	if err := account.UpdateBandwidth(curTs); err != nil {
+	if err := account.UpdatePoints(curTs); err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateBandwidth)
 	}
 	if err := account.UpdateUnstaking(curTs); err != nil {
@@ -46,9 +46,9 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 		Address:     address,
 		Balance:     account.Balance.String(),
 		Nonce:       account.Nonce,
-		Vesting:     account.Vesting.String(),
+		Staking:     account.Staking.String(),
 		Voted:       byteutils.BytesSlice2HexSlice(account.VotedSlice()),
-		Bandwidth:   account.Bandwidth.String(),
+		Points:      account.Points.String(),
 		Unstaking:   account.Unstaking.String(),
 		Alias:       pbAlias.AliasName,
 		CandidateId: byteutils.Bytes2Hex(account.CandidateID),
@@ -83,10 +83,10 @@ func coreBlock2rpcBlock(block *core.Block, light bool) *rpcpb.Block {
 		DposRoot:     byteutils.Bytes2Hex(block.DposRoot()),
 		Transactions: txs,
 		TxHashes:     txHashes,
-		CpuRef:       block.BlockData.BlockHeader.CPURef().String(),
-		CpuUsage:     block.BlockData.BlockHeader.CPUUsage().String(),
-		NetRef:       block.BlockData.BlockHeader.NetRef().String(),
-		NetUsage:     block.BlockData.BlockHeader.NetUsage().String(),
+		CpuPrice:     block.BlockData.BlockHeader.CPUPrice().String(),
+		CpuUsage:     block.BlockData.BlockHeader.CPUUsage(),
+		NetPrice:     block.BlockData.BlockHeader.NetPrice().String(),
+		NetUsage:     block.BlockData.BlockHeader.NetUsage(),
 	}
 }
 
@@ -138,13 +138,13 @@ func coreTxs2rpcTxs(txs []*core.Transaction, onChain bool) []*rpcpb.Transaction 
 
 func coreReceipt2rpcReceipt(tx *core.Transaction) *rpcpb.TransactionReceipt {
 	err := string(tx.Receipt().Error())
-	cpuUsage := tx.Receipt().CPUUsage().String()
-	netUsage := tx.Receipt().NetUsage().String()
+	points := tx.Receipt().Points().String()
 
 	return &rpcpb.TransactionReceipt{
 		Executed: tx.Receipt().Executed(),
-		CpuUsage: cpuUsage,
-		NetUsage: netUsage,
+		CpuUsage: tx.Receipt().CPUUsage(),
+		NetUsage: tx.Receipt().NetUsage(),
+		Points:   points,
 		Error:    err,
 	}
 }

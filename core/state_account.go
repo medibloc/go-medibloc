@@ -43,12 +43,12 @@ type Account struct {
 	Address     common.Address // address account key
 	Balance     *util.Uint128  // balance account's coin amount
 	Nonce       uint64         // nonce account sequential number
-	Vesting     *util.Uint128  // vesting account's vesting(staking) amount
+	Staking     *util.Uint128  // account's staking amount
 	Voted       *trie.Batch    // voted candidates key: candidateID, value: candidateID
 	CandidateID []byte         //
 
-	Bandwidth       *util.Uint128
-	LastBandwidthTs int64
+	Points       *util.Uint128
+	LastPointsTs int64
 
 	Unstaking       *util.Uint128
 	LastUnstakingTs int64
@@ -72,11 +72,11 @@ func newAccount(stor storage.Storage) (*Account, error) {
 		Address:         common.Address{},
 		Balance:         util.NewUint128(),
 		Nonce:           0,
-		Vesting:         util.NewUint128(),
+		Staking:         util.NewUint128(),
 		Voted:           voted,
 		CandidateID:     nil,
-		Bandwidth:       util.NewUint128(),
-		LastBandwidthTs: 0,
+		Points:          util.NewUint128(),
+		LastPointsTs:    0,
 		Unstaking:       util.NewUint128(),
 		LastUnstakingTs: 0,
 		Data:            data,
@@ -95,7 +95,7 @@ func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 		return err
 	}
 	acc.Nonce = pbAcc.Nonce
-	acc.Vesting, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Vesting)
+	acc.Staking, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Staking)
 	if err != nil {
 		return err
 	}
@@ -106,11 +106,11 @@ func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 
 	acc.CandidateID = pbAcc.CandidateId
 
-	acc.Bandwidth, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Bandwidth)
+	acc.Points, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Bandwidth)
 	if err != nil {
 		return err
 	}
-	acc.LastBandwidthTs = pbAcc.LastBandwidthTs
+	acc.LastPointsTs = pbAcc.LastBandwidthTs
 
 	acc.Unstaking, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Unstaking)
 	if err != nil {
@@ -131,7 +131,7 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	vesting, err := acc.Vesting.ToFixedSizeByteSlice()
+	staking, err := acc.Staking.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 	if err != nil {
 		return nil, err
 	}
-	bandwidth, err := acc.Bandwidth.ToFixedSizeByteSlice()
+	bandwidth, err := acc.Points.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -157,11 +157,11 @@ func (acc *Account) toProto() (*corepb.Account, error) {
 		Address:         acc.Address.Bytes(),
 		Balance:         balance,
 		Nonce:           acc.Nonce,
-		Vesting:         vesting,
+		Staking:         staking,
 		VotedRootHash:   votedRootHash,
 		CandidateId:     acc.CandidateID,
 		Bandwidth:       bandwidth,
-		LastBandwidthTs: acc.LastBandwidthTs,
+		LastBandwidthTs: acc.LastPointsTs,
 		Unstaking:       unstaking,
 		LastUnstakingTs: acc.LastUnstakingTs,
 		DataRootHash:    dataRootHash,
@@ -201,15 +201,15 @@ func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
 	return acc.Data.Put(append([]byte(prefix), key...), value)
 }
 
-//UpdateBandwidth update bandwidth
-func (acc *Account) UpdateBandwidth(timestamp int64) error {
+//UpdatePoints update points
+func (acc *Account) UpdatePoints(timestamp int64) error {
 	var err error
 
-	acc.Bandwidth, err = currentBandwidth(acc, timestamp)
+	acc.Points, err = currentPoints(acc, timestamp)
 	if err != nil {
 		return err
 	}
-	acc.LastBandwidthTs = timestamp
+	acc.LastPointsTs = timestamp
 
 	return nil
 }
@@ -242,33 +242,27 @@ func (acc *Account) UpdateUnstaking(timestamp int64) error {
 	return nil
 }
 
-// checkAccountBandwidth compare given transaction's required bandwidth with the account's remaining bandwidth
-func (acc *Account) checkAccountBandwidth(transaction *Transaction, cpuUsage, netUsage *util.Uint128) error {
-	avail, err := acc.Vesting.Sub(acc.Bandwidth)
-	if err != nil {
-		return err
-	}
+// checkAccountPoints compare given transaction's required bandwidth with the account's remaining bandwidth
+func (acc *Account) checkAccountPoints(transaction *Transaction, points *util.Uint128) error {
+	var err error
+	avail := acc.Points
 	switch transaction.TxType() {
-	case TxOpVest:
-		avail, err = avail.Add(transaction.Value())
+	case TxOpStake:
+		avail, err = acc.Points.Add(transaction.Value())
 		if err != nil {
 			return err
 		}
-	case TxOpWithdrawVesting:
-		avail, err = avail.Sub(transaction.Value())
+	case TxOpUnstake:
+		avail, err = acc.Points.Sub(transaction.Value())
 		if err == util.ErrUint128Underflow {
-			return ErrVestingNotEnough
+			return ErrStakingNotEnough
 		}
 		if err != nil {
 			return err
 		}
 	}
-	usage, err := cpuUsage.Add(netUsage)
-	if err != nil {
-		return err
-	}
-	if avail.Cmp(usage) < 0 {
-		return ErrBandwidthNotEnough
+	if avail.Cmp(points) < 0 {
+		return ErrPointNotEnough
 	}
 	return nil
 }

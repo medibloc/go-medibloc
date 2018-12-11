@@ -91,6 +91,7 @@ func TestBlockManager_Forked(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
+	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -502,8 +503,8 @@ func TestBlockManager_InvalidState(t *testing.T) {
 		Payload(&core.RevokeCertificationPayload{
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().
-		Tx().Type(core.TxOpWithdrawVesting).Value(100).SignPair(from).Execute()
+		Tx().Type(core.TxOpStake).Value(100).SignPair(from).Execute().
+		Tx().Type(core.TxOpUnstake).Value(100).SignPair(from).Execute()
 
 	proposer := bb.FindProposer()
 	bb = bb.Coinbase(proposer.Addr).PayReward().Flush().Seal()
@@ -528,7 +529,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
 
-	block = bb.Clone().Tx().Type(core.TxOpVest).Value(100).SignPair(from).Execute().CalcHash().SignKey(proposer.PrivKey).Alg(111).Build()
+	block = bb.Clone().Tx().Type(core.TxOpStake).Value(100).SignPair(from).Execute().CalcHash().SignKey(proposer.PrivKey).Alg(111).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
 

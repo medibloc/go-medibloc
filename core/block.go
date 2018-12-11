@@ -22,7 +22,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -53,10 +53,10 @@ type BlockHeader struct {
 	cryptoAlg algorithm.CryptoAlgorithm
 	sign      []byte
 
-	cpuRef   *util.Uint128
-	cpuUsage *util.Uint128
-	netRef   *util.Uint128
-	netUsage *util.Uint128
+	cpuPrice *util.Uint128
+	cpuUsage uint64
+	netPrice *util.Uint128
+	netUsage uint64
 }
 
 // ToProto converts BlockHeader to corepb.BlockHeader
@@ -71,22 +71,12 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		return nil, err
 	}
 
-	cpuRef, err := b.cpuRef.ToFixedSizeByteSlice()
+	cpuPrice, err := b.cpuPrice.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
 
-	netRef, err := b.netRef.ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-
-	cpuUsage, err := b.cpuUsage.ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-
-	netUsage, err := b.netUsage.ToFixedSizeByteSlice()
+	netPrice, err := b.netPrice.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +95,10 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
 		DposRoot:     b.dposRoot,
-		CpuRef:       cpuRef,
-		CpuUsage:     cpuUsage,
-		NetRef:       netRef,
-		NetUsage:     netUsage,
+		CpuPrice:     cpuPrice,
+		CpuUsage:     b.cpuUsage,
+		NetPrice:     netPrice,
+		NetUsage:     b.netUsage,
 	}, nil
 }
 
@@ -137,30 +127,20 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.cryptoAlg = algorithm.CryptoAlgorithm(msg.CryptoAlg)
 		b.sign = msg.Sign
 
-		cpuRef, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuRef)
+		cpuPrice, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuPrice)
 		if err != nil {
 			return err
 		}
 
-		cpuUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuUsage)
+		netPrice, err := util.NewUint128FromFixedSizeByteSlice(msg.NetPrice)
 		if err != nil {
 			return err
 		}
 
-		netRef, err := util.NewUint128FromFixedSizeByteSlice(msg.NetRef)
-		if err != nil {
-			return err
-		}
-
-		netUsage, err := util.NewUint128FromFixedSizeByteSlice(msg.NetUsage)
-		if err != nil {
-			return err
-		}
-
-		b.cpuRef = cpuRef
-		b.cpuUsage = cpuUsage
-		b.netRef = netRef
-		b.netUsage = netUsage
+		b.cpuPrice = cpuPrice
+		b.cpuUsage = msg.CpuUsage
+		b.netPrice = netPrice
+		b.netUsage = msg.NetUsage
 		return nil
 	}
 	return ErrInvalidProtoToBlockHeader
@@ -266,24 +246,24 @@ func (b *BlockHeader) SetChainID(chainID uint32) {
 	b.chainID = chainID
 }
 
-//CPURef returns cpuRef
-func (b *BlockHeader) CPURef() *util.Uint128 {
-	return b.cpuRef
+//CPUPrice returns cpuPrice
+func (b *BlockHeader) CPUPrice() *util.Uint128 {
+	return b.cpuPrice
 }
 
-//SetCPURef sets cpuRef
-func (b *BlockHeader) SetCPURef(cpuRef *util.Uint128) {
-	b.cpuRef = cpuRef
+//SetCPUPrice sets cpuPrice
+func (b *BlockHeader) SetCPUPrice(cpuPrice *util.Uint128) {
+	b.cpuPrice = cpuPrice
 }
 
-//NetRef returns netRef
-func (b *BlockHeader) NetRef() *util.Uint128 {
-	return b.netRef
+//NetPrice returns netPrice
+func (b *BlockHeader) NetPrice() *util.Uint128 {
+	return b.netPrice
 }
 
-//SetNetRef sets netRef
-func (b *BlockHeader) SetNetRef(netRef *util.Uint128) {
-	b.netRef = netRef
+//SetNetPrice sets netPrice
+func (b *BlockHeader) SetNetPrice(netPrice *util.Uint128) {
+	b.netPrice = netPrice
 }
 
 //HashAlg returns hashing algorithm
@@ -317,12 +297,12 @@ func (b *BlockHeader) SetSign(sign []byte) {
 }
 
 // CPUUsage returns cpuUsage
-func (b *BlockHeader) CPUUsage() *util.Uint128 {
+func (b *BlockHeader) CPUUsage() uint64 {
 	return b.cpuUsage
 }
 
 // NetUsage returns netUsage
-func (b *BlockHeader) NetUsage() *util.Uint128 {
+func (b *BlockHeader) NetUsage() uint64 {
 	return b.netUsage
 }
 
@@ -451,7 +431,7 @@ func (bd *BlockData) SetTransactions(txs []*Transaction) error {
 func (bd *BlockData) String() string {
 	proposer, _ := bd.Proposer()
 	return fmt.Sprintf("<height:%v, hash:%v, parent_hash:%v, coinbase:%v, reward:%v, supply:%v, timestamp:%v, "+
-		"proposer:%v, cpuRef:%v, cpuBandwidth:%v, netRef:%v, netBandwidth:%v>",
+		"proposer:%v, cpuPrice:%v, cpuBandwidth:%v, netPrice:%v, netBandwidth:%v>",
 		bd.Height(),
 		byteutils.Bytes2Hex(bd.Hash()),
 		byteutils.Bytes2Hex(bd.ParentHash()),
@@ -460,9 +440,9 @@ func (bd *BlockData) String() string {
 		bd.Supply().String(),
 		bd.Timestamp(),
 		proposer.Hex(),
-		bd.CPURef(),
+		bd.CPUPrice(),
 		bd.CPUUsage(),
-		bd.NetRef(),
+		bd.NetPrice(),
 		bd.NetUsage(),
 	)
 }
@@ -525,7 +505,7 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, tx
 		return nil, err
 	}
 
-	if err := bd.verifyBandwidthUsage(parent); err != nil {
+	if err := bd.verifyBandwidthUsage(); err != nil {
 		return nil, err
 	}
 
@@ -558,9 +538,9 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	block.state.reward = bd.Reward()
 	block.state.supply = bd.Supply()
 
-	block.state.cpuRef = bd.cpuRef
+	block.state.cpuPrice = bd.cpuPrice
 	block.state.cpuUsage = bd.cpuUsage
-	block.state.netRef = bd.netRef
+	block.state.netPrice = bd.netPrice
 	block.state.netUsage = bd.netUsage
 
 	if err = block.state.loadAccountState(block.accStateRoot); err != nil {
@@ -592,20 +572,12 @@ func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Stora
 	return block, nil
 }
 
-func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
-	maxCPU, err := bd.CPURef().Mul(util.NewUint128FromUint(uint64(CPULimit)))
-	if err != nil {
-		return err
-	}
-	if bd.CPUUsage().Cmp(maxCPU) > 0 {
+func (bd *BlockData) verifyBandwidthUsage() error {
+	if bd.CPUUsage() > CPULimit {
 		return ErrInvalidCPUUsage
 	}
 
-	maxNet, err := bd.NetRef().Mul(util.NewUint128FromUint(uint64(NetLimit)))
-	if err != nil {
-		return err
-	}
-	if bd.NetUsage().Cmp(maxNet) > 0 {
+	if bd.NetUsage() > NetLimit {
 		return ErrInvalidNetUsage
 	}
 
@@ -616,25 +588,18 @@ func (bd *BlockData) verifyBandwidthUsage(parent *Block) error {
 }
 
 func (bd *BlockData) verifyTotalBandwidth() error {
-	cpuUsage := util.NewUint128()
-	netUsage := util.NewUint128()
-	var err error
+	cpuUsage := uint64(0)
+	netUsage := uint64(0)
 	for _, tx := range bd.Transactions() {
-		cpuUsage, err = cpuUsage.Add(tx.Receipt().CPUUsage())
-		if err != nil {
-			return err
-		}
-		netUsage, err = netUsage.Add(tx.Receipt().NetUsage())
-		if err != nil {
-			return err
-		}
+		cpuUsage = cpuUsage + tx.receipt.cpuUsage
+		netUsage = netUsage + tx.receipt.netUsage
 	}
 
-	if bd.CPUUsage().Cmp(cpuUsage) != 0 {
+	if cpuUsage != bd.cpuUsage {
 		return ErrWrongCPUUsage
 	}
-	if bd.NetUsage().Cmp(netUsage) != 0 {
-		return ErrWrongNetUsage
+	if netUsage != bd.netUsage {
+		return ErrWrongCPUUsage
 	}
 	return nil
 }
@@ -672,15 +637,14 @@ func (b *Block) Child() (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
+	state.cpuUsage = 0
+	state.netUsage = 0
 
-	state.cpuUsage = util.NewUint128()
-	state.netUsage = util.NewUint128()
-
-	state.cpuRef, err = calcRefCPU(b)
+	state.cpuPrice, err = calcCPUPrice(b)
 	if err != nil {
 		return nil, err
 	}
-	state.netRef, err = calcRefNet(b)
+	state.netPrice, err = calcNetPrice(b)
 	if err != nil {
 		return nil, err
 	}
@@ -693,10 +657,10 @@ func (b *Block) Child() (*Block, error) {
 				reward:     util.NewUint128(),
 				cryptoAlg:  b.CryptoAlg(),
 				hashAlg:    b.HashAlg(),
-				cpuRef:     util.NewUint128(),
-				cpuUsage:   util.NewUint128(),
-				netRef:     util.NewUint128(),
-				netUsage:   util.NewUint128(),
+				cpuPrice:   util.NewUint128(),
+				cpuUsage:   0,
+				netPrice:   util.NewUint128(),
+				netUsage:   0,
 			},
 			transactions: make([]*Transaction, 0),
 			height:       b.height + 1,
@@ -736,9 +700,9 @@ func (b *Block) Seal() error {
 
 	b.reward = b.state.Reward()
 	b.supply = b.state.Supply()
-	b.cpuRef = b.state.cpuRef
+	b.cpuPrice = b.state.cpuPrice
 	b.cpuUsage = b.state.cpuUsage
-	b.netRef = b.state.netRef
+	b.netPrice = b.state.netPrice
 	b.netUsage = b.state.netUsage
 
 	b.accStateRoot, err = b.state.AccountsRoot()
@@ -774,19 +738,11 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cpuRefBytes, err := bd.CPURef().ToFixedSizeByteSlice()
+	cpuPriceBytes, err := bd.CPUPrice().ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
-	netRefBytes, err := bd.NetRef().ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	cpuUsageBytes, err := bd.CPUUsage().ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	netUsageBytes, err := bd.NetUsage().ToFixedSizeByteSlice()
+	netPriceBytes, err := bd.NetPrice().ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
 	}
@@ -808,10 +764,10 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		CryptoAlg:    uint32(bd.CryptoAlg()),
 		Reward:       rewardBytes,
 		Supply:       supplyBytes,
-		CpuRef:       cpuRefBytes,
-		CpuUsage:     cpuUsageBytes,
-		NetRef:       netRefBytes,
-		NetUsage:     netUsageBytes,
+		CpuPrice:     cpuPriceBytes,
+		CpuUsage:     bd.cpuUsage,
+		NetPrice:     netPriceBytes,
+		NetUsage:     bd.netUsage,
 		TxHash:       txHash,
 	}
 	blockHashTargetBytes, err := proto.Marshal(blockHashTarget)
@@ -846,7 +802,17 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 	if err != nil {
 		return nil, err
 	}
-	cpuUsage, netUsage, err := tx.Bandwidth(b.state)
+	cpuUsage, netUsage := tx.Bandwidth()
+	cpuPoints, err := b.state.cpuPrice.Mul(util.NewUint128FromUint(cpuUsage))
+	if err != nil {
+		return nil, err
+	}
+	netPoints, err := b.state.netPrice.Mul(util.NewUint128FromUint(netUsage))
+	if err != nil {
+		return nil, err
+	}
+
+	points, err := cpuPoints.Add(netPoints)
 	if err != nil {
 		return nil, err
 	}
@@ -861,13 +827,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 		return nil, err
 	}
 
-	// Update payer's bandwidth
-	if err := payer.UpdateBandwidth(b.timestamp); err != nil {
+	// Update payer's points
+	if err := payer.UpdatePoints(b.timestamp); err != nil {
 		return nil, err
 	}
 
 	// STEP 5. Check payer's bandwidth
-	if err := payer.checkAccountBandwidth(transaction, cpuUsage, netUsage); err != nil {
+	if err := payer.checkAccountPoints(transaction, points); err != nil {
 		return nil, err
 	}
 
@@ -889,9 +855,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 		return nil, err
 	}
 
-	receipt := NewReceipt()
-	receipt.cpuUsage = cpuUsage
-	receipt.netUsage = netUsage
+	receipt := &Receipt{
+		executed: false,
+		cpuUsage: cpuUsage,
+		netUsage: netUsage,
+		points:   points,
+		error:    nil,
+	}
 	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
 	err = tx.Execute(b)
 	if err != nil {
@@ -918,12 +888,8 @@ func (b *Block) updateUnstaking(addr common.Address) error {
 	return b.State().PutAccount(acc)
 }
 
-func (b *Block) consumeBandwidth(transaction *Transaction) error {
+func (b *Block) consumePoints(transaction *Transaction) error {
 	var err error
-	usage, err := transaction.receipt.netUsage.Add(transaction.receipt.cpuUsage)
-	if err != nil {
-		return err
-	}
 
 	acc, err := b.State().GetAccount(transaction.payer)
 	if err != nil {
@@ -933,34 +899,22 @@ func (b *Block) consumeBandwidth(transaction *Transaction) error {
 		return err
 	}
 
-	// Success if (vesting - bandwidth > usage)
-	avail, err := acc.Vesting.Sub(acc.Bandwidth)
-	if err != nil {
+	updated, err := acc.Points.Sub(transaction.receipt.points)
+	if err == util.ErrUint128Underflow {
 		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to calculate available usage.")
-		return err
+			"tx_points":  transaction.receipt.points,
+			"acc_points": acc.Points,
+			"payer":      transaction.payer.Hex(),
+			"err":        err,
+		}).Warn("Points limit exceeded.")
+		return ErrPointNotEnough
 	}
-	if avail.Cmp(usage) < 0 {
-		logging.Console().WithFields(logrus.Fields{
-			"usage": usage,
-			"avail": avail,
-			"payer": transaction.payer.Hex(),
-			"err":   err,
-		}).Warn("Bandwidth limit exceeded.")
-		return ErrBandwidthNotEnough
+	if err != nil {
+		return err
 	}
 
-	// Update bandwidth and lastBandwidthTimestamp
-	updated, err := acc.Bandwidth.Add(usage)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to calculate bandwidth.")
-		return err
-	}
-	acc.Bandwidth = updated
-	acc.LastBandwidthTs = b.Timestamp()
+	acc.Points = updated
+	acc.LastPointsTs = b.Timestamp()
 
 	err = b.State().PutAccount(acc)
 	if err != nil {
@@ -972,14 +926,17 @@ func (b *Block) consumeBandwidth(transaction *Transaction) error {
 	return nil
 }
 
-// currentBandwidth calculates updated bandwidth based on current time.
-func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
-	vesting := payer.Vesting
-	bandwidth := payer.Bandwidth
-	lastTs := payer.LastBandwidthTs
+// currentPoints calculates updated points based on current time.
+func currentPoints(payer *Account, curTs int64) (*util.Uint128, error) {
+	staking := payer.Staking
+	used, err := payer.Staking.Sub(payer.Points)
+	if err != nil {
+		return nil, err
+	}
+	lastTs := payer.LastPointsTs
 	elapsed := curTs - lastTs
-	if time.Duration(elapsed)*time.Second >= BandwidthRegenerateDuration {
-		return util.NewUint128(), nil
+	if time.Duration(elapsed)*time.Second >= PointsRegenerateDuration {
+		return staking.DeepCopy(), nil
 	}
 
 	if elapsed < 0 {
@@ -987,15 +944,15 @@ func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
 	}
 
 	if elapsed == 0 {
-		return bandwidth.DeepCopy(), nil
+		return payer.Points.DeepCopy(), nil
 	}
 
-	// Bandwidth means consumed bandwidth. So 0 means full bandwidth
-	// regeneratedBandwidth = veting * elapsedTime / BandwidthRegenerateDuration
-	// currentBandwidth = prevBandwidth - regeneratedBandwidth
+	// Points means remain points. So 0 means no used
+	// regeneratedPoints = staking * elapsedTime / PointsRegenerateDuration
+	// currentPoints = prevPoints + regeneratedPoints
 	mul := util.NewUint128FromUint(uint64(elapsed))
-	div := util.NewUint128FromUint(uint64(BandwidthRegenerateDuration / time.Second))
-	v1, err := vesting.Mul(mul)
+	div := util.NewUint128FromUint(uint64(PointsRegenerateDuration / time.Second))
+	v1, err := staking.Mul(mul)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -1010,14 +967,14 @@ func currentBandwidth(payer *Account, curTs int64) (*util.Uint128, error) {
 		return nil, err
 	}
 
-	if regen.Cmp(bandwidth) >= 0 {
-		return util.NewUint128(), nil
+	if regen.Cmp(used) >= 0 {
+		return staking.DeepCopy(), nil
 	}
-	cur, err := bandwidth.Sub(regen)
+	cur, err := payer.Points.Add(regen)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Warn("Failed to subtract uint128.")
+		}).Warn("Failed to add uint128.")
 		return nil, err
 	}
 	return cur, nil
@@ -1160,23 +1117,16 @@ func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) e
 
 // AcceptTransaction consume bandwidth and adds tx in block state
 func (b *Block) AcceptTransaction(transaction *Transaction) error {
-	var err error
 	if transaction.receipt == nil {
 		return ErrNoTransactionReceipt
 	}
 
-	if err := b.consumeBandwidth(transaction); err != nil {
+	if err := b.consumePoints(transaction); err != nil {
 		return err
 	}
 
-	b.state.cpuUsage, err = b.state.cpuUsage.Add(transaction.receipt.cpuUsage)
-	if err != nil {
-		return err
-	}
-	b.state.netUsage, err = b.state.netUsage.Add(transaction.receipt.netUsage)
-	if err != nil {
-		return err
-	}
+	b.state.cpuUsage += transaction.receipt.cpuUsage
+	b.state.netUsage += transaction.receipt.netUsage
 
 	if err := b.state.accState.incrementNonce(transaction.from); err != nil {
 		return err
@@ -1196,19 +1146,19 @@ func (b *Block) AppendTransaction(transaction *Transaction) {
 
 // VerifyState verifies block states comparing with root hashes in header
 func (b *Block) VerifyState() error {
-	if b.state.CPURef().Cmp(b.CPURef()) != 0 {
+	if b.state.CPUPrice().Cmp(b.CPUPrice()) != 0 {
 		logging.Console().WithFields(logrus.Fields{
-			"state":  b.state.CPURef(),
-			"header": b.CPURef(),
-		}).Warn("Failed to verify CPU ref.")
-		return ErrInvalidCPURef
+			"state":  b.state.CPUPrice(),
+			"header": b.CPUPrice(),
+		}).Warn("Failed to verify CPU price.")
+		return ErrInvalidCPUPrice
 	}
-	if b.state.NetRef().Cmp(b.NetRef()) != 0 {
+	if b.state.NetPrice().Cmp(b.NetPrice()) != 0 {
 		logging.Console().WithFields(logrus.Fields{
-			"state":  b.state.NetRef(),
-			"header": b.NetRef(),
-		}).Warn("Failed to verify Net ref.")
-		return ErrInvalidNetRef
+			"state":  b.state.NetPrice(),
+			"header": b.NetPrice(),
+		}).Warn("Failed to verify Net price.")
+		return ErrInvalidNetPrice
 	}
 
 	if b.state.Reward().Cmp(b.Reward()) != 0 {
@@ -1357,78 +1307,69 @@ func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 	return reward, nil
 }
 
-// calculate Reference cpu Bandwidth
-
-func calcRefCPU(parent *Block) (*util.Uint128, error) {
-
-	return calcRefBandwidth(&calcRefBandwidthArg{
-		thresholdRatio: ThresholdRatio,
-		increaseRate:   BandwidthIncreaseRate,
-		decreaseRate:   BandwidthDecreaseRate,
-		discountRatio:  MinimumDiscountRatio,
-		limit:          CPULimit,
-		usage:          parent.cpuUsage,
-		supply:         parent.supply,
-		previousRef:    parent.cpuRef,
+// calculate cpu price
+func calcCPUPrice(parent *Block) (*util.Uint128, error) {
+	return calcBandwidthPrice(&calcBandwidthPriceArg{
+		thresholdRatioNum:   ThresholdRatioNum,
+		thresholdRatioDenom: ThresholdRatioDenom,
+		increaseRate:        BandwidthIncreaseRate,
+		decreaseRate:        BandwidthDecreaseRate,
+		discountRatio:       MinimumDiscountRatio,
+		limit:               CPULimit,
+		usage:               parent.cpuUsage,
+		supply:              parent.supply,
+		previousPrice:       parent.cpuPrice,
 	})
 }
 
-// calculate Reference net Bandwidth
-func calcRefNet(parent *Block) (*util.Uint128, error) {
-	return calcRefBandwidth(&calcRefBandwidthArg{
-		thresholdRatio: ThresholdRatio,
-		increaseRate:   BandwidthIncreaseRate,
-		decreaseRate:   BandwidthDecreaseRate,
-		discountRatio:  MinimumDiscountRatio,
-		limit:          NetLimit,
-		usage:          parent.netUsage,
-		supply:         parent.supply,
-		previousRef:    parent.netRef,
+// calculate net price
+func calcNetPrice(parent *Block) (*util.Uint128, error) {
+	return calcBandwidthPrice(&calcBandwidthPriceArg{
+		thresholdRatioNum:   ThresholdRatioNum,
+		thresholdRatioDenom: ThresholdRatioDenom,
+		increaseRate:        BandwidthIncreaseRate,
+		decreaseRate:        BandwidthDecreaseRate,
+		discountRatio:       MinimumDiscountRatio,
+		limit:               NetLimit,
+		usage:               parent.netUsage,
+		supply:              parent.supply,
+		previousPrice:       parent.netPrice,
 	})
 }
 
-type calcRefBandwidthArg struct {
-	thresholdRatio, increaseRate, decreaseRate, discountRatio *big.Rat
-	limit                                                     uint64
-	usage, supply, previousRef                                *util.Uint128
+type calcBandwidthPriceArg struct {
+	increaseRate, decreaseRate, discountRatio            *big.Rat
+	thresholdRatioNum, thresholdRatioDenom, limit, usage uint64
+	supply, previousPrice                                *util.Uint128
 }
 
-func calcRefBandwidth(arg *calcRefBandwidthArg) (*util.Uint128, error) {
-	limit := util.NewUint128FromUint(uint64(arg.limit))
+func calcBandwidthPrice(arg *calcBandwidthPriceArg) (*util.Uint128, error) {
 	// thresholdBandwidth : Total MED amount which can be used for CPU / NET per block
-	thresholdBandwidth, err := arg.previousRef.Mul(limit)
-	if err != nil {
-		return nil, err
-	}
-	thresholdBandwidth, err = thresholdBandwidth.MulWithRat(arg.thresholdRatio)
-	if err != nil {
-		return nil, err
-	}
+	thresholdBandwidth := arg.limit * arg.thresholdRatioNum / arg.thresholdRatioDenom
 
-	// Set Reference Net Bandwidth
-	if arg.usage.Cmp(thresholdBandwidth) <= 0 {
-		minRef, err := arg.supply.Div(util.NewUint128FromUint(NumberOfBlocksInSingleTimeWindow))
+	if arg.usage <= thresholdBandwidth {
+		minPrice, err := arg.supply.Div(util.NewUint128FromUint(NumberOfBlocksInSingleTimeWindow))
 		if err != nil {
 			return nil, err
 		}
-		minRef, err = minRef.Div(limit)
+		minPrice, err = minPrice.Div(util.NewUint128FromUint(arg.limit))
 		if err != nil {
 			return nil, err
 		}
-		minRef, err = minRef.MulWithRat(arg.discountRatio)
+		minPrice, err = minPrice.MulWithRat(arg.discountRatio)
 		if err != nil {
 			return nil, err
 		}
 
-		newRef, err := arg.previousRef.MulWithRat(arg.decreaseRate)
+		newPrice, err := arg.previousPrice.MulWithRat(arg.decreaseRate)
 		if err != nil {
 			return nil, err
 		}
-		if minRef.Cmp(newRef) > 0 {
-			return minRef, nil
+		if minPrice.Cmp(newPrice) > 0 {
+			return minPrice, nil
 		}
-		return newRef, nil
+		return newPrice, nil
 	}
 
-	return arg.previousRef.MulWithRat(arg.increaseRate)
+	return arg.previousPrice.MulWithRat(arg.increaseRate)
 }

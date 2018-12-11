@@ -29,11 +29,10 @@ import (
 // Transaction's string representation.
 const (
 	TxTyGenesis             = "genesis"
-	TxTyGenesisVesting      = "genesis_vest"
 	TxOpTransfer            = "transfer"
 	TxOpAddRecord           = "add_record"
-	TxOpVest                = "vest"
-	TxOpWithdrawVesting     = "withdraw_vesting"
+	TxOpStake               = "stake"
+	TxOpUnstake             = "unstake"
 	TxOpAddCertification    = "add_certification"
 	TxOpRevokeCertification = "revoke_certification"
 	TxOpRegisterAlias       = "register_alias"
@@ -42,10 +41,10 @@ const (
 
 // Transaction related defaults
 const (
-	TxDelayLimit                = 24 * 60 * 60
-	UnstakingWaitDuration       = 7 * 24 * time.Hour
-	BandwidthRegenerateDuration = 7 * 24 * time.Hour
-	MaxPayloadSize              = 4096
+	TxDelayLimit             = 24 * 60 * 60
+	UnstakingWaitDuration    = 7 * 24 * time.Hour
+	PointsRegenerateDuration = 7 * 24 * time.Hour
+	MaxPayloadSize           = 4096
 )
 
 // Transaction's message types.
@@ -65,19 +64,24 @@ var InflationRate = big.NewRat(464, 1000000000000) // 4.64e-09
 //InflationRoundDown is constant for round down reward
 const InflationRoundDown = 10000000000 //1e10
 
-// Bandwidth limit per block
+// Points limit per block
 const (
 	NumberOfBlocksInSingleTimeWindow = 201600  // 7 * 86400 / 3 (time window: 7days, block interval: 3 sec)
 	CPULimit                         = 3000000 // 1000 TPS (block interval: 3 sec, transfer tx: 1000 )
 	NetLimit                         = 3000000 // 3MB
 )
 
-// Bandwidth related defaults
+// Points Price related defaults
 var (
 	MinimumDiscountRatio  = big.NewRat(1, 100)
 	BandwidthIncreaseRate = big.NewRat(105, 100)
 	BandwidthDecreaseRate = big.NewRat(95, 100)
-	ThresholdRatio        = big.NewRat(5, 10)
+)
+
+// Points Price related defaults
+const (
+	ThresholdRatioNum   = 5
+	ThresholdRatioDenom = 10
 )
 
 // Error types of core package.
@@ -87,8 +91,8 @@ var (
 	ErrBeginAgainInBatch            = errors.New("cannot begin with a batch task unfinished")
 	ErrCannotCloneOnBatching        = errors.New("cannot clone on batching")
 	ErrNotBatching                  = errors.New("not batching")
-	ErrVestingNotEnough             = errors.New("vesting is not enough")
-	ErrBandwidthNotEnough           = errors.New("bandwidth limit exceeded")
+	ErrStakingNotEnough             = errors.New("staking is not enough")
+	ErrPointNotEnough               = errors.New("points are not enough")
 	ErrCannotConvertTransaction     = errors.New("proto message cannot be converted into Transaction")
 	ErrCannotRevertLIB              = errors.New("cannot revert latest irreversible block")
 	ErrCannotRemoveBlockOnCanonical = errors.New("cannot remove block on canonical chain")
@@ -151,8 +155,8 @@ var (
 	ErrAliasCollateralLimit         = errors.New("not enough transaction value for alias collateral")
 	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
 	ErrWrongReceipt                 = errors.New("transaction receipt is wrong in block data")
-	ErrInvalidCPURef                = errors.New("invalid cpu reference")
-	ErrInvalidNetRef                = errors.New("invalid Net reference")
+	ErrInvalidCPUPrice              = errors.New("invalid cpu price")
+	ErrInvalidNetPrice              = errors.New("invalid Net price")
 	ErrInvalidCPUUsage              = errors.New("block uses too much cpu bandwidth")
 	ErrInvalidNetUsage              = errors.New("block ueses too much net bandwidth")
 	ErrWrongCPUUsage                = errors.New("block cpu usage is not matched with sum of tx cpu usage")
@@ -221,7 +225,7 @@ type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
 //ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
-	Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error)
+	Bandwidth() (cpuUsage uint64, netUsage uint64)
 }
 
 // TransactionPayload is an interface of transaction payload.

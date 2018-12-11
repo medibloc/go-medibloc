@@ -6,7 +6,7 @@ message Account{
   bytes balance = 2;
   uint64 nonce = 3;
 
-  bytes vesting = 11;
+  bytes staking = 11;
   bytes voted_root_hash = 12;
   bytes candidate_id = 13;
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -49,9 +50,9 @@ func TestAPIService_GetAccount(t *testing.T) {
 		ValueEqual("address", payer.Address()).
 		ValueEqual("balance", "0").
 		ValueEqual("nonce", "1").
-		ValueEqual("vesting", "400000000000000000000").
+		ValueEqual("staking", "400000000000000000000").
 		ValueEqual("voted", []string{}).
-		ValueNotEqual("bandwidth", "0").
+		ValueNotEqual("points", "0").
 		ValueEqual("unstaking", "0")
 
 	e.GET("/v1/account").
@@ -63,9 +64,9 @@ func TestAPIService_GetAccount(t *testing.T) {
 		ValueEqual("address", payer.Address()).
 		ValueEqual("balance", "0").
 		ValueEqual("nonce", "1").
-		ValueEqual("vesting", "400000000000000000000").
+		ValueEqual("staking", "400000000000000000000").
 		ValueEqual("voted", []string{}).
-		ValueNotEqual("bandwidth", "0").
+		ValueNotEqual("points", "0").
 		ValueEqual("unstaking", "0")
 
 	e.GET("/v1/account").
@@ -82,7 +83,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 		Expect().
 		Status(http.StatusOK).
 		JSON().Object().
-		ValueEqual("vesting", "0")
+		ValueEqual("staking", "0")
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
@@ -90,7 +91,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 		Expect().
 		Status(http.StatusOK).
 		JSON().Object().
-		ValueEqual("vesting", "0")
+		ValueEqual("staking", "0")
 
 	e.GET("/v1/account").
 		WithQuery("address", payer.Addr).
@@ -473,8 +474,8 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 		JSON().Object().
 		ValueEqual("error", "").
 		ValueEqual("executed", true).
-		ValueEqual("cpu_usage", tx1.Receipt().CPUUsage().String()).
-		ValueEqual("net_usage", tx1.Receipt().NetUsage().String())
+		ValueEqual("cpu_usage", strconv.FormatUint(tx1.Receipt().CPUUsage(), 10)).
+		ValueEqual("net_usage", strconv.FormatUint(tx1.Receipt().NetUsage(), 10))
 
 	e.GET("/v1/transaction/receipt").
 		WithQuery("hash", byteutils.Bytes2Hex(tx2.Hash())).
@@ -482,8 +483,8 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 		JSON().Object().
 		ValueEqual("executed", false).
 		ValueEqual("error", core.ErrRecordAlreadyAdded.Error()).
-		ValueEqual("cpu_usage", tx2.Receipt().CPUUsage().String()).
-		ValueEqual("net_usage", tx2.Receipt().NetUsage().String())
+		ValueEqual("cpu_usage", strconv.FormatUint(tx2.Receipt().CPUUsage(), 10)).
+		ValueEqual("net_usage", strconv.FormatUint(tx2.Receipt().NetUsage(), 10))
 
 	e.GET("/v1/transaction/receipt").
 		WithQuery("hash", "0123456789").

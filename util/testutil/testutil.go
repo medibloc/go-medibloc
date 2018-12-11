@@ -133,7 +133,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		dynasties = append(dynasties, keypair)
 		distributed = append(distributed, keypair)
 
-		vesting, err := util.NewUint128FromString("100000000000000000000")
+		staking, err := util.NewUint128FromString("100000000000000000000")
 		require.NoError(t, err)
 		collateral, err := util.NewUint128FromString("1000000000000000000")
 		require.NoError(t, err)
@@ -146,12 +146,12 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		tx.SetCryptoAlg(algorithm.SECP256K1)
 		tx.SetHashAlg(algorithm.SHA3256)
 
-		txVest, err := tx.Clone()
+		txStake, err := tx.Clone()
 		require.NoError(t, err)
-		txVest.SetTxType(core.TxOpVest)
-		txVest.SetValue(vesting)
-		txVest.SetNonce(1)
-		txVest.SignThis(keypair.PrivKey)
+		txStake.SetTxType(core.TxOpStake)
+		txStake.SetValue(staking)
+		txStake.SetNonce(1)
+		txStake.SignThis(keypair.PrivKey)
 
 		aliasPayload := &core.RegisterAliasPayload{AliasName: "testbpalias" + string(i)}
 		aliasePayloadBytes, err := aliasPayload.ToBytes()
@@ -185,8 +185,8 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		txVote.SetPayload(votePayloadBytes)
 		txVote.SignThis(keypair.PrivKey)
 
-		//txs = append(txs, txVest, txCandidate, txVote)
-		txs = append(txs, txVest, txAlias, txCandidate, txVote)
+		//txs = append(txs, txStake, txCandidate, txVote)
+		txs = append(txs, txStake, txAlias, txCandidate, txVote)
 	}
 
 	distCnt := 40 - dynastySize

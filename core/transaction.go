@@ -21,7 +21,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -582,16 +582,8 @@ func (tx *TransferTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *TransferTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1000))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *TransferTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1000, uint64(tx.size)
 }
 
 //AddRecordTx is a structure for adding record
@@ -673,27 +665,19 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddRecordTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *AddRecordTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1500, uint64(tx.size)
 }
 
-//VestTx is a structure for withdrawing vesting
-type VestTx struct {
+//StakeTx is a structure for staking med
+type StakeTx struct {
 	user   common.Address
 	amount *util.Uint128
 	size   int
 }
 
-//NewVestTx returns NewTx
-func NewVestTx(tx *Transaction) (ExecutableTx, error) {
+//NewStakeTx returns NewTx
+func NewStakeTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -704,15 +688,15 @@ func NewVestTx(tx *Transaction) (ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &VestTx{
+	return &StakeTx{
 		user:   tx.From(),
 		amount: tx.Value(),
 		size:   size,
 	}, nil
 }
 
-//Execute VestTx
-func (tx *VestTx) Execute(b *Block) error {
+//Execute StakeTx
+func (tx *StakeTx) Execute(b *Block) error {
 
 	user, err := b.State().GetAccount(tx.user)
 	if err != nil {
@@ -725,7 +709,12 @@ func (tx *VestTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	user.Vesting, err = user.Vesting.Add(tx.amount)
+	user.Staking, err = user.Staking.Add(tx.amount)
+	if err != nil {
+		return err
+	}
+
+	user.Points, err = user.Points.Add(tx.amount)
 	if err != nil {
 		return err
 	}
@@ -737,7 +726,7 @@ func (tx *VestTx) Execute(b *Block) error {
 
 	voted := user.VotedSlice()
 
-	// Add user's vesting to candidates' votePower
+	// Add user's stake to candidates' votePower
 	for _, v := range voted {
 		err = b.state.DposState().AddVotePowerToCandidate(v, tx.amount)
 		if err == ErrCandidateNotFound {
@@ -750,27 +739,19 @@ func (tx *VestTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VestTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1000))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *StakeTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1000, uint64(tx.size)
 }
 
-//WithdrawVestingTx is a structure for withdrawing vesting
-type WithdrawVestingTx struct {
+//UnstakeTx is a structure for unstaking med
+type UnstakeTx struct {
 	user   common.Address
 	amount *util.Uint128
 	size   int
 }
 
-//NewWithdrawVestingTx returns WithdrawVestingTx
-func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
+//NewUnstakeTx returns UnstakeTx
+func NewUnstakeTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -778,28 +759,28 @@ func NewWithdrawVestingTx(tx *Transaction) (ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &WithdrawVestingTx{
+	return &UnstakeTx{
 		user:   tx.From(),
 		amount: tx.Value(),
 		size:   size,
 	}, nil
 }
 
-//Execute WithdrawVestingTx
-func (tx *WithdrawVestingTx) Execute(b *Block) error {
+//Execute UnstakeTx
+func (tx *UnstakeTx) Execute(b *Block) error {
 	account, err := b.State().GetAccount(tx.user)
 	if err != nil {
 		return err
 	}
 
-	if account.Vesting.Cmp(tx.amount) < 0 {
-		return ErrVestingNotEnough
+	account.Staking, err = account.Staking.Sub(tx.amount)
+	if err == util.ErrUint128Underflow {
+		return ErrStakingNotEnough
 	}
-	account.Vesting, err = account.Vesting.Sub(tx.amount)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Warn("Failed to subtract vesting.")
+		}).Warn("Failed to subtract staking.")
 		return err
 	}
 
@@ -812,17 +793,8 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 	}
 	account.LastUnstakingTs = b.Timestamp()
 
-	// Update bandwidth
-	if tx.amount.Cmp(account.Bandwidth) >= 0 {
-		account.Bandwidth = util.NewUint128()
-	} else {
-		account.Bandwidth, err = account.Bandwidth.Sub(tx.amount)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Warn("Failed to subtract bandwidth.")
-			return err
-		}
+	if account.Staking.Cmp(account.Points) < 0 {
+		account.Points = account.Staking.DeepCopy()
 	}
 
 	voted := account.VotedSlice()
@@ -835,7 +807,7 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 		return err
 	}
 
-	// Add user's vesting to candidates' votePower
+	// Add user's staking to candidates' votePower
 	for _, v := range voted {
 		err = b.state.DposState().SubVotePowerToCandidate(v, tx.amount)
 		if err == ErrCandidateNotFound {
@@ -848,16 +820,8 @@ func (tx *WithdrawVestingTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *WithdrawVestingTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1000))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *UnstakeTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1000, uint64(tx.size)
 }
 
 //AddCertificationTx is a structure for adding certification
@@ -988,16 +952,8 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *AddCertificationTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *AddCertificationTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1500, uint64(tx.size)
 }
 
 //RevokeCertificationTx is a structure for revoking certification
@@ -1115,16 +1071,8 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *RevokeCertificationTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *RevokeCertificationTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1500, uint64(tx.size)
 }
 
 // RegisterAliasTx is a structure for register alias
@@ -1253,16 +1201,8 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *RegisterAliasTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *RegisterAliasTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1500, uint64(tx.size)
 }
 
 func checkAliasCondition(an string) error {
@@ -1361,14 +1301,6 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *DeregisterAliasTx) Bandwidth(bs *BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.cpuRef.Mul(util.NewUint128FromUint(1500))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.netRef.Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *DeregisterAliasTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1500, uint64(tx.size)
 }

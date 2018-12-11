@@ -47,15 +47,22 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	return signer
 }
 
-//Bandwidth returns bandwidth usage of a transaction.
-func Bandwidth(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
+//Points returns bandwidth usage of a transaction.
+func Points(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
 	execTx, err := DefaultTxMap[tx.TxType()](tx)
 	require.NoError(t, err)
-	cpuBw, netBw, err := execTx.Bandwidth(b.State())
+	cpu, net := execTx.Bandwidth()
 	require.NoError(t, err)
-	bw, err := cpuBw.Add(netBw)
+
+	cpuPoints, err := b.State().CPUPrice().Mul(util.NewUint128FromUint(cpu))
 	require.NoError(t, err)
-	return bw
+	netPoints, err := b.State().NetPrice().Mul(util.NewUint128FromUint(net))
+	require.NoError(t, err)
+
+	points, err := cpuPoints.Add(netPoints)
+	require.NoError(t, err)
+
+	return points
 }
 
 //FloatToUint128 covert float to uint128 (precision is only 1e-03)

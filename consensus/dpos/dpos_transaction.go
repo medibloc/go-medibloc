@@ -111,16 +111,8 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *BecomeCandidateTx) Bandwidth(bs *core.BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.CPURef().Mul(util.NewUint128FromUint(1000))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.NetRef().Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *BecomeCandidateTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1000, uint64(tx.size)
 }
 
 //QuitCandidateTx is a structure for quiting candidate
@@ -186,16 +178,8 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *QuitCandidateTx) Bandwidth(bs *core.BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.CPURef().Mul(util.NewUint128FromUint(1000))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.NetRef().Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *QuitCandidateTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1000, uint64(tx.size)
 }
 
 //VoteTx is a structure for voting
@@ -288,7 +272,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		}
 
 		candidateID := iter.Key()
-		err = ds.AddVotePowerToCandidate(candidateID, acc.Vesting)
+		err = ds.AddVotePowerToCandidate(candidateID, acc.Staking)
 		if err == core.ErrCandidateNotFound {
 			return ErrNotCandidate
 		} else if err != nil {
@@ -312,7 +296,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		}
 
 		candidateID := iter.Key()
-		err = ds.SubVotePowerToCandidate(candidateID, acc.Vesting)
+		err = ds.SubVotePowerToCandidate(candidateID, acc.Staking)
 		if err == core.ErrCandidateNotFound {
 			continue // candidate quited
 		} else if err != nil {
@@ -330,14 +314,6 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 }
 
 //Bandwidth returns bandwidth.
-func (tx *VoteTx) Bandwidth(bs *core.BlockState) (cpuUsage *util.Uint128, netUsage *util.Uint128, err error) {
-	cpuUsage, err = bs.CPURef().Mul(util.NewUint128FromUint(1000))
-	if err != nil {
-		return nil, nil, err
-	}
-	netUsage, err = bs.NetRef().Mul(util.NewUint128FromUint(uint64(tx.size)))
-	if err != nil {
-		return nil, nil, err
-	}
-	return cpuUsage, netUsage, nil
+func (tx *VoteTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
+	return 1000, uint64(tx.size)
 }

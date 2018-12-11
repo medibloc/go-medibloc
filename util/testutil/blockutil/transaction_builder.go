@@ -221,7 +221,7 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 //StakeTx generate stake Tx
 func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
-	return n.Type(core.TxOpVest).Value(med).SignPair(pair)
+	return n.Type(core.TxOpStake).Value(med).SignPair(pair)
 }
 
 //Build build transaction

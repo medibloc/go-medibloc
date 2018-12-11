@@ -353,16 +353,16 @@ const (
         },
         "balance": {
           "type": "string",
-          "description": "Current balance in unit of 1/(10^8) MED."
+          "description": "Current balance in unit of 1/(10^12) MED."
         },
         "nonce": {
           "type": "string",
           "format": "uint64",
           "description": "Current transaction count."
         },
-        "vesting": {
+        "staking": {
           "type": "string",
-          "description": "Current vesting in unit of 1/(10^8) MED."
+          "description": "Current staking in unit of 1/(10^12) MED."
         },
         "voted": {
           "type": "array",
@@ -371,7 +371,7 @@ const (
           },
           "description": "Voted address."
         },
-        "bandwidth": {
+        "points": {
           "type": "string"
         },
         "unstaking": {
@@ -437,20 +437,22 @@ const (
           "type": "string",
           "title": "Block signature"
         },
-        "cpu_ref": {
+        "cpu_price": {
           "type": "string",
           "title": "Block cpu reference"
         },
         "cpu_usage": {
           "type": "string",
+          "format": "uint64",
           "title": "Block cpu usage"
         },
-        "net_ref": {
+        "net_price": {
           "type": "string",
           "title": "Block net reference"
         },
         "net_usage": {
           "type": "string",
+          "format": "uint64",
           "title": "Block net usage"
         },
         "accs_root": {
@@ -722,9 +724,14 @@ const (
           "format": "boolean"
         },
         "cpu_usage": {
-          "type": "string"
+          "type": "string",
+          "format": "uint64"
         },
         "net_usage": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "points": {
           "type": "string"
         },
         "error": {

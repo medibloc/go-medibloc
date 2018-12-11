@@ -29,10 +29,10 @@ import (
 type BlockState struct {
 	reward   *util.Uint128
 	supply   *util.Uint128
-	cpuRef   *util.Uint128
-	cpuUsage *util.Uint128
-	netRef   *util.Uint128
-	netUsage *util.Uint128
+	cpuPrice *util.Uint128
+	cpuUsage uint64
+	netPrice *util.Uint128
+	netUsage uint64
 
 	accState  *AccountState
 	txState   *TransactionState
@@ -51,23 +51,23 @@ func (bs *BlockState) Reward() *util.Uint128 {
 	return bs.reward
 }
 
-//CPURef returns cpuRef
-func (bs *BlockState) CPURef() *util.Uint128 {
-	return bs.cpuRef
+//CPUPrice returns cpuPrice
+func (bs *BlockState) CPUPrice() *util.Uint128 {
+	return bs.cpuPrice
 }
 
 //CPUUsage returns cpuUsage
-func (bs *BlockState) CPUUsage() *util.Uint128 {
+func (bs *BlockState) CPUUsage() uint64 {
 	return bs.cpuUsage
 }
 
-//NetRef returns netRef
-func (bs *BlockState) NetRef() *util.Uint128 {
-	return bs.netRef
+//NetPrice returns netPrice
+func (bs *BlockState) NetPrice() *util.Uint128 {
+	return bs.netPrice
 }
 
 //NetUsage returns netUsage
-func (bs *BlockState) NetUsage() *util.Uint128 {
+func (bs *BlockState) NetUsage() uint64 {
 	return bs.netUsage
 }
 
@@ -106,10 +106,10 @@ func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	return &BlockState{
 		reward:    util.NewUint128(),
 		supply:    util.NewUint128(),
-		cpuRef:    util.NewUint128(),
-		cpuUsage:  util.NewUint128(),
-		netRef:    util.NewUint128(),
-		netUsage:  util.NewUint128(),
+		cpuPrice:  util.NewUint128(),
+		cpuUsage:  0,
+		netPrice:  util.NewUint128(),
+		netUsage:  0,
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
@@ -137,10 +137,10 @@ func (bs *BlockState) Clone() (*BlockState, error) {
 	return &BlockState{
 		reward:    bs.reward.DeepCopy(),
 		supply:    bs.supply.DeepCopy(),
-		cpuRef:    bs.cpuRef.DeepCopy(),
-		cpuUsage:  bs.cpuUsage.DeepCopy(),
-		netRef:    bs.netRef.DeepCopy(),
-		netUsage:  bs.netUsage.DeepCopy(),
+		cpuPrice:  bs.cpuPrice.DeepCopy(),
+		cpuUsage:  bs.cpuUsage,
+		netPrice:  bs.netPrice.DeepCopy(),
+		netUsage:  bs.netUsage,
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
@@ -243,8 +243,8 @@ func (bs *BlockState) DposRoot() ([]byte, error) {
 //String returns stringified blocks state
 func (bs *BlockState) String() string {
 	return fmt.Sprintf(
-		"{reward: %v, supply: %v, cpuRef: %v, cpuUsage: %v, netRef: %v, netUsage: %v}",
-		bs.reward, bs.supply, bs.cpuRef, bs.cpuUsage, bs.netRef, bs.netUsage)
+		"{reward: %v, supply: %v, cpuPrice: %v, cpuPoints: %v, netPrice: %v, netPoints: %v}",
+		bs.reward, bs.supply, bs.cpuPrice, bs.cpuUsage, bs.netPrice, bs.netUsage)
 }
 
 func (bs *BlockState) loadAccountState(rootHash []byte) error {
@@ -301,36 +301,22 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	return nil
 }
 
-func (bs *BlockState) checkBandwidthLimit(cpu, net *util.Uint128) error {
-	blockCPUUsage, err := bs.cpuUsage.Add(cpu)
-	if err != nil {
-		return err
-	}
-	maxCPU, err := bs.cpuRef.Mul(util.NewUint128FromUint(uint64(CPULimit)))
-	if err != nil {
-		return err
-	}
-	if maxCPU.Cmp(blockCPUUsage) < 0 {
+func (bs *BlockState) checkBandwidthLimit(cpu, net uint64) error {
+	blockCPUUsage := bs.cpuUsage + cpu
+	if CPULimit < blockCPUUsage {
 		logging.Console().WithFields(logrus.Fields{
 			"currentCPUUsage": blockCPUUsage,
-			"maxCPUUsage":     maxCPU,
+			"maxCPUUsage":     CPULimit,
 			"tx_cpu":          cpu,
 		}).Info("Not enough block cpu bandwidth to accept transaction")
 		return ErrExceedBlockMaxCPUUsage
 	}
 
-	blockNetUsage, err := bs.netUsage.Add(net)
-	if err != nil {
-		return err
-	}
-	maxNet, err := bs.netRef.Mul(util.NewUint128FromUint(uint64(NetLimit)))
-	if err != nil {
-		return err
-	}
-	if maxNet.Cmp(blockNetUsage) < 0 {
+	blockNetUsage := bs.netUsage + net
+	if NetLimit < blockNetUsage {
 		logging.Console().WithFields(logrus.Fields{
 			"currentNetUsage": blockNetUsage,
-			"maxNetUsage":     maxNet,
+			"maxNetUsage":     NetLimit,
 			"tx_net":          net,
 		}).Info("Not enough block net bandwidth to accept transaction")
 		return ErrExceedBlockMaxNetUsage
