@@ -171,6 +171,7 @@ func (bc *BlockChain) BlockByHash(hash []byte) *Block {
 func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
 	bc.mu.RLock()
 	if height > bc.mainTailBlock.Height() {
+		bc.mu.RUnlock()
 		return nil, ErrBlockNotExist
 	}
 	bc.mu.RUnlock()
@@ -287,12 +288,14 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 			"newTail": newTail,
 			"tail":    bc.mainTailBlock,
 		}).Error("Failed to find ancestor in canonical chain.")
+		bc.mu.RUnlock()
 		return nil, nil, err
 	}
 
 	// revert case
 	blocks, err := bc.loadBetweenBlocks(ancestor, bc.mainTailBlock)
 	if err != nil {
+		bc.mu.RUnlock()
 		return nil, nil, err
 	}
 	bc.mu.RUnlock()
