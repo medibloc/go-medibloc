@@ -138,7 +138,6 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 	assert.True(t, relayCompleted)
 }
 
-
 func TestTransactionManager_GappedTransaction(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()

@@ -16,8 +16,9 @@
 package core
 
 import (
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"sync"
+
+	"github.com/medibloc/go-medibloc/util/byteutils"
 
 	"github.com/medibloc/go-medibloc/common/hashheap"
 )

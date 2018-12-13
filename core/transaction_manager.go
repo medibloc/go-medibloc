@@ -160,7 +160,7 @@ func (mgr *TransactionManager) Get(hash []byte) *Transaction {
 	return mgr.pool.Get(hash)
 }
 
-// Get transaction from transaction pool.
+// GetGappedTx transaction from GappedTransaction pool.
 func (mgr *TransactionManager) GetGappedTx(hash []byte) *Transaction {
 	return mgr.gappedTxPool.Get(hash)
 }
