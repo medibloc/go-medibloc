@@ -16,6 +16,7 @@
 package core
 
 import (
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"sync"
 
 	"github.com/medibloc/go-medibloc/common/hashheap"
@@ -29,7 +30,7 @@ type GappedTxPool struct {
 
 	//candidates *hashheap.HashedHeap
 	buckets *hashheap.HashedHeap
-	//all        map[string]*Transaction
+	all     map[string]*Transaction
 
 	counter        uint64
 	accountCounter map[string]uint64
@@ -42,6 +43,7 @@ func NewGappedTxPool(size int) *GappedTxPool {
 	return &GappedTxPool{
 		size:           size,
 		buckets:        hashheap.New(),
+		all:            make(map[string]*Transaction),
 		accountCounter: make(map[string]uint64),
 	}
 }
@@ -67,6 +69,7 @@ func (gp *GappedTxPool) Push(tx *Transaction) error {
 	}
 	bkt.push(tx)
 	gp.buckets.Set(from, bkt)
+	gp.all[byteutils.Bytes2Hex(tx.Hash())] = tx
 	gp.accountCounter[from]++
 	gp.counter++
 
@@ -92,6 +95,7 @@ func (gp *GappedTxPool) PopContinuousTxs(tx *Transaction) []*Transaction {
 		if minTx != nil && (nonce+1 == minTx.nonce) {
 			nonce++
 			bkt.minTxs.Pop()
+			delete(gp.all, byteutils.Bytes2Hex(minTx.Hash()))
 			gp.counter--
 			Txs = append(Txs, minTx)
 			continue
@@ -99,4 +103,17 @@ func (gp *GappedTxPool) PopContinuousTxs(tx *Transaction) []*Transaction {
 		break
 	}
 	return Txs
+}
+
+// Get returns transaction by tx hash.
+func (gp *GappedTxPool) Get(hash []byte) *Transaction {
+	gp.mu.RLock()
+	defer gp.mu.RUnlock()
+
+	tx, ok := gp.all[byteutils.Bytes2Hex(hash)]
+	if !ok {
+		return nil
+	}
+	return tx
+
 }

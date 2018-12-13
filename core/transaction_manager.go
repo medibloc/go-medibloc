@@ -52,6 +52,7 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 		receivedMessageCh: make(chan net.Message, defaultTransactionMessageChanSize),
 		quitCh:            make(chan int),
 		pool:              NewTransactionPool(int(cfg.Chain.TransactionPoolSize)),
+		gappedTxPool:      NewGappedTxPool(int(cfg.Chain.TransactionPoolSize)), //TODO cfg gapped Pool size? @jiseob
 	}
 }
 
@@ -139,7 +140,6 @@ func (mgr *TransactionManager) Push(tx *Transaction) error { // TODO change name
 
 // PushGappedTxPool pushes gapped future transaction to gappedTxPool of TransactionManager.
 func (mgr *TransactionManager) PushGappedTxPool(tx *Transaction) error {
-
 	if err := mgr.gappedTxPool.Push(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"tx":  tx,
@@ -158,6 +158,11 @@ func (mgr *TransactionManager) Pop() *Transaction {
 // Get transaction from transaction pool.
 func (mgr *TransactionManager) Get(hash []byte) *Transaction {
 	return mgr.pool.Get(hash)
+}
+
+// Get transaction from transaction pool.
+func (mgr *TransactionManager) GetGappedTx(hash []byte) *Transaction {
+	return mgr.gappedTxPool.Get(hash)
 }
 
 // GetAll returns all transactions from transaction pool
@@ -191,7 +196,7 @@ func (mgr *TransactionManager) loop() {
 			if err != nil {
 				continue
 			}
-			if err := mgr.PushAndRelay(tx); err != nil {
+			if err := mgr.DisposeTx(tx); err != nil {
 				continue
 			}
 		}
@@ -218,21 +223,29 @@ func (mgr *TransactionManager) DisposeTx(tx *Transaction) error {
 	}
 
 	block := mgr.bm.TailBlock() // TODO lock check @jiseob
-	err := block.state.checkNonce(tx)
-	if err == ErrSmallTransactionNonce {
+
+	from := tx.From()
+	fromAcc, err := block.state.GetAccount(from)
+	if err != nil {
 		return err
 	}
-	from := tx.From()
-	v := mgr.pool.buckets.Get(from.String()) // TODO make method (bucket 호출 말것)
-	poolMaxNonce := v.(*bucket).peekLast().nonce
-	if tx.nonce <= poolMaxNonce {
-		err = mgr.replaceTx(tx)
-		if err != nil {
-			return err
-		}
-		return nil
+	maxNonce := fromAcc.Nonce
+	if tx.nonce <= maxNonce {
+		return ErrSmallTransactionNonce
 	}
-	if tx.nonce == poolMaxNonce+1 {
+
+	v := mgr.pool.buckets.Get(from.String()) // TODO make method (bucket 호출 말것)
+	if v != nil {
+		maxNonce = v.(*bucket).peekLast().nonce
+		if tx.nonce <= maxNonce {
+			err = mgr.replaceTx(tx)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+	if tx.nonce == maxNonce+1 {
 		var txs []*Transaction
 		txs = append(txs, tx)
 		txs = append(txs, mgr.gappedTxPool.PopContinuousTxs(tx)...)

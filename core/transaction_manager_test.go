@@ -118,7 +118,7 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 
 	randomTx := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx().Build()
 
-	require.NoError(t, seedTm.PushAndRelay(randomTx))
+	require.NoError(t, seedTm.DisposeTx(randomTx))
 
 	startTime := time.Now()
 	relayCompleted := false
@@ -136,4 +136,55 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 
 	t.Logf("Waiting time to relay tx: %v", time.Now().Sub(startTime))
 	assert.True(t, relayCompleted)
+}
+
+
+func TestTransactionManager_GappedTransaction(t *testing.T) {
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	tm := seed.Med.TransactionManager()
+
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+
+	from := bb.TokenDist[testutil.DynastySize]
+	to := testutil.NewAddrKeyPair(t)
+
+	tx1 := bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).Nonce(1).SignPair(from).Build()
+	tx2 := bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).Nonce(2).SignPair(from).Build()
+	tx3 := bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).Nonce(3).SignPair(from).Build()
+	tx4 := bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).Nonce(4).SignPair(from).Build()
+
+	var err = *new(error)
+
+	err = tm.DisposeTx(tx4)
+	assert.NoError(t, err)
+	assert.Nil(t, tm.Get(tx4.Hash()))
+	assert.NotNil(t, tm.GetGappedTx(tx4.Hash()))
+
+	err = tm.DisposeTx(tx3)
+	assert.NoError(t, err)
+	assert.Nil(t, tm.Get(tx3.Hash()))
+	assert.NotNil(t, tm.GetGappedTx(tx3.Hash()))
+
+	err = tm.DisposeTx(tx2)
+	assert.NoError(t, err)
+	assert.Nil(t, tm.Get(tx2.Hash()))
+	assert.NotNil(t, tm.GetGappedTx(tx2.Hash()))
+
+	err = tm.DisposeTx(tx1)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, tm.Get(tx1.Hash()))
+	assert.Nil(t, tm.GetGappedTx(tx1.Hash()))
+	assert.NotNil(t, tm.Get(tx2.Hash()))
+	assert.Nil(t, tm.GetGappedTx(tx2.Hash()))
+	assert.NotNil(t, tm.Get(tx3.Hash()))
+	assert.Nil(t, tm.GetGappedTx(tx3.Hash()))
+	assert.NotNil(t, tm.Get(tx4.Hash()))
+	assert.Nil(t, tm.GetGappedTx(tx4.Hash()))
+
 }

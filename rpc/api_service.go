@@ -371,7 +371,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 
-	if err = s.tm.PushAndRelay(tx); err != nil {
+	if err = s.tm.DisposeTx(tx); err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 	return &rpcpb.TransactionHash{

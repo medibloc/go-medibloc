@@ -531,7 +531,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 
 	payer := seed.Config.TokenDist[3]
 	receiver := seed.Config.TokenDist[4]
-	tx := bb.Tx().Type(core.TxOpTransfer).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
+	tx := bb.Tx().Type(core.TxOpTransfer).To(receiver.Addr).Value(1).Nonce(2).SignPair(payer).Build()
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
