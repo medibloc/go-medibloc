@@ -141,8 +141,6 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 	bc.addToTailBlocks(bc.mainTailBlock)
 
 	// Load LIB
-	bc.mu.Lock()
-	defer bc.mu.Unlock()
 	bc.lib, err = bc.loadLIBFromStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -241,6 +239,13 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 
 // SetLIB sets LIB.
 func (bc *BlockChain) SetLIB(newLIB *Block) error {
+	bc.mu.Lock()
+	if bc.lib.height > newLIB.height || byteutils.Equal(bc.lib.hash, newLIB.hash) {
+		bc.mu.Unlock()
+		return nil
+	}
+	bc.mu.Unlock()
+
 	err := bc.storeLIBHashToStorage(newLIB)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -280,26 +285,27 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 
 // SetTailBlock sets tail block.
 func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
-	bc.mu.RLock()
 	ancestor, err := bc.FindAncestorOnCanonical(newTail, true)
+	bc.mu.RLock()
+	mainTail := bc.mainTailBlock
+	bc.mu.RUnlock()
+
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":     err,
 			"newTail": newTail,
-			"tail":    bc.mainTailBlock,
+			"tail":    mainTail,
 		}).Error("Failed to find ancestor in canonical chain.")
-		bc.mu.RUnlock()
 		return nil, nil, err
 	}
 
 	// revert case
-	blocks, err := bc.loadBetweenBlocks(ancestor, bc.mainTailBlock)
+	blocks, err := bc.loadBetweenBlocks(ancestor, mainTail)
 	if err != nil {
-		bc.mu.RUnlock()
 		return nil, nil, err
 	}
-	bc.mu.RUnlock()
 
+	bc.mu.Lock()
 	newBlocks, err := bc.buildIndexByBlockHeight(ancestor, newTail)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -307,8 +313,10 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 			"from": ancestor,
 			"to":   newTail,
 		}).Error("Failed to build index by block height.")
+		bc.mu.Unlock()
 		return nil, nil, err
 	}
+	bc.mu.Unlock()
 
 	if err = bc.storeTailHashToStorage(newTail); err != nil {
 		logging.WithFields(logrus.Fields{
