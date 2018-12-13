@@ -96,15 +96,15 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 	bc.storage = stor
 	bc.consensus = consensus
 
-	// Check if there is data in storage.
-	_, err := bc.loadGenesisFromStorage()
+	// Load Genesis Block
+	genesisBlock, err := bc.loadGenesisFromStorage()
 	if err != nil && err != storage.ErrKeyNotFound {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to load genesis block from storage.")
 		return err
 	}
-	if err != nil && err == storage.ErrKeyNotFound {
+	if genesisBlock == nil || err == storage.ErrKeyNotFound {
 		err = bc.initGenesisToStorage(txMap)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
@@ -113,41 +113,52 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 			return err
 		}
 	}
-	// Load genesis block
-	bc.genesisBlock, err = bc.loadGenesisFromStorage()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to load genesis block from storage.")
-		return err
-	}
 
-	if !CheckGenesisConf(bc.genesisBlock, bc.genesis) {
+	if !CheckGenesisConf(genesisBlock, bc.genesis) {
 		logging.Console().WithFields(logrus.Fields{
-			"block":   bc.genesisBlock,
+			"block":   genesisBlock,
 			"genesis": bc.genesis,
 		}).Error("Failed to match genesis block and genesis configuration.")
 		return ErrGenesisNotMatch
 	}
 
-	// Load tail block
-	bc.mainTailBlock, err = bc.loadTailFromStorage()
+	// Set Genesis Block
+	bc.genesisBlock = genesisBlock
+
+	// Load Tail Block
+	mainTailBlock, err := bc.loadTailFromStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to load tail block from storage.")
 		return err
 	}
+	// Set TailBlock
+	bc.mainTailBlock = mainTailBlock
 	bc.addToTailBlocks(bc.mainTailBlock)
 
 	// Load LIB
-	bc.lib, err = bc.loadLIBFromStorage()
+	lib, err := bc.loadLIBFromStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to load LIB from storage.")
 		return err
 	}
+
+	// Set LIB
+	bc.lib = lib
+
+	// Reindexing Blockchain from mainTailBlock to lib from storage
+	indexBlock := bc.BlockByHash(mainTailBlock.ParentHash())
+	_, err = bc.buildIndexByBlockHeight(lib, indexBlock)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to reindexing blockchain.")
+		return err
+	}
+
 	return nil
 }
 
