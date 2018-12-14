@@ -20,11 +20,11 @@ import (
 
 	"errors"
 
-	"github.com/libp2p/go-libp2p-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	libnet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-swarm"
-	"github.com/libp2p/go-libp2p/p2p/host/basic"
+	peer "github.com/libp2p/go-libp2p-peer"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )

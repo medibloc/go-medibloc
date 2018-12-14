@@ -29,7 +29,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	libnet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 

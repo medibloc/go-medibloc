@@ -16,7 +16,7 @@
 package net
 
 import (
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )

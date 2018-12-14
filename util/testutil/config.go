@@ -27,9 +27,9 @@ import (
 	"net"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/stretchr/testify/require"
 )
 

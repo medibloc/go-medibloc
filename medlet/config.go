@@ -20,7 +20,7 @@ import (
 	"os"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	log "github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )

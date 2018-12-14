@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	metrics "github.com/rcrowley/go-metrics"
 	"github.com/rcrowley/go-metrics/exp"

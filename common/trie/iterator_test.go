@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common/trie/pb"
+	triepb "github.com/medibloc/go-medibloc/common/trie/pb"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"

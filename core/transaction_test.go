@@ -21,7 +21,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"

@@ -21,8 +21,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/multiformats/go-multiaddr"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	multiaddr "github.com/multiformats/go-multiaddr"
 )
 
 // const

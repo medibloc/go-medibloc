@@ -24,7 +24,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common/trie/pb"
+	triepb "github.com/medibloc/go-medibloc/common/trie/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"golang.org/x/crypto/sha3"
 )

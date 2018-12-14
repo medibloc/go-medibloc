@@ -26,8 +26,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	libnet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/medibloc/go-medibloc/net/pb"
+	peer "github.com/libp2p/go-libp2p-peer"
+	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
