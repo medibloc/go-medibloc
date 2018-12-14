@@ -39,14 +39,14 @@ make build
 
 ## Running a blockchain node
 ### Test Configuration
-* Genesis Block Configuration : [genesis.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/genesis.conf)
-* Node Configuratoin : [node1.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/node1.conf), [node2.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/node2.conf), [node3.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/3nodes/node3.conf)
+* Genesis Block Configuration : [genesis.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/nodes/genesis.conf)
+* Node Configuration : [nodes.conf](https://github.com/medibloc/go-medibloc/blob/master/conf/test/nodes/nodes.conf)
 
 ### Running
 ```
 $ cd $GOPATH/src/github.com/medibloc/go-medibloc
 
-$ build/medi conf/test/3nodes/node1.conf
+$ build/medi conf/test/nodes/nodes.conf
 INFO[2018-05-18T06:55:28Z] Start medibloc...                             file=main.go func=main.runMedi line=48
 INFO[2018-05-18T06:55:28Z] Setting up Medlet...                          file=medlet.go func="medlet.(*Medlet).Setup" line=92
 INFO[2018-05-18T06:55:28Z] Set up Medlet.                                file=medlet.go func="medlet.(*Medlet).Setup" line=115
@@ -76,24 +76,18 @@ INFO[2018-05-18T06:55:30Z] Block pushed.                                 block="
 ```bash
 cd $GOPATH/src/github.com/medibloc/go-medibloc
 
-# Run the first node
-nohup build/medi conf/test/3nodes/node1.conf &> /dev/null &
-
-# Run the second node
-nohup build/medi conf/test/3nodes/node2.conf &> /dev/null &
-
-# Run the third node
-nohup build/medi conf/test/3nodes/node3.conf &> /dev/null &
+# Run 6 nodes
+nohup build/medi conf/test/nodes/nodes.conf &> /dev/null &
 ```
 
 ### Endpoints of the Local Testnet
-* RPC : `localhost:9720`, `localhost:9820`, `localhost:9920`
-* HTTP : `localhost:9721`, `localhost:9821`, `localhost:9921`
+* RPC : `localhost:9920`
+* HTTP : `localhost:9921`
 
 ### Check the running nodes.
 ```bash
 # Get blockchain state
-$ curl localhost:9921/v1/user/medstate | jq .
+$ curl localhost:9921/v1/node/medstate | jq .
 {
   "chain_id": 1,
   "tail": "9964d1dfde18bdae9ff2122be87222a3cc0f5c665f22f7359b113310d2c4a4f5",
@@ -101,13 +95,11 @@ $ curl localhost:9921/v1/user/medstate | jq .
 }
 
 # Get account state
-$ curl localhost:9921/v1/user/accountstate?address=02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c
+$ curl localhost:9921/v1/account?address=02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c
 {"balance":"1000000000"}
 
 # View each node's logs
-$ tail -f logs/log1/medibloc.log
-$ tail -f logs/log2/medibloc.log
-$ tail -f logs/log3/medibloc.log
+$ tail -f logs/log/medibloc.log
 ```
 
 ### Demo
