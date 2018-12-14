@@ -429,29 +429,7 @@ func (bm *BlockManager) directPush(b *Block) error {
 }
 
 func (bm *BlockManager) push(bd *BlockData) error {
-	if bm.bc.chainID != bd.ChainID() {
-		return ErrInvalidChainID
-	}
-
-	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
-		logging.WithFields(logrus.Fields{
-			"blockData": bd,
-		}).Debug("Found duplicated blockData.")
-		return ErrDuplicatedBlock
-	}
-
-	if bd.Height() <= bm.bc.LIB().Height() {
-		logging.WithFields(logrus.Fields{
-			"blockData": bd,
-		}).Debug("Received a block forked before current LIB.")
-		return ErrCannotRevertLIB
-	}
-
-	// TODO @cl9200 Filter blocks of same height.
-	if err := bd.VerifyIntegrity(); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Debug("Failed to verify block signatures.")
+	if err := bm.verifyBlockData(bd); err != nil {
 		return err
 	}
 
@@ -473,6 +451,34 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	bm.newBlockCh <- blockPackage
 	<-blockPackage.okCh
 
+	return nil
+}
+
+func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
+	if bm.bc.chainID != bd.ChainID() {
+		return ErrInvalidChainID
+	}
+
+	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
+		logging.WithFields(logrus.Fields{
+			"blockData": bd,
+		}).Debug("Found duplicated blockData.")
+		return ErrDuplicatedBlock
+	}
+
+	if bd.Height() <= bm.bc.LIB().Height() {
+		logging.WithFields(logrus.Fields{
+			"blockData": bd,
+		}).Debug("Received a block forked before current LIB.")
+		return ErrCannotRevertLIB
+	}
+
+	if err := bd.VerifyIntegrity(); err != nil {
+		logging.WithFields(logrus.Fields{
+			"err": err,
+		}).Debug("Failed to verify block signatures.")
+		return err
+	}
 	return nil
 }
 
