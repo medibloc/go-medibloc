@@ -441,6 +441,12 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
+	bm.pushToDistributor(bd)
+
+	return nil
+}
+
+func (bm *BlockManager) pushToDistributor(bd *BlockData) {
 	ancestor := bm.bp.FindUnlinkedAncestor(bd)
 
 	blockPackage := &blockPackage{
@@ -451,7 +457,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	bm.newBlockCh <- blockPackage
 	<-blockPackage.okCh
 
-	return nil
+	return
 }
 
 func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
