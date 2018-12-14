@@ -260,12 +260,20 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 
 // SetLIB sets LIB.
 func (bc *BlockChain) SetLIB(newLIB *Block) error {
-	bc.mu.Lock()
-	if bc.lib.height > newLIB.height || byteutils.Equal(bc.lib.hash, newLIB.hash) {
-		bc.mu.Unlock()
+	bc.mu.RLock()
+	prevLIB := bc.lib
+	bc.mu.RUnlock()
+	if prevLIB.height > newLIB.height || byteutils.Equal(prevLIB.hash, newLIB.hash) {
+		if bc.eventEmitter != nil {
+			event := &Event{
+				Topic: TopicLibBlock,
+				Data:  byteutils.Bytes2Hex(prevLIB.Hash()),
+				Type:  "",
+			}
+			bc.eventEmitter.Trigger(event)
+		}
 		return nil
 	}
-	bc.mu.Unlock()
 
 	err := bc.storeLIBHashToStorage(newLIB)
 	if err != nil {
