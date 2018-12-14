@@ -106,11 +106,11 @@ func (mgr *TransactionManager) Push(tx *Transaction) error { // TODO change name
 	ai := mgr.pool.getAccountInfo(from)
 	cpuSum := ai.cpuSum + cpuUsage
 	netSum := ai.netSum + netUsage //TODO lock
-	cpuCost, err := state.cpuRef.Mul(util.NewUint128FromUint(cpuSum))
+	cpuCost, err := state.CPUPrice().Mul(util.NewUint128FromUint(cpuSum))
 	if err != nil {
 		return err
 	}
-	netCost, err := state.cpuRef.Mul(util.NewUint128FromUint(netSum))
+	netCost, err := state.CPUPrice().Mul(util.NewUint128FromUint(netSum))
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (mgr *TransactionManager) Push(tx *Transaction) error { // TODO change name
 	if err != nil {
 		return err
 	}
-	avail, err := acc.Vesting.Sub(acc.Bandwidth)
+	avail := acc.Points
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -126,7 +126,7 @@ func (mgr *TransactionManager) Push(tx *Transaction) error { // TODO change name
 		return err
 	}
 	if avail.Cmp(cost) < 0 {
-		return ErrBandwidthNotEnough
+		return ErrPointNotEnough
 	}
 	if err := mgr.pool.Push(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{

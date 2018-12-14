@@ -141,7 +141,6 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 func TestTransactionManager_GappedTransaction(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
