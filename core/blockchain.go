@@ -112,6 +112,13 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 			}).Error("Failed to initialize genesis block to storage.")
 			return err
 		}
+		genesisBlock, err = bc.loadGenesisFromStorage()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to load genesis block from storage.")
+			return err
+		}
 	}
 
 	if !CheckGenesisConf(genesisBlock, bc.genesis) {
@@ -150,6 +157,9 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 	bc.lib = lib
 
 	// Reindexing Blockchain from mainTailBlock to lib from storage
+	if mainTailBlock == nil || mainTailBlock.Height() == 1 {
+		return nil
+	}
 	indexBlock := bc.BlockByHash(mainTailBlock.ParentHash())
 	_, err = bc.buildIndexByBlockHeight(lib, indexBlock)
 	if err != nil {
