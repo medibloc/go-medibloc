@@ -81,14 +81,11 @@ nohup build/medi conf/test/3nodes/node1.conf &> /dev/null &
 
 # Run the second node
 nohup build/medi conf/test/3nodes/node2.conf &> /dev/null &
-
-# Run the third node
-nohup build/medi conf/test/3nodes/node3.conf &> /dev/null &
 ```
 
 ### Endpoints of the Local Testnet
-* RPC : `localhost:9720`, `localhost:9820`, `localhost:9920`
-* HTTP : `localhost:9721`, `localhost:9821`, `localhost:9921`
+* RPC : `localhost:9720`, `localhost:9820`
+* HTTP : `localhost:9721`, `localhost:9821`
 
 ### Check the running nodes.
 ```bash
@@ -107,7 +104,6 @@ $ curl localhost:9921/v1/user/accountstate?address=02fc22ea22d02fc2469f5ec8fab44
 # View each node's logs
 $ tail -f logs/log1/medibloc.log
 $ tail -f logs/log2/medibloc.log
-$ tail -f logs/log3/medibloc.log
 ```
 
 ### Demo
