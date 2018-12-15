@@ -309,6 +309,8 @@ func (bm *BlockManager) runDistributor() {
 }
 
 func (bm *BlockManager) runChainManager() {
+	mainTail := bm.TailBlock()
+	LIB := bm.LIB()
 	for {
 		select {
 		case <-bm.finishChainManagerCh:
@@ -317,6 +319,11 @@ func (bm *BlockManager) runChainManager() {
 		case newData := <-bm.trigCh:
 			// newData is used only for alarming not affecting lib, tailblock, indexing process
 			newTail := bm.consensus.ForkChoice(bm.bc)
+			if byteutils.Equal(mainTail.Hash(), newTail.Hash()) {
+				bm.alarmExecutionResult(newData, nil)
+				continue
+			}
+			mainTail = newTail
 
 			revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
 			if err != nil {
@@ -333,6 +340,12 @@ func (bm *BlockManager) runChainManager() {
 			}
 
 			newLIB := bm.consensus.FindLIB(bm.bc)
+			if byteutils.Equal(LIB.Hash(), newLIB.Hash()) {
+				bm.alarmExecutionResult(newData, nil)
+				continue
+			}
+			LIB = newLIB
+
 			err = bm.bc.SetLIB(newLIB)
 			if err != nil {
 				logging.WithFields(logrus.Fields{
@@ -347,7 +360,7 @@ func (bm *BlockManager) runChainManager() {
 				"newMainTail": newTail,
 			}).Info("Block accepted.")
 
-			bm.alarmExecutionResult(newData, err)
+			bm.alarmExecutionResult(newData, nil)
 		}
 	}
 }
