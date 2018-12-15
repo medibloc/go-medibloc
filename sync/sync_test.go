@@ -54,9 +54,9 @@ func TestService_Start(t *testing.T) {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		tail = b
-		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+		err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+		require.NoError(t, err)
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 1000))
 
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
@@ -133,14 +133,14 @@ func TestForkResistance(t *testing.T) {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 
-		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
-		assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 500))
+		err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+		assert.NoError(t, err)
 
 		for _, n := range majorNodes {
 			b, err := b.Clone()
 			assert.NoError(t, err)
-			require.NoError(t, n.Med.BlockManager().PushBlockData(b.BlockData))
-			assert.NoError(t, n.WaitUntilBlockAcceptedOnChain(b.Hash(), 500))
+			err = n.Med.BlockManager().PushBlockDataSync(b.BlockData)
+			assert.NoError(t, err)
 		}
 	}
 
@@ -169,13 +169,11 @@ func TestForkResistance(t *testing.T) {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 
-		seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000)
-
 		for _, n := range minorNodes {
 			b, err := b.Clone()
 			assert.NoError(t, err)
-			require.NoError(t, n.Med.BlockManager().PushBlockData(b.BlockData))
-			n.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000)
+			err = n.Med.BlockManager().PushBlockDataSync(b.BlockData)
+			assert.NoError(t, err)
 		}
 	}
 
@@ -259,9 +257,9 @@ func TestForAutoActivation(t *testing.T) {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		tail = b
-		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+		err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+		require.NoError(t, err)
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
 
 	cfg := testutil.NewConfig(t)
@@ -374,9 +372,9 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
 		}
 		tail = b
-		require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+		err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+		require.NoError(t, err)
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
 

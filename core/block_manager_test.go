@@ -52,8 +52,8 @@ func TestBlockManager_Sequential(t *testing.T) {
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
 		mint := bb.Block(tail).Child().SignProposer().Build()
-		require.NoError(t, bm.PushBlockData(mint.BlockData))
-		assert.NoError(t, seed.WaitUntilTailHeight(mint.Height(), 3000))
+		err := bm.PushBlockDataSync(mint.BlockData)
+		assert.NoError(t, err)
 		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
 }
@@ -168,7 +168,7 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	block1 := bb.Block(tail).Child().SignProposer().Build()
 	block2 := bb.Block(block1).Child().SignProposer().Build()
 
-	err := bm.PushBlockData(block1.GetBlockData())
+	err := bm.PushBlockDataSync(block1.GetBlockData())
 	require.NoError(t, err)
 
 	bb = bb.Block(block2).Child().Hash(block2.ParentHash()).ParentHash(block2.Hash())
@@ -201,10 +201,10 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 			block = bb.Block(tail).Child().SignProposer().Build()
 		}
 		blocks = append(blocks, block)
-		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
+		err := bm.PushBlockDataSync(block.GetBlockData())
+		require.NoError(t, err)
 		tail = block
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 
 	block := bb.Block(blocks[0]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
@@ -309,11 +309,10 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 				Tx().RandomTx().Execute().
 				SignProposer().Build()
 		}
-		err := bm.PushBlockData(block.GetBlockData())
-		tail = block
+		err := bm.PushBlockDataSync(block.GetBlockData())
 		assert.NoError(t, err)
+		tail = block
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(tail.Height(), 1000))
 
 	parent, err := bm.BlockByHeight(3)
 	require.Nil(t, err)

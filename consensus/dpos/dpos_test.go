@@ -61,8 +61,8 @@ func TestChangeDynasty(t *testing.T) {
 		Tx().Type(dpos.TxOpVote).
 		Payload(votePayload).SignPair(newCandidate).Execute().SignProposer()
 	block := bb.Build().BlockData
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+	err = seed.Med.BlockManager().PushBlockDataSync(block)
+	require.NoError(t, err)
 	t.Log(seed.Tail().State().DposState().Dynasty())
 
 	ok, err := seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
@@ -71,8 +71,8 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb = bb.ChildNextDynasty().SignProposer()
 	block = bb.Build().BlockData
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+	err = seed.Med.BlockManager().PushBlockDataSync(block)
+	require.NoError(t, err)
 	t.Log(seed.Tail().State().DposState().Dynasty())
 
 	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
@@ -83,8 +83,8 @@ func TestChangeDynasty(t *testing.T) {
 		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
 		SignProposer()
 	block = bb.Build().BlockData
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+	err = seed.Med.BlockManager().PushBlockDataSync(block)
+	require.NoError(t, err)
 
 	acc, err = bb.Build().State().GetAccount(newCandidate.Addr)
 	require.NoError(t, err)
@@ -99,8 +99,8 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb = bb.ChildNextDynasty().SignProposer()
 	block = bb.Build().BlockData
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(block))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+	err = seed.Med.BlockManager().PushBlockDataSync(block)
+	require.NoError(t, err)
 
 	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
 	require.NoError(t, err)

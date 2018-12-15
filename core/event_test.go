@@ -165,15 +165,15 @@ func TestTopicLibBlock(t *testing.T) {
 	subscriber := register(emitter, topics[0])
 
 	b := bb.Build()
-	assert.NoError(t, bm.PushBlockData(b.BlockData))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
+	err := bm.PushBlockDataSync(b.BlockData)
+	assert.NoError(t, err)
 
 	go func() {
 		for i := 0; i < dynastySize*2/3-1; i++ {
 			tail := seed.Tail()
 			b = bb.Block(tail).Child().SignProposer().Build()
-			assert.NoError(t, bm.PushBlockData(b.BlockData))
-			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
+			err := bm.PushBlockDataSync(b.BlockData)
+			assert.NoError(t, err)
 		}
 		return
 	}()
@@ -202,13 +202,13 @@ func TestTopicNewTailBlock(t *testing.T) {
 	subscriber := register(emitter, topics[0])
 
 	b := bb.Build()
-	assert.NoError(t, bm.PushBlockData(b.BlockData))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
+	err := bm.PushBlockDataSync(b.BlockData)
+	assert.NoError(t, err)
 
 	go func() {
 		b = bb.Child().SignProposer().Build()
-		assert.NoError(t, bm.PushBlockData(b.BlockData))
-		assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(b.Hash(), 1000))
+		err := bm.PushBlockDataSync(b.BlockData)
+		assert.NoError(t, err)
 		return
 	}()
 
@@ -280,7 +280,8 @@ func TestTopicRevertBlock(t *testing.T) {
 
 	go func() {
 		for _, v := range canonicalBlocks {
-			assert.NoError(t, bm.PushBlockData(v.BlockData))
+			err := bm.PushBlockDataSync(v.BlockData)
+			assert.NoError(t, err)
 			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 1000))
 		}
 		return
@@ -341,10 +342,10 @@ func TestTypeAccountTransaction(t *testing.T) {
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 	go func() {
 		seed.Med.TransactionManager().Push(tx)
-		bm.PushBlockData(b.BlockData)
+		err := bm.PushBlockDataSync(b.BlockData)
+		assert.NoError(t, err)
 		return
 	}()
-	seed.WaitUntilTailHeight(uint64(b.Height()), 1000)
 
 	event := <-subscriber.EventChan()
 	assert.Equal(t, topics[0], event.Topic)
