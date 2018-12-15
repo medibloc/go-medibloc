@@ -283,26 +283,26 @@ func (bm *BlockManager) runDistributor() {
 
 			// skip if ancestor is already on workQ
 			if wm.hasBlock(blockPackage.BlockData) {
-				blockPackage.okCh <- false
+				close(blockPackage.okCh)
 				continue
 			}
 
 			// skip if ancestor's parent is not on the chain
 			if bd := bm.bc.BlockByHash(blockPackage.ParentHash()); bd == nil {
-				blockPackage.okCh <- false
+				close(blockPackage.okCh)
 				continue
 			}
 
 			wm.addBlock(blockPackage.BlockData)
 
 			go bm.processTask(blockPackage)
-			blockPackage.okCh <- true
+			close(blockPackage.okCh)
 		case <-bm.closeWorkersCh:
 			wm.finishWork()
 		}
 
 		if wm.finish && len(wm.q) == 0 {
-			bm.workFinishedCh <- true
+			close(bm.workFinishedCh)
 			return
 		}
 	}
@@ -314,7 +314,7 @@ func (bm *BlockManager) runChainManager() {
 	for {
 		select {
 		case <-bm.finishChainManagerCh:
-			bm.cmFinishedCh <- true
+			close(bm.cmFinishedCh)
 			return
 		case newData := <-bm.trigCh:
 			// newData is used only for alarming not affecting lib, tailblock, indexing process
@@ -611,7 +611,7 @@ func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
 	}
 
 	if bp.trigResultCh != nil {
-		bp.trigResultCh <- true
+		close(bp.trigResultCh)
 	}
 
 	result := &blockResult{
