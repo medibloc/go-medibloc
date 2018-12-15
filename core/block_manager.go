@@ -256,8 +256,6 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 	if newData.trigResultCh != nil {
 		<-newData.trigResultCh
 	}
-
-	bm.alarmExecutionResult(newData, nil)
 	return
 }
 
@@ -590,6 +588,11 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 }
 
 func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
+	// for direct push
+	if bp == nil {
+		return
+	}
+
 	if bp.execCh != nil {
 		bp.execCh <- error
 	}
