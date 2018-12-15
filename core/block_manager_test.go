@@ -21,8 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -566,6 +564,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 }
 
+/*
 func TestBlockManagerImprovement(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	tn := testutil.NewNetwork(t, dynastySize)
@@ -632,6 +631,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 	parallelElapsed := time.Since(start).Seconds()
 	t.Log("PARALLEL : ", parallelElapsed)
 }
+*/
 
 func foundInLog(hook *test.Hook, s string) bool {
 	timer := time.NewTimer(10 * time.Second)
