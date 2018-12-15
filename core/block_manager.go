@@ -380,6 +380,12 @@ func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 	return bm.directPush(b)
 }
 
+// PushBlockDataSync pushes block to distributor and wait for execution
+// Warning! - Use this method only for test for time efficiency.
+func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
+	return bm.pushSync(bd)
+}
+
 func (bm *BlockManager) directPush(b *Block) error {
 	// Parent block doesn't exist in blockchain.
 	parentOnChain := bm.bc.BlockByHash(b.ParentHash())
@@ -443,6 +449,37 @@ func (bm *BlockManager) push(bd *BlockData) error {
 	bm.pushToDistributor(newBlockPackage)
 
 	return nil
+}
+
+func (bm *BlockManager) pushSync(bd *BlockData) error {
+	if err := bm.verifyBlockData(bd); err != nil {
+		return err
+	}
+
+	execCh := make(chan bool, 1)
+	newBlockPackage := &blockPackage{
+		BlockData: bd,
+		okCh:      nil,
+		execCh:    execCh,
+	}
+
+	if err := bm.bp.Push(newBlockPackage); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Error("Failed to push to block pool.")
+		return err
+	}
+
+	bm.pushToDistributor(newBlockPackage)
+
+	timeout := time.After(5 * time.Second) // TODO @ggomma use config for duration
+	select {
+	case <-execCh:
+		return nil
+	case <-timeout:
+		return ErrBlockExecutionTimeout
+	}
 }
 
 func (bm *BlockManager) pushToDistributor(bp *blockPackage) {

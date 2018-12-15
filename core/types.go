@@ -186,6 +186,7 @@ var (
 	ErrWrongCPUUsage                    = errors.New("block cpu usage is not matched with sum of tx cpu usage")
 	ErrWrongNetUsage                    = errors.New("block net usage is not matched with sum of tx net usage")
 	ErrAlreadyOnTheWorkQ                = errors.New("block is already on workQ")
+	ErrBlockExecutionTimeout            = errors.New("block is not executed on time")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
