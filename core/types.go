@@ -151,10 +151,11 @@ var (
 	ErrInvalidCPURef                = errors.New("invalid cpu reference")
 	ErrInvalidNetRef                = errors.New("invalid Net reference")
 	ErrInvalidCPUUsage              = errors.New("block uses too much cpu bandwidth")
-	ErrInvalidNetUsage              = errors.New("block ueses too much net bandwidth")
+	ErrInvalidNetUsage              = errors.New("block uses too much net bandwidth")
 	ErrWrongCPUUsage                = errors.New("block cpu usage is not matched with sum of tx cpu usage")
 	ErrWrongNetUsage                = errors.New("block net usage is not matched with sum of tx net usage")
 	ErrBlockExecutionTimeout        = errors.New("block is not executed on time")
+	ErrBlockExecutionFailed         = errors.New("failed to execute block")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

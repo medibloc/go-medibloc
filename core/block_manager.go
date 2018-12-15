@@ -475,7 +475,10 @@ func (bm *BlockManager) pushSync(bd *BlockData) error {
 
 	timeout := time.After(5 * time.Second) // TODO @ggomma use config for duration
 	select {
-	case <-execCh:
+	case success := <-execCh:
+		if !success {
+			return ErrBlockExecutionFailed
+		}
 		return nil
 	case <-timeout:
 		return ErrBlockExecutionTimeout
