@@ -317,6 +317,7 @@ func (bm *BlockManager) runChainManager() {
 			bm.cmFinishedCh <- true
 			return
 		case newData := <-bm.trigCh:
+			// newData is used only for alarming not affecting lib, tailblock, indexing process
 			newTail := bm.consensus.ForkChoice(bm.bc)
 
 			revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
@@ -348,9 +349,7 @@ func (bm *BlockManager) runChainManager() {
 				"newMainTail": newTail,
 			}).Info("Block accepted.")
 
-			if newData.trigResultCh != nil {
-				newData.trigResultCh <- true
-			}
+			bm.alarmExecutionResult(newData, err)
 		}
 	}
 }
@@ -432,31 +431,10 @@ func (bm *BlockManager) directPush(b *Block) error {
 		return ErrFailedToDirectPush
 	}
 
-	newTail := bm.consensus.ForkChoice(bm.bc)
-	revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set new tail block.")
-		return err
-	}
-	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-		return err
-	}
-
-	newLIB := bm.consensus.FindLIB(bm.bc)
-	err = bm.bc.SetLIB(newLIB)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set LIB.")
-	}
-
+	bm.trigCh <- nil
 	logging.Console().WithFields(logrus.Fields{
-		"block":       b,
-		"ts":          time.Unix(b.Timestamp(), 0),
-		"tail_height": newTail.Height(),
-		"lib_height":  newLIB.Height(),
+		"block": b,
+		"ts":    time.Unix(b.Timestamp(), 0),
 	}).Info("Block is directly pushed.")
 
 	return nil
@@ -614,6 +592,10 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
 	if bp.execCh != nil {
 		bp.execCh <- error
+	}
+
+	if bp.trigResultCh != nil {
+		bp.trigResultCh <- true
 	}
 
 	result := &blockResult{
