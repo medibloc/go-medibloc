@@ -50,19 +50,23 @@ type BlockManager struct {
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
 
-	// If worker finishes it's work and new block is accepted on the chain distributor put children blockdata on the
-	// workQ
-	finishWorkCh chan *blockResult
-	// NewBlock from network
+	// workManager
+	finishWorkCh   chan *blockResult
 	newBlockCh     chan *blockPackage
 	closeWorkersCh chan bool
 	workFinishedCh chan bool
+
+	// chainManager
+	trigCh               chan *blockPackage
+	finishChainManagerCh chan bool
+	cmFinishedCh         chan bool
 }
 
 type blockPackage struct {
 	*BlockData
-	okCh   chan bool
-	execCh chan error
+	okCh         chan bool
+	execCh       chan error
+	trigResultCh chan bool
 }
 
 type blockResult struct {
@@ -107,6 +111,9 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		quitCh:                make(chan int),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
+		trigCh:                make(chan *blockPackage, 100),
+		finishChainManagerCh:  make(chan bool),
+		cmFinishedCh:          make(chan bool),
 	}, nil
 }
 
@@ -149,6 +156,7 @@ func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns 
 func (bm *BlockManager) Start() {
 	logging.Console().Info("Starting BlockManager...")
 	go bm.runDistributor()
+	go bm.runChainManager()
 	go bm.loop()
 }
 
@@ -156,8 +164,10 @@ func (bm *BlockManager) Start() {
 func (bm *BlockManager) Stop() {
 	logging.Console().Info("Stopping BlockManager...")
 
-	bm.closeWorkersCh <- true
+	close(bm.closeWorkersCh)
 	<-bm.workFinishedCh
+	close(bm.finishChainManagerCh)
+	<-bm.cmFinishedCh
 	close(bm.quitCh)
 }
 
@@ -233,36 +243,19 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		return
 	}
 
-	newTail := bm.consensus.ForkChoice(bm.bc)
+	if newData.execCh != nil {
+		newData.trigResultCh = make(chan bool)
+	}
+	bm.trigCh <- newData
 
-	revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set new tail block.")
-		bm.alarmExecutionResult(newData, err)
-		return
-	}
-	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-		bm.alarmExecutionResult(newData, err)
-		return
-	}
-
-	newLIB := bm.consensus.FindLIB(bm.bc)
-	err = bm.bc.SetLIB(newLIB)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set LIB.")
-		bm.alarmExecutionResult(newData, err)
-		return
-	}
 	logging.Console().WithFields(logrus.Fields{
-		"block":       child,
-		"ts":          time.Unix(newData.Timestamp(), 0),
-		"tail_height": newTail.Height(),
-		"lib_height":  newLIB.Height(),
+		"block": child,
+		"ts":    time.Unix(newData.Timestamp(), 0),
 	}).Info("Block pushed.")
+
+	if newData.trigResultCh != nil {
+		<-newData.trigResultCh
+	}
 
 	bm.alarmExecutionResult(newData, nil)
 	return
@@ -313,6 +306,51 @@ func (bm *BlockManager) runDistributor() {
 		if wm.finish && len(wm.q) == 0 {
 			bm.workFinishedCh <- true
 			return
+		}
+	}
+}
+
+func (bm *BlockManager) runChainManager() {
+	for {
+		select {
+		case <-bm.finishChainManagerCh:
+			bm.cmFinishedCh <- true
+			return
+		case newData := <-bm.trigCh:
+			newTail := bm.consensus.ForkChoice(bm.bc)
+
+			revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
+			if err != nil {
+				logging.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to set new tail block.")
+				bm.alarmExecutionResult(newData, err)
+				continue
+			}
+
+			if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
+				bm.alarmExecutionResult(newData, err)
+				continue
+			}
+
+			newLIB := bm.consensus.FindLIB(bm.bc)
+			err = bm.bc.SetLIB(newLIB)
+			if err != nil {
+				logging.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to set LIB.")
+				bm.alarmExecutionResult(newData, err)
+				continue
+			}
+
+			logging.Console().WithFields(logrus.Fields{
+				"LIB":         newLIB,
+				"newMainTail": newTail,
+			}).Info("Block accepted.")
+
+			if newData.trigResultCh != nil {
+				newData.trigResultCh <- true
+			}
 		}
 	}
 }
@@ -472,8 +510,8 @@ func (bm *BlockManager) pushSync(bd *BlockData) error {
 
 	timeout := time.After(5 * time.Second) // TODO @ggomma use config for duration
 	select {
-	case error := <-execCh:
-		return error
+	case err := <-execCh:
+		return err
 	case <-timeout:
 		return ErrBlockExecutionTimeout
 	}
@@ -484,6 +522,7 @@ func (bm *BlockManager) pushToDistributor(bp *blockPackage) {
 		bp.BlockData,
 		make(chan bool),
 		bp.execCh,
+		nil,
 	}
 	if v := bm.bp.FindUnlinkedAncestor(bp); v != nil {
 		newBlockPackage.BlockData = v.(*blockPackage).BlockData
