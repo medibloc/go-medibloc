@@ -618,7 +618,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		Hash: unlinkedBlock.Hash(),
 		Sign: unlinkedBlock.Sign(),
 	}
-	bytes, err := proto.Marshal(downloadMsg)
+	byteMsg, err := proto.Marshal(downloadMsg)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -631,7 +631,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		"bm": bm,
 	}).Info("request missing parent block")
 
-	return bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
+	return bm.ns.SendMsg(MessageTypeRequestBlock, byteMsg, sender, net.MessagePriorityNormal)
 }
 
 func (bm *BlockManager) loop() {
@@ -780,7 +780,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	bytes, err := net.SerializableToBytes(parent)
+	byteMsg, err := net.SerializableToBytes(parent)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"parent": parent,
@@ -789,7 +789,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	err = bm.ns.SendMsg(MessageTypeResponseBlock, bytes, msg.MessageFrom(), net.MessagePriorityNormal)
+	err = bm.ns.SendMsg(MessageTypeResponseBlock, byteMsg, msg.MessageFrom(), net.MessagePriorityNormal)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"receiver": msg.MessageFrom(),
