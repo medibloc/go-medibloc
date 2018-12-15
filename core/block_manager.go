@@ -588,12 +588,7 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 			}
 		}
 		if bm.bc.eventEmitter != nil {
-			event := &Event{
-				Topic: TopicRevertBlock,
-				Data:  byteutils.Bytes2Hex(block.Hash()),
-				Type:  "",
-			}
-			bm.bc.eventEmitter.Trigger(event)
+			block.EmitBlockEvent(bm.bc.eventEmitter, TopicRevertBlock)
 		}
 		logging.Console().Warn("A block is reverted.")
 	}

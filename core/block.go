@@ -1301,29 +1301,19 @@ func (b *Block) GetBlockData() *BlockData {
 // EmitTxExecutionEvent emits events of txs in the block
 func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 	for _, tx := range b.Transactions() {
-		event := &Event{
-			Topic: TopicTransactionExecutionResult,
-			Data:  byteutils.Bytes2Hex(tx.Hash()),
-			Type:  "",
-		}
-		emitter.Trigger(event)
-
-		event = &Event{
-			Topic: tx.From().String(),
-			Data:  byteutils.Bytes2Hex(tx.Hash()),
-			Type:  TypeAccountTransactionExecution,
-		}
-		emitter.Trigger(event)
-
-		if tx.To().String() != "" {
-			event = &Event{
-				Topic: tx.To().String(),
-				Data:  byteutils.Bytes2Hex(tx.Hash()),
-				Type:  TypeAccountTransactionReceived,
-			}
-			emitter.Trigger(event)
-		}
+		tx.TriggerEvent(emitter, TopicTransactionExecutionResult)
+		tx.TriggerEvent(emitter, TypeAccountTransactionExecution)
 	}
+}
+
+func (b *Block) EmitBlockEvent(emitter *EventEmitter, eType string) {
+	event := &Event{
+		Topic: eType,
+		Data:  byteutils.Bytes2Hex(b.Hash()),
+		Type:  "",
+	}
+	emitter.Trigger(event)
+
 }
 
 // BytesToBlockData unmarshals proto bytes to BlockData.

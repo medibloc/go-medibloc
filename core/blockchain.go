@@ -289,12 +289,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
-		event := &Event{
-			Topic: TopicLibBlock,
-			Data:  byteutils.Bytes2Hex(newLIB.Hash()),
-			Type:  "",
-		}
-		bc.eventEmitter.Trigger(event)
+		newLIB.EmitBlockEvent(bc.eventEmitter, TopicLibBlock)
 	}
 
 	for _, tail := range bc.TailBlocks() {
@@ -360,12 +355,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
-		event := &Event{
-			Topic: TopicNewTailBlock,
-			Data:  byteutils.Bytes2Hex(newTail.Hash()),
-			Type:  "",
-		}
-		bc.eventEmitter.Trigger(event)
+		newTail.EmitBlockEvent(bc.eventEmitter, TopicNewTailBlock)
 	}
 
 	return blocks, newBlocks, nil

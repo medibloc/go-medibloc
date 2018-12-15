@@ -490,6 +490,35 @@ timestamp:%v, receipt:%v}`,
 	)
 }
 
+// TriggerEvent triggers event
+func (t *Transaction) TriggerEvent(e *EventEmitter, eType string) {
+	if eType == TopicPendingTransaction || eType == TopicTransactionExecutionResult {
+		event := &Event{
+			Topic: eType,
+			Data:  byteutils.Bytes2Hex(t.Hash()),
+			Type:  "",
+		}
+		e.Trigger(event)
+		return
+	}
+	event := &Event{
+		Topic: t.From().String(),
+		Data:  byteutils.Bytes2Hex(t.Hash()),
+		Type:  eType,
+	}
+	e.Trigger(event)
+
+	if t.To().String() != "" {
+		event = &Event{
+			Topic: t.To().String(),
+			Data:  byteutils.Bytes2Hex(t.Hash()),
+			Type:  eType,
+		}
+		e.Trigger(event)
+	}
+	return
+}
+
 //Clone clone transaction
 func (t *Transaction) Clone() (*Transaction, error) {
 	protoTx, err := t.ToProto()
