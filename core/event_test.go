@@ -270,7 +270,7 @@ func TestTopicRevertBlock(t *testing.T) {
 	forkedBlock := bb.Block(b).Child().SignProposer().Build()
 	assert.NoError(t, bm.PushBlockData(b.BlockData))
 	assert.NoError(t, bm.PushBlockData(forkedBlock.BlockData))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 1000))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 5000))
 
 	canonicalBlocks := make([]*core.Block, 2)
 	b1 := bb.Block(b).Child().Tx().RandomTx().Execute().SignProposer().Build()
@@ -282,7 +282,7 @@ func TestTopicRevertBlock(t *testing.T) {
 		for _, v := range canonicalBlocks {
 			err := bm.PushBlockDataSync(v.BlockData)
 			assert.NoError(t, err)
-			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 1000))
+			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 5000))
 		}
 		return
 	}()

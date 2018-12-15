@@ -80,7 +80,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
 	}
-	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 3000))
+	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 10000))
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
@@ -138,14 +138,14 @@ func TestBlockManager_Forked(t *testing.T) {
 	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
 		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 2000))
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 10000))
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, 0, len(tm.GetAll()))
 
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
 		assert.NoError(t, bm.PushBlockData(mainChainBlocks[i].BlockData))
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight), 2000))
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight), 10000))
 	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, len(txs), len(tm.GetAll()))
 
@@ -278,7 +278,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height(), 1000))
+	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height(), 10000))
 	assert.Nil(t, bm.BlockByHash(blocks[1].Hash()))
 	assert.NotNil(t, bm.BlockByHash(blocks[2].Hash()))
 }
@@ -335,7 +335,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		if v.err != testutil.ErrExecutionTimeout {
 			assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
 		} else {
-			assert.Equal(t, v.err, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+			assert.Equal(t, v.err, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 5000))
 		}
 	}
 }
