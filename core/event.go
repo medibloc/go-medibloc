@@ -3,6 +3,8 @@ package core
 import (
 	"sync"
 
+	"github.com/medibloc/go-medibloc/common"
+
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 
@@ -60,8 +62,7 @@ func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
 	topicList := topicList()
 
 	for _, topic := range topics {
-		// If topic is the account address
-		if len(topic) == 66 {
+		if common.IsHexAddress(topic) {
 			continue
 		}
 

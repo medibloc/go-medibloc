@@ -56,7 +56,7 @@ func (s *APIService) GetAccountAPI(ctx context.Context, req *rpcpb.GetAccount) (
 	var err error
 
 	// XOR
-	if !(math.XOR(len(req.Address) != 66, req.Alias == "") && math.XOR(req.Type == "", req.Height == 0)) {
+	if !(math.XOR(!common.IsHexAddress(req.Address), req.Alias == "") && math.XOR(req.Type == "", req.Height == 0)) {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 
@@ -111,11 +111,11 @@ func (s *APIService) GetBlockAPI(ctx context.Context, req *rpcpb.GetBlock) (*rpc
 	var block *core.Block
 	var err error
 
-	if !math.TernaryXOR(len(req.Hash) == 64, req.Type != "", req.Height != 0) {
+	if !math.TernaryXOR(common.IsHash(req.Hash), req.Type != "", req.Height != 0) {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 
-	if len(req.Hash) == 64 {
+	if common.IsHash(req.Hash) {
 		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)

@@ -28,6 +28,7 @@ import (
 // Types' length.
 const (
 	AddressLength = 33
+	HashLength    = 32
 )
 
 // Address represents Address.
@@ -52,6 +53,10 @@ func IsHexAddress(s string) bool {
 		s = s[2:]
 	}
 	return len(s) == 2*AddressLength && byteutils.IsHex(s)
+}
+
+func IsHash(s string) bool {
+	return len(s) == 2*HashLength && byteutils.IsHex(s)
 }
 
 // PublicKeyToAddress gets Address from PublicKey.

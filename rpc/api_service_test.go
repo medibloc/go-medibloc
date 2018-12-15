@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/common"
+
 	"github.com/gavv/httpexpect"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
@@ -318,7 +320,7 @@ func TestAPIService_GetDynasty(t *testing.T) {
 		Array()
 	addrs.Length().Equal(3)
 	for _, addr := range addrs.Iter() {
-		addr.String().Length().Equal(66)
+		assert.True(t, common.IsHexAddress(addr.String().Raw()))
 	}
 }
 
