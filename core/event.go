@@ -30,7 +30,6 @@ const (
 const (
 	TypeAccountTransactionExecution = "executedTransaction"
 	TypeAccountTransactionPending   = "pendingTransaction"
-	TypeAccountTransactionReceived  = "receivedTransaction"
 	TypeAccountTransactionDeleted   = "deletedTransaction"
 )
 
