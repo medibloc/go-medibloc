@@ -55,6 +55,7 @@ func IsHexAddress(s string) bool {
 	return len(s) == 2*AddressLength && byteutils.IsHex(s)
 }
 
+// IsHash checks hash string.
 func IsHash(s string) bool {
 	return len(s) == 2*HashLength && byteutils.IsHex(s)
 }
