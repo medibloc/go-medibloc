@@ -345,23 +345,17 @@ func TestTypeAccountTransaction(t *testing.T) {
 		return
 	}()
 
-	event := <-subscriber.EventChan()
-	assert.Equal(t, topics[0], event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
-	assert.Equal(t, core.TypeAccountTransactionPending, event.Type)
+	fromEventCount := 2
+	toEventCount := 2
+	for i := 0; i < 4; i++ {
+		event := <-subscriber.EventChan()
+		assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+		if event.Topic == topics[0] {
+			fromEventCount = fromEventCount - 1
+		} else {
+			toEventCount = toEventCount - 1
+		}
+	}
 
-	event = <-subscriber.EventChan()
-	assert.Equal(t, topics[1], event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
-	assert.Equal(t, core.TypeAccountTransactionPending, event.Type)
-
-	event = <-subscriber.EventChan()
-	assert.Equal(t, topics[0], event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
-	assert.Equal(t, core.TypeAccountTransactionExecution, event.Type)
-
-	event = <-subscriber.EventChan()
-	assert.Equal(t, topics[1], event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
-	assert.Equal(t, core.TypeAccountTransactionReceived, event.Type)
+	assert.Equal(t, 0, fromEventCount, toEventCount)
 }
