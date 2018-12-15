@@ -492,6 +492,7 @@ func (t *Transaction) Clone() (*Transaction, error) {
 		return nil, err
 	}
 
+	newTx.from = t.from
 	return newTx, nil
 }
 
