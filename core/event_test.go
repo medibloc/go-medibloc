@@ -149,7 +149,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 }
 
 func TestTopicLibBlock(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := 6
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 	testNetwork.SetLogTestHook()
@@ -164,25 +164,23 @@ func TestTopicLibBlock(t *testing.T) {
 	topics := []string{core.TopicLibBlock}
 	subscriber := register(emitter, topics[0])
 
-	b := bb.Build()
-	err := bm.PushBlockDataSync(b.BlockData)
+	newLIB := bb.Build()
+	err := bm.PushBlockDataSync(newLIB.BlockData)
 	assert.NoError(t, err)
 
 	go func() {
-		for i := 0; i < dynastySize*2/3-1; i++ {
+		for i := 0; i < dynastySize*2/3; i++ {
 			tail := seed.Tail()
-			b = bb.Block(tail).Child().SignProposer().Build()
+			b := bb.Block(tail).Child().SignProposer().Build()
 			err := bm.PushBlockDataSync(b.BlockData)
 			assert.NoError(t, err)
 		}
 		return
 	}()
 
-	for i := 0; i < dynastySize*2/3; i++ {
-		event := <-subscriber.EventChan()
-		assert.Equal(t, core.TopicLibBlock, event.Topic)
-		assert.Equal(t, byteutils.Bytes2Hex(seed.GenesisBlock().Hash()), event.Data)
-	}
+	event := <-subscriber.EventChan()
+	assert.Equal(t, core.TopicLibBlock, event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(newLIB.Hash()), event.Data)
 }
 
 func TestTopicNewTailBlock(t *testing.T) {
