@@ -564,6 +564,50 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 }
 
+func TestBlockManager_PushBlockDataSync(t *testing.T) {
+	var nBlocks = 5
+
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
+	for i := 1; i < nBlocks; i++ {
+		tail := seed.Tail()
+		mint := bb.Block(tail).Child().SignProposer().Build()
+		err := bm.PushBlockDataSync(mint.BlockData)
+		assert.NoError(t, err)
+		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
+	}
+
+	// Timeout test
+	tail := seed.Tail()
+	parentBlock := bb.Block(tail).Child().SignProposer().Build()
+	gappedBlock := bb.Block(parentBlock).Child().SignProposer().Build()
+	err := bm.PushBlockDataSync(gappedBlock.BlockData)
+	assert.Equal(t, core.ErrBlockExecutionTimeout, err)
+
+	// Holding channel in the block pool test
+	childBlock := bb.Block(gappedBlock).Child().SignProposer().Build()
+	go func() {
+		err := bm.PushBlockDataSync(childBlock.BlockData)
+		assert.NoError(t, err)
+	}()
+	go func() {
+		err := bm.PushBlockDataSync(parentBlock.BlockData)
+		assert.NoError(t, err)
+	}()
+
+	// Execution error sent via execCh test
+	invalidBlock := bb.Block(childBlock).Child().Height(tail.Height() + 2).SignProposer().Build()
+	err = bm.PushBlockDataSync(invalidBlock.BlockData)
+	assert.Equal(t, core.ErrInvalidBlockHeight, err)
+}
+
 /*
 func TestBlockManagerImprovement(t *testing.T) {
 	dynastySize := testutil.DynastySize
