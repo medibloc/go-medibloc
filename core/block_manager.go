@@ -62,7 +62,7 @@ type BlockManager struct {
 type blockPackage struct {
 	*BlockData
 	okCh   chan bool
-	execCh chan bool
+	execCh chan error
 }
 
 type blockResult struct {
@@ -166,7 +166,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
 		}).Warn("Block is already on the chain")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, ErrAlreadyOnTheChain)
 		return
 	}
 
@@ -176,7 +176,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
 		}).Warn("Failed to find parent block on the chain")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, ErrCannotFindParentBlockOnTheChain)
 		return
 	}
 
@@ -184,35 +184,32 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.WithFields(logrus.Fields{
 			"blockData": newData,
 		}).Debug("Received a block forked before current LIB.")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, ErrForkedBeforeLIB)
 		return
 	}
 
-	err := verifyBlockHeight(newData.BlockData, parent)
-	if err != nil {
+	if err := verifyBlockHeight(newData.BlockData, parent); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyBlockHeight")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 
-	err = verifyTimestamp(newData.BlockData, parent)
-	if err != nil {
+	if err := verifyTimestamp(newData.BlockData, parent); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyTimestamp")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 
-	err = bm.consensus.VerifyInterval(newData.BlockData, parent)
-	if err != nil {
+	if err := bm.consensus.VerifyInterval(newData.BlockData, parent); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
 			"timestamp": newData.timestamp,
 		}).Warn("Block timestamp is wrong")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 
@@ -222,7 +219,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 			"err":    err,
 			"parent": parent,
 		}).Error("Failed to execute on a parent block.")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 
@@ -232,7 +229,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 			"parent": parent,
 			"child":  child,
 		}).Error("Failed to put block on the chain.")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 
@@ -243,11 +240,11 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set new tail block.")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 
@@ -257,7 +254,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set LIB.")
-		bm.alarmExecutionResult(newData, false)
+		bm.alarmExecutionResult(newData, err)
 		return
 	}
 	logging.Console().WithFields(logrus.Fields{
@@ -267,7 +264,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		"lib_height":  newLIB.Height(),
 	}).Info("Block pushed.")
 
-	bm.alarmExecutionResult(newData, true)
+	bm.alarmExecutionResult(newData, nil)
 	return
 }
 
@@ -456,7 +453,7 @@ func (bm *BlockManager) pushSync(bd *BlockData) error {
 		return err
 	}
 
-	execCh := make(chan bool, 1)
+	execCh := make(chan error, 1)
 	newBlockPackage := &blockPackage{
 		BlockData: bd,
 		okCh:      nil,
@@ -475,11 +472,8 @@ func (bm *BlockManager) pushSync(bd *BlockData) error {
 
 	timeout := time.After(5 * time.Second) // TODO @ggomma use config for duration
 	select {
-	case success := <-execCh:
-		if !success {
-			return ErrBlockExecutionFailed
-		}
-		return nil
+	case error := <-execCh:
+		return error
 	case <-timeout:
 		return ErrBlockExecutionTimeout
 	}
@@ -578,9 +572,9 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 	return nil
 }
 
-func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, success bool) {
+func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
 	if bp.execCh != nil {
-		bp.execCh <- success
+		bp.execCh <- error
 	}
 
 	result := &blockResult{
@@ -588,7 +582,7 @@ func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, success bool) {
 		true,
 	}
 
-	if success {
+	if error == nil {
 		bm.finishWorkCh <- result
 	} else {
 		result.isValid = false
