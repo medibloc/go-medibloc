@@ -60,12 +60,13 @@ type BlockManager struct {
 }
 
 type blockPackage struct {
-	newBlock *BlockData
-	okCh     chan bool
+	*BlockData
+	okCh   chan bool
+	execCh chan bool
 }
 
 type blockResult struct {
-	block   *BlockData
+	block   *blockPackage
 	isValid bool
 }
 
@@ -160,7 +161,7 @@ func (bm *BlockManager) Stop() {
 	close(bm.quitCh)
 }
 
-func (bm *BlockManager) runWorker(newData *BlockData) {
+func (bm *BlockManager) runWorker(newData *blockPackage) {
 	result := &blockResult{
 		newData,
 		false,
@@ -192,7 +193,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		return
 	}
 
-	err := verifyBlockHeight(newData, parent)
+	err := verifyBlockHeight(newData.BlockData, parent)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -201,7 +202,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		return
 	}
 
-	err = verifyTimestamp(newData, parent)
+	err = verifyTimestamp(newData.BlockData, parent)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -210,7 +211,7 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		return
 	}
 
-	err = bm.consensus.VerifyInterval(newData, parent)
+	err = bm.consensus.VerifyInterval(newData.BlockData, parent)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
@@ -271,7 +272,10 @@ func (bm *BlockManager) runWorker(newData *BlockData) {
 		"lib_height":  newLIB.Height(),
 	}).Info("Block pushed.")
 
-	// TODO @ggomma what if worker makes error?
+	if newData.execCh != nil {
+		newData.execCh <- true
+	}
+
 	result.isValid = true
 	bm.finishWorkCh <- result
 	return
@@ -284,7 +288,7 @@ func (bm *BlockManager) runDistributor() {
 		select {
 		case result := <-bm.finishWorkCh:
 			// remove from workQ
-			wm.removeBlock(result.block)
+			wm.removeBlock(result.block.BlockData)
 			bm.bp.Remove(result.block)
 
 			// if block is invalid, remove block from pool
@@ -293,28 +297,27 @@ func (bm *BlockManager) runDistributor() {
 			}
 
 			children := bm.bp.FindChildren(result.block)
-
 			for _, c := range children {
-				wm.addBlock(c.(*BlockData))
-				go bm.runWorker(c.(*BlockData))
+				wm.addBlock(c.(*blockPackage).BlockData)
+				go bm.runWorker(c.(*blockPackage))
 			}
 		case blockPackage := <-bm.newBlockCh:
 
 			// skip if ancestor is already on workQ
-			if wm.hasBlock(blockPackage.newBlock) {
+			if wm.hasBlock(blockPackage.BlockData) {
 				blockPackage.okCh <- false
 				continue
 			}
 
 			// skip if ancestor's parent is not on the chain
-			if bd := bm.bc.BlockByHash(blockPackage.newBlock.ParentHash()); bd == nil {
+			if bd := bm.bc.BlockByHash(blockPackage.ParentHash()); bd == nil {
 				blockPackage.okCh <- false
 				continue
 			}
 
-			wm.addBlock(blockPackage.newBlock)
+			wm.addBlock(blockPackage.BlockData)
 
-			go bm.runWorker(blockPackage.newBlock)
+			go bm.runWorker(blockPackage)
 			blockPackage.okCh <- true
 		case <-bm.closeWorkersCh:
 			wm.finishWork()
@@ -433,7 +436,13 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	if err := bm.bp.Push(bd); err != nil {
+	newBlockPackage := &blockPackage{
+		BlockData: bd,
+		okCh:      nil,
+		execCh:    nil,
+	}
+
+	if err := bm.bp.Push(newBlockPackage); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
 			"blockData": bd,
@@ -441,21 +450,24 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	bm.pushToDistributor(bd)
+	bm.pushToDistributor(newBlockPackage)
 
 	return nil
 }
 
-func (bm *BlockManager) pushToDistributor(bd *BlockData) {
-	ancestor := bm.bp.FindUnlinkedAncestor(bd)
-
-	blockPackage := &blockPackage{
-		ancestor.(*BlockData),
+func (bm *BlockManager) pushToDistributor(bp *blockPackage) {
+	newBlockPackage := &blockPackage{
+		bp.BlockData,
 		make(chan bool),
+		bp.execCh,
+	}
+	if v := bm.bp.FindUnlinkedAncestor(bp); v != nil {
+		newBlockPackage.BlockData = v.(*blockPackage).BlockData
+		newBlockPackage.execCh = v.(*blockPackage).execCh
 	}
 
-	bm.newBlockCh <- blockPackage
-	<-blockPackage.okCh
+	bm.newBlockCh <- newBlockPackage
+	<-newBlockPackage.okCh
 
 	return
 }
@@ -548,8 +560,10 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		return nil
 	}
 
-	v := bm.bp.FindUnlinkedAncestor(bd)
-	unlinkedBlock := v.(*BlockData)
+	unlinkedBlock := bd
+	if v := bm.bp.FindUnlinkedAncestor(bd); v != nil {
+		unlinkedBlock = v.(*blockPackage).BlockData
+	}
 
 	if b := bm.bc.BlockByHash(unlinkedBlock.ParentHash()); b != nil {
 		return nil
