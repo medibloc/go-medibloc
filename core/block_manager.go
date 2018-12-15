@@ -269,7 +269,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 }
 
 func (bm *BlockManager) runDistributor() {
-	wm := newWorkQ()
+	wm := newWorkManager()
 
 	for {
 		select {
@@ -806,7 +806,7 @@ type workManager struct {
 	finish bool
 }
 
-func newWorkQ() *workManager {
+func newWorkManager() *workManager {
 	return &workManager{
 		q:      make([]*BlockData, 0),
 		finish: false,
