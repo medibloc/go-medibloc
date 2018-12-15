@@ -162,16 +162,11 @@ func (bm *BlockManager) Stop() {
 }
 
 func (bm *BlockManager) processTask(newData *blockPackage) {
-	result := &blockResult{
-		newData,
-		false,
-	}
-
 	if b := bm.bc.BlockByHash(newData.Hash()); b != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
 		}).Warn("Block is already on the chain")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -181,7 +176,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
 		}).Warn("Failed to find parent block on the chain")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -189,7 +184,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.WithFields(logrus.Fields{
 			"blockData": newData,
 		}).Debug("Received a block forked before current LIB.")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -198,7 +193,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyBlockHeight")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -207,7 +202,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyTimestamp")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -217,7 +212,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 			"err":       err,
 			"timestamp": newData.timestamp,
 		}).Warn("Block timestamp is wrong")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -227,7 +222,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 			"err":    err,
 			"parent": parent,
 		}).Error("Failed to execute on a parent block.")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -237,7 +232,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 			"parent": parent,
 			"child":  child,
 		}).Error("Failed to put block on the chain.")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -248,11 +243,11 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set new tail block.")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 
@@ -262,7 +257,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set LIB.")
-		bm.finishWorkCh <- result
+		bm.alarmExecutionResult(newData, false)
 		return
 	}
 	logging.Console().WithFields(logrus.Fields{
@@ -272,12 +267,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		"lib_height":  newLIB.Height(),
 	}).Info("Block pushed.")
 
-	if newData.execCh != nil {
-		newData.execCh <- true
-	}
-
-	result.isValid = true
-	bm.finishWorkCh <- result
+	bm.alarmExecutionResult(newData, true)
 	return
 }
 
@@ -546,6 +536,24 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 		logging.Console().Warn("A block is reverted.")
 	}
 	return nil
+}
+
+func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, success bool) {
+	if bp.execCh != nil {
+		bp.execCh <- success
+	}
+
+	result := &blockResult{
+		bp,
+		true,
+	}
+
+	if success {
+		bm.finishWorkCh <- result
+	} else {
+		result.isValid = false
+		bm.finishWorkCh <- result
+	}
 }
 
 // requestMissingBlock requests a missing block to connect to blockchain.
