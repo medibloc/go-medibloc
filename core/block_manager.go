@@ -161,7 +161,7 @@ func (bm *BlockManager) Stop() {
 	close(bm.quitCh)
 }
 
-func (bm *BlockManager) runWorker(newData *blockPackage) {
+func (bm *BlockManager) processTask(newData *blockPackage) {
 	result := &blockResult{
 		newData,
 		false,
@@ -299,7 +299,7 @@ func (bm *BlockManager) runDistributor() {
 			children := bm.bp.FindChildren(result.block)
 			for _, c := range children {
 				wm.addBlock(c.(*blockPackage).BlockData)
-				go bm.runWorker(c.(*blockPackage))
+				go bm.processTask(c.(*blockPackage))
 			}
 		case blockPackage := <-bm.newBlockCh:
 
@@ -317,7 +317,7 @@ func (bm *BlockManager) runDistributor() {
 
 			wm.addBlock(blockPackage.BlockData)
 
-			go bm.runWorker(blockPackage)
+			go bm.processTask(blockPackage)
 			blockPackage.okCh <- true
 		case <-bm.closeWorkersCh:
 			wm.finishWork()
