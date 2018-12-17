@@ -293,7 +293,7 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 			"nonce":       tx.Nonce(),
 			"expected":    expectedNonce,
 			"transaction": tx,
-		}).Info("Transaction nonce gap exist")
+		}).Debug("Transaction nonce gap exist")
 		return ErrLargeTransactionNonce
 	} else if tx.nonce < expectedNonce {
 		return ErrSmallTransactionNonce
