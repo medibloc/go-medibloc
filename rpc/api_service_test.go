@@ -43,6 +43,18 @@ func TestAPIService_GetAccount(t *testing.T) {
 
 	e.GET("/v1/account").
 		WithQuery("type", "tail").
+		WithQuery("address", "0000").
+		Expect().
+		Status(http.StatusBadRequest)
+
+	e.GET("/v1/account").
+		WithQuery("type", "tail").
+		WithQuery("address", "000000000000000000000000000000000000000000000000000000000000000000").
+		Expect().
+		Status(http.StatusBadRequest)
+
+	e.GET("/v1/account").
+		WithQuery("type", "tail").
 		WithQuery("address", payer.Addr).
 		Expect().
 		Status(http.StatusOK).

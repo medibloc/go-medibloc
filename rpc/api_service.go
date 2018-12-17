@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"encoding/hex"
+	"strings"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 
@@ -49,6 +50,10 @@ func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.
 	}
 }
 
+func isValidAccount(account string) bool {
+	return len(account) == 66 && (strings.HasPrefix(account, "02") || strings.HasPrefix(account, "03"))
+}
+
 // GetAccount handles GetAccount rpc.
 func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountRequest) (*rpcpb.Account,
 	error) {
@@ -56,7 +61,7 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	var err error
 
 	// XOR
-	if !(math.XOR(len(req.Address) != 66, req.Alias == "") && math.XOR(req.Type == "", req.Height == 0)) {
+	if !(math.XOR(isValidAccount(req.Address), req.Alias != "") && math.XOR(req.Type != "", req.Height != 0)) {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 
