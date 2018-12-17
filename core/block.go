@@ -49,9 +49,7 @@ type BlockHeader struct {
 	timestamp int64
 	chainID   uint32
 
-	hashAlg   algorithm.HashAlgorithm
-	cryptoAlg algorithm.CryptoAlgorithm
-	sign      []byte
+	sign []byte
 
 	cpuPrice *util.Uint128
 	cpuUsage uint64
@@ -89,8 +87,6 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 		Supply:       supply,
 		Timestamp:    b.timestamp,
 		ChainId:      b.chainID,
-		CryptoAlg:    uint32(b.cryptoAlg),
-		HashAlg:      uint32(b.hashAlg),
 		Sign:         b.sign,
 		AccStateRoot: b.accStateRoot,
 		TxStateRoot:  b.txStateRoot,
@@ -123,8 +119,6 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.supply = supply
 		b.timestamp = msg.Timestamp
 		b.chainID = msg.ChainId
-		b.hashAlg = algorithm.HashAlgorithm(msg.HashAlg)
-		b.cryptoAlg = algorithm.CryptoAlgorithm(msg.CryptoAlg)
 		b.sign = msg.Sign
 
 		cpuPrice, err := util.NewUint128FromFixedSizeByteSlice(msg.CpuPrice)
@@ -266,26 +260,6 @@ func (b *BlockHeader) SetNetPrice(netPrice *util.Uint128) {
 	b.netPrice = netPrice
 }
 
-//HashAlg returns hashing algorithm
-func (b *BlockHeader) HashAlg() algorithm.HashAlgorithm {
-	return b.hashAlg
-}
-
-//SetHashAlg sets hashing algorithm
-func (b *BlockHeader) SetHashAlg(alg algorithm.HashAlgorithm) {
-	b.hashAlg = alg
-}
-
-//CryptoAlg returns signing algorithm
-func (b *BlockHeader) CryptoAlg() algorithm.CryptoAlgorithm {
-	return b.cryptoAlg
-}
-
-//SetCryptoAlg sets signing algorithm
-func (b *BlockHeader) SetCryptoAlg(alg algorithm.CryptoAlgorithm) {
-	b.cryptoAlg = alg
-}
-
 //Sign returns sign
 func (b *BlockHeader) Sign() []byte {
 	return b.sign
@@ -313,11 +287,11 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 	}
 	msg := b.hash
 
-	sig, err := crypto.NewSignature(b.cryptoAlg)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":       err,
-			"algorithm": b.cryptoAlg,
+			"algorithm": algorithm.SECP256K1,
 		}).Debug("Invalid sign algorithm.")
 		return common.Address{}, err
 	}
@@ -453,7 +427,6 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 	if err != nil {
 		return err
 	}
-	bd.cryptoAlg = signer.Algorithm()
 	bd.sign = sig
 	return nil
 }
@@ -465,12 +438,6 @@ func (bd *BlockData) VerifyIntegrity() error {
 		//	return ErrInvalidBlockHash
 		//}
 		return nil
-	}
-	if err := crypto.CheckCryptoAlgorithm(bd.CryptoAlg()); err != nil {
-		return err
-	}
-	if err := hash.CheckHashAlgorithm(bd.HashAlg()); err != nil {
-		return err
 	}
 	for _, tx := range bd.transactions {
 		if err := tx.VerifyIntegrity(bd.chainID); err != nil {
@@ -655,8 +622,6 @@ func (b *Block) Child() (*Block, error) {
 				chainID:    b.chainID,
 				supply:     b.supply.DeepCopy(),
 				reward:     util.NewUint128(),
-				cryptoAlg:  b.CryptoAlg(),
-				hashAlg:    b.HashAlg(),
 				cpuPrice:   util.NewUint128(),
 				cpuUsage:   0,
 				netPrice:   util.NewUint128(),
@@ -760,8 +725,6 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		DposRoot:     bd.DposRoot(),
 		Timestamp:    bd.Timestamp(),
 		ChainId:      bd.ChainID(),
-		HashAlg:      uint32(bd.HashAlg()),
-		CryptoAlg:    uint32(bd.CryptoAlg()),
 		Reward:       rewardBytes,
 		Supply:       supplyBytes,
 		CpuPrice:     cpuPriceBytes,
@@ -775,7 +738,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 		return nil, err
 	}
 
-	return hash.GenHash(bd.HashAlg(), blockHashTargetBytes)
+	return hash.GenHash(algorithm.SHA3256, blockHashTargetBytes)
 }
 
 // ExecuteTransaction on given block state
@@ -856,11 +819,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 	}
 
 	receipt := &Receipt{
-		executed: false,
-		cpuUsage: cpuUsage,
-		netUsage: netUsage,
-		points:   points,
-		error:    nil,
+		executed:  false,
+		timestamp: b.timestamp,
+		height:    b.height,
+		cpuUsage:  cpuUsage,
+		netUsage:  netUsage,
+		points:    points,
+		error:     nil,
 	}
 	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
 	err = tx.Execute(b)

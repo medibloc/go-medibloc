@@ -423,37 +423,27 @@ const (
           "format": "int64",
           "title": "Block chain id"
         },
-        "hash_alg": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Block hash algorithm"
-        },
-        "crypto_alg": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Block signature algorithm"
-        },
         "sign": {
           "type": "string",
           "title": "Block signature"
         },
         "cpu_price": {
           "type": "string",
-          "title": "Block cpu reference"
+          "title": "Block cpu price"
         },
         "cpu_usage": {
           "type": "string",
           "format": "uint64",
-          "title": "Block cpu usage"
+          "title": "Block cpu bandwidth usage"
         },
         "net_price": {
           "type": "string",
-          "title": "Block net reference"
+          "title": "Block net price"
         },
         "net_usage": {
           "type": "string",
           "format": "uint64",
-          "title": "Block net usage"
+          "title": "Block net bandwidth usage"
         },
         "accs_root": {
           "type": "string",
@@ -576,16 +566,11 @@ const (
         },
         "to": {
           "type": "string",
-          "description": "Hex string of the sender account addresss."
+          "description": "Hex string of the sender account address."
         },
         "value": {
           "type": "string",
           "description": "Amount of value sending with this transaction."
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Transaction timestamp."
         },
         "tx_type": {
           "type": "string",
@@ -604,16 +589,6 @@ const (
         "payload": {
           "type": "string",
           "title": "Transaction payload"
-        },
-        "hash_alg": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Transaction hash algorithm"
-        },
-        "crypto_alg": {
-          "type": "integer",
-          "format": "int64",
-          "description": "Transaction crypto algorithm."
         },
         "sign": {
           "type": "string",
@@ -645,20 +620,15 @@ const (
         },
         "from": {
           "type": "string",
-          "description": "Hex string of the sender account addresss."
+          "description": "Hex string of the sender account address."
         },
         "to": {
           "type": "string",
-          "description": "Hex string of the receiver account addresss."
+          "description": "Hex string of the receiver account address."
         },
         "value": {
           "type": "string",
           "description": "Amount of value sending with this transaction."
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "int64",
-          "description": "Transaction timestamp."
         },
         "tx_type": {
           "type": "string",
@@ -677,16 +647,6 @@ const (
         "payload": {
           "type": "string",
           "description": "Transaction payload."
-        },
-        "hash_alg": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Transaction hash algorithm"
-        },
-        "crypto_alg": {
-          "type": "integer",
-          "format": "int64",
-          "title": "Transaction crypto algorithm"
         },
         "sign": {
           "type": "string",
@@ -722,6 +682,14 @@ const (
         "executed": {
           "type": "boolean",
           "format": "boolean"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "int64"
+        },
+        "height": {
+          "type": "string",
+          "format": "uint64"
         },
         "cpu_usage": {
           "type": "string",

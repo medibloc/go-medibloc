@@ -25,8 +25,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -458,11 +457,6 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	err := bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrInvalidBlockHash, err)
 
-	// Invalid Block Sign algorithm
-	block = bb.Block(genesis).Child().SignProposer().Alg(11).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
-
 	// Invalid Block Signer
 	invalidPair := testutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
@@ -537,10 +531,6 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidChainID, err)
-
-	block = bb.Clone().Tx().Type(core.TxOpStake).Value(100).SignPair(from).Execute().CalcHash().SignKey(proposer.PrivKey).Alg(111).Build()
-	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, algorithm.ErrInvalidCryptoAlgorithm, err)
 
 	block = bb.Clone().Coinbase(to.Addr).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())

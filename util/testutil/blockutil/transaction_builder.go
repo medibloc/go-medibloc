@@ -21,9 +21,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
@@ -42,10 +41,6 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	tx := &core.Transaction{}
 	tx.SetChainID(testutil.ChainID)
 	tx.SetValue(util.Uint128Zero())
-	tx.SetCryptoAlg(defaultSignAlg)
-	tx.SetHashAlg(defaultHashAlg)
-
-	tx.SetTimestamp(bb.B.Timestamp())
 
 	return &TxBuilder{
 		t:  bb.t,
@@ -99,13 +94,6 @@ func (tb *TxBuilder) Value(med float64) *TxBuilder {
 	return n
 }
 
-//Timestamp sets timestamp
-func (tb *TxBuilder) Timestamp(ts int64) *TxBuilder {
-	n := tb.copy()
-	n.tx.SetTimestamp(ts)
-	return n
-}
-
 //Type sets type
 func (tb *TxBuilder) Type(txType string) *TxBuilder {
 	n := tb.copy()
@@ -135,13 +123,6 @@ func (tb *TxBuilder) Nonce(nonce uint64) *TxBuilder {
 func (tb *TxBuilder) ChainID(chainID uint32) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetChainID(chainID)
-	return n
-}
-
-//Alg sets signature algorithm
-func (tb *TxBuilder) Alg(alg algorithm.CryptoAlgorithm) *TxBuilder {
-	n := tb.copy()
-	n.tx.SetCryptoAlg(alg)
 	return n
 }
 
@@ -178,8 +159,6 @@ func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 	t := tb.t
 
 	signer := signer(t, key)
-
-	n.tx.SetCryptoAlg(signer.Algorithm())
 
 	sig, err := signer.Sign(n.tx.Hash())
 	require.NoError(t, err)

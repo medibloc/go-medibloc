@@ -26,12 +26,35 @@ import (
 
 // Receipt struct represents transaction receipt
 type Receipt struct {
-	executed bool
+	executed  bool
+	timestamp int64  // timestamp of block transaction included
+	height    uint64 // height of block transaction included
+
 	cpuUsage uint64
 	netUsage uint64
 	points   *util.Uint128
 
 	error []byte
+}
+
+//Height returns height
+func (r *Receipt) Height() uint64 {
+	return r.height
+}
+
+//SetHeight sets height
+func (r *Receipt) SetHeight(height uint64) {
+	r.height = height
+}
+
+//Timestamp returns timestamp
+func (r *Receipt) Timestamp() int64 {
+	return r.timestamp
+}
+
+//SetTimestamp sets timestamp
+func (r *Receipt) SetTimestamp(timestamp int64) {
+	r.timestamp = timestamp
 }
 
 //CPUUsage returns cpu usage
@@ -92,11 +115,13 @@ func (r *Receipt) ToProto() (proto.Message, error) {
 	}
 
 	return &corepb.Receipt{
-		Executed: r.executed,
-		CpuUsage: r.cpuUsage,
-		NetUsage: r.netUsage,
-		Points:   points,
-		Error:    r.error,
+		Executed:  r.executed,
+		Timestamp: r.timestamp,
+		Height:    r.height,
+		CpuUsage:  r.cpuUsage,
+		NetUsage:  r.netUsage,
+		Points:    points,
+		Error:     r.error,
 	}, nil
 }
 
@@ -105,6 +130,8 @@ func (r *Receipt) FromProto(msg proto.Message) error {
 	var err error
 	if msg, ok := msg.(*corepb.Receipt); ok {
 		r.executed = msg.Executed
+		r.timestamp = msg.Timestamp
+		r.height = msg.Height
 		r.cpuUsage = msg.CpuUsage
 		r.netUsage = msg.NetUsage
 		r.points, err = util.NewUint128FromFixedSizeByteSlice(msg.Points)
@@ -119,24 +146,29 @@ func (r *Receipt) FromProto(msg proto.Message) error {
 }
 
 func (r *Receipt) String() string {
-	return fmt.Sprintf("{executed: %v, cpu: %v, net: %v, points: %v, err: %v}", r.executed, r.cpuUsage, r.netUsage, r.points.String(), r.error)
+	return fmt.Sprintf("{executed: %v, timestamp: %v, height: %v,cpu: %v, net: %v, points: %v, err: %v}", r.executed, r.timestamp, r.height, r.cpuUsage, r.netUsage, r.points.String(), r.error)
 }
 
 //Equal returns true if two receipts are equal
 func (r *Receipt) Equal(obj *Receipt) bool {
 	return r.executed == obj.executed &&
+		r.timestamp == obj.timestamp &&
+		r.height == obj.height &&
 		r.cpuUsage == obj.cpuUsage &&
 		r.netUsage == obj.netUsage &&
+		r.points.Cmp(obj.points) == 0 &&
 		byteutils.Equal(r.error, obj.error)
 }
 
 //NewReceipt returns new receipt
 func NewReceipt() *Receipt {
 	return &Receipt{
-		executed: false,
-		cpuUsage: 0,
-		netUsage: 0,
-		points:   util.NewUint128(),
-		error:    nil,
+		executed:  false,
+		timestamp: 0,
+		height:    0,
+		cpuUsage:  0,
+		netUsage:  0,
+		points:    util.NewUint128(),
+		error:     nil,
 	}
 }

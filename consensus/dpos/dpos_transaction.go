@@ -29,7 +29,6 @@ type BecomeCandidateTx struct {
 	candidateAddr common.Address
 	collateral    *util.Uint128
 	payload       *BecomeCandidatePayload
-	timestamp     int64
 	size          int
 }
 
@@ -58,7 +57,6 @@ func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 		candidateAddr: tx.From(),
 		collateral:    tx.Value(),
 		payload:       payload,
-		timestamp:     tx.Timestamp(),
 		size:          size,
 	}, nil
 }
@@ -109,7 +107,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		Collateral: tx.collateral,
 		VotePower:  util.NewUint128(),
 		URL:        tx.payload.URL,
-		Timestamp:  tx.timestamp,
+		Timestamp:  b.Timestamp(),
 	}
 
 	// Add candidate to candidate state

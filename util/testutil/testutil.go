@@ -142,9 +142,6 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 		tx.SetChainID(ChainID)
 		tx.SetValue(util.NewUint128())
-		tx.SetTimestamp(core.GenesisTimestamp)
-		tx.SetCryptoAlg(algorithm.SECP256K1)
-		tx.SetHashAlg(algorithm.SHA3256)
 
 		txStake, err := tx.Clone()
 		require.NoError(t, err)

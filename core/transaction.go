@@ -37,12 +37,9 @@ type Transaction struct {
 	txType    string
 	to        common.Address
 	value     *util.Uint128
-	timestamp int64
 	nonce     uint64
 	chainID   uint32
 	payload   []byte
-	hashAlg   algorithm.HashAlgorithm
-	cryptoAlg algorithm.CryptoAlgorithm
 	sign      []byte
 	payerSign []byte
 
@@ -78,12 +75,9 @@ func (t *Transaction) ToProto() (proto.Message, error) {
 		TxType:    t.txType,
 		To:        t.to.Bytes(),
 		Value:     value,
-		Timestamp: t.timestamp,
 		Nonce:     t.nonce,
 		ChainId:   t.chainID,
 		Payload:   t.payload,
-		HashAlg:   uint32(t.hashAlg),
-		CryptoAlg: uint32(t.cryptoAlg),
 		Sign:      t.sign,
 		PayerSign: t.payerSign,
 		Receipt:   Receipt,
@@ -113,12 +107,9 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.txType = pbTx.TxType
 	t.to.FromBytes(pbTx.To)
 	t.value = value
-	t.timestamp = pbTx.Timestamp
 	t.nonce = pbTx.Nonce
 	t.chainID = pbTx.ChainId
 	t.payload = pbTx.Payload
-	t.hashAlg = algorithm.HashAlgorithm(pbTx.HashAlg)
-	t.cryptoAlg = algorithm.CryptoAlgorithm(pbTx.CryptoAlg)
 	t.sign = pbTx.Sign
 	t.payerSign = pbTx.PayerSign
 	t.receipt = receipt
@@ -188,16 +179,6 @@ func (t *Transaction) SetValue(value *util.Uint128) {
 	t.value = value
 }
 
-//Timestamp returns timestamp
-func (t *Transaction) Timestamp() int64 {
-	return t.timestamp
-}
-
-//SetTimestamp set timestamp
-func (t *Transaction) SetTimestamp(timestamp int64) {
-	t.timestamp = timestamp
-}
-
 //Payload returns paylaod
 func (t *Transaction) Payload() []byte {
 	return t.payload
@@ -226,26 +207,6 @@ func (t *Transaction) ChainID() uint32 {
 //SetChainID set chainID
 func (t *Transaction) SetChainID(chainID uint32) {
 	t.chainID = chainID
-}
-
-//HashAlg returns hashing algorithm
-func (t *Transaction) HashAlg() algorithm.HashAlgorithm {
-	return t.hashAlg
-}
-
-//SetHashAlg set hashing algorithm
-func (t *Transaction) SetHashAlg(alg algorithm.HashAlgorithm) {
-	t.hashAlg = alg
-}
-
-//CryptoAlg returns signing algorithm
-func (t *Transaction) CryptoAlg() algorithm.CryptoAlgorithm {
-	return t.cryptoAlg
-}
-
-//SetCryptoAlg set signing algorithm
-func (t *Transaction) SetCryptoAlg(alg algorithm.CryptoAlgorithm) {
-	t.cryptoAlg = alg
 }
 
 //Sign returns sign
@@ -294,21 +255,20 @@ func (t *Transaction) CalcHash() ([]byte, error) {
 	}
 
 	txHashTarget := &corepb.TransactionHashTarget{
-		TxType:    t.txType,
-		From:      t.from.Bytes(),
-		To:        t.to.Bytes(),
-		Value:     value,
-		Timestamp: t.timestamp,
-		Nonce:     t.nonce,
-		ChainId:   t.chainID,
-		Payload:   t.payload,
+		TxType:  t.txType,
+		From:    t.from.Bytes(),
+		To:      t.to.Bytes(),
+		Value:   value,
+		Nonce:   t.nonce,
+		ChainId: t.chainID,
+		Payload: t.payload,
 	}
 	txHashTargetBytes, err := proto.Marshal(txHashTarget)
 	if err != nil {
 		return nil, err
 	}
 
-	return hash.GenHash(t.hashAlg, txHashTargetBytes)
+	return hash.GenHash(algorithm.SHA3256, txHashTargetBytes)
 }
 
 // SignThis signs tx with given signature interface
@@ -324,7 +284,7 @@ func (t *Transaction) SignThis(key signature.PrivateKey) error {
 		return err
 	}
 
-	signer, err := crypto.NewSignature(t.cryptoAlg)
+	signer, err := crypto.NewSignature(algorithm.SECP256K1)
 	if err != nil {
 		return err
 	}
@@ -360,11 +320,7 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
-		return common.Address{}, err
-	}
-
-	sig, err := crypto.NewSignature(t.cryptoAlg)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -407,10 +363,6 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 		return ErrInvalidChainID
 	}
 
-	// check Signature.
-	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
-		return err
-	}
 	t.from, err = t.recoverSigner()
 	if err != nil {
 		return err
@@ -437,11 +389,7 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 		return common.Address{}, ErrTransactionSignatureNotExist
 	}
 
-	if err := crypto.CheckCryptoAlgorithm(t.cryptoAlg); err != nil {
-		return common.Address{}, err
-	}
-
-	sig, err := crypto.NewSignature(t.cryptoAlg)
+	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -456,18 +404,14 @@ func (t *Transaction) recoverSigner() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, cryptoAlg:%v, hashAlg:%v nonce:%v, 
-timestamp:%v, receipt:%v}`,
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, nonce:%v, receipt:%v}`,
 		t.chainID,
 		byteutils.Bytes2Hex(t.hash),
 		t.from.Hex(),
 		t.to.Hex(),
 		t.value.String(),
 		t.TxType(),
-		t.cryptoAlg,
-		t.hashAlg,
 		t.nonce,
-		t.timestamp,
 		t.receipt,
 	)
 }
@@ -584,7 +528,6 @@ func (tx *TransferTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 //AddRecordTx is a structure for adding record
 type AddRecordTx struct {
 	owner      common.Address
-	timestamp  int64
 	recordHash []byte
 	size       int
 }
@@ -611,7 +554,6 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 
 	return &AddRecordTx{
 		owner:      tx.From(),
-		timestamp:  tx.Timestamp(),
 		recordHash: payload.RecordHash,
 		size:       size,
 	}, nil
@@ -636,7 +578,7 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 	pbRecord := &corepb.Record{
 		Owner:      tx.owner.Bytes(),
 		RecordHash: tx.recordHash,
-		Timestamp:  tx.timestamp,
+		Timestamp:  b.Timestamp(),
 	}
 	recordBytes, err := proto.Marshal(pbRecord)
 	if err != nil {
@@ -976,7 +918,6 @@ func (tx *AddCertificationTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 type RevokeCertificationTx struct {
 	Revoker         common.Address
 	CertificateHash []byte
-	RevocationTime  int64
 	size            int
 }
 
@@ -1003,7 +944,6 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	return &RevokeCertificationTx{
 		Revoker:         tx.From(),
 		CertificateHash: payload.CertificateHash,
-		RevocationTime:  tx.timestamp,
 		size:            size,
 	}, nil
 }
@@ -1031,11 +971,11 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	if pbCert.RevocationTime > int64(-1) {
 		return ErrCertAlreadyRevoked
 	}
-	if pbCert.ExpirationTime < tx.RevocationTime {
+	if pbCert.ExpirationTime < b.Timestamp() {
 		return ErrCertAlreadyExpired
 	}
 
-	pbCert.RevocationTime = tx.RevocationTime
+	pbCert.RevocationTime = b.Timestamp()
 	newCertBytes, err := proto.Marshal(pbCert)
 	if err != nil {
 		return err
@@ -1103,7 +1043,6 @@ type RegisterAliasTx struct {
 	addr       common.Address
 	collateral *util.Uint128
 	aliasName  string
-	timestamp  int64
 	size       int
 }
 
@@ -1131,7 +1070,6 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 		addr:       tx.From(),
 		aliasName:  payload.AliasName,
 		collateral: tx.Value(),
-		timestamp:  tx.Timestamp(),
 		size:       size,
 	}, nil
 }
@@ -1183,7 +1121,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	pbAlias = &corepb.Alias{
 		AliasName:       tx.aliasName,
 		AliasCollateral: collateralBytes,
-		Timestamp:       tx.timestamp,
+		Timestamp:       b.Timestamp(),
 	}
 	aliasBytes, err = proto.Marshal(pbAlias)
 	if err != nil {

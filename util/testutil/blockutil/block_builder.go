@@ -23,9 +23,8 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/require"
@@ -196,13 +195,6 @@ func (bb *BlockBuilder) ChainID(chainID uint32) *BlockBuilder {
 	return n
 }
 
-// Alg sets crypto algorithm.
-func (bb *BlockBuilder) Alg(alg algorithm.CryptoAlgorithm) *BlockBuilder {
-	n := bb.copy()
-	n.B.SetCryptoAlg(alg)
-	return n
-}
-
 // Sign sets signature.
 func (bb *BlockBuilder) Sign(sign []byte) *BlockBuilder {
 	n := bb.copy()
@@ -238,8 +230,6 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 	t := bb.t
 
 	signer := signer(t, key)
-
-	n.B.SetCryptoAlg(signer.Algorithm())
 
 	sig, err := signer.Sign(n.B.Hash())
 	require.NoError(t, err)

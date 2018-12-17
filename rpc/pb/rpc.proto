@@ -152,19 +152,15 @@ message Block {
   int64 timestamp = 7;
   // Block chain id
   uint32 chain_id = 8;
-  // Block hash algorithm
-  uint32 hash_alg = 9;
-  // Block signature algorithm
-  uint32 crypto_alg = 10;
   // Block signature
   string sign = 11;
-  // Block cpu reference
+  // Block cpu price
   string cpu_price = 12;
-  // Block cpu usage
+  // Block cpu bandwidth usage
   uint64 cpu_usage = 13;
-  // Block net reference
+  // Block net price
   string net_price = 14;
-  // Block net usage
+  // Block net bandwidth usage
   uint64 net_usage = 15;
 
   // Root hash of accounts trie
@@ -234,29 +230,22 @@ message GetTransactionRequest {
 message Transaction {
   // Transaction hash
   string hash = 1;
-  // Hex string of the sender account addresss.
+  // Hex string of the sender account address.
   string from = 2;
-  // Hex string of the receiver account addresss.
+  // Hex string of the receiver account address.
   string to = 3;
   // Amount of value sending with this transaction.
   string value = 4; // uint128, len=16
-  // Transaction timestamp.
-  int64 timestamp = 5;
   // Transaction type.
-  string tx_type = 6;
+  string tx_type = 5;
   // Transaction nonce.
-  uint64 nonce = 7;
+  uint64 nonce = 6;
   // Transaction chain ID.
-  uint32 chain_id = 8;
-  // Transaction algorithm.
+  uint32 chain_id = 7;
 
   // Transaction payload.
   string payload = 20;
 
-  // Transaction hash algorithm
-  uint32 hash_alg = 29;
-  // Transaction crypto algorithm
-  uint32 crypto_alg = 30;
   // Transaction sign.
   string sign = 31;
   // Transaction payer's sign.
@@ -269,35 +258,31 @@ message Transaction {
 
 message TransactionReceipt {
   bool executed = 1;
-  uint64 cpu_usage = 2;
-  uint64 net_usage = 3;
-  string points = 4;
-  string error = 5;
+  int64 timestamp = 2;
+  uint64 height = 3;
+  uint64 cpu_usage = 11;
+  uint64 net_usage = 12;
+  string points = 13;
+  string error = 21;
 }
 
 message SendTransactionRequest {
   // Transaction hash
   string hash = 1;
-  // Hex string of the sender account addresss.
+  // Hex string of the sender account address.
   string to = 2;
   // Amount of value sending with this transaction.
   string value = 3; // uint128, len=16
-  // Transaction timestamp.
-  int64 timestamp = 4;
   // Transaction type.
-  string tx_type = 5;
+  string tx_type = 4;
   // Transaction nonce.
-  uint64 nonce = 6;
+  uint64 nonce = 5;
   // Transaction chain ID.
-  uint32 chain_id = 7;
+  uint32 chain_id = 6;
 
   // Transaction payload
   string payload = 20;
 
-  // Transaction hash algorithm
-  uint32 hash_alg = 29;
-  // Transaction crypto algorithm.
-  uint32 crypto_alg = 30;
   // Transaction sign.
   string sign = 31;
   // Transaction payer's sign.

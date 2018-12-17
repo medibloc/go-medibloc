@@ -11,8 +11,6 @@ message BlockHeader {
   bytes supply = 5;
   int64 timestamp = 6;
   uint32 chain_id = 7;
-  uint32 hash_alg = 10;
-  uint32 crypto_alg = 11;
   bytes sign = 12;
   bytes acc_state_root = 21;
   bytes tx_state_root = 22;
@@ -35,17 +33,15 @@ message DownloadParentBlock {
 }
 
 message BlockHashTarget {
-  bytes parent_hash = 1;
-  bytes coinbase = 2;
-  bytes acc_state_root = 3;
-  bytes tx_state_root = 4;
-  bytes dpos_root = 5;
+  bytes parent_hash = 2;
+  bytes coinbase = 3;
+  bytes reward = 4;
+  bytes supply = 5;
   int64 timestamp = 6;
   uint32 chain_id = 7;
-  bytes reward = 8;
-  bytes supply = 9;
-  uint32 hash_alg = 10;
-  uint32 crypto_alg = 11;
+  bytes acc_state_root = 21;
+  bytes tx_state_root = 22;
+  bytes dpos_root = 23;
   bytes cpu_price = 30;
   uint64 cpu_usage = 31;
   bytes net_price = 32;
@@ -58,14 +54,11 @@ message Transaction {
   string tx_type = 2;
   bytes to = 3;
   bytes value = 4;
-  int64 timestamp = 5;
-  uint64 nonce = 6;
-  uint32 chain_id = 7;
+  uint64 nonce = 5;
+  uint32 chain_id = 6;
 
   bytes payload = 10;
 
-  uint32 hash_alg = 20;
-  uint32 crypto_alg = 21;
   bytes sign = 22;
   bytes payerSign = 23;
 
@@ -74,10 +67,12 @@ message Transaction {
 
 message Receipt {
   bool executed = 1;
-  uint64 cpu_usage = 2;
-  uint64 net_usage = 3;
-  bytes points = 4;
-  bytes error = 5;
+  int64 timestamp = 2;
+  uint64 height = 3;
+  uint64 cpu_usage = 11;
+  uint64 net_usage = 12;
+  bytes points = 13;
+  bytes error = 21;
 }
 
 message TransactionHashTarget {
@@ -85,9 +80,8 @@ message TransactionHashTarget {
   bytes from = 2;
   bytes to = 3;
   bytes value = 4;
-  int64 timestamp = 5;
-  uint64 nonce = 6;
-  uint32 chain_id = 7;
+  uint64 nonce = 5;
+  uint32 chain_id = 6;
 
   bytes payload = 10;
 }

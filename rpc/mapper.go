@@ -76,8 +76,6 @@ func coreBlock2rpcBlock(block *core.Block, light bool) *rpcpb.Block {
 		Supply:       block.Supply().String(),
 		Timestamp:    block.Timestamp(),
 		ChainId:      block.ChainID(),
-		HashAlg:      uint32(block.HashAlg()),
-		CryptoAlg:    uint32(block.CryptoAlg()),
 		Sign:         byteutils.Bytes2Hex(block.Sign()),
 		AccsRoot:     byteutils.Bytes2Hex(block.AccStateRoot()),
 		TxsRoot:      byteutils.Bytes2Hex(block.TxStateRoot()),
@@ -114,13 +112,10 @@ func CoreTx2rpcTx(tx *core.Transaction, onChain bool) *rpcpb.Transaction {
 		From:      tx.From().Hex(),
 		To:        tx.To().Hex(),
 		Value:     tx.Value().String(),
-		Timestamp: tx.Timestamp(),
 		TxType:    tx.TxType(),
 		Nonce:     tx.Nonce(),
 		ChainId:   tx.ChainID(),
 		Payload:   byteutils.Bytes2Hex(tx.Payload()),
-		HashAlg:   uint32(tx.HashAlg()),
-		CryptoAlg: uint32(tx.CryptoAlg()),
 		Sign:      byteutils.Bytes2Hex(tx.Sign()),
 		PayerSign: byteutils.Bytes2Hex(tx.PayerSign()),
 		OnChain:   onChain,
@@ -142,10 +137,12 @@ func coreReceipt2rpcReceipt(tx *core.Transaction) *rpcpb.TransactionReceipt {
 	points := tx.Receipt().Points().String()
 
 	return &rpcpb.TransactionReceipt{
-		Executed: tx.Receipt().Executed(),
-		CpuUsage: tx.Receipt().CPUUsage(),
-		NetUsage: tx.Receipt().NetUsage(),
-		Points:   points,
-		Error:    err,
+		Executed:  tx.Receipt().Executed(),
+		Timestamp: tx.Receipt().Timestamp(),
+		Height:    tx.Receipt().Height(),
+		CpuUsage:  tx.Receipt().CPUUsage(),
+		NetUsage:  tx.Receipt().NetUsage(),
+		Points:    points,
+		Error:     err,
 	}
 }

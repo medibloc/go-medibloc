@@ -23,8 +23,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -101,8 +100,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 				coinbase:   GenesisCoinbase,
 				reward:     util.NewUint128FromUint(0),
 				timestamp:  GenesisTimestamp,
-				hashAlg:    algorithm.SHA3256,
-				cryptoAlg:  algorithm.SECP256K1,
 				cpuPrice:   util.NewUint128FromUint(0),
 				cpuUsage:   0,
 				netPrice:   util.NewUint128FromUint(0),
@@ -132,15 +129,12 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 	}
 
 	initialTx := &Transaction{
-		txType:    TxTyGenesis,
-		to:        GenesisCoinbase,
-		value:     util.Uint128Zero(),
-		timestamp: GenesisTimestamp,
-		chainID:   conf.Meta.ChainId,
-		payload:   payloadBuf,
-		hashAlg:   algorithm.SHA3256,
-		cryptoAlg: algorithm.SECP256K1,
-		receipt:   genesisTxReceipt(),
+		txType:  TxTyGenesis,
+		to:      GenesisCoinbase,
+		value:   util.Uint128Zero(),
+		chainID: conf.Meta.ChainId,
+		payload: payloadBuf,
+		receipt: genesisTxReceipt(),
 	}
 
 	hash, err := initialTx.CalcHash()
@@ -182,14 +176,11 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		}
 
 		tx := &Transaction{
-			txType:    TxTyGenesis,
-			to:        addr,
-			value:     acc.Balance,
-			timestamp: GenesisTimestamp,
-			chainID:   conf.Meta.ChainId,
-			hashAlg:   algorithm.SHA3256,
-			cryptoAlg: algorithm.SECP256K1,
-			receipt:   genesisTxReceipt(),
+			txType:  TxTyGenesis,
+			to:      addr,
+			value:   acc.Balance,
+			chainID: conf.Meta.ChainId,
+			receipt: genesisTxReceipt(),
 		}
 		hash, err = tx.CalcHash()
 		if err != nil {
