@@ -599,7 +599,7 @@ func (bd *BlockData) verifyTotalBandwidth() error {
 		return ErrWrongCPUUsage
 	}
 	if netUsage != bd.netUsage {
-		return ErrWrongCPUUsage
+		return ErrWrongNetUsage
 	}
 	return nil
 }
