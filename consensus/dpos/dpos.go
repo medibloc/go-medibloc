@@ -22,15 +22,15 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -607,4 +607,30 @@ func (d *Dpos) calcDynastyIndex(ts int64) int {
 
 func (d *Dpos) calcProposerIndex(ts int64) int {
 	return (int(ts) / int(BlockInterval.Seconds())) % d.dynastySize
+}
+
+//VerifyHeightAndTimestamp verify height and timestamp based on lib
+func (d *Dpos) VerifyHeightAndTimestamp(lib, bd *core.BlockData) error {
+	if bd.Height() <= lib.Height() || bd.Timestamp() <= lib.Timestamp() {
+		return ErrCannotRevertLIB
+	}
+
+	if bd.Height() > d.MaximumHeightWithTimestamp(lib.Height(), lib.Timestamp(), bd.Timestamp()) {
+		return ErrInvalidHeightByLIB
+	}
+
+	if bd.Timestamp() < d.MinimumTimestampWithHeight(lib.Timestamp(), lib.Height(), bd.Height()) {
+		return ErrInvalidTimestampByLIB
+	}
+	return nil
+}
+
+//MaximumHeightWithTimestamp return maximum height based on lib
+func (d *Dpos) MaximumHeightWithTimestamp(libHeight uint64, libTs, ts int64) uint64 {
+	return uint64(ts-libTs)/uint64(BlockInterval.Seconds()) + libHeight
+}
+
+//MinimumTimestampWithHeight returns minimum timestamp based on lib
+func (d *Dpos) MinimumTimestampWithHeight(libTs int64, libHeight, height uint64) int64 {
+	return int64(libHeight-height)*int64(BlockInterval.Seconds()) + libTs
 }

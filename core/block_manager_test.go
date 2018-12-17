@@ -203,13 +203,13 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err := bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, core.ErrCannotRevertLIB, err)
+	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
 
 	block = bb.Block(blocks[1]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, core.ErrCannotRevertLIB, err)
+	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
 
 	block = bb.Block(blocks[dynastySize*2/3]).Child().
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
@@ -229,7 +229,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(b.GetBlockData())
-	assert.Equal(t, core.ErrCannotRevertLIB, err)
+	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
 }
 
 func TestBlockManager_PruneByLIB(t *testing.T) {
@@ -315,13 +315,13 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		height uint64
 		err    error
 	}{
-		{0, core.ErrCannotRevertLIB},
-		{1, core.ErrCannotRevertLIB},
+		{0, core.ErrFailedValidateHeightAndHeight},
+		{1, core.ErrFailedValidateHeightAndHeight},
 		{2, core.ErrCannotExecuteOnParentBlock},
 		{3, core.ErrCannotExecuteOnParentBlock},
-		{5, core.ErrCannotExecuteOnParentBlock},
-		{6, core.ErrCannotExecuteOnParentBlock},
-		{999, core.ErrCannotExecuteOnParentBlock},
+		{5, core.ErrFailedValidateHeightAndHeight},
+		{6, core.ErrFailedValidateHeightAndHeight},
+		{999, core.ErrFailedValidateHeightAndHeight},
 		{4, nil},
 	}
 	for _, v := range tests {

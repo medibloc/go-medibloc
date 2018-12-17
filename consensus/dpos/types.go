@@ -53,4 +53,7 @@ var (
 	ErrWaitingBlockInLastSlot       = errors.New("cannot mint block now, waiting for last block")
 	ErrNotEnoughCandidateCollateral = errors.New("candidate collateral is not enough")
 	ErrProposerConfigNotFound       = errors.New("proposer config not found")
+	ErrCannotRevertLIB              = errors.New("cannot revert lib")
+	ErrInvalidHeightByLIB           = errors.New("high height compare to timestamp")
+	ErrInvalidTimestampByLIB        = errors.New("early timestamp compare to block height")
 )

@@ -265,11 +265,12 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return ErrDuplicatedBlock
 	}
 
-	if bd.Height() <= bm.bc.LIB().Height() {
+	if err := bm.consensus.VerifyHeightAndTimestamp(bm.bc.LIB().BlockData, bd); err != nil {
+		//if bd.Height() <= bm.bc.LIB().Height() {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
 		}).Debug("Received a block forked before current LIB.")
-		return ErrCannotRevertLIB
+		return ErrFailedValidateHeightAndHeight
 	}
 
 	// TODO @cl9200 Filter blocks of same height.
@@ -298,7 +299,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
 		}).Debug("Received a block forked before current LIB.")
-		return ErrCannotRevertLIB
+		return ErrFailedValidateHeightAndHeight
 	}
 
 	// Parent block exists in blockchain.
