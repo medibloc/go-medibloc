@@ -92,8 +92,10 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 1000).Build()
 
+	recordHash, err := byteutils.Hex2Bytes("9eca7128409f609b2a72fc24985645665bbb99152b4b14261c3c3c93fb17cf54")
+	require.NoError(t, err)
 	payload := &core.AddRecordPayload{
-		RecordHash: byteutils.Hex2Bytes("9eca7128409f609b2a72fc24985645665bbb99152b4b14261c3c3c93fb17cf54"),
+		RecordHash: recordHash,
 	}
 
 	tx2 := tb.Nonce(2).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()

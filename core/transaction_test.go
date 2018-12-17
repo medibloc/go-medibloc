@@ -49,7 +49,8 @@ func TestSend(t *testing.T) {
 func TestAddRecord(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis()
 
-	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	recordHash, err := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	require.NoError(t, err)
 	payload := &core.AddRecordPayload{RecordHash: recordHash}
 	owner := bb.TokenDist[0]
 
@@ -110,7 +111,8 @@ func TestAddAndRevokeCertification(t *testing.T) {
 
 	issueTime := time.Now().Unix()
 	expirationTime := time.Now().Unix() + int64(100000)
-	hash := byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	hash, err := byteutils.Hex2Bytes("02e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	require.NoError(t, err)
 
 	// Add certification Test
 	addPayload := &core.AddCertificationPayload{

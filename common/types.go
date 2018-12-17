@@ -45,7 +45,10 @@ func BytesToAddress(b []byte) Address {
 func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
 
 // HexToAddress gets Address from hex string.
-func HexToAddress(s string) Address { return BytesToAddress(byteutils.FromHex(s)) }
+func HexToAddress(s string) (Address, error) {
+	addr, err := byteutils.FromHex(s)
+	return BytesToAddress(addr), err
+}
 
 // IsHexAddress checks hex address.
 func IsHexAddress(s string) bool {

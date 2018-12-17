@@ -485,7 +485,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 
 	assert.Equal(t, seed.Med.TransactionManager().Get(tx.Hash()).Hash(), tx.Hash())
 
-	TX.Sign = "123"
+	TX.Sign = "927a35dacb67088aaf37c225e5b2b75f1337e1345323ee9945d14289bf631a4e588de84e5ba359271e83ff4f53270aabb567f2827084bf76a7a385e99ef6912f01"
 	e.POST("/v1/transaction").
 		WithJSON(TX).
 		Expect().

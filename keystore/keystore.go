@@ -114,7 +114,11 @@ func MakeKeystoreV3(privKeyHex, passphrase string, fn string) error {
 		return err
 	}
 	if privKeyHex != "" {
-		err = privKey.Decode(byteutils.Hex2Bytes(privKeyHex))
+		privKeyBytes, err := byteutils.Hex2Bytes(privKeyHex)
+		if err != nil {
+			return err
+		}
+		err = privKey.Decode(privKeyBytes)
 		if err != nil {
 			return err
 		}
@@ -232,7 +236,10 @@ func DecryptKey(keyjson []byte, auth string) (*Key, error) {
 	}
 	keyString := byteutils.Bytes2Hex(keyBytes)
 	if len(keyString) == 128 { // TODO : will be deprecated after update medjs
-		keyBytes = byteutils.Hex2Bytes(numbytesToHex(keyString))
+		keyBytes, err = byteutils.Hex2Bytes(numbytesToHex(keyString))
+		if err != nil {
+			return nil, err
+		}
 	}
 	key := secp256k1.GeneratePrivateKey()
 	err = key.Decode(keyBytes)
@@ -256,7 +263,10 @@ func DecryptDataV3(CipherJSON CipherJSON, auth string) ([]byte, error) {
 	if CipherJSON.Cipher != "aes-128-ctr" {
 		return nil, fmt.Errorf("cipher not supported: %v", CipherJSON.Cipher)
 	}
-	mac := byteutils.Hex2Bytes(CipherJSON.MAC)
+	mac, err := byteutils.Hex2Bytes(CipherJSON.MAC)
+	if err != nil {
+		return nil, err
+	}
 
 	iv, err := hex.DecodeString(CipherJSON.CipherParams.IV)
 	if err != nil {

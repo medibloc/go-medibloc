@@ -117,7 +117,8 @@ func TestUpdatePayerBandwidth(t *testing.T) {
 	user := testutil.NewAddrKeyPair(t)
 	payer := bb.TokenDist[0]
 
-	recordHash := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	recordHash, err := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
+	require.NoError(t, err)
 	payload := &core.AddRecordPayload{
 		RecordHash: recordHash,
 	}

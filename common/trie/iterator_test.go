@@ -18,6 +18,8 @@ package trie
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
@@ -36,7 +38,8 @@ func TestIterator1(t *testing.T) {
 	var keys [][]byte
 	var valHashes [][]byte
 	for _, v := range names {
-		key := byteutils.FromHex(v)
+		key, err := byteutils.FromHex(v)
+		require.NoError(t, err)
 		keys = append(keys, key)
 
 		value := [][]byte{[]byte(v)}
@@ -125,7 +128,8 @@ func TestIterator2(t *testing.T) {
 	names := []string{"123450", "123350", "122450", "223350", "133350"}
 	var keys [][]byte
 	for _, v := range names {
-		key := byteutils.FromHex(v)
+		key, err := byteutils.FromHex(v)
+		require.NoError(t, err)
 		keys = append(keys, key)
 	}
 	tr.Put(keys[0], []byte(names[0]))

@@ -24,5 +24,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	stor.Put([]byte(key), byteutils.Hex2Bytes(value))
+	byteVal, err := byteutils.Hex2Bytes(value)
+	if err != nil {
+		panic(err)
+	}
+	stor.Put([]byte(key), byteVal)
 }

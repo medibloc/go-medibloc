@@ -81,7 +81,10 @@ func (tb *Batch) Commit() error {
 	tb.mu.Lock()
 	defer tb.mu.Unlock()
 	for keyHex, d := range tb.dirties {
-		key := byteutils.Hex2Bytes(keyHex)
+		key, err := byteutils.Hex2Bytes(keyHex)
+		if err != nil {
+			return err
+		}
 		if d.deleteFlag {
 			err := tb.Trie.Delete(key)
 			if err != nil && err != ErrNotFound {

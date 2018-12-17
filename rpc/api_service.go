@@ -99,7 +99,11 @@ func (s *APIService) GetAccountAPI(ctx context.Context, req *rpcpb.GetAccount) (
 		addr = alisAcc.Account.String()
 	}
 
-	acc, err := block.State().GetAccount(common.HexToAddress(addr))
+	addrAddr, err := common.HexToAddress(addr)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+	acc, err := block.State().GetAccount(addrAddr)
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
@@ -116,7 +120,11 @@ func (s *APIService) GetBlockAPI(ctx context.Context, req *rpcpb.GetBlock) (*rpc
 	}
 
 	if common.IsHash(req.Hash) {
-		block = s.bm.BlockByHash(byteutils.FromHex(req.Hash))
+		hash, err := byteutils.FromHex(req.Hash)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+		}
+		block = s.bm.BlockByHash(hash)
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
@@ -276,7 +284,10 @@ func (s *APIService) GetTransactionAPI(ctx context.Context, req *rpcpb.GetTransa
 		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}
 
-	txHash := byteutils.Hex2Bytes(req.Hash)
+	txHash, err := byteutils.Hex2Bytes(req.Hash)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
 	tx, err := tailBlock.State().GetTx(txHash)
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
@@ -304,7 +315,10 @@ func (s *APIService) GetTransactionReceiptAPI(ctx context.Context, req *rpcpb.Ge
 		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}
 
-	txHash := byteutils.Hex2Bytes(req.Hash)
+	txHash, err := byteutils.Hex2Bytes(req.Hash)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
+	}
 	tx, err := tailBlock.State().GetTx(txHash)
 	if err != nil && err != trie.ErrNotFound {
 		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
@@ -332,10 +346,30 @@ func (s *APIService) SendTransactionAPI(ctx context.Context, req *rpcpb.SendTran
 		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
 	}
 
+	hashBytes, err := byteutils.Hex2Bytes(req.Hash)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+
+	toBytes, err := byteutils.Hex2Bytes(req.To)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+
+	signBytes, err := byteutils.Hex2Bytes(req.Sign)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+
+	payerSignBytes, err := byteutils.Hex2Bytes(req.PayerSign)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
+
 	pbTx := &corepb.Transaction{
-		Hash:      byteutils.Hex2Bytes(req.Hash),
+		Hash:      hashBytes,
 		TxType:    req.TxType,
-		To:        byteutils.Hex2Bytes(req.To),
+		To:        toBytes,
 		Value:     valueBytes,
 		Timestamp: req.Timestamp,
 		Nonce:     req.Nonce,
@@ -343,8 +377,8 @@ func (s *APIService) SendTransactionAPI(ctx context.Context, req *rpcpb.SendTran
 		Payload:   payloadBuf,
 		CryptoAlg: req.CryptoAlg,
 		HashAlg:   req.HashAlg,
-		Sign:      byteutils.Hex2Bytes(req.Sign),
-		PayerSign: byteutils.Hex2Bytes(req.PayerSign),
+		Sign:      signBytes,
+		PayerSign: payerSignBytes,
 		Receipt:   nil,
 	}
 

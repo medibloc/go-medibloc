@@ -112,8 +112,12 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 			return ErrProposerConfigNotFound
 		}
 		for _, pbProposer := range cfg.Chain.Proposers {
+			var err error
 			p := &Proposer{}
-			p.Coinbase = common.HexToAddress(pbProposer.Coinbase)
+			p.Coinbase, err = common.HexToAddress(pbProposer.Coinbase)
+			if err != nil {
+				return err
+			}
 
 			if pbProposer.Keydir != "" {
 				ks, err := ioutil.ReadFile(pbProposer.Keydir)
@@ -137,7 +141,10 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 
 			} else {
 				var err error
-				p.ProposerAddress = common.HexToAddress(pbProposer.Proposer)
+				p.ProposerAddress, err = common.HexToAddress(pbProposer.Proposer)
+				if err != nil {
+					return err
+				}
 				p.Privkey, err = secp256k1.NewPrivateKeyFromHex(pbProposer.Privkey)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{

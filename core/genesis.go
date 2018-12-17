@@ -38,7 +38,7 @@ var (
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
 	//GenesisCoinbase = common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
-	GenesisCoinbase = common.HexToAddress("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	GenesisCoinbase, _ = common.HexToAddress("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
 	// GenesisHeight is height of genesis block
 	GenesisHeight = uint64(1)
 )
@@ -150,7 +150,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 	// Token distribution
 	supply := util.NewUint128()
 	for _, dist := range conf.TokenDistribution {
-		addr := common.HexToAddress(dist.Address)
+		addr, err := common.HexToAddress(dist.Address)
+		if err != nil {
+			return nil, err
+		}
 		acc, err := genesisBlock.state.GetAccount(addr)
 		if err != nil {
 			return nil, err

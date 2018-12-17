@@ -80,7 +80,8 @@ func TestTransactionManager_Push(t *testing.T) {
 	assert.Equal(t, core.ErrInvalidChainID, tm.Push(wrongChainIDTx))
 
 	// Wrong hash
-	wrongHash := byteutils.Hex2Bytes("1234567890123456789012345678901234567890123456789012345678901234")
+	wrongHash, err := byteutils.Hex2Bytes("1234567890123456789012345678901234567890123456789012345678901234")
+	require.NoError(t, err)
 	wrongHashTx := randomTb.Hash(wrongHash).Build()
 	assert.Equal(t, core.ErrInvalidTransactionHash, tm.Push(wrongHashTx))
 
