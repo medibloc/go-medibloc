@@ -490,17 +490,19 @@ timestamp:%v, receipt:%v}`,
 	)
 }
 
-// TriggerEvent triggers event
-func (t *Transaction) TriggerEvent(e *EventEmitter, eType string) {
-	if eType == TopicPendingTransaction || eType == TopicTransactionExecutionResult {
-		event := &Event{
-			Topic: eType,
-			Data:  byteutils.Bytes2Hex(t.Hash()),
-			Type:  "",
-		}
-		e.Trigger(event)
-		return
+// TriggerEvent triggers non account type event
+func (t *Transaction) TriggerEvent(e *EventEmitter, eTopic string) {
+	event := &Event{
+		Topic: eTopic,
+		Data:  byteutils.Bytes2Hex(t.Hash()),
+		Type:  "",
 	}
+	e.Trigger(event)
+	return
+}
+
+// TriggerAccEvent triggers account type event
+func (t *Transaction) TriggerAccEvent(e *EventEmitter, eType string) {
 	event := &Event{
 		Topic: t.From().String(),
 		Data:  byteutils.Bytes2Hex(t.Hash()),

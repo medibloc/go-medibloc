@@ -126,7 +126,7 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 
 	if pool.eventEmitter != nil {
 		tx.TriggerEvent(pool.eventEmitter, TopicPendingTransaction)
-		tx.TriggerEvent(pool.eventEmitter, TypeAccountTransactionPending)
+		tx.TriggerAccEvent(pool.eventEmitter, TypeAccountTransactionPending)
 	}
 
 	return nil

@@ -1302,10 +1302,11 @@ func (b *Block) GetBlockData() *BlockData {
 func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
 	for _, tx := range b.Transactions() {
 		tx.TriggerEvent(emitter, TopicTransactionExecutionResult)
-		tx.TriggerEvent(emitter, TypeAccountTransactionExecution)
+		tx.TriggerAccEvent(emitter, TypeAccountTransactionExecution)
 	}
 }
 
+// EmitBlockEvent emits block related event
 func (b *Block) EmitBlockEvent(emitter *EventEmitter, eType string) {
 	event := &Event{
 		Topic: eType,
