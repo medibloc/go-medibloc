@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/util/byteutils"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -194,14 +196,17 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
 		tail = block
 	}
+	payload := &core.AddRecordPayload{
+		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+	}
 	block := bb.Block(blocks[0]).Child().
-		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
 
 	block = bb.Block(blocks[1]).Child().
-		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrCannotRevertLIB, err)
@@ -213,7 +218,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	assert.NoError(t, err)
 
 	block = bb.Block(blocks[dynastySize*2/3+1]).Child().
-		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{}).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
@@ -244,8 +249,11 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	b1 := bb.Block(tail).Child().Stake().SignProposer().Build()
 	blocks = append(blocks, b1)
 
+	payload := &core.AddRecordPayload{
+		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+	}
 	b2 := bb.Block(b1).Child().
-		Tx().Type(core.TxOpAddRecord).Payload(&core.AddRecordPayload{RecordHash: []byte("recordHash0")}).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	blocks = append(blocks, b2)
 
@@ -253,11 +261,12 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	blocks = append(blocks, b3)
 
 	for i := 1; i < dynastySize+2; i++ {
-		recordPayload := &core.AddRecordPayload{
-			RecordHash: []byte(fmt.Sprintf("recordHash%v", i)),
+		hash := fmt.Sprintf("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f%v", i)
+		payload := &core.AddRecordPayload{
+			RecordHash: byteutils.Hex2Bytes(hash),
 		}
 		block := bb.Block(blocks[i+1]).Child().
-			Tx().Type(core.TxOpAddRecord).Payload(recordPayload).SignPair(bb.KeyPairs[0]).Execute().
+			Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 			SignProposer().Build()
 		blocks = append(blocks, block)
 	}
