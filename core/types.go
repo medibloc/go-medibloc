@@ -71,6 +71,9 @@ const (
 	NetLimit                         = 3000000 // 3MB
 )
 
+//MinimumAliasCollateral limit value for register alias
+const MinimumAliasCollateral = "1000000"
+
 // Points Price related defaults
 var (
 	MinimumDiscountRatio  = big.NewRat(1, 100)
@@ -161,6 +164,7 @@ var (
 	ErrInvalidNetUsage              = errors.New("block ueses too much net bandwidth")
 	ErrWrongCPUUsage                = errors.New("block cpu usage is not matched with sum of tx cpu usage")
 	ErrWrongNetUsage                = errors.New("block net usage is not matched with sum of tx net usage")
+	ErrInvalidAlias                 = errors.New("invalid alias")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

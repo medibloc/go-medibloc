@@ -17,6 +17,7 @@ package rpc
 
 import (
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -33,7 +34,7 @@ func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) 
 	if err := account.UpdateUnstaking(curTs); err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateUnstaking)
 	}
-	aliasBytes, err := account.GetData(core.AliasPrefix, []byte(core.AliasKey))
+	aliasBytes, err := account.GetData(core.AliasPrefix, []byte(common.AliasKey))
 	if err != nil && err != core.ErrNotFound {
 		return nil, err
 	}

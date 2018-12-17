@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/common"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -267,7 +269,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
 	}
 	acc2, err = bb.B.State().AccState().GetAccount(from.Addr)
-	aliasBytes, err = acc2.GetData(core.AliasPrefix, []byte(core.AliasKey))
+	aliasBytes, err = acc2.GetData(core.AliasPrefix, []byte(common.AliasKey))
 	pbAlias = new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {

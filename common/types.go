@@ -18,6 +18,7 @@ package common
 import (
 	"bytes"
 	"math/big"
+	"unicode"
 
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
@@ -121,4 +122,32 @@ func (a Address) ToBytes() ([]byte, error) {
 func (a *Address) FromBytes(b []byte) error {
 	a.SetBytes(b)
 	return nil
+}
+
+const (
+	//AliasKey key for find aliasname
+	AliasKey = "alias"
+	//AliasMaxLength is the max length of alias
+	AliasMaxLength = 12
+)
+
+// IsValidAlias checks alias
+func IsValidAlias(alias string) bool {
+	if alias == "" {
+		return false
+	}
+	if len(alias) > AliasMaxLength {
+		return false
+	}
+	for i := 0; i < len(alias); i++ {
+		ch := rune(alias[i])
+
+		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
+			return false
+		}
+		if i == 0 && unicode.IsNumber(ch) {
+			return false
+		}
+	}
+	return true
 }

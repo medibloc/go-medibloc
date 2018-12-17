@@ -17,7 +17,6 @@ package core
 
 import (
 	"fmt"
-	"unicode"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
@@ -30,13 +29,6 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
-)
-
-const (
-	//AliasKey key for find aliasname
-	AliasKey = "alias"
-	//MinimumAliasCollateral limit value for register alias
-	MinimumAliasCollateral = "1000000"
 )
 
 // Transaction struct represents transaction
@@ -1093,6 +1085,11 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
+
+	if !common.IsValidAlias(payload.AliasName) {
+		return nil, ErrInvalidAlias
+	}
+
 	size, err := tx.Size()
 	if err != nil {
 		return nil, err
@@ -1117,16 +1114,16 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 		return ErrAliasCollateralLimit
 	}
 
-	err = checkAliasCondition(tx.aliasName)
-	if err != nil {
-		return err
+	if !common.IsValidAlias(tx.aliasName) {
+		return ErrInvalidAlias
 	}
+
 	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
 		return err
 	}
 	//aliasBytes, err := acc.GetData(AliasPrefix, []byte("alias"))
-	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
+	aliasBytes, err := acc.GetData(AliasPrefix, []byte(common.AliasKey))
 	if err != nil && err != ErrNotFound {
 		return err
 	}
@@ -1168,7 +1165,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	err = acc.PutData(AliasPrefix, []byte(AliasKey), aliasBytes)
+	err = acc.PutData(AliasPrefix, []byte(common.AliasKey), aliasBytes)
 	if err != nil {
 		return err
 	}
@@ -1205,26 +1202,6 @@ func (tx *RegisterAliasTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1500, uint64(tx.size)
 }
 
-func checkAliasCondition(an string) error {
-	if an == "" {
-		return ErrAliasEmptyString
-	}
-	if len(an) > 12 {
-		return ErrAliasLengthLimit
-	}
-	for i := 0; i < len(an); i++ {
-		ch := rune(an[i])
-
-		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
-			return ErrAliasInvalidChar
-		}
-		if i == 0 && unicode.IsNumber(ch) {
-			return ErrAliasFirstLetter
-		}
-	}
-	return nil
-}
-
 // DeregisterAliasTx is a structure for deregister alias
 type DeregisterAliasTx struct {
 	addr common.Address
@@ -1254,7 +1231,7 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 		return err
 	}
 
-	aliasBytes, err := acc.GetData(AliasPrefix, []byte(AliasKey))
+	aliasBytes, err := acc.GetData(AliasPrefix, []byte(common.AliasKey))
 	pbAlias := new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
@@ -1285,7 +1262,7 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	err = acc.Data.Delete([]byte(AliasKey))
+	err = acc.Data.Delete([]byte(common.AliasKey))
 	if err != nil {
 		return err
 	}
