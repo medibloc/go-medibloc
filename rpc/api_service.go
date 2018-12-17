@@ -275,7 +275,7 @@ func (s *APIService) GetPendingTransactionsAPI(ctx context.Context,
 // GetTransactionAPI returns transaction
 func (s *APIService) GetTransactionAPI(ctx context.Context, req *rpcpb.GetTransaction) (*rpcpb.
 	Transaction, error) {
-	if len(req.Hash) != 64 {
+	if !common.IsHash(req.Hash) {
 		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
 	}
 
@@ -306,7 +306,7 @@ func (s *APIService) GetTransactionAPI(ctx context.Context, req *rpcpb.GetTransa
 // GetTransactionReceiptAPI returns transaction receipt
 func (s *APIService) GetTransactionReceiptAPI(ctx context.Context, req *rpcpb.GetTransaction) (*rpcpb.
 	TransactionReceipt, error) {
-	if len(req.Hash) != 64 {
+	if !common.IsHash(req.Hash) {
 		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
 	}
 
