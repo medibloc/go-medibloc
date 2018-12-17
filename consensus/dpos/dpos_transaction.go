@@ -20,6 +20,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // BecomeCandidateTx is a structure for quiting cadidate
@@ -45,6 +46,13 @@ func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, core.ErrInvalidAddress
+	}
+	if !common.IsHash(byteutils.Bytes2Hex(tx.Hash())) {
+		return nil, core.ErrInvalidHash
+	}
+
 	return &BecomeCandidateTx{
 		txHash:        tx.Hash(),
 		candidateAddr: tx.From(),
@@ -130,6 +138,10 @@ func NewQuitCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, core.ErrInvalidAddress
+	}
+
 	return &QuitCandidateTx{
 		candidateAddr: tx.From(),
 		size:          size,
@@ -202,6 +214,10 @@ func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, core.ErrInvalidAddress
+	}
+
 	return &VoteTx{
 		voter:        tx.From(),
 		candidateIDs: payload.CandidateIDs,

@@ -165,6 +165,10 @@ var (
 	ErrWrongCPUUsage                = errors.New("block cpu usage is not matched with sum of tx cpu usage")
 	ErrWrongNetUsage                = errors.New("block net usage is not matched with sum of tx net usage")
 	ErrInvalidAlias                 = errors.New("invalid alias")
+	ErrInvalidAddress               = errors.New("invalid address")
+	ErrInvalidHash                  = errors.New("invalid hash")
+	ErrInvalidRecordHash            = errors.New("invalid record hash")
+	ErrInvalidCertificationHash     = errors.New("invalid certification hash")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

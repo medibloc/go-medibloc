@@ -517,7 +517,7 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
-	if tx.value.Cmp(util.Uint128Zero()) == 0 {
+	if tx.Value().Cmp(util.Uint128Zero()) == 0 {
 		return nil, ErrVoidTransaction
 	}
 	payload := new(DefaultPayload)
@@ -527,6 +527,9 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	size, err := tx.Size()
 	if err != nil {
 		return nil, err
+	}
+	if !common.IsHexAddress(tx.From().Hex()) || !common.IsHexAddress(tx.To().Hex()) {
+		return nil, ErrInvalidAddress
 	}
 
 	return &TransferTx{
@@ -598,6 +601,12 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 	size, err := tx.Size()
 	if err != nil {
 		return nil, err
+	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, ErrInvalidAddress
+	}
+	if !common.IsHash(byteutils.Bytes2Hex(payload.RecordHash)) {
+		return nil, ErrInvalidRecordHash
 	}
 
 	return &AddRecordTx{
@@ -680,6 +689,10 @@ func NewStakeTx(tx *Transaction) (ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, ErrInvalidAddress
+	}
+
 	return &StakeTx{
 		user:   tx.From(),
 		amount: tx.Value(),
@@ -751,6 +764,10 @@ func NewUnstakeTx(tx *Transaction) (ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, ErrInvalidAddress
+	}
+
 	return &UnstakeTx{
 		user:   tx.From(),
 		amount: tx.Value(),
@@ -839,6 +856,13 @@ func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) || !common.IsHexAddress(tx.To().Hex()) {
+		return nil, ErrInvalidAddress
+	}
+	if !common.IsHash(byteutils.Bytes2Hex(payload.CertificateHash)) {
+		return nil, ErrInvalidCertificationHash
+	}
+
 	return &AddCertificationTx{
 		Issuer:          tx.From(),
 		Certified:       tx.To(),
@@ -969,6 +993,13 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if err != nil {
 		return nil, err
 	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, ErrInvalidAddress
+	}
+	if !common.IsHash(byteutils.Bytes2Hex(payload.CertificateHash)) {
+		return nil, ErrInvalidCertificationHash
+	}
+
 	return &RevokeCertificationTx{
 		Revoker:         tx.From(),
 		CertificateHash: payload.CertificateHash,
@@ -1085,14 +1116,15 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if err := BytesToTransactionPayload(tx.payload, payload); err != nil {
 		return nil, err
 	}
-
-	if !common.IsValidAlias(payload.AliasName) {
-		return nil, ErrInvalidAlias
-	}
-
 	size, err := tx.Size()
 	if err != nil {
 		return nil, err
+	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, ErrInvalidAddress
+	}
+	if !common.IsValidAlias(payload.AliasName) {
+		return nil, ErrInvalidAlias
 	}
 
 	return &RegisterAliasTx{
@@ -1216,6 +1248,9 @@ func NewDeregisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	size, err := tx.Size()
 	if err != nil {
 		return nil, err
+	}
+	if !common.IsHexAddress(tx.From().Hex()) {
+		return nil, ErrInvalidAddress
 	}
 
 	return &DeregisterAliasTx{
