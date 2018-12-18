@@ -22,7 +22,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 
 	libcrypto "github.com/libp2p/go-libp2p-crypto"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -40,7 +40,7 @@ func LoadNetworkKeyFromFile(path string) (libcrypto.PrivKey, error) {
 
 // LoadOrNewNetworkKey load network priv key from file or create new one.
 func LoadOrNewNetworkKey(cfg *medletpb.Config) (libcrypto.PrivKey, error) {
-	// try receiver load from conf
+	// try to load from conf
 	key, err := LoadNetworkKeyFromFile(cfg.Network.NetworkKeyFile)
 	if err != nil && !os.IsNotExist(err) {
 		logging.Console().WithFields(logrus.Fields{
@@ -57,7 +57,7 @@ func LoadOrNewNetworkKey(cfg *medletpb.Config) (libcrypto.PrivKey, error) {
 		return key, nil
 	}
 
-	// try receiver load from cache
+	// try to load from cache
 	cacheDir := path.Join(cfg.Global.Datadir, DefaultPrivateKeyFile)
 	key, err = LoadNetworkKeyFromFile(cacheDir)
 	if err != nil && !os.IsNotExist(err) {

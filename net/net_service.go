@@ -18,7 +18,7 @@ package net
 import (
 	"context"
 
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -68,7 +68,7 @@ func (ms *MedService) Start() error {
 	if err := ms.node.Start(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed receiver start MedService.")
+		}).Error("Failed to start MedService.")
 		return err
 	}
 
@@ -99,7 +99,7 @@ func (ms *MedService) SendMessageToPeer(msgType string, data []byte, priority in
 	ms.node.SendMessageToPeer(msgType, data, priority, peerID)
 }
 
-// SendMessageToPeers send message receiver peers.
+// SendMessageToPeers send message to peers.
 func (ms *MedService) SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) []string {
 	return ms.node.SendMessageToPeers(msgType, data, priority, filter)
 }

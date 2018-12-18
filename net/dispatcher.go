@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/medibloc/go-medibloc/metrics"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -121,7 +121,7 @@ func (dp *Dispatcher) loop() {
 				default:
 					logging.WithFields(logrus.Fields{
 						"msgType": msgType,
-					}).Debug("timeout receiver dispatch message.")
+					}).Debug("timeout to dispatch message.")
 				}
 				return true
 			})
@@ -129,7 +129,7 @@ func (dp *Dispatcher) loop() {
 	}
 }
 
-// handleNewMessage handle new message receiver chan, then subscribers will be notified receiver process.
+// handleNewMessage handle new message to chan, then subscribers will be notified to process.
 func (dp *Dispatcher) handleNewMessage(msg Message) {
 
 	hash := msg.Hash()

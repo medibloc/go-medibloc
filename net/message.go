@@ -17,9 +17,9 @@ package net
 
 import (
 	"github.com/gogo/protobuf/proto"
-	"github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/medibloc/go-medibloc/crypto/hash"
-	"github.com/medibloc/go-medibloc/net/pb"
+	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 

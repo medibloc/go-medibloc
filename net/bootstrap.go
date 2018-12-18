@@ -22,13 +22,13 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-peer"
+	host "github.com/libp2p/go-libp2p-host"
+	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/medibloc/go-medibloc/net/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/multiformats/go-multiaddr"
+	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -92,21 +92,21 @@ func bootstrapConnect(ph host.Host, peers []pstore.PeerInfo) {
 		go func(p pstore.PeerInfo) {
 			defer wg.Done()
 			logging.Console().WithFields(logrus.Fields{
-				"receiver": p.ID.Pretty(),
-				"from":     ph.ID().Pretty(),
+				"to":   p.ID.Pretty(),
+				"from": ph.ID().Pretty(),
 			}).Debug("bootstrap connection start")
 
 			ph.Peerstore().AddAddrs(p.ID, p.Addrs, pstore.PermanentAddrTTL)
 			if err := ph.Connect(context.Background(), p); err != nil {
 				logging.Console().WithFields(logrus.Fields{
-					"receiver": p.ID.Pretty(),
-					"from":     ph.ID().Pretty(),
+					"to":   p.ID.Pretty(),
+					"from": ph.ID().Pretty(),
 				}).Info("bootstrap connection failed")
 				return
 			}
 			logging.Console().WithFields(logrus.Fields{
-				"receiver": p.ID.Pretty(),
-				"from":     ph.ID().Pretty(),
+				"to":   p.ID.Pretty(),
+				"from": ph.ID().Pretty(),
 			}).Info("bootstrap connection succeed")
 		}(p)
 	}
@@ -117,12 +117,12 @@ func bootstrapConnect(ph host.Host, peers []pstore.PeerInfo) {
 	}).Info("finishing bootstrap connect")
 }
 
-// SaveCache save host's peerstore receiver cache file
+// SaveCache save host's peerstore to cache file
 func (node *Node) SaveCache() {
 	savePeerStoreToCache(node.Peerstore(), node.cacheFile)
 }
 
-// savePeerStoreToCache save peerstore receiver cache file
+// savePeerStoreToCache save peerstore to cache file
 func savePeerStoreToCache(ps pstore.Peerstore, cacheFile string) {
 	pbPeers := new(netpb.Peers)
 	for _, id := range ps.Peers() {
@@ -138,7 +138,7 @@ func savePeerStoreToCache(ps pstore.Peerstore, cacheFile string) {
 		logging.WithFields(logrus.Fields{
 			"cacheFile": cacheFile,
 			"err":       err,
-		}).Warn("failed receiver save peers receiver cache file")
+		}).Warn("failed to save peers to cache file")
 		return
 	}
 }

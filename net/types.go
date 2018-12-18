@@ -21,7 +21,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	inet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
+	peer "github.com/libp2p/go-libp2p-peer"
 )
 
 // DefaultConnMgrHighWater is the default value for the connection managers
@@ -80,7 +80,7 @@ type Serializable interface {
 	FromProto(proto.Message) error
 }
 
-// PeerFilterAlgorithm is the algorithm used receiver filter peers
+// PeerFilterAlgorithm is the algorithm used to filter peers
 type PeerFilterAlgorithm interface {
 	Filter([]peer.ID) []peer.ID
 }
@@ -124,7 +124,7 @@ type Subscriber struct {
 	// msgChan chan for subscribed message.
 	msgChan chan Message
 
-	// msgType message type receiver subscribe
+	// msgType message type to subscribe
 	msgType string
 
 	// msgWeight weight of msgType

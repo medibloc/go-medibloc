@@ -20,8 +20,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/libp2p/go-libp2p-peerstore"
-	"github.com/medibloc/go-medibloc/net/pb"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	netpb "github.com/medibloc/go-medibloc/net/pb"
 )
 
 // Errors

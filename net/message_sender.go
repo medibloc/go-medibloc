@@ -20,7 +20,7 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/libp2p/go-libp2p-host"
+	host "github.com/libp2p/go-libp2p-host"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -73,7 +73,7 @@ func (ms *messageSender) loop() {
 }
 
 func (ms *messageSender) handelNewMessage(msg *SendMessage) {
-	// writing concurrency is fulfilled. put message receiver queue
+	// writing concurrency is fulfilled. put message to queue
 	if ms.sending >= ms.maxSending {
 		ms.messageQ.put(msg)
 		return
@@ -90,21 +90,21 @@ func (ms *messageSender) writeMessage(msg *SendMessage) {
 	defer s.Close()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"receiver": msg.receiver.Pretty(),
-			"err":      err,
-		}).Error("failed receiver open stream for send msg")
+			"to":  msg.receiver.Pretty(),
+			"err": err,
+		}).Error("failed to open stream for send msg")
 		ms.doneCh <- err
 		return
 	}
 
 	if n, err := s.Write(msg.Bytes()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"receiver":     msg.receiver.Pretty(),
+			"to":           msg.receiver.Pretty(),
 			"msgType":      msg.MessageType(),
 			"msg":          msg.Data(),
 			"remainLength": n,
 			"err":          err,
-		}).Error("failed receiver write msg on stream")
+		}).Error("failed to write msg on stream")
 		ms.doneCh <- err
 		return
 	}
