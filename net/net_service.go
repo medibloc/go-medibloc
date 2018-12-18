@@ -94,12 +94,7 @@ func (ms *MedService) Deregister(subscribers ...*Subscriber) {
 	ms.dispatcher.Deregister(subscribers...)
 }
 
-// Relay message.
-//func (ms *MedService) Relay(name string, msg Serializable, priority int) {
-//	ms.host.RelayMessage(name, msg, priority)
-//}
-
-// SendMessageToPeer send message receiver a peer.
+// SendMessageToPeer send message to a peer.
 func (ms *MedService) SendMessageToPeer(msgType string, data []byte, priority int, peerID string) {
 	ms.node.SendMessageToPeer(msgType, data, priority, peerID)
 }
