@@ -17,6 +17,7 @@ package common
 
 import (
 	"bytes"
+	"github.com/medibloc/go-medibloc/core"
 	"math/big"
 	"unicode"
 
@@ -137,23 +138,24 @@ const (
 	AliasMaxLength = 12
 )
 
-// IsValidAlias checks alias
-func IsValidAlias(alias string) bool {
+// ValidateAlias checks alias
+func ValidateAlias(alias string) error {
 	if alias == "" {
-		return false
+		return core.ErrAliasEmptyString
 	}
 	if len(alias) > AliasMaxLength {
-		return false
+		return core.ErrAliasLengthLimit
 	}
 	for i := 0; i < len(alias); i++ {
 		ch := rune(alias[i])
 
 		if !(unicode.IsNumber(ch) || unicode.IsLower(ch)) {
-			return false
+			return core.ErrAliasInvalidChar
 		}
 		if i == 0 && unicode.IsNumber(ch) {
-			return false
+			return core.ErrAliasFirstLetter
 		}
 	}
-	return true
+	return nil
+
 }
