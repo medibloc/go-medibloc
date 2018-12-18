@@ -70,7 +70,7 @@ const (
 )
 
 //MinimumAliasCollateral limit value for register alias
-const MinimumAliasCollateral = "1000000"
+const MinimumAliasCollateral = "1000000000000000000"
 
 // Points Price related defaults
 var (
