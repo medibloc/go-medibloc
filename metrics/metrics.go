@@ -32,7 +32,7 @@ const (
 	interval = 2 * time.Second
 	chainID  = "chainID"
 	// MetricsEnabledFlag metrics enable flag
-	MetricsEnabledFlag = "metrics"
+	EnabledFlag = "metrics"
 )
 
 var (
@@ -47,7 +47,7 @@ type Medlet interface {
 
 func init() {
 	for _, arg := range os.Args {
-		if strings.TrimLeft(arg, "-") == MetricsEnabledFlag {
+		if strings.TrimLeft(arg, "-") == EnabledFlag {
 			EnableMetrics()
 			return
 		}
