@@ -123,9 +123,9 @@ func TestNotFound(t *testing.T) {
 	assert.Len(t, blocks, 0)
 
 	block := bp.FindUnlinkedAncestor(genesis)
-	assert.Equal(t, genesis, block)
+	assert.Equal(t, nil, block)
 
-	block = bp.FindParent(block)
+	block = bp.FindParent(genesis)
 	assert.Nil(t, err)
 }
 

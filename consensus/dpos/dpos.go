@@ -22,15 +22,15 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/keystore"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -48,6 +48,8 @@ type Dpos struct {
 	tm *core.TransactionManager
 
 	quitCh chan int
+
+	eventEmitter *core.EventEmitter
 }
 
 //Proposer returns proposer
@@ -74,6 +76,11 @@ func New(dynastySize int) *Dpos {
 		quitCh:      make(chan int),
 		proposers:   make(map[common.Address]*Proposer),
 	}
+}
+
+// SetEventEmitter sets eventEmitter
+func (d *Dpos) SetEventEmitter(emitter *core.EventEmitter) {
+	d.eventEmitter = emitter
 }
 
 // NewConsensusState generates new dpos state
@@ -105,8 +112,12 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 			return ErrProposerConfigNotFound
 		}
 		for _, pbProposer := range cfg.Chain.Proposers {
+			var err error
 			p := &Proposer{}
-			p.Coinbase = common.HexToAddress(pbProposer.Coinbase)
+			p.Coinbase, err = common.HexToAddress(pbProposer.Coinbase)
+			if err != nil {
+				return err
+			}
 
 			if pbProposer.Keydir != "" {
 				ks, err := ioutil.ReadFile(pbProposer.Keydir)
@@ -130,7 +141,10 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 
 			} else {
 				var err error
-				p.ProposerAddress = common.HexToAddress(pbProposer.Proposer)
+				p.ProposerAddress, err = common.HexToAddress(pbProposer.Proposer)
+				if err != nil {
+					return err
+				}
 				p.Privkey, err = secp256k1.NewPrivateKeyFromHex(pbProposer.Privkey)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
@@ -445,6 +459,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 					"transaction": transaction.Hash(),
 					"err":         err,
 				}).Info("failed to execute transaction")
+				transaction.TriggerEvent(d.eventEmitter, core.TypeAccountTransactionDeleted)
 				continue
 			}
 			if err := block.BeginBatch(); err != nil {

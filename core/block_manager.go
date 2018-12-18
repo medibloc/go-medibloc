@@ -16,7 +16,7 @@
 package core
 
 import (
-	"sync"
+	"bytes"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -36,7 +36,6 @@ var (
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
 type BlockManager struct {
-	mu        sync.RWMutex
 	bc        *BlockChain
 	bp        *BlockPool
 	tm        *TransactionManager
@@ -50,6 +49,29 @@ type BlockManager struct {
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
+
+	// workManager
+	finishWorkCh   chan *blockResult
+	newBlockCh     chan *blockPackage
+	closeWorkersCh chan bool
+	workFinishedCh chan bool
+
+	// chainManager
+	trigCh               chan *blockPackage
+	finishChainManagerCh chan bool
+	cmFinishedCh         chan bool
+}
+
+type blockPackage struct {
+	*BlockData
+	okCh         chan bool
+	execCh       chan error
+	trigResultCh chan bool
+}
+
+type blockResult struct {
+	block   *blockPackage
+	isValid bool
 }
 
 //TxMap returns txMap
@@ -84,7 +106,14 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		syncActivationHeight:  cfg.Sync.SyncActivationHeight,
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
+		finishWorkCh:          make(chan *blockResult, 100), // TODO @ggomma use config
+		newBlockCh:            make(chan *blockPackage, 100),
 		quitCh:                make(chan int),
+		closeWorkersCh:        make(chan bool),
+		workFinishedCh:        make(chan bool),
+		trigCh:                make(chan *blockPackage, 100),
+		finishChainManagerCh:  make(chan bool),
+		cmFinishedCh:          make(chan bool),
 	}, nil
 }
 
@@ -126,13 +155,214 @@ func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns 
 // Start starts BlockManager service.
 func (bm *BlockManager) Start() {
 	logging.Console().Info("Starting BlockManager...")
+	go bm.runDistributor()
+	go bm.runChainManager()
 	go bm.loop()
 }
 
 // Stop stops BlockManager service.
 func (bm *BlockManager) Stop() {
 	logging.Console().Info("Stopping BlockManager...")
-	bm.quitCh <- 0
+
+	close(bm.closeWorkersCh)
+	<-bm.workFinishedCh
+	close(bm.finishChainManagerCh)
+	<-bm.cmFinishedCh
+	close(bm.quitCh)
+}
+
+func (bm *BlockManager) processTask(newData *blockPackage) {
+	if b := bm.bc.BlockByHash(newData.Hash()); b != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": newData,
+		}).Warn("Block is already on the chain")
+		bm.alarmExecutionResult(newData, ErrAlreadyOnTheChain)
+		return
+	}
+
+	// Worker only handles the block data which parent is already on the chain
+	parent := bm.bc.BlockByHash(newData.ParentHash())
+	if parent == nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": newData,
+		}).Warn("Failed to find parent block on the chain")
+		bm.alarmExecutionResult(newData, ErrCannotFindParentBlockOnTheChain)
+		return
+	}
+
+	if bm.bc.IsForkedBeforeLIB(parent) {
+		logging.WithFields(logrus.Fields{
+			"blockData": newData,
+		}).Debug("Received a block forked before current LIB.")
+		bm.alarmExecutionResult(newData, ErrForkedBeforeLIB)
+		return
+	}
+
+	if err := verifyBlockHeight(newData.BlockData, parent); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to verifyBlockHeight")
+		bm.alarmExecutionResult(newData, err)
+		return
+	}
+
+	if err := verifyTimestamp(newData.BlockData, parent); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to verifyTimestamp")
+		bm.alarmExecutionResult(newData, err)
+		return
+	}
+
+	if err := bm.consensus.VerifyInterval(newData.BlockData, parent); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"timestamp": newData.timestamp,
+		}).Warn("Block timestamp is wrong")
+		bm.alarmExecutionResult(newData, err)
+		return
+	}
+
+	child, err := newData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":    err,
+			"parent": parent,
+		}).Error("Failed to execute on a parent block.")
+		bm.alarmExecutionResult(newData, err)
+		return
+	}
+
+	if err := bm.bc.PutVerifiedNewBlock(parent, child); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":    err,
+			"parent": parent,
+			"child":  child,
+		}).Error("Failed to put block on the chain.")
+		bm.alarmExecutionResult(newData, err)
+		return
+	}
+
+	if newData.execCh != nil {
+		newData.trigResultCh = make(chan bool)
+	}
+	bm.trigCh <- newData
+
+	logging.Console().WithFields(logrus.Fields{
+		"block": child,
+		"ts":    time.Unix(newData.Timestamp(), 0),
+	}).Info("Block pushed.")
+
+	if newData.trigResultCh != nil {
+		<-newData.trigResultCh
+	}
+	return
+}
+
+func (bm *BlockManager) runDistributor() {
+	wm := newWorkManager()
+
+	for {
+		select {
+		case result := <-bm.finishWorkCh:
+			// remove from workQ
+			wm.removeBlock(result.block.BlockData)
+			bm.bp.Remove(result.block)
+
+			// if block is invalid, remove block from pool
+			if !result.isValid || wm.finish {
+				break
+			}
+
+			children := bm.bp.FindChildren(result.block)
+			for _, c := range children {
+				wm.addBlock(c.(*blockPackage).BlockData)
+				go bm.processTask(c.(*blockPackage))
+			}
+		case blockPackage := <-bm.newBlockCh:
+
+			// skip if ancestor is already on workQ
+			if wm.hasBlock(blockPackage.BlockData) {
+				close(blockPackage.okCh)
+				continue
+			}
+
+			// skip if ancestor's parent is not on the chain
+			if bd := bm.bc.BlockByHash(blockPackage.ParentHash()); bd == nil {
+				close(blockPackage.okCh)
+				continue
+			}
+
+			wm.addBlock(blockPackage.BlockData)
+
+			go bm.processTask(blockPackage)
+			close(blockPackage.okCh)
+		case <-bm.closeWorkersCh:
+			wm.finishWork()
+		}
+
+		if wm.finish && len(wm.q) == 0 {
+			close(bm.workFinishedCh)
+			return
+		}
+	}
+}
+
+func (bm *BlockManager) runChainManager() {
+	mainTail := bm.TailBlock()
+	LIB := bm.LIB()
+	for {
+		select {
+		case <-bm.finishChainManagerCh:
+			close(bm.cmFinishedCh)
+			return
+		case newData := <-bm.trigCh:
+			// newData is used only for alarming not affecting lib, tailblock, indexing process
+			newTail := bm.consensus.ForkChoice(bm.bc)
+			if byteutils.Equal(mainTail.Hash(), newTail.Hash()) {
+				bm.alarmExecutionResult(newData, nil)
+				continue
+			}
+			mainTail = newTail
+
+			revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
+			if err != nil {
+				logging.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to set new tail block.")
+				bm.alarmExecutionResult(newData, err)
+				continue
+			}
+
+			if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
+				bm.alarmExecutionResult(newData, err)
+				continue
+			}
+
+			newLIB := bm.consensus.FindLIB(bm.bc)
+			if byteutils.Equal(LIB.Hash(), newLIB.Hash()) {
+				bm.alarmExecutionResult(newData, nil)
+				continue
+			}
+			LIB = newLIB
+
+			err = bm.bc.SetLIB(newLIB)
+			if err != nil {
+				logging.WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Failed to set LIB.")
+				bm.alarmExecutionResult(newData, err)
+				continue
+			}
+
+			logging.Console().WithFields(logrus.Fields{
+				"LIB":         newLIB,
+				"newMainTail": newTail,
+			}).Info("Block accepted.")
+
+			bm.alarmExecutionResult(newData, nil)
+		}
+	}
 }
 
 func (bm *BlockManager) registerInNetwork() {
@@ -143,43 +373,31 @@ func (bm *BlockManager) registerInNetwork() {
 
 // ChainID return BlockChain.ChainID
 func (bm *BlockManager) ChainID() uint32 {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	return bm.bc.ChainID()
 }
 
 // BlockByHeight returns the block contained in the chain by height.
 func (bm *BlockManager) BlockByHeight(height uint64) (*Block, error) {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	return bm.bc.BlockByHeight(height)
 }
 
 // BlockByHash returns the block contained in the chain by hash.
 func (bm *BlockManager) BlockByHash(hash []byte) *Block {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	return bm.bc.BlockByHash(hash)
 }
 
 // TailBlock getter for mainTailBlock
 func (bm *BlockManager) TailBlock() *Block {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	return bm.bc.MainTailBlock()
 }
 
 // LIB returns latest irreversible block of the chain.
 func (bm *BlockManager) LIB() *Block {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	return bm.bc.LIB()
 }
 
 //ForceLIB set LIB force
 func (bm *BlockManager) ForceLIB(b *Block) error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
 	return bm.bc.SetLIB(b)
 }
 
@@ -207,53 +425,106 @@ func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 	return bm.directPush(b)
 }
 
-func (bm *BlockManager) directPush(b *Block) error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
+// PushBlockDataSync pushes block to distributor and wait for execution
+// Warning! - Use this method only for test for time efficiency.
+func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
+	return bm.pushSync(bd)
+}
 
+func (bm *BlockManager) directPush(b *Block) error {
 	// Parent block doesn't exist in blockchain.
 	parentOnChain := bm.bc.BlockByHash(b.ParentHash())
 	if parentOnChain == nil {
 		return ErrFailedToDirectPush
 	}
 
-	if err := bm.bc.PutVerifiedNewBlocks(parentOnChain, []*Block{b}, []*Block{b}); err != nil {
+	if err := bm.bc.PutVerifiedNewBlock(parentOnChain, b); err != nil {
 		return ErrFailedToDirectPush
 	}
 
-	newTail := bm.consensus.ForkChoice(bm.bc)
-	revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set new tail block.")
-		return err
-	}
-	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-		return err
-	}
-
-	newLIB := bm.consensus.FindLIB(bm.bc)
-	err = bm.bc.SetLIB(newLIB)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set LIB.")
-	}
-
+	bm.trigCh <- nil
 	logging.Console().WithFields(logrus.Fields{
-		"block":       b,
-		"ts":          time.Unix(b.Timestamp(), 0),
-		"tail_height": newTail.Height(),
-		"lib_height":  newLIB.Height(),
+		"block": b,
+		"ts":    time.Unix(b.Timestamp(), 0),
 	}).Info("Block is directly pushed.")
 
 	return nil
 }
 
 func (bm *BlockManager) push(bd *BlockData) error {
-	bm.mu.Lock()
-	defer bm.mu.Unlock()
+	if err := bm.verifyBlockData(bd); err != nil {
+		return err
+	}
+
+	newBlockPackage := &blockPackage{
+		BlockData: bd,
+		okCh:      nil,
+		execCh:    nil,
+	}
+
+	if err := bm.bp.Push(newBlockPackage); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Error("Failed to push to block pool.")
+		return err
+	}
+
+	bm.pushToDistributor(newBlockPackage)
+
+	return nil
+}
+
+func (bm *BlockManager) pushSync(bd *BlockData) error {
+	if err := bm.verifyBlockData(bd); err != nil {
+		return err
+	}
+
+	execCh := make(chan error, 1)
+	newBlockPackage := &blockPackage{
+		BlockData: bd,
+		okCh:      nil,
+		execCh:    execCh,
+	}
+
+	if err := bm.bp.Push(newBlockPackage); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":       err,
+			"blockData": bd,
+		}).Error("Failed to push to block pool.")
+		return err
+	}
+
+	bm.pushToDistributor(newBlockPackage)
+
+	timeout := time.After(5 * time.Second) // TODO @ggomma use config for duration
+	select {
+	case err := <-execCh:
+		return err
+	case <-timeout:
+		return ErrBlockExecutionTimeout
+	}
+}
+
+func (bm *BlockManager) pushToDistributor(bp *blockPackage) {
+	newBlockPackage := &blockPackage{
+		bp.BlockData,
+		make(chan bool),
+		bp.execCh,
+		nil,
+	}
+	if v := bm.bp.FindUnlinkedAncestor(bp); v != nil {
+		newBlockPackage.BlockData = v.(*blockPackage).BlockData
+		newBlockPackage.execCh = v.(*blockPackage).execCh
+	}
+
+	bm.newBlockCh <- newBlockPackage
+	<-newBlockPackage.okCh
+
+	return
+}
+
+func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 	if bm.bc.chainID != bd.ChainID() {
 		return ErrInvalidChainID
 	}
@@ -273,145 +544,15 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return ErrFailedValidateHeightAndHeight
 	}
 
-	// TODO @cl9200 Filter blocks of same height.
 	if err := bd.VerifyIntegrity(); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Debug("Failed to verify block signatures.")
 		return err
 	}
-
-	if err := bm.bp.Push(bd); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":       err,
-			"blockData": bd,
-		}).Error("Failed to push to block pool.")
-		return err
-	}
-
-	// Parent block doesn't exist in blockchain.
-	parentOnChain := bm.bc.BlockByHash(bd.ParentHash())
-	if parentOnChain == nil {
-		return nil
-	}
-
-	if bm.bc.IsForkedBeforeLIB(parentOnChain) {
-		logging.WithFields(logrus.Fields{
-			"blockData": bd,
-		}).Debug("Received a block forked before current LIB.")
-		return ErrFailedValidateHeightAndHeight
-	}
-
-	// Parent block exists in blockchain.
-	// all : All executed blocks (It was in the pool previous) (It includes tails)
-	// tails : All tail blocks incl. forked tail block
-	// fails : Failed blocks
-	all, tails, fails := bm.findDescendantBlocks(parentOnChain)
-	for _, fail := range fails {
-		bm.bp.Remove(fail)
-	}
-	if len(all) == 0 {
-		logging.Console().WithFields(logrus.Fields{
-			"parent": parentOnChain,
-			"block":  bd,
-		}).Error("Failed to find descendant blocks.")
-		return ErrCannotExecuteOnParentBlock
-	}
-
-	bm.bc.PutVerifiedNewBlocks(parentOnChain, all, tails)
-
-	for _, block := range all {
-		bm.bp.Remove(block)
-	}
-
-	newTail := bm.consensus.ForkChoice(bm.bc)
-	revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set new tail block.")
-		return err
-	}
-	if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-		return err
-	}
-
-	newLIB := bm.consensus.FindLIB(bm.bc)
-	err = bm.bc.SetLIB(newLIB)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to set LIB.")
-	}
-
-	logging.Console().WithFields(logrus.Fields{
-		"block":       bd,
-		"ts":          time.Unix(bd.Timestamp(), 0),
-		"tail_height": newTail.Height(),
-		"lib_height":  newLIB.Height(),
-	}).Info("Block pushed.")
-
 	return nil
 }
 
-func (bm *BlockManager) findDescendantBlocks(parent *Block) (all []*Block, tails []*Block, fails []*BlockData) {
-	children := bm.bp.FindChildren(parent)
-	for _, v := range children {
-		childData := v.(*BlockData)
-
-		err := verifyBlockHeight(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Warn("Failed to verifyBlockHeight")
-			fails = append(fails, childData)
-			continue
-		}
-
-		err = verifyTimestamp(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Warn("Failed to verifyTimestamp")
-			fails = append(fails, childData)
-			continue
-		}
-
-		err = bm.consensus.VerifyInterval(childData, parent)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":       err,
-				"timestamp": childData.timestamp,
-			}).Warn("Block timestamp is wrong")
-			fails = append(fails, childData)
-			continue
-		}
-
-		block, err := childData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err":    err,
-				"parent": parent,
-			}).Warn("Failed to execute on a parent block.")
-			fails = append(fails, childData)
-			continue
-		}
-
-		childAll, childTails, childFail := bm.findDescendantBlocks(block)
-
-		all = append(all, block)
-		all = append(all, childAll...)
-
-		if len(childTails) == 0 {
-			tails = append(tails, block)
-		} else {
-			tails = append(tails, childTails...)
-		}
-
-		fails = append(fails, childFail...)
-	}
-	return all, tails, fails
-}
 func verifyTimestamp(bd *BlockData, parent *Block) error {
 	if bd.Timestamp() <= parent.Timestamp() {
 		return ErrInvalidTimestamp
@@ -448,21 +589,42 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 			}
 		}
 		if bm.bc.eventEmitter != nil {
-			event := &Event{
-				Topic: TopicRevertBlock,
-				Data:  byteutils.Bytes2Hex(block.Hash()),
-			}
-			bm.bc.eventEmitter.Trigger(event)
+			block.EmitBlockEvent(bm.bc.eventEmitter, TopicRevertBlock)
 		}
 		logging.Console().Warn("A block is reverted.")
 	}
 	return nil
 }
 
+func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
+	// for direct push
+	if bp == nil {
+		return
+	}
+
+	if bp.execCh != nil {
+		bp.execCh <- error
+	}
+
+	if bp.trigResultCh != nil {
+		close(bp.trigResultCh)
+	}
+
+	result := &blockResult{
+		bp,
+		true,
+	}
+
+	if error == nil {
+		bm.finishWorkCh <- result
+	} else {
+		result.isValid = false
+		bm.finishWorkCh <- result
+	}
+}
+
 // requestMissingBlock requests a missing block to connect to blockchain.
 func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	// Block already in the chain.
 	if bm.bc.BlockByHash(bd.Hash()) != nil {
 		return nil
@@ -473,14 +635,20 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		return nil
 	}
 
-	v := bm.bp.FindUnlinkedAncestor(bd)
-	unlinkedBlock := v.(*BlockData)
+	unlinkedBlock := bd
+	if v := bm.bp.FindUnlinkedAncestor(bd); v != nil {
+		unlinkedBlock = v.(*blockPackage).BlockData
+	}
+
+	if b := bm.bc.BlockByHash(unlinkedBlock.ParentHash()); b != nil {
+		return nil
+	}
 
 	downloadMsg := &corepb.DownloadParentBlock{
 		Hash: unlinkedBlock.Hash(),
 		Sign: unlinkedBlock.Sign(),
 	}
-	bytes, err := proto.Marshal(downloadMsg)
+	byteMsg, err := proto.Marshal(downloadMsg)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -493,7 +661,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 		"bm": bm,
 	}).Info("request missing parent block")
 
-	return bm.ns.SendMsg(MessageTypeRequestBlock, bytes, sender, net.MessagePriorityNormal)
+	return bm.ns.SendMsg(MessageTypeRequestBlock, byteMsg, sender, net.MessagePriorityNormal)
 }
 
 func (bm *BlockManager) loop() {
@@ -592,8 +760,6 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 }
 
 func (bm *BlockManager) handleRequestBlock(msg net.Message) {
-	bm.mu.RLock()
-	defer bm.mu.RUnlock()
 	if msg.MessageType() != MessageTypeRequestBlock {
 		logging.Console().WithFields(logrus.Fields{
 			"msgType": msg.MessageType(),
@@ -644,7 +810,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	bytes, err := net.SerializableToBytes(parent)
+	byteMsg, err := net.SerializableToBytes(parent)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"parent": parent,
@@ -653,7 +819,7 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	err = bm.ns.SendMsg(MessageTypeResponseBlock, bytes, msg.MessageFrom(), net.MessagePriorityNormal)
+	err = bm.ns.SendMsg(MessageTypeResponseBlock, byteMsg, msg.MessageFrom(), net.MessagePriorityNormal)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"receiver": msg.MessageFrom(),
@@ -666,4 +832,44 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		"block":  block,
 		"parent": parent,
 	}).Debug("Responded to the download request.")
+}
+
+type workManager struct {
+	q      []*BlockData
+	finish bool
+}
+
+func newWorkManager() *workManager {
+	return &workManager{
+		q:      make([]*BlockData, 0),
+		finish: false,
+	}
+}
+
+func (wm *workManager) hasBlock(bd *BlockData) bool {
+	for _, b := range wm.q {
+		if bytes.Equal(b.Hash(), bd.Hash()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (wm *workManager) removeBlock(bd *BlockData) {
+	for i, v := range wm.q {
+		if bytes.Equal(v.Hash(), bd.Hash()) {
+			wm.q = append(wm.q[:i], wm.q[i+1:]...)
+			return
+		}
+	}
+}
+
+func (wm *workManager) addBlock(bd *BlockData) {
+	wm.q = append(wm.q, bd)
+	return
+}
+
+func (wm *workManager) finishWork() {
+	wm.finish = true
+	return
 }

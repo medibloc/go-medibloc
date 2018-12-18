@@ -130,7 +130,11 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 	}
 
 	rootHash := generateHashTrie(downloadedHashes).RootHash()
-	if !byteutils.Equal(rootHash, byteutils.Hex2Bytes(dt.rootHash)) {
+	rootHashBytes, err := byteutils.Hex2Bytes(dt.rootHash)
+	if err != nil {
+		return err
+	}
+	if !byteutils.Equal(rootHash, rootHashBytes) {
 		logging.WithFields(logrus.Fields{
 			"err":         err,
 			"rootHash":    byteutils.Bytes2Hex(rootHash),

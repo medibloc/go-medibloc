@@ -135,6 +135,40 @@ func (node *Node) Tail() *core.Block {
 	return block
 }
 
+// WaitUntilTailHeight waits until blockchain has a designated height or timeout
+func (node *Node) WaitUntilTailHeight(height uint64, duration time.Duration) error {
+	timeout := time.After(duration * time.Millisecond)
+	tick := time.Tick(10 * time.Millisecond)
+
+	for {
+		select {
+		case <-timeout:
+			return ErrExecutionTimeout
+		case <-tick:
+			if node.Med.BlockManager().TailBlock().Height() == height {
+				return nil
+			}
+		}
+	}
+}
+
+// WaitUntilBlockAcceptedOnChain waits until the block is accepted on the blockchain
+func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte, duration time.Duration) error {
+	timeout := time.After(duration * time.Millisecond)
+	tick := time.Tick(10 * time.Millisecond)
+
+	for {
+		select {
+		case <-timeout:
+			return ErrExecutionTimeout
+		case <-tick:
+			if node.Med.BlockManager().BlockByHash(hash) != nil {
+				return nil
+			}
+		}
+	}
+}
+
 // Network is set of nodes.
 type Network struct {
 	t       *testing.T

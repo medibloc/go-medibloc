@@ -16,6 +16,8 @@
 package core
 
 import (
+	"sync"
+
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
@@ -34,6 +36,8 @@ const (
 
 // BlockChain manages blockchain structure.
 type BlockChain struct {
+	mu sync.RWMutex
+
 	chainID uint32
 
 	genesis *corepb.Genesis
@@ -92,15 +96,15 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 	bc.storage = stor
 	bc.consensus = consensus
 
-	// Check if there is data in storage.
-	_, err := bc.loadGenesisFromStorage()
+	// Load Genesis Block
+	genesisBlock, err := bc.loadGenesisFromStorage()
 	if err != nil && err != storage.ErrKeyNotFound {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to load genesis block from storage.")
 		return err
 	}
-	if err != nil && err == storage.ErrKeyNotFound {
+	if genesisBlock == nil || err == storage.ErrKeyNotFound {
 		err = bc.initGenesisToStorage(txMap)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
@@ -108,42 +112,63 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 			}).Error("Failed to initialize genesis block to storage.")
 			return err
 		}
-	}
-	// Load genesis block
-	bc.genesisBlock, err = bc.loadGenesisFromStorage()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to load genesis block from storage.")
-		return err
+		genesisBlock, err = bc.loadGenesisFromStorage()
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to load genesis block from storage.")
+			return err
+		}
 	}
 
-	if !CheckGenesisConf(bc.genesisBlock, bc.genesis) {
+	if !CheckGenesisConf(genesisBlock, bc.genesis) {
 		logging.Console().WithFields(logrus.Fields{
-			"block":   bc.genesisBlock,
+			"block":   genesisBlock,
 			"genesis": bc.genesis,
 		}).Error("Failed to match genesis block and genesis configuration.")
 		return ErrGenesisNotMatch
 	}
 
-	// Load tail block
-	bc.mainTailBlock, err = bc.loadTailFromStorage()
+	// Set Genesis Block
+	bc.genesisBlock = genesisBlock
+
+	// Load Tail Block
+	mainTailBlock, err := bc.loadTailFromStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to load tail block from storage.")
 		return err
 	}
+	// Set TailBlock
+	bc.mainTailBlock = mainTailBlock
 	bc.addToTailBlocks(bc.mainTailBlock)
 
 	// Load LIB
-	bc.lib, err = bc.loadLIBFromStorage()
+	lib, err := bc.loadLIBFromStorage()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to load LIB from storage.")
 		return err
 	}
+
+	// Set LIB
+	bc.lib = lib
+
+	// Reindexing Blockchain from mainTailBlock to lib from storage
+	if mainTailBlock == nil || mainTailBlock.Height() == 1 {
+		return nil
+	}
+	indexBlock := bc.BlockByHash(mainTailBlock.ParentHash())
+	_, err = bc.buildIndexByBlockHeight(lib, indexBlock)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to reindexing blockchain.")
+		return err
+	}
+
 	return nil
 }
 
@@ -163,9 +188,13 @@ func (bc *BlockChain) BlockByHash(hash []byte) *Block {
 
 // BlockByHeight returns a block of given height.
 func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
+	bc.mu.RLock()
 	if height > bc.mainTailBlock.Height() {
+		bc.mu.RUnlock()
 		return nil, ErrBlockNotExist
 	}
+	bc.mu.RUnlock()
+
 	block, err := bc.loadBlockByHeight(height)
 	if err != nil {
 		return nil, ErrBlockNotExist
@@ -175,11 +204,15 @@ func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
 
 // MainTailBlock returns MainTailBlock.
 func (bc *BlockChain) MainTailBlock() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	return bc.mainTailBlock
 }
 
 // LIB returns latest irreversible block.
 func (bc *BlockChain) LIB() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	return bc.lib
 }
 
@@ -196,8 +229,8 @@ func (bc *BlockChain) TailBlocks() []*Block {
 	return blocks
 }
 
-// PutVerifiedNewBlocks put verified blocks and change tailBlocks
-func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks []*Block) error {
+// PutVerifiedNewBlock put verified block on the chain
+func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 	if bc.BlockByHash(parent.Hash()) == nil {
 		logging.WithFields(logrus.Fields{
 			"block": parent,
@@ -205,29 +238,43 @@ func (bc *BlockChain) PutVerifiedNewBlocks(parent *Block, allBlocks, tailBlocks 
 		return ErrBlockNotExist
 	}
 
-	for _, block := range allBlocks {
-		if err := bc.storeBlock(block); err != nil {
-			logging.WithFields(logrus.Fields{
-				"err":   err,
-				"block": block,
-			}).Error("Failed to store the verified block")
-			return err
-		}
+	if err := bc.storeBlock(child); err != nil {
 		logging.WithFields(logrus.Fields{
-			"block": block,
-		}).Info("Accepted the new block on chain")
+			"err":   err,
+			"block": child,
+		}).Error("Failed to store the verified block")
+		return err
 	}
-
-	for _, block := range tailBlocks {
-		bc.addToTailBlocks(block)
-	}
+	logging.WithFields(logrus.Fields{
+		"block": child,
+	}).Info("Accepted the new block on chain")
+	bc.addToTailBlocks(child)
 	bc.removeFromTailBlocks(parent)
+
+	if bc.eventEmitter != nil {
+		child.EmitTxExecutionEvent(bc.eventEmitter)
+	}
 
 	return nil
 }
 
 // SetLIB sets LIB.
 func (bc *BlockChain) SetLIB(newLIB *Block) error {
+	bc.mu.RLock()
+	prevLIB := bc.lib
+	bc.mu.RUnlock()
+	if prevLIB.height > newLIB.height || byteutils.Equal(prevLIB.hash, newLIB.hash) {
+		if bc.eventEmitter != nil {
+			event := &Event{
+				Topic: TopicLibBlock,
+				Data:  byteutils.Bytes2Hex(prevLIB.Hash()),
+				Type:  "",
+			}
+			bc.eventEmitter.Trigger(event)
+		}
+		return nil
+	}
+
 	err := bc.storeLIBHashToStorage(newLIB)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -236,14 +283,13 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 		}).Error("Failed to store LIB hash to storage.")
 		return err
 	}
+
+	bc.mu.Lock()
 	bc.lib = newLIB
+	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
-		event := &Event{
-			Topic: TopicLibBlock,
-			Data:  byteutils.Bytes2Hex(newLIB.Hash()),
-		}
-		bc.eventEmitter.Trigger(event)
+		newLIB.EmitBlockEvent(bc.eventEmitter, TopicLibBlock)
 	}
 
 	for _, tail := range bc.TailBlocks() {
@@ -264,21 +310,26 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 // SetTailBlock sets tail block.
 func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	ancestor, err := bc.FindAncestorOnCanonical(newTail, true)
+	bc.mu.RLock()
+	mainTail := bc.mainTailBlock
+	bc.mu.RUnlock()
+
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":     err,
 			"newTail": newTail,
-			"tail":    bc.mainTailBlock,
+			"tail":    mainTail,
 		}).Error("Failed to find ancestor in canonical chain.")
 		return nil, nil, err
 	}
 
 	// revert case
-	blocks, err := bc.loadBetweenBlocks(ancestor, bc.mainTailBlock)
+	blocks, err := bc.loadBetweenBlocks(ancestor, mainTail)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	bc.mu.Lock()
 	newBlocks, err := bc.buildIndexByBlockHeight(ancestor, newTail)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
@@ -286,8 +337,10 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 			"from": ancestor,
 			"to":   newTail,
 		}).Error("Failed to build index by block height.")
+		bc.mu.Unlock()
 		return nil, nil, err
 	}
+	bc.mu.Unlock()
 
 	if err = bc.storeTailHashToStorage(newTail); err != nil {
 		logging.WithFields(logrus.Fields{
@@ -296,14 +349,13 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 		}).Error("Failed to store tail hash to storage.")
 		return nil, nil, err
 	}
+
+	bc.mu.Lock()
 	bc.mainTailBlock = newTail
+	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
-		event := &Event{
-			Topic: TopicNewTailBlock,
-			Data:  byteutils.Bytes2Hex(newTail.Hash()),
-		}
-		bc.eventEmitter.Trigger(event)
+		newTail.EmitBlockEvent(bc.eventEmitter, TopicNewTailBlock)
 	}
 
 	return blocks, newBlocks, nil
@@ -313,7 +365,10 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 func (bc *BlockChain) FindAncestorOnCanonical(block *Block, breakAtLIB bool) (*Block, error) {
 	var err error
 
+	bc.mu.RLock()
 	tail := bc.mainTailBlock
+	bc.mu.RUnlock()
+
 	for tail.Height() < block.Height() {
 		block, err = bc.parentBlock(block)
 		if err != nil {
@@ -405,10 +460,6 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 		}
 		blocks = append(blocks, to)
 		// TODO @cl9200 Remove tx in block from tx pool.
-
-		if bc.eventEmitter != nil {
-			to.EmitTxExecutionEvent(bc.eventEmitter)
-		}
 
 		to, err = bc.parentBlock(to)
 		if err != nil {

@@ -108,7 +108,7 @@ func (bp *BlockPool) FindUnlinkedAncestor(block HashableBlock) HashableBlock {
 
 	lb := bp.findParentLinkedBlock(block)
 	if lb == nil {
-		return block
+		return nil
 	}
 
 	for lb.parentLinkedBlock != nil {

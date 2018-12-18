@@ -416,6 +416,37 @@ func (t *Transaction) String() string {
 	)
 }
 
+// TriggerEvent triggers non account type event
+func (t *Transaction) TriggerEvent(e *EventEmitter, eTopic string) {
+	event := &Event{
+		Topic: eTopic,
+		Data:  byteutils.Bytes2Hex(t.Hash()),
+		Type:  "",
+	}
+	e.Trigger(event)
+	return
+}
+
+// TriggerAccEvent triggers account type event
+func (t *Transaction) TriggerAccEvent(e *EventEmitter, eType string) {
+	event := &Event{
+		Topic: t.From().String(),
+		Data:  byteutils.Bytes2Hex(t.Hash()),
+		Type:  eType,
+	}
+	e.Trigger(event)
+
+	if t.To().String() != "" {
+		event = &Event{
+			Topic: t.To().String(),
+			Data:  byteutils.Bytes2Hex(t.Hash()),
+			Type:  eType,
+		}
+		e.Trigger(event)
+	}
+	return
+}
+
 //Clone clone transaction
 func (t *Transaction) Clone() (*Transaction, error) {
 	protoTx, err := t.ToProto()

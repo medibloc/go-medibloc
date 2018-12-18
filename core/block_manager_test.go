@@ -25,7 +25,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -50,7 +51,8 @@ func TestBlockManager_Sequential(t *testing.T) {
 	for i := 1; i < nBlocks; i++ {
 		tail := seed.Tail()
 		mint := bb.Block(tail).Child().SignProposer().Build()
-		require.NoError(t, bm.PushBlockData(mint.BlockData))
+		err := bm.PushBlockDataSync(mint.BlockData)
+		assert.NoError(t, err)
 		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
 	}
 }
@@ -78,6 +80,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
 	}
+	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 10000))
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
@@ -135,11 +138,13 @@ func TestBlockManager_Forked(t *testing.T) {
 	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
 		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 10000))
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, 0, len(tm.GetAll()))
 
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
-		assert.NoError(t, bm.PushBlockData(mainChainBlocks[i].BlockData))
+		err := bm.PushBlockDataSync(mainChainBlocks[len(mainChainBlocks)-i].BlockData)
+		assert.NoError(t, err)
 	}
 	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, len(txs), len(tm.GetAll()))
@@ -160,7 +165,7 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	block1 := bb.Block(tail).Child().SignProposer().Build()
 	block2 := bb.Block(block1).Child().SignProposer().Build()
 
-	err := bm.PushBlockData(block1.GetBlockData())
+	err := bm.PushBlockDataSync(block1.GetBlockData())
 	require.NoError(t, err)
 
 	bb = bb.Block(block2).Child().Hash(block2.ParentHash()).ParentHash(block2.Hash())
@@ -168,7 +173,7 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	block3 := bb.Coinbase(proposer.Addr).SignKey(proposer.PrivKey).Build()
 
 	err = bm.PushBlockData(block3.GetBlockData())
-	require.Error(t, core.ErrInvalidBlockHash)
+	require.Equal(t, core.ErrDuplicatedBlock, err)
 }
 
 func TestBlockManager_FilterByLIB(t *testing.T) {
@@ -192,7 +197,8 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 			block = bb.Block(tail).Child().SignProposer().Build()
 		}
 		blocks = append(blocks, block)
-		require.NoError(t, bm.PushBlockData(block.GetBlockData()))
+		err := bm.PushBlockDataSync(block.GetBlockData())
+		require.NoError(t, err)
 		tail = block
 	}
 	payload := &core.AddRecordPayload{
@@ -224,7 +230,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 
 	parent, err := bm.BlockByHeight(3)
 	require.NoError(t, err)
-	b := bb.Block(parent).Child().Height(20).
+	b := bb.Block(parent).Child().
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(b.GetBlockData())
@@ -275,6 +281,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
+	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height(), 10000))
 	assert.Nil(t, bm.BlockByHash(blocks[1].Hash()))
 	assert.NotNil(t, bm.BlockByHash(blocks[2].Hash()))
 }
@@ -302,9 +309,9 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 				Tx().RandomTx().Execute().
 				SignProposer().Build()
 		}
-		err := bm.PushBlockData(block.GetBlockData())
-		tail = block
+		err := bm.PushBlockDataSync(block.GetBlockData())
 		assert.NoError(t, err)
+		tail = block
 	}
 
 	parent, err := bm.BlockByHeight(3)
@@ -327,7 +334,11 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		block := bb.Block(parent).Child().
 			Tx().RandomTx().Execute().
 			Height(v.height).SignProposer().Build()
-		assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
+		if v.err != testutil.ErrExecutionTimeout {
+			assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
+		} else {
+			assert.Equal(t, v.err, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 5000))
+		}
 	}
 }
 
@@ -461,7 +472,8 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	invalidPair := testutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	assert.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	// Invalid Transaction Hash
 	pair = testutil.NewAddrKeyPair(t)
@@ -514,28 +526,146 @@ func TestBlockManager_InvalidState(t *testing.T) {
 
 	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 
 	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrInvalidChainID, err)
+	assert.Equal(t, core.ErrInvalidChainID, err)
 
 	block = bb.Clone().Coinbase(to.Addr).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
-	require.Equal(t, core.ErrCannotExecuteOnParentBlock, err)
+	assert.NoError(t, err)
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
 }
+
+func TestBlockManager_PushBlockDataSync(t *testing.T) {
+	var nBlocks = 5
+
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
+	for i := 1; i < nBlocks; i++ {
+		tail := seed.Tail()
+		mint := bb.Block(tail).Child().SignProposer().Build()
+		err := bm.PushBlockDataSync(mint.BlockData)
+		assert.NoError(t, err)
+		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
+	}
+
+	// Timeout test
+	tail := seed.Tail()
+	parentBlock := bb.Block(tail).Child().SignProposer().Build()
+	gappedBlock := bb.Block(parentBlock).Child().SignProposer().Build()
+	err := bm.PushBlockDataSync(gappedBlock.BlockData)
+	assert.Equal(t, core.ErrBlockExecutionTimeout, err)
+
+	// Holding channel in the block pool test
+	childBlock := bb.Block(gappedBlock).Child().SignProposer().Build()
+	go func() {
+		err := bm.PushBlockDataSync(childBlock.BlockData)
+		assert.NoError(t, err)
+	}()
+	go func() {
+		err := bm.PushBlockDataSync(parentBlock.BlockData)
+		assert.NoError(t, err)
+	}()
+
+	// Execution error sent via execCh test
+	invalidBlock := bb.Block(childBlock).Child().Height(tail.Height() + 2).SignProposer().Build()
+	err = bm.PushBlockDataSync(invalidBlock.BlockData)
+	assert.Equal(t, core.ErrInvalidBlockHeight, err)
+}
+
+/*
+func TestBlockManagerImprovement(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	tn := testutil.NewNetwork(t, dynastySize)
+	defer tn.Cleanup()
+	tn.SetLogTestHook()
+	seed1 := tn.NewSeedNode()
+	seed1.Start()
+
+	bm := seed1.Med.BlockManager()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed1.Config.TokenDist).AddKeyPairs(seed1.Config.Dynasties).Block(
+		seed1.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake().SignProposer()
+
+	block := bb.Build()
+	assert.NoError(t, bm.PushBlockData(block.BlockData))
+	assert.NoError(t, seed1.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+
+	blocks := make([]*core.Block, 100)
+	for i := 0; i < 100; i++ {
+		bb = bb.Child()
+		for j := 0; j < 100; j++ {
+			bb = bb.Tx().RandomTx().Execute()
+		}
+		blocks[i] = bb.SignProposer().Build()
+	}
+
+	//Sequential Test
+	start := time.Now()
+	for _, bbb := range blocks {
+		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
+		seed1.WaitUntilBlockAcceptedOnChain(bbb.Hash(), 2000)
+	}
+	sequentialElapsed := time.Since(start).Seconds()
+	t.Log("SEQUENTIAL : ", sequentialElapsed)
+
+	seed2 := tn.NewSeedNode()
+	seed2.Start()
+
+	bm = seed2.Med.BlockManager()
+	bb = blockutil.New(t, dynastySize).AddKeyPairs(seed2.Config.TokenDist).AddKeyPairs(seed2.Config.Dynasties).Block(
+		seed2.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake().SignProposer()
+
+	block = bb.Build()
+	assert.NoError(t, bm.PushBlockData(block.BlockData))
+	assert.NoError(t, seed2.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+
+	blocks = make([]*core.Block, 100)
+	for i := 0; i < 100; i++ {
+		bbT := bb.Child()
+		for j := 0; j < 100; j++ {
+			bbT = bbT.Tx().RandomTx().Execute()
+		}
+		blocks[i] = bbT.SignProposer().Build()
+		if i == 99 {
+			blocks = append(blocks, bbT.Child().SignProposer().Build())
+		}
+	}
+
+	start = time.Now()
+	for _, bbb := range blocks {
+		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
+	}
+	seed2.WaitUntilTailHeight(4, 6000)
+	parallelElapsed := time.Since(start).Seconds()
+	t.Log("PARALLEL : ", parallelElapsed)
+}
+*/
 
 func foundInLog(hook *test.Hook, s string) bool {
 	timer := time.NewTimer(10 * time.Second)

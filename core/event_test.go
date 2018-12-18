@@ -8,6 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/util/byteutils"
+
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+
+	"github.com/medibloc/go-medibloc/util/testutil"
+
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -45,6 +51,7 @@ func TestEventEmitter(t *testing.T) {
 			e := &core.Event{
 				Topic: topic,
 				Data:  fmt.Sprintf("%d", i),
+				Type:  "",
 			}
 			emitter.Trigger(e)
 		}
@@ -104,6 +111,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 			e := &core.Event{
 				Topic: topic,
 				Data:  fmt.Sprintf("%d", i),
+				Type:  "",
 			}
 			emitter.Trigger(e)
 		}
@@ -138,4 +146,216 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 	assert.Equal(t, eventCountDist[topics[0]] > eventCount2, true)
 
 	emitter.Stop()
+}
+
+func TestTopicLibBlock(t *testing.T) {
+	dynastySize := 6
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
+
+	bm := seed.Med.BlockManager()
+	emitter := seed.Med.EventEmitter()
+	topics := []string{core.TopicLibBlock}
+	subscriber := register(emitter, topics[0])
+
+	newLIB := bb.Build()
+	err := bm.PushBlockDataSync(newLIB.BlockData)
+	assert.NoError(t, err)
+
+	go func() {
+		for i := 0; i < dynastySize*2/3; i++ {
+			tail := seed.Tail()
+			b := bb.Block(tail).Child().SignProposer().Build()
+			err := bm.PushBlockDataSync(b.BlockData)
+			assert.NoError(t, err)
+		}
+		return
+	}()
+
+	event := <-subscriber.EventChan()
+	assert.Equal(t, core.TopicLibBlock, event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(newLIB.Hash()), event.Data)
+}
+
+func TestTopicNewTailBlock(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
+
+	bm := seed.Med.BlockManager()
+	emitter := seed.Med.EventEmitter()
+	topics := []string{core.TopicNewTailBlock}
+	subscriber := register(emitter, topics[0])
+
+	b := bb.Build()
+	err := bm.PushBlockDataSync(b.BlockData)
+	assert.NoError(t, err)
+
+	go func() {
+		b = bb.Child().SignProposer().Build()
+		err := bm.PushBlockDataSync(b.BlockData)
+		assert.NoError(t, err)
+		return
+	}()
+
+	count := 1
+	for i := 0; i < 2; i++ {
+		count++
+		event := <-subscriber.EventChan()
+		block, err := bm.BlockByHeight(uint64(count))
+		assert.NoError(t, err)
+		assert.Equal(t, core.TopicNewTailBlock, event.Topic)
+		assert.Equal(t, byteutils.Bytes2Hex(block.Hash()), event.Data)
+	}
+}
+
+func TestTopicPendingTransaction(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
+
+	tm := seed.Med.TransactionManager()
+	emitter := seed.Med.EventEmitter()
+	topics := []string{core.TopicPendingTransaction}
+	subscriber := register(emitter, topics[0])
+
+	tx := bb.Tx().RandomTx().Build()
+	go func() {
+		tm.Push(tx)
+		return
+	}()
+
+	event := <-subscriber.EventChan()
+	assert.Equal(t, core.TopicPendingTransaction, event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+}
+
+func TestTopicRevertBlock(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
+
+	bm := seed.Med.BlockManager()
+	emitter := seed.Med.EventEmitter()
+	topics := []string{core.TopicRevertBlock}
+	subscriber := register(emitter, topics[0])
+
+	b := bb.Build()
+	forkedBlock := bb.Block(b).Child().SignProposer().Build()
+	assert.NoError(t, bm.PushBlockData(b.BlockData))
+	assert.NoError(t, bm.PushBlockData(forkedBlock.BlockData))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 5000))
+
+	canonicalBlocks := make([]*core.Block, 2)
+	b1 := bb.Block(b).Child().Tx().RandomTx().Execute().SignProposer().Build()
+	b2 := bb.Block(b1).Child().SignProposer().Build()
+	canonicalBlocks[0] = b1
+	canonicalBlocks[1] = b2
+
+	go func() {
+		for _, v := range canonicalBlocks {
+			err := bm.PushBlockDataSync(v.BlockData)
+			assert.NoError(t, err)
+			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 5000))
+		}
+		return
+	}()
+
+	event := <-subscriber.EventChan()
+	assert.Equal(t, core.TopicRevertBlock, event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(forkedBlock.Hash()), event.Data)
+}
+
+func TestTopicTransactionExecutionResult(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child()
+
+	emitter := seed.Med.EventEmitter()
+	topics := []string{core.TopicTransactionExecutionResult}
+	subscriber := register(emitter, topics[0])
+
+	tx := bb.Tx().RandomTx().Build()
+
+	go func() {
+		b := bb.ExecuteTx(tx).SignProposer().Build()
+		seed.Med.BlockManager().PushBlockData(b.BlockData)
+		return
+	}()
+
+	event := <-subscriber.EventChan()
+	assert.Equal(t, core.TopicTransactionExecutionResult, event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+}
+
+func TestTypeAccountTransaction(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.SetLogTestHook()
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bm := seed.Med.BlockManager()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child()
+
+	tx := bb.Tx().RandomTx().Build()
+
+	emitter := seed.Med.EventEmitter()
+	topics := []string{tx.From().Hex(), tx.To().Hex()}
+	subscriber := register(emitter, topics[0], topics[1])
+
+	b := bb.ExecuteTx(tx).SignProposer().Build()
+	go func() {
+		seed.Med.TransactionManager().Push(tx)
+		err := bm.PushBlockDataSync(b.BlockData)
+		assert.NoError(t, err)
+		return
+	}()
+
+	fromEventCount := 2
+	toEventCount := 2
+	for i := 0; i < 4; i++ {
+		event := <-subscriber.EventChan()
+		assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+		if event.Topic == topics[0] {
+			fromEventCount = fromEventCount - 1
+		} else {
+			toEventCount = toEventCount - 1
+		}
+	}
+
+	assert.Equal(t, 0, fromEventCount, toEventCount)
 }

@@ -50,8 +50,6 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equalf(t, txs[0].Payload(), payloadBuf, "Initial tx payload should equal '%s'", initialMessage)
 
-	t.Log(len(txs))
-
 	for i := 0; i < len(dist); i++ {
 		assert.True(t, dist[i].Addr.Equals(txs[1+i].To()))
 		assert.Equal(t, "400000000000000000000", txs[1+i].Value().String())

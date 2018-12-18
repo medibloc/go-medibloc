@@ -137,7 +137,7 @@ func ToHex(b []byte) string {
 }
 
 // FromHex returns decoded bytes array from hex string
-func FromHex(s string) []byte {
+func FromHex(s string) ([]byte, error) {
 	if len(s) > 1 {
 		if s[0:2] == "0x" || s[0:2] == "0X" {
 			s = s[2:]
@@ -155,10 +155,12 @@ func Bytes2Hex(d []byte) string {
 }
 
 // Hex2Bytes decodes hex string without '0x' prefix and returns bytes
-func Hex2Bytes(str string) []byte {
-	h, _ := hex.DecodeString(str)
-
-	return h
+func Hex2Bytes(str string) ([]byte, error) {
+	h, err := hex.DecodeString(str)
+	if err != nil {
+		return nil, err
+	}
+	return h, nil
 }
 
 // BytesSlice2HexSlice encodes bytes slice and returns hex string slice without '0x' prefix
@@ -171,12 +173,16 @@ func BytesSlice2HexSlice(d [][]byte) []string {
 }
 
 // HexSlice2BytesSlice decodes hex string slice without '0x' prefix and returns bytes slice
-func HexSlice2BytesSlice(ss []string) [][]byte {
+func HexSlice2BytesSlice(ss []string) ([][]byte, error) {
 	var d = make([][]byte, len(ss))
+	var err error
 	for i, h := range ss {
-		d[i] = Hex2Bytes(h)
+		d[i], err = Hex2Bytes(h)
+		if err != nil {
+			return nil, err
+		}
 	}
-	return d
+	return d, nil
 }
 
 // RightPadBytes adds padding in right side

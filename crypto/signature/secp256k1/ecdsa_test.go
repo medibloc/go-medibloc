@@ -18,6 +18,8 @@ package secp256k1_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -38,9 +40,11 @@ func TestToECDSAErrors(t *testing.T) {
 func TestSign(t *testing.T) {
 	assert := assert.New(t)
 	key, _ := secp256k1.HexToECDSA(testPrivHex)
-	addr := common.HexToAddress(testAddrHex)
+	addr, err := common.HexToAddress(testAddrHex)
+	require.NoError(t, err)
 
-	msg := byteutils.Hex2Bytes("39de21d6905bebd5b76371170b7097b85bd3bc48b76371170b7097b85bd3bc48")
+	msg, err := byteutils.Hex2Bytes("39de21d6905bebd5b76371170b7097b85bd3bc48b76371170b7097b85bd3bc48")
+	require.NoError(t, err)
 	sig, err := secp256k1.Sign(msg, secp256k1.FromECDSAPrivateKey(key))
 	assert.NoErrorf(err, "Sign error: %s", err)
 

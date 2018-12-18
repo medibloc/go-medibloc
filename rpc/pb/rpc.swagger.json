@@ -605,6 +605,9 @@
         },
         "hash": {
           "type": "string"
+        },
+        "type": {
+          "type": "string"
         }
       }
     },

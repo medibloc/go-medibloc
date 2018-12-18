@@ -930,6 +930,7 @@ func (m *SubscribeRequest) GetTopics() []string {
 type SubscribeResponse struct {
 	Topic string `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
 	Hash  string `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
+	Type  string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
 }
 
 func (m *SubscribeResponse) Reset()                    { *m = SubscribeResponse{} }
@@ -947,6 +948,13 @@ func (m *SubscribeResponse) GetTopic() string {
 func (m *SubscribeResponse) GetHash() string {
 	if m != nil {
 		return m.Hash
+	}
+	return ""
+}
+
+func (m *SubscribeResponse) GetType() string {
+	if m != nil {
+		return m.Type
 	}
 	return ""
 }

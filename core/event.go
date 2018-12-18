@@ -3,6 +3,8 @@ package core
 import (
 	"sync"
 
+	"github.com/medibloc/go-medibloc/common"
+
 	"github.com/medibloc/go-medibloc/util/logging"
 )
 
@@ -23,6 +25,20 @@ const (
 	// TopicTransactionExecutionResult transaction execution result
 	TopicTransactionExecutionResult = "chain.transactionResult"
 )
+
+// Type for account transaction result
+const (
+	TypeAccountTransactionExecution = "executedTransaction"
+	TypeAccountTransactionPending   = "pendingTransaction"
+	TypeAccountTransactionDeleted   = "deletedTransaction"
+)
+
+// Event structure
+type Event struct {
+	Topic string
+	Data  string
+	Type  string
+}
 
 // EventSubscriber structure
 type EventSubscriber struct {
@@ -45,6 +61,10 @@ func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
 	topicList := topicList()
 
 	for _, topic := range topics {
+		if common.IsHexAddress(topic) {
+			continue
+		}
+
 		if topicList[topic] != true {
 			return nil, ErrWrongEventTopic
 		}

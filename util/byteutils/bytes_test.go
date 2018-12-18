@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -608,7 +610,8 @@ func TestFromHex(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FromHex(tt.args.data)
+			got, err := FromHex(tt.args.data)
+			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Hex2Bytes() = %v, want %v", got, tt.want)
 			}
@@ -677,7 +680,8 @@ func TestHex2Bytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Hex2Bytes(tt.args.data)
+			got, err := Hex2Bytes(tt.args.data)
+			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Hex2Bytes() = %v, want %v", got, tt.want)
 			}
@@ -759,7 +763,8 @@ func TestHexSlice2BytesSlice(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := HexSlice2BytesSlice(tt.args.data)
+			got, err := HexSlice2BytesSlice(tt.args.data)
+			require.NoError(t, err)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("HexSlice2BytesSlice() = %v, want %v", got, tt.want)
 			}

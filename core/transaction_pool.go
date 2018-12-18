@@ -125,11 +125,8 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 	pool.evict()
 
 	if pool.eventEmitter != nil {
-		event := &Event{
-			Topic: TopicPendingTransaction,
-			Data:  byteutils.Bytes2Hex(tx.Hash()),
-		}
-		pool.eventEmitter.Trigger(event)
+		tx.TriggerEvent(pool.eventEmitter, TopicPendingTransaction)
+		tx.TriggerAccEvent(pool.eventEmitter, TypeAccountTransactionPending)
 	}
 
 	return nil
