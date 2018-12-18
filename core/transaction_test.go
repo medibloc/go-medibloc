@@ -218,7 +218,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 	from := bb.TokenDist[testutil.DynastySize]
 	const (
-		collateralAmount = 1000
+		collateralAmount = 1000000
 		testAliasName    = "testalias"
 	)
 
