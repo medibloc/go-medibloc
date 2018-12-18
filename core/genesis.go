@@ -17,7 +17,6 @@ package core
 
 import (
 	"io/ioutil"
-	"os"
 
 	"github.com/medibloc/go-medibloc/crypto/hash"
 
@@ -66,20 +65,6 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 		return nil, err
 	}
 	return genesis, nil
-}
-
-//SaveGenesisConf save genesis conf to file
-func SaveGenesisConf(conf *corepb.Genesis, filePath string) error {
-	f, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	if err := proto.MarshalText(f, conf); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // NewGenesisBlock generates genesis block

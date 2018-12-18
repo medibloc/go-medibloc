@@ -68,10 +68,10 @@ func medi(ctx *cli.Context) error {
 		return err
 	}
 	//log.Init(m.Config().App.LogFile, m.Config().App.LogLevel, m.Config().App.LogAge)
-	return runMedi(ctx, m)
+	return runMedi(m)
 }
 
-func runMedi(ctx *cli.Context, m *medlet.Medlet) error {
+func runMedi(m *medlet.Medlet) error {
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, os.Interrupt, os.Kill)
 

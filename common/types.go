@@ -23,7 +23,6 @@ import (
 
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
@@ -42,9 +41,6 @@ func BytesToAddress(b []byte) Address {
 	a.FromBytes(b)
 	return a
 }
-
-// BigToAddress gets Address from big Int.
-func BigToAddress(b *big.Int) Address { return BytesToAddress(b.Bytes()) }
 
 // HexToAddress gets Address from hex string.
 func HexToAddress(s string) (Address, error) {
@@ -76,20 +72,6 @@ func PublicKeyToAddress(p signature.PublicKey) (Address, error) {
 		return BytesToAddress(buf), nil
 	default:
 		return Address{}, algorithm.ErrInvalidCryptoAlgorithm
-	}
-}
-
-// AddressToPublicKey gets PublicKey from Address.
-func AddressToPublicKey(addr Address, alg algorithm.CryptoAlgorithm) (signature.PublicKey, error) {
-	switch alg {
-	case algorithm.SECP256K1:
-		var pubKey *secp256k1.PublicKey
-		if err := pubKey.Decompress(addr.Bytes()); err != nil {
-			return nil, err
-		}
-		return pubKey, nil
-	default:
-		return nil, algorithm.ErrInvalidCryptoAlgorithm
 	}
 }
 

@@ -16,7 +16,6 @@
 package net
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
@@ -29,11 +28,6 @@ const (
 	MessagePriorityHigh = iota
 	MessagePriorityNormal
 	MessagePriorityLow
-)
-
-// Sync Errors
-var (
-	ErrPeersIsNotEnough = errors.New("peers is not enough")
 )
 
 // MessageType a string for message type.

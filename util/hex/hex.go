@@ -22,8 +22,6 @@ import (
 	"strconv"
 )
 
-const uintBits = 32 << (uint64(^uint(0)) >> 63)
-
 // Error types.
 var (
 	ErrEmptyString   = &decError{"empty hex string"}
@@ -33,7 +31,6 @@ var (
 	ErrEmptyNumber   = &decError{"hex string \"0x\""}
 	ErrLeadingZero   = &decError{"hex number with leading zero digits"}
 	ErrUint64Range   = &decError{"hex number > 64 bits"}
-	ErrUintRange     = &decError{fmt.Sprintf("hex number > %d bits", uintBits)}
 	ErrBig256Range   = &decError{"hex number > 256 bits"}
 )
 
@@ -56,15 +53,6 @@ func Decode(input string) ([]byte, error) {
 	return b, err
 }
 
-// MustDecode decodes a hex string with 0x prefix. It panics for invalid input.
-func MustDecode(input string) []byte {
-	dec, err := Decode(input)
-	if err != nil {
-		panic(err)
-	}
-	return dec
-}
-
 // Encode encodes b as a hex string with 0x prefix.
 func Encode(b []byte) string {
 	enc := make([]byte, len(b)*2+2)
@@ -84,16 +72,6 @@ func DecodeUint64(input string) (uint64, error) {
 		err = mapError(err)
 	}
 	return dec, err
-}
-
-// MustDecodeUint64 decodes a hex string with 0x prefix as a quantity.
-// It panics for invalid input.
-func MustDecodeUint64(input string) uint64 {
-	dec, err := DecodeUint64(input)
-	if err != nil {
-		panic(err)
-	}
-	return dec
 }
 
 // EncodeUint64 encodes i as a hex string with 0x prefix.
@@ -148,16 +126,6 @@ func DecodeBig(input string) (*big.Int, error) {
 	}
 	dec := new(big.Int).SetBits(words)
 	return dec, nil
-}
-
-// MustDecodeBig decodes a hex string with 0x prefix as a quantity.
-// It panics for invalid input.
-func MustDecodeBig(input string) *big.Int {
-	dec, err := DecodeBig(input)
-	if err != nil {
-		panic(err)
-	}
-	return dec
 }
 
 // EncodeBig encodes bigint as a hex string with 0x prefix.

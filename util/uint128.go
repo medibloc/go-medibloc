@@ -41,9 +41,6 @@ var (
 
 	// ErrUint128InvalidString indicates the string is not valid when converted to uin128.
 	ErrUint128InvalidString = errors.New("uint128: invalid string to uint128")
-
-	//ErrFailedToConvertFloat indicates the string is not valid when converted to float.
-	ErrFailedToConvertFloat = errors.New("float: invalid string to float")
 )
 
 // Uint128 defines uint128 type, based on big.Int.

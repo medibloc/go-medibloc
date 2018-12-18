@@ -51,16 +51,6 @@ func Ripemd160(args ...[]byte) []byte {
 	return hasher.Sum(nil)
 }
 
-// CheckHashAlgorithm checks algorithm.
-func CheckHashAlgorithm(alg algorithm.HashAlgorithm) error {
-	switch alg {
-	case algorithm.SHA3256:
-		return nil
-	default:
-		return algorithm.ErrInvalidHashAlgorithm
-	}
-}
-
 // GenHash generates hash
 func GenHash(alg algorithm.HashAlgorithm, args ...[]byte) ([]byte, error) {
 	switch alg {

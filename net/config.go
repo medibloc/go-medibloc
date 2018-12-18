@@ -17,7 +17,6 @@ package net
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"time"
 
@@ -122,22 +121,6 @@ func NewP2PConfig(cfg *medletpb.Config) *Config {
 	config.RouteTableSyncLoopInterval = routeTableSyncLoopInterval
 
 	return config
-}
-
-func localHost() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return ""
-	}
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-
-	return ""
 }
 
 // NewConfigFromDefaults return new config from defaults.

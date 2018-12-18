@@ -90,7 +90,7 @@ func (ks *KeyStore) HasAddress(addr common.Address) bool {
 
 // Accounts returns all key files present in the directory.
 func (ks *KeyStore) Accounts() []common.Address {
-	addresses := []common.Address{}
+	var addresses []common.Address
 	for addr := range ks.keys {
 		addresses = append(addresses, addr)
 	}

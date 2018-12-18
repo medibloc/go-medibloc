@@ -57,13 +57,6 @@ var (
 		{uint64(0x1122334455667788), "0x1122334455667788"},
 	}
 
-	encodeUintTests = []marshalTest{
-		{uint(0), "0x0"},
-		{uint(1), "0x1"},
-		{uint(0xff), "0xff"},
-		{uint(0x11223344), "0x11223344"},
-	}
-
 	decodeBytesTests = []unmarshalTest{
 		// invalid
 		{input: ``, wantErr: ErrEmptyString},

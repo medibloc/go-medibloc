@@ -39,9 +39,7 @@ const (
 	TxOpDeregisterAlias     = "Deregister_alias"
 )
 
-// Transaction related defaults
 const (
-	TxDelayLimit             = 24 * 60 * 60
 	UnstakingWaitDuration    = 7 * 24 * time.Hour
 	PointsRegenerateDuration = 7 * 24 * time.Hour
 	MaxPayloadSize           = 4096

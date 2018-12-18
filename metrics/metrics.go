@@ -37,7 +37,7 @@ const (
 
 var (
 	enable = false
-	quitCh chan (bool)
+	quitCh chan bool
 )
 
 // Medlet interface breaks cycle import dependency.

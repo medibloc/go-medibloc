@@ -19,11 +19,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 )
 
-const (
-	// version compatible with ethereum, the version start with 3
-	version = 3
-)
-
 // Key interface
 type Key interface {
 

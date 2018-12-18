@@ -38,7 +38,6 @@ import (
 	json "github.com/multiformats/go-multicodec/json"
 )
 
-const proto = "/example/1.0.0"
 const letterBytes = "0123456789ABCDEF0123456789ABCDE10123456789ABCDEF0123456789ABCDEF"
 const (
 	letterIdxBits = 6                    // 6 bits to represent a letter index

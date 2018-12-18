@@ -29,14 +29,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const letterBytes = "0123456789ABCDEF0123456789ABCDE10123456789ABCDEF0123456789ABCDEF"
-
-const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
 // Error types
 var (
 	ErrPeerIsNotConnected = errors.New("peer is not connected")
