@@ -51,9 +51,9 @@ func TestPaddedBigBytes(t *testing.T) {
 func TestReadBits(t *testing.T) {
 	check := func(input string) {
 		want, _ := hex.DecodeString(input)
-		int, _ := new(big.Int).SetString(input, 16)
+		Int, _ := new(big.Int).SetString(input, 16)
 		buf := make([]byte, len(want))
-		ReadBits(int, buf)
+		ReadBits(Int, buf)
 		assert.Equalf(t, buf, want, "have: %x\nwant: %x", buf, want)
 	}
 	check("000000000000000000000000000000000000000000000000000000FEFCF3F8F0")

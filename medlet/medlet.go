@@ -89,7 +89,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		return nil, err
 	}
 
-	rpc := rpc.New(cfg)
+	RPC := rpc.New(cfg)
 
 	stor, err := storage.NewRocksStorage(cfg.Global.Datadir)
 	if err != nil {
@@ -117,7 +117,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		config:             cfg,
 		genesis:            genesis,
 		netService:         ns,
-		rpc:                rpc,
+		rpc:                RPC,
 		storage:            stor,
 		blockManager:       bm,
 		transactionManager: tm,

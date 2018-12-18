@@ -66,11 +66,11 @@ func (tb *Batch) Clone() (*Batch, error) {
 	if err != nil {
 		return nil, err
 	}
-	new := &Batch{
+	newBatch := &Batch{
 		Trie:    tr,
 		dirties: make(map[string]*dirty),
 	}
-	return new, nil
+	return newBatch, nil
 }
 
 // Commit commit batch WARNING: not thread-safe

@@ -69,15 +69,15 @@ func NewUint128() *Uint128 {
 
 // NewUint128FromString returns a new Uint128 struct with given value and have a check.
 func NewUint128FromString(str string) (*Uint128, error) {
-	big := new(big.Int)
-	_, success := big.SetString(str, 10)
+	Big := new(big.Int)
+	_, success := Big.SetString(str, 10)
 	if !success {
 		return nil, ErrUint128InvalidString
 	}
-	if err := (&Uint128{big}).Validate(); nil != err {
+	if err := (&Uint128{Big}).Validate(); nil != err {
 		return nil, err
 	}
-	return &Uint128{big}, nil
+	return &Uint128{Big}, nil
 }
 
 // NewUint128FromUint returns a new Uint128 with given value

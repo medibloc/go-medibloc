@@ -704,12 +704,12 @@ func (b *Block) Seal() error {
 		return err
 	}
 
-	hash, err := HashBlockData(b.BlockData)
+	blockHash, err := HashBlockData(b.BlockData)
 	if err != nil {
 		return err
 	}
 
-	b.hash = hash
+	b.hash = blockHash
 	b.sealed = true
 	return nil
 }

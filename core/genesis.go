@@ -122,11 +122,11 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		receipt: genesisTxReceipt(),
 	}
 
-	hash, err := initialTx.CalcHash()
+	txHash, err := initialTx.CalcHash()
 	if err != nil {
 		return nil, err
 	}
-	initialTx.hash = hash
+	initialTx.hash = txHash
 
 	// Genesis transactions do not consume bandwidth(only put in txState)
 	if err := genesisBlock.state.txState.Put(initialTx); err != nil {
@@ -170,11 +170,11 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 			chainID: conf.Meta.ChainId,
 			receipt: genesisTxReceipt(),
 		}
-		hash, err = tx.CalcHash()
+		txHash, err = tx.CalcHash()
 		if err != nil {
 			return nil, err
 		}
-		tx.hash = hash
+		tx.hash = txHash
 
 		// Genesis transactions do not consume bandwidth(only put in txState)
 		if err := genesisBlock.state.txState.Put(tx); err != nil {

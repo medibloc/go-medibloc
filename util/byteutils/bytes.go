@@ -128,12 +128,12 @@ func CopyBytes(b []byte) (copiedBytes []byte) {
 
 // ToHex returns hex string of bytes
 func ToHex(b []byte) string {
-	hex := Bytes2Hex(b)
-	if len(hex) == 0 {
-		hex = "0"
+	bHex := Bytes2Hex(b)
+	if len(bHex) == 0 {
+		bHex = "0"
 	}
 
-	return "0x" + hex
+	return "0x" + bHex
 }
 
 // FromHex returns decoded bytes array from hex string

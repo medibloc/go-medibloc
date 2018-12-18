@@ -44,8 +44,8 @@ func TestIterator1(t *testing.T) {
 
 		value := [][]byte{[]byte(v)}
 		valueByte, _ := proto.Marshal(&triepb.Node{Type: uint32(val), Val: value})
-		hash := hash.Sha3256(valueByte)
-		valHashes = append(valHashes, hash)
+		valHash := hash.Sha3256(valueByte)
+		valHashes = append(valHashes, valHash)
 	}
 
 	tr.Put(keys[0], []byte(names[0]))

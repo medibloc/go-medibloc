@@ -83,12 +83,12 @@ func (storage *RocksStorage) Get(key []byte) ([]byte, error) {
 		storage.mutex.Lock()
 		defer storage.mutex.Unlock()
 
-		opt := storage.batchOpts[byteutils.Bytes2Hex(key)]
-		if opt != nil {
-			if opt.deleted {
+		Opts := storage.batchOpts[byteutils.Bytes2Hex(key)]
+		if Opts != nil {
+			if Opts.deleted {
 				return nil, ErrKeyNotFound
 			}
-			return opt.value, nil
+			return Opts.value, nil
 		}
 	}
 

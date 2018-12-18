@@ -37,8 +37,8 @@ func NewPrivateKey(key *ecdsa.PrivateKey) *PrivateKey {
 // GeneratePrivateKey generate a new private key
 func GeneratePrivateKey() *PrivateKey {
 	priv := new(PrivateKey)
-	ecdsa := NewECDSAPrivateKey()
-	priv.privateKey = ecdsa
+	ECDSA := NewECDSAPrivateKey()
+	priv.privateKey = ECDSA
 	return priv
 }
 

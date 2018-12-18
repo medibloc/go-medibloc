@@ -133,11 +133,11 @@ func MakeKeystoreV3(privKeyHex, passphrase string, fn string) error {
 		Address:    addr,
 		PrivateKey: privKey,
 	}
-	bytes, err := EncryptKey(key, passphrase, 8192, 1)
+	keyBytes, err := EncryptKey(key, passphrase, 8192, 1)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(fn, bytes, 400)
+	err = ioutil.WriteFile(fn, keyBytes, 400)
 	if err != nil {
 		return err
 	}
@@ -361,9 +361,9 @@ func numbytesToHex(s string) string {
 	m["64"] = "d"
 	m["65"] = "e"
 	m["66"] = "f"
-	var hex string
+	var hexStr string
 	for i := 0; i < len(s)/2; i++ {
-		hex += m[s[2*i:2*i+2]]
+		hexStr += m[s[2*i:2*i+2]]
 	}
-	return hex
+	return hexStr
 }
