@@ -25,6 +25,7 @@ const (
 	TAIL = "tail"
 )
 
+// Errors for rpc
 const (
 	ErrMsgBlockNotFound           = "block not found"
 	ErrMsgBuildTransactionFail    = "cannot build transaction"

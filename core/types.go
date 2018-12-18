@@ -39,6 +39,7 @@ const (
 	TxOpDeregisterAlias     = "Deregister_alias"
 )
 
+// constants for staking and regeneration
 const (
 	UnstakingWaitDuration    = 7 * 24 * time.Hour
 	PointsRegenerateDuration = 7 * 24 * time.Hour

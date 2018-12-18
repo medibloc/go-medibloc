@@ -28,10 +28,10 @@ import (
 	"github.com/rcrowley/go-metrics/exp"
 )
 
+// MetricsEnabledFlag metrics enable flag
 const (
-	interval = 2 * time.Second
-	chainID  = "chainID"
-	// MetricsEnabledFlag metrics enable flag
+	interval    = 2 * time.Second
+	chainID     = "chainID"
 	EnabledFlag = "metrics"
 )
 
