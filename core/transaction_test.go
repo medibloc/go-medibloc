@@ -294,16 +294,16 @@ func TestRegisterAliasTable(t *testing.T) {
 		err  error
 	}
 	testNames := []*aliasErrSet{
-		{"", core.ErrAliasEmptyString},
-		{"testAlias", core.ErrAliasInvalidChar},
-		{"Testalias", core.ErrAliasInvalidChar},
-		{"3testalias", core.ErrAliasFirstLetter},
-		{" testalias", core.ErrAliasInvalidChar},
-		{"testalias0123", core.ErrAliasLengthLimit},
-		{"testaliastestalias", core.ErrAliasLengthLimit},
-		{"testalias!", core.ErrAliasInvalidChar},
-		{"test_alias", core.ErrAliasInvalidChar},
-		{"test	as", core.ErrAliasInvalidChar},
+		{"", common.ErrAliasEmptyString},
+		{"testAlias", common.ErrAliasInvalidChar},
+		{"Testalias", common.ErrAliasInvalidChar},
+		{"3testalias", common.ErrAliasFirstLetter},
+		{" testalias", common.ErrAliasInvalidChar},
+		{"testalias0123", common.ErrAliasLengthLimit},
+		{"testaliastestalias", common.ErrAliasLengthLimit},
+		{"testalias!", common.ErrAliasInvalidChar},
+		{"test_alias", common.ErrAliasInvalidChar},
+		{"test	as", common.ErrAliasInvalidChar},
 	}
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute()

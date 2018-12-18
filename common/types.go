@@ -17,7 +17,7 @@ package common
 
 import (
 	"bytes"
-	"github.com/medibloc/go-medibloc/core"
+	"errors"
 	"math/big"
 	"unicode"
 
@@ -138,24 +138,31 @@ const (
 	AliasMaxLength = 12
 )
 
+// Error types for check alias
+var (
+	ErrAliasEmptyString = errors.New("aliasname should not be empty string")
+	ErrAliasLengthLimit = errors.New("aliasname should not be longer than 12 letters")
+	ErrAliasInvalidChar = errors.New("aliasname should contain only lowercase letters and numbers")
+	ErrAliasFirstLetter = errors.New("first letter of alias name should not be a number")
+)
+
 // ValidateAlias checks alias
 func ValidateAlias(alias string) error {
 	if alias == "" {
-		return core.ErrAliasEmptyString
+		return ErrAliasEmptyString
 	}
 	if len(alias) > AliasMaxLength {
-		return core.ErrAliasLengthLimit
+		return ErrAliasLengthLimit
 	}
 	for i := 0; i < len(alias); i++ {
 		ch := rune(alias[i])
 
 		if !(unicode.IsNumber(ch) || unicode.IsLower(ch)) {
-			return core.ErrAliasInvalidChar
+			return ErrAliasInvalidChar
 		}
 		if i == 0 && unicode.IsNumber(ch) {
-			return core.ErrAliasFirstLetter
+			return ErrAliasFirstLetter
 		}
 	}
 	return nil
-
 }
