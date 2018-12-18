@@ -1121,7 +1121,6 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	pbAlias = &corepb.Alias{
 		AliasName:       tx.aliasName,
 		AliasCollateral: collateralBytes,
-		Timestamp:       b.Timestamp(),
 	}
 	aliasBytes, err = proto.Marshal(pbAlias)
 	if err != nil {

@@ -23,7 +23,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -234,6 +234,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		SignPair(from).
 		Payload(&core.RegisterAliasPayload{AliasName: testAliasName}).
 		ExecuteErr(core.ErrAlreadyHaveAlias)
+		//Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-collateralAmount-20000)
@@ -280,4 +281,37 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		t.Log(err)
 	}
 	t.Log(pbAlias.AliasName)
+}
+
+func TestRegisterAliasTable(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[testutil.DynastySize]
+	const (
+		collateralAmount = 1000
+	)
+	type aliasErrSet struct {
+		name string
+		err  error
+	}
+	testNames := []*aliasErrSet{
+		{"", core.ErrAliasEmptyString},
+		{"testAlias", core.ErrAliasInvalidChar},
+		{"Testalias", core.ErrAliasInvalidChar},
+		{"3testalias", core.ErrAliasFirstLetter},
+		{" testalias", core.ErrAliasInvalidChar},
+		{"testalias0123", core.ErrAliasLengthLimit},
+		{"testaliastestalias", core.ErrAliasLengthLimit},
+		{"testalias!", core.ErrAliasInvalidChar},
+		{"test_alias", core.ErrAliasInvalidChar},
+		{"test	as", core.ErrAliasInvalidChar},
+	}
+	bb = bb.
+		Tx().StakeTx(from, 10000).Execute()
+	for _, es := range testNames {
+		bb.Tx().Type(core.TxOpRegisterAlias).
+			Value(collateralAmount).
+			SignPair(from).
+			Payload(&core.RegisterAliasPayload{AliasName: es.name}).
+			ExecuteErr(es.err)
+	}
 }

@@ -148,7 +148,7 @@ func IsValidAlias(alias string) bool {
 	for i := 0; i < len(alias); i++ {
 		ch := rune(alias[i])
 
-		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
+		if !(unicode.IsNumber(ch) || unicode.IsLower(ch)) {
 			return false
 		}
 		if i == 0 && unicode.IsNumber(ch) {

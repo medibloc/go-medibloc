@@ -50,5 +50,4 @@ message Certification {
 message Alias {
   string alias_name = 1;
   bytes alias_collateral = 2;
-  int64 timestamp = 3;
 }
