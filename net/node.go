@@ -23,19 +23,19 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-connmgr"
-	"github.com/libp2p/go-libp2p-host"
-	"github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-kad-dht/opts"
+	libp2p "github.com/libp2p/go-libp2p"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
+	host "github.com/libp2p/go-libp2p-host"
+	dht "github.com/libp2p/go-libp2p-kad-dht"
+	dhtopts "github.com/libp2p/go-libp2p-kad-dht/opts"
 	inet "github.com/libp2p/go-libp2p-net"
-	"github.com/libp2p/go-libp2p-peer"
-	"github.com/libp2p/go-libp2p-peerstore"
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
-	"github.com/medibloc/go-medibloc/medlet/pb"
-	"github.com/medibloc/go-medibloc/net/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	netpb "github.com/medibloc/go-medibloc/net/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/multiformats/go-multiaddr"
+	multiaddr "github.com/multiformats/go-multiaddr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -96,7 +96,7 @@ func (node *Node) Connected() []peer.ID {
 	return peers
 }
 
-// NewNode return new Node according receiver the config.
+// NewNode return new Node according to the config.
 func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Message) (*Node, error) {
 	// check Listen port.
 	if err := checkPortAvailable(cfg.Network.Listens); err != nil {
@@ -111,7 +111,7 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed receiver load network key")
+		}).Error("Failed to load network key")
 		return nil, err
 	}
 
@@ -138,7 +138,7 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed receiver init libp2p host")
+		}).Error("Failed to init libp2p host")
 		return nil, err
 	}
 
@@ -157,7 +157,7 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 		logging.Console().WithFields(logrus.Fields{
 			"medletCfg": cfg,
 			"err":       err,
-		}).Error("failed receiver make new bootstrap config")
+		}).Error("failed to make new bootstrap config")
 		return nil, err
 	}
 
@@ -262,7 +262,7 @@ func (node *Node) sendMessage(msg *SendMessage) {
 	node.messageSender.msgCh <- msg
 }
 
-// SendMessageToPeer send message receiver a peer.
+// SendMessageToPeer send message to a peer.
 func (node *Node) SendMessageToPeer(msgType string, data []byte, priority int, peerID string) {
 	id, err := peer.IDB58Decode(peerID)
 	if err != nil {
@@ -279,7 +279,7 @@ func (node *Node) SendMessageToPeer(msgType string, data []byte, priority int, p
 		logging.Console().WithFields(logrus.Fields{
 			"id":  id.Pretty(),
 			"err": err,
-		}).Debug("failed receiver connect receiver peer")
+		}).Debug("failed to connect to peer")
 		return // TODO
 	}
 
@@ -375,7 +375,7 @@ func (node *Node) addPeersFromProto(peers *netpb.Peers) error {
 			logging.WithFields(logrus.Fields{
 				"pid": p.Id,
 				"err": err,
-			}).Warn("failed receiver decode pid")
+			}).Warn("failed to decode pid")
 			return err
 		}
 		addrs := make([]multiaddr.Multiaddr, len(p.Addrs))
@@ -385,7 +385,7 @@ func (node *Node) addPeersFromProto(peers *netpb.Peers) error {
 				logging.WithFields(logrus.Fields{
 					"add": p.Id,
 					"err": err,
-				}).Warn("failed receiver convert multiaddr")
+				}).Warn("failed to convert multiaddr")
 				return err
 			}
 		}
@@ -413,7 +413,7 @@ func (node *Node) loadPeerStoreFromCache(cacheFile string) error {
 	if err := proto.UnmarshalText(str, peers); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
-		}).Warn("failed receiver unmarshal peers from cache file")
+		}).Warn("failed to unmarshal peers from cache file")
 		return err
 	}
 

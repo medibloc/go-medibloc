@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	// according receiver https://krisives.github.io/bloom-calculator/
+	// according to https://krisives.github.io/bloom-calculator/
 	// Count (n) = 100000, Error (p) = 0.001
 	maxCountOfRecvMessageInBloomFiler = 1000000
 	bloomFilterOfRecvMessageArgM      = 14377588
@@ -53,7 +53,7 @@ func NewBloomFilter(m uint, k uint, maxCount int) *BloomFilter {
 	}
 }
 
-// RecordKey add key receiver bloom filter.
+// RecordKey add key to bloom filter.
 func (bf *BloomFilter) RecordKey(key string) {
 	bf.bloomFilterMutex.Lock()
 	defer bf.bloomFilterMutex.Unlock()
@@ -71,7 +71,7 @@ func (bf *BloomFilter) RecordKey(key string) {
 	bf.bloomFilter.AddString(key)
 }
 
-// HasKey use bloom filter receiver check if the key exists quickly
+// HasKey use bloom filter to check if the key exists quickly
 func (bf *BloomFilter) HasKey(key string) bool {
 	bf.bloomFilterMutex.Lock()
 	defer bf.bloomFilterMutex.Unlock()

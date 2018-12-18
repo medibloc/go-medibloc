@@ -21,7 +21,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/util/logging"
 
-	"github.com/libp2p/go-libp2p-peerstore"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/byteutils"
