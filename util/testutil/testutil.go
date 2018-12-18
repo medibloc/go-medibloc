@@ -16,6 +16,7 @@
 package testutil
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -150,7 +151,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		txStake.SetNonce(1)
 		txStake.SignThis(keypair.PrivKey)
 
-		aliasPayload := &core.RegisterAliasPayload{AliasName: "testbpalias" + string(i)}
+		aliasPayload := &core.RegisterAliasPayload{AliasName: "testalias" + strconv.Itoa(i)}
 		aliasePayloadBytes, err := aliasPayload.ToBytes()
 		require.NoError(t, err)
 

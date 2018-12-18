@@ -237,6 +237,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		SignPair(from).
 		Payload(&core.RegisterAliasPayload{AliasName: testAliasName}).
 		ExecuteErr(core.ErrAlreadyHaveAlias)
+		//Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-collateralAmount-20000)
@@ -283,4 +284,37 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		t.Log(err)
 	}
 	t.Log(pbAlias.AliasName)
+}
+
+func TestRegisterAliasTable(t *testing.T) {
+	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[testutil.DynastySize]
+	const (
+		collateralAmount = 1000
+	)
+	type aliasErrSet struct {
+		name string
+		err  error
+	}
+	testNames := []*aliasErrSet{
+		{"", common.ErrAliasEmptyString},
+		{"testAlias", common.ErrAliasInvalidChar},
+		{"Testalias", common.ErrAliasInvalidChar},
+		{"3testalias", common.ErrAliasFirstLetter},
+		{" testalias", common.ErrAliasInvalidChar},
+		{"testalias0123", common.ErrAliasLengthLimit},
+		{"testaliastestalias", common.ErrAliasLengthLimit},
+		{"testalias!", common.ErrAliasInvalidChar},
+		{"test_alias", common.ErrAliasInvalidChar},
+		{"test	as", common.ErrAliasInvalidChar},
+	}
+	bb = bb.
+		Tx().StakeTx(from, 10000).Execute()
+	for _, es := range testNames {
+		bb.Tx().Type(core.TxOpRegisterAlias).
+			Value(collateralAmount).
+			SignPair(from).
+			Payload(&core.RegisterAliasPayload{AliasName: es.name}).
+			ExecuteErr(es.err)
+	}
 }

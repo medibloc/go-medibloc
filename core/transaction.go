@@ -1093,8 +1093,9 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if !common.IsHexAddress(tx.From().Hex()) {
 		return nil, ErrInvalidAddress
 	}
-	if !common.IsValidAlias(payload.AliasName) {
-		return nil, ErrInvalidAlias
+	err = common.ValidateAlias(payload.AliasName)
+	if err != nil {
+		return nil, err
 	}
 
 	return &RegisterAliasTx{
@@ -1115,8 +1116,9 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 		return ErrAliasCollateralLimit
 	}
 
-	if !common.IsValidAlias(tx.aliasName) {
-		return ErrInvalidAlias
+	err = common.ValidateAlias(tx.aliasName)
+	if err != nil {
+		return err
 	}
 
 	acc, err := b.State().GetAccount(tx.addr)
@@ -1152,7 +1154,6 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	pbAlias = &corepb.Alias{
 		AliasName:       tx.aliasName,
 		AliasCollateral: collateralBytes,
-		Timestamp:       b.Timestamp(),
 	}
 	aliasBytes, err = proto.Marshal(pbAlias)
 	if err != nil {

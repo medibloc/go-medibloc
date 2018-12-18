@@ -17,6 +17,7 @@ package common
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
 	"unicode"
 
@@ -140,23 +141,31 @@ const (
 	AliasMaxLength = 12
 )
 
-// IsValidAlias checks alias
-func IsValidAlias(alias string) bool {
+// Error types for check alias
+var (
+	ErrAliasEmptyString = errors.New("aliasname should not be empty string")
+	ErrAliasLengthLimit = errors.New("aliasname should not be longer than 12 letters")
+	ErrAliasInvalidChar = errors.New("aliasname should contain only lowercase letters and numbers")
+	ErrAliasFirstLetter = errors.New("first letter of alias name should not be a number")
+)
+
+// ValidateAlias checks alias
+func ValidateAlias(alias string) error {
 	if alias == "" {
-		return false
+		return ErrAliasEmptyString
 	}
 	if len(alias) > AliasMaxLength {
-		return false
+		return ErrAliasLengthLimit
 	}
 	for i := 0; i < len(alias); i++ {
 		ch := rune(alias[i])
 
-		if !(unicode.IsNumber(ch) || !unicode.IsUpper(ch)) {
-			return false
+		if !(unicode.IsNumber(ch) || unicode.IsLower(ch)) {
+			return ErrAliasInvalidChar
 		}
 		if i == 0 && unicode.IsNumber(ch) {
-			return false
+			return ErrAliasFirstLetter
 		}
 	}
-	return true
+	return nil
 }
