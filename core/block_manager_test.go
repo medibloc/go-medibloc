@@ -26,7 +26,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -201,13 +200,15 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		require.NoError(t, err)
 		tail = block
 	}
+	recordHash, err := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
+	require.NoError(t, err)
 	payload := &core.AddRecordPayload{
-		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+		RecordHash: recordHash,
 	}
 	block := bb.Block(blocks[0]).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
-	err := bm.PushBlockData(block.GetBlockData())
+	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
 
 	block = bb.Block(blocks[1]).Child().
@@ -254,8 +255,9 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	b1 := bb.Block(tail).Child().Stake().SignProposer().Build()
 	blocks = append(blocks, b1)
 
+	recordHash, _ := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
 	payload := &core.AddRecordPayload{
-		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+		RecordHash: recordHash,
 	}
 	b2 := bb.Block(b1).Child().
 		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
@@ -267,8 +269,9 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 
 	for i := 1; i < dynastySize+2; i++ {
 		hash := fmt.Sprintf("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f%v", i)
+		recordHash, _ := byteutils.Hex2Bytes(hash)
 		payload := &core.AddRecordPayload{
-			RecordHash: byteutils.Hex2Bytes(hash),
+			RecordHash: recordHash,
 		}
 		block := bb.Block(blocks[i+1]).Child().
 			Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
@@ -323,8 +326,8 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	}{
 		{0, core.ErrFailedValidateHeightAndHeight},
 		{1, core.ErrFailedValidateHeightAndHeight},
-		{2, core.ErrCannotExecuteOnParentBlock},
-		{3, core.ErrCannotExecuteOnParentBlock},
+		{2, core.ErrInvalidBlockHeight},
+		{3, core.ErrInvalidBlockHeight},
 		{5, core.ErrFailedValidateHeightAndHeight},
 		{6, core.ErrFailedValidateHeightAndHeight},
 		{999, core.ErrFailedValidateHeightAndHeight},
@@ -334,11 +337,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		block := bb.Block(parent).Child().
 			Tx().RandomTx().Execute().
 			Height(v.height).SignProposer().Build()
-		if v.err != testutil.ErrExecutionTimeout {
-			assert.Equal(t, v.err, bm.PushBlockData(block.GetBlockData()), "testcase = %v", v)
-		} else {
-			assert.Equal(t, v.err, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 5000))
-		}
+		assert.Equal(t, v.err, bm.PushBlockDataSync(block.GetBlockData()), "testcase = %v", v)
 	}
 }
 

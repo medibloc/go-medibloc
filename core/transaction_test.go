@@ -98,8 +98,9 @@ func TestStakingAndUnstaking(t *testing.T) {
 	require.NoError(t, err)
 	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance)
 
+	recordHash, _ := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
 	payload := &core.AddRecordPayload{
-		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+		RecordHash: recordHash,
 	}
 	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
 		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(from).Execute()

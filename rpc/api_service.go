@@ -193,7 +193,10 @@ func (s *APIService) GetCandidate(ctx context.Context, req *rpcpb.GetCandidateRe
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 
-	candidateID := byteutils.Hex2Bytes(req.CandidateId)
+	candidateID, err := byteutils.Hex2Bytes(req.CandidateId)
+	if err != nil {
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	}
 	candidate, err := block.State().DposState().CandidateState().Get(candidateID)
 	if err == trie.ErrNotFound {
 		return nil, status.Error(codes.NotFound, ErrMsgCandidateNotFound)

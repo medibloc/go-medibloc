@@ -161,9 +161,10 @@ func TestVoteTransactionReceipt(t *testing.T) {
 	candidateTx1 := bb.Tx().Value(1000000).Nonce(3).Type(dpos.TxOpBecomeCandidate).SignPair(payer).Build()
 	candidateTx2 := bb.Tx().Value(1000000).Nonce(3).Type(dpos.TxOpBecomeCandidate).SignPair(payer2).Build()
 
+	candidateId, _ := byteutils.Hex2Bytes(
+		"e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")
 	invalidPayload := &dpos.VotePayload{
-		CandidateIDs: [][]byte{byteutils.Hex2Bytes(
-			"e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417"), candidateTx1.Hash()},
+		CandidateIDs: [][]byte{candidateId, candidateTx1.Hash()},
 	}
 	invalidTx := bb.Tx().Nonce(4).Type(dpos.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
 

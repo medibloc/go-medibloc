@@ -152,7 +152,6 @@ func TestTopicLibBlock(t *testing.T) {
 	dynastySize := 6
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -187,7 +186,7 @@ func TestTopicNewTailBlock(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -225,7 +224,7 @@ func TestTopicPendingTransaction(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -252,7 +251,7 @@ func TestTopicRevertBlock(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -294,7 +293,7 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
@@ -322,7 +321,7 @@ func TestTypeAccountTransaction(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
+
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 

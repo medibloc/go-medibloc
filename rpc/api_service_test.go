@@ -462,15 +462,18 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 		NextMintSlot2(time.Now().Unix())).Stake()
 
 	payer := seed.Config.TokenDist[testutil.DynastySize]
+	recordHash, err := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
+	require.NoError(t, err)
 	payload := &core.AddRecordPayload{
-		RecordHash: byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7"),
+		RecordHash: recordHash,
 	}
 
 	tx1 := bb.Tx().Nonce(2).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	tx2 := bb.Tx().Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrRecordAlreadyAdded).SignProposer().Build()
 
-	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	err = seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	assert.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
