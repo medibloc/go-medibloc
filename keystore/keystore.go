@@ -325,7 +325,7 @@ func getKDFKey(cryptoJSON CipherJSON, auth string) ([]byte, error) {
 		c := ensureInt(cryptoJSON.KDFParams["c"])
 		prf := cryptoJSON.KDFParams["prf"].(string)
 		if prf != "hmac-sha256" {
-			return nil, fmt.Errorf("Unsupported PBKDF2 PRF: %s", prf)
+			return nil, fmt.Errorf("unsupported PBKDF2 PRF: %s", prf)
 		}
 		key := pbkdf2.Key(authArray, salt, c, dkLen, sha256.New)
 		return key, nil

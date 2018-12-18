@@ -32,6 +32,6 @@ const (
 
 // Error types of algorithm package.
 var (
-	ErrInvalidHashAlgorithm   = errors.New("Invalid hash algorithm")
-	ErrInvalidCryptoAlgorithm = errors.New("Invalid crypto algorithm")
+	ErrInvalidHashAlgorithm   = errors.New("invalid hash algorithm")
+	ErrInvalidCryptoAlgorithm = errors.New("invalid crypto algorithm")
 )

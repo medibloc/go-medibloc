@@ -32,7 +32,7 @@ import (
 // Errors
 var (
 	ErrInvalidNodeType = errors.New("invalid node type")
-	ErrPbMsg           = errors.New("Pb Message cannot be converted into Node")
+	ErrPbMsg           = errors.New("pb Message cannot be converted into Node")
 	ErrNotFound        = storage.ErrKeyNotFound
 )
 
