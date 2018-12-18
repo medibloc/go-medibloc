@@ -631,6 +631,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 			err = json.Unmarshal(bs, data)
 			assert.NoError(t, err)
 
+			t.Logf("Topic : %v, Data: %v", data.Result.Topic, data.Result.Hash)
 			switch data.Result.Topic {
 			case core.TopicPendingTransaction:
 				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i%3].Hash()))
