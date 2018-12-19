@@ -87,6 +87,11 @@ func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecat
 	return bs.DposState().Dynasty()
 }
 
+//Price returns cpu price and net price
+func (bs *BlockState) Price() Price {
+	return Price{bs.cpuPrice, bs.netPrice}
+}
+
 func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	accState, err := NewAccountState(nil, stor)
 	if err != nil {

@@ -25,6 +25,7 @@ import (
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -294,8 +295,11 @@ func (tm *TransactionManager) replaceBandwidthInfo(bs *BlockState, new, old *Tra
 		newBandwidthInfo.Sub(old.bandwidth)
 	}
 	newBandwidthInfo.Add(new.bandwidth)
-
-	if err := tm.verifyPayerPoints(bs, new.payer, newBandwidthInfo); err != nil {
+	points, err := newBandwidthInfo.CalcPoints(bs.Price())
+	if err != nil {
+		return err
+	}
+	if err := tm.verifyPayerPoints(bs, new.payer, points, new.Transaction); err != nil {
 		return err
 	}
 
@@ -324,9 +328,14 @@ func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionI
 	}
 
 	newBandwidthInfo.Add(new.bandwidth)
-	if err := tm.verifyPayerPoints(bs, new.payer, newBandwidthInfo); err != nil {
+	points, err := newBandwidthInfo.CalcPoints(bs.Price())
+	if err != nil {
 		return err
 	}
+	if err := tm.verifyPayerPoints(bs, new.payer, points, new.Transaction); err != nil {
+		return err
+	}
+
 	if _, ok := tm.bandwidthInfo[new.payer]; !ok {
 		tm.bandwidthInfo[new.payer] = NewBandwidth(0, 0)
 	}
@@ -334,18 +343,16 @@ func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionI
 	return nil
 }
 
-func (tm *TransactionManager) verifyPayerPoints(bs *BlockState, payer common.Address, bandwidth *Bandwidth) error {
-	p := Price{bs.cpuPrice, bs.netPrice} // TODO: bs 함수로 변경?
-	points, err := bandwidth.CalcPoints(p)
-	if err != nil {
-		return err
-	}
+func (tm *TransactionManager) verifyPayerPoints(bs *BlockState, payer common.Address, points *util.Uint128, transaction *Transaction) error {
 	payerAcc, err := bs.GetAccount(payer)
 	if err != nil {
 		return err
 	}
-	if payerAcc.Points.Cmp(points) < 0 {
-		return ErrPointNotEnough
+	if err := payerAcc.UpdatePoints(time.Now().Unix()); err != nil {
+		return err
+	}
+	if err := payerAcc.checkAccountPoints(transaction, points); err != nil {
+		return err
 	}
 	return nil
 }
