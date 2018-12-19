@@ -160,8 +160,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 	if mainTailBlock == nil || mainTailBlock.Height() == 1 {
 		return nil
 	}
-	indexBlock := bc.BlockByHash(mainTailBlock.ParentHash())
-	_, err = bc.buildIndexByBlockHeight(lib, indexBlock)
+	_, err = bc.buildIndexByBlockHeight(lib, mainTailBlock)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
