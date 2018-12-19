@@ -321,6 +321,30 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
 }
 
+func TestTopicAcceptedBlock(t *testing.T) {
+	dynastySize := testutil.DynastySize
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+
+	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+		TokenDist).Block(seed.GenesisBlock()).Child()
+	b := bb.SignProposer().Build()
+
+	emitter := seed.Med.EventEmitter()
+	topics := []string{core.TopicAcceptedBlock}
+	subscriber := register(emitter, topics[0])
+
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
+	require.NoError(t, err)
+
+	event := <-subscriber.EventChan()
+	assert.Equal(t, core.TopicAcceptedBlock, event.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(b.Hash()), event.Data)
+}
+
 func TestTypeAccountTransaction(t *testing.T) {
 	dynastySize := testutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
