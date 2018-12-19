@@ -16,106 +16,115 @@
 package sync
 
 import (
-	"github.com/medibloc/go-medibloc/common/trie"
+	"context"
+	"sync"
+	"time"
+
+	"github.com/medibloc/go-medibloc/core"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 )
 
-// Service Sync
+//Service is the service for sync service
 type Service struct {
-	config *medletpb.SyncConfig
+	ctx context.Context
 
-	Seeding  *seeding
-	Download *download
+	netService net.Service
+	bm         BlockManager
+	messageCh  chan net.Message
 
-	quitCh chan bool
+	mu          sync.Mutex
+	downloading bool
+
+	targetHeight     uint64
+	targetHash       []byte
+	baseBlock        *core.BlockData
+	lastBlock        *core.BlockData
+	subscribeMap     *sync.Map // key: queryID, value: blockHeight
+	numberOfRequests int
+	downloadErrCh    chan error
+
+	responseTimeLimit   time.Duration
+	numberOfRetries     int
+	activeDownloadLimit int
+}
+
+//IsDownloadActivated return status of activation
+func (s *Service) IsDownloadActivated() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.downloading
 }
 
 // NewService returns new syncService
-func NewService(config *medletpb.SyncConfig) *Service {
+func NewService(cfg *medletpb.SyncConfig) *Service {
+	responseTimeLimit := time.Duration(cfg.ResponseTimeLimit) * time.Second
+	if responseTimeLimit == 0 {
+		responseTimeLimit = DefaultNumberOfRetry
+	}
+	numberOfRetries := int(cfg.NumberOfRetries)
+	if numberOfRetries == 0 {
+		numberOfRetries = DefaultNumberOfRetry
+	}
+	activeDownloadLimit := int(cfg.ActiveDownloadLimit)
+	if activeDownloadLimit == 0 {
+		activeDownloadLimit = DefaultActiveDownloadLimit
+	}
+
 	return &Service{
-		config:   config,
-		Seeding:  nil,
-		Download: nil,
-		quitCh:   make(chan bool, 1),
+		netService:       nil,
+		bm:               nil,
+		messageCh:        make(chan net.Message, 128),
+		mu:               sync.Mutex{},
+		downloading:      false,
+		targetHeight:     0,
+		numberOfRequests: 0,
+
+		responseTimeLimit:   responseTimeLimit,
+		numberOfRetries:     numberOfRetries,
+		activeDownloadLimit: activeDownloadLimit,
 	}
 }
 
 // Setup makes seeding and block manager on syncService
-func (ss *Service) Setup(netService net.Service, bm BlockManager) {
-	ss.Seeding = newSeeding(ss.config)
-	ss.Seeding.setup(netService, bm)
-	ss.Download = newDownload(ss.config)
-	ss.Download.setup(netService, bm)
+func (s *Service) Setup(netService net.Service, bm BlockManager) {
+	s.netService = netService
+	s.bm = bm
 }
 
 // Start Sync Service
-func (ss *Service) Start() {
+func (s *Service) Start(ctx context.Context) {
+	s.ctx = ctx
 	logging.Console().Info("SyncService is started.")
-	ss.Seeding.start()
+
+	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, BaseSearch, net.MessageWeightZero))
+	s.netService.Register(net.NewSubscriber(s, s.messageCh, false, BlockRequest, net.MessageWeightZero))
+
+	go s.loop()
 }
 
-// Stop Sync Service
-func (ss *Service) Stop() {
-	ss.Seeding.stop()
-	ss.Download.stop()
-	logging.Console().Info("SyncService is stopped.")
+func (s *Service) stop() {
+	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, BaseSearch, net.MessageWeightZero))
+	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, BlockRequest, net.MessageWeightZero))
+
+	logging.Console().Info("SyncService is started.")
+
 }
 
-// ActiveDownload start download manager
-func (ss *Service) ActiveDownload(targetHeight uint64) error {
-	if ss.Download.IsActivated() == true {
-		return ErrAlreadyDownlaodActivated
-	}
-	err := ss.Download.start(targetHeight)
-	if err != nil {
-		return err
-	}
-	logging.Info("Sync: Download manager started.")
-
-	return nil
-}
-
-// IsDownloadActivated return download isActivated
-func (ss *Service) IsDownloadActivated() bool {
-	return ss.Download.IsActivated()
-}
-
-// IsSeedActivated return download isActivated
-func (ss *Service) IsSeedActivated() bool {
-	return ss.Seeding.IsActivated()
-}
-
-func generateHashTrie(hashes [][]byte) *trie.Trie {
-	store, err := storage.NewMemoryStorage()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to create memory storage")
-		return nil
-	}
-
-	hashTrie, err := trie.NewTrie(nil, store)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to create merkle tree")
-		return nil
-	}
-
-	for _, h := range hashes {
-		err := hashTrie.Put(h, h)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Failed to put hash to tree")
-			return nil
+func (s *Service) loop() {
+	for {
+		select {
+		case <-s.ctx.Done():
+			s.stop()
+			return
+		case msg := <-s.messageCh:
+			switch msg.MessageType() {
+			case BaseSearch:
+				go s.handleFindBaseRequest(msg)
+			case BlockRequest:
+				go s.handleBlockByHeightRequest(msg)
+			}
 		}
 	}
-
-	return hashTrie
-
 }

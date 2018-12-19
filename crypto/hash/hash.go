@@ -18,6 +18,8 @@ package hash
 import (
 	"crypto/sha256"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 
 	"golang.org/x/crypto/ripemd160"
@@ -40,6 +42,15 @@ func Sha3256(args ...[]byte) []byte {
 		hasher.Write(bytes)
 	}
 	return hasher.Sum(nil)
+}
+
+//Sha3256Pb returns the SAH#-256 diggest of the data from protobuf type
+func Sha3256Pb(pb proto.Message) ([]byte, error) {
+	b, err := proto.Marshal(pb)
+	if err != nil {
+		return nil, err
+	}
+	return Sha3256(b), err
 }
 
 // Ripemd160 return the RIPEMD160 digest of the data.

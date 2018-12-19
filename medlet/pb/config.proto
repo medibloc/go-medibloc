@@ -174,26 +174,15 @@ message InfluxdbConfig {
 }
 
 message SyncConfig {
-    // Minimum ChunkSize on seeding
-    uint64 seeding_min_chunk_size = 1;
-    // Maximum ChunkSize on seeding
-    uint64 seeding_max_chunk_size = 2;
-    // Maximum Number of Concurrent Peers on seeding
-    uint32 seeding_max_concurrent_peers = 3;
-    // Size of Chunk on Downloading
-    uint64 download_chunk_size = 4;
-    // Maximum Number of Concurrent DownloadTasks
-    uint32 download_max_concurrent_tasks = 5;
-    // Chunk Cache Size
-    uint64 download_chunk_cache_size = 6;
-    // Minimum Number of Peers to pass majority check
-    uint32 minimum_peers = 7;
-
-    // Blockchunk request interval - second
-    uint32 request_interval = 10;
-    // Timeout for finishing download  - second
-    uint32 finisher_timeout = 11;
+    // Waiting time for response after send message to peer (seconds)
+    uint32 response_time_limit = 1;
+    // If the request fails, retry this number of times
+    uint32 number_of_retries = 2;
+    // Maximum Number of concurrent download
+    uint32 active_download_limit = 3;
 
     // Height gap to activate download
     uint64 sync_activation_height = 20;
+    // Height gap to activate download
+    uint64 sync_activation_lib_gap = 21;
 }

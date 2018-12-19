@@ -223,7 +223,7 @@ type DposState interface {
 
 //SyncService interface for sync
 type SyncService interface {
-	ActiveDownload(targetHeight uint64) error
+	Download(bd *BlockData) error
 	IsDownloadActivated() bool
 }
 

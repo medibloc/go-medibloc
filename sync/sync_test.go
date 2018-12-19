@@ -19,13 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/sync"
-
-	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/net"
-	syncpb "github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -68,7 +63,7 @@ func TestService_Start(t *testing.T) {
 	receiver := testNetwork.NewNode()
 	receiver.Start()
 
-	err = receiver.Med.SyncService().ActiveDownload(seed.Tail().Height())
+	err = receiver.Med.SyncService().Download(seed.Tail().BlockData)
 	require.NoError(t, err)
 	count := 0
 	prevSize := uint64(0)
@@ -105,9 +100,9 @@ func TestService_Start(t *testing.T) {
 
 func TestForkResistance(t *testing.T) {
 	var (
-		nMajors   = 6
-		nBlocks   = 50
-		chunkSize = 20
+		nMajors = 6
+		nBlocks = 50
+		//chunkSize = 20
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
@@ -194,14 +189,14 @@ func TestForkResistance(t *testing.T) {
 	require.False(t, byteutils.Equal(minorNodes[0].Tail().Hash(), majorNodes[0].Tail().Hash()))
 
 	cfg := testutil.NewConfig(t)
-	cfg.Config.Sync.DownloadChunkCacheSize = uint64(chunkSize)
+	//cfg.Config.Sync.DownloadChunkCacheSize = uint64(chunkSize)
 	newbie := testNetwork.NewNodeWithConfig(cfg)
 
 	newbie.Start()
 
 	testNetwork.WaitForEstablished()
 
-	err := newbie.Med.SyncService().ActiveDownload(seed.Tail().Height())
+	err := newbie.Med.SyncService().Download(seed.Tail().BlockData)
 	require.NoError(t, err)
 
 	count := 0
@@ -244,7 +239,6 @@ func TestForAutoActivation(t *testing.T) {
 		nBlocks              = 119
 		chunkSize            = 20
 		syncActivationHeight = uint64(40)
-		//nBackward            = 2
 	)
 
 	testNetwork := testutil.NewNetwork(t, 3)
@@ -357,119 +351,119 @@ func TestForAutoActivation(t *testing.T) {
 	}
 }
 
-func TestForInvalidMessageToSeed(t *testing.T) {
-	var (
-		nBlocks   = 5
-		chunkSize = 2
-	)
-
-	testNetwork := testutil.NewNetwork(t, 3)
-	defer testNetwork.Cleanup()
-
-	seed := testNetwork.NewSeedNode()
-	seed.Start()
-
-	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist)
-
-	seedingMinChunkSize := seed.Config.Config.Sync.SeedingMinChunkSize
-	seedingMaxChunkSize := seed.Config.Config.Sync.SeedingMaxChunkSize
-
-	tail := seed.Tail()
-	for i := 1; i < nBlocks; i++ {
-		var b *core.Block
-		if i == 1 {
-			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
-		} else {
-			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
-		}
-		tail = b
-		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
-		require.NoError(t, err)
-	}
-	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
-	require.NoError(t, err)
-
-	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
-	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
-
-	//create First Receiver
-
-	cfg := testutil.NewConfig(t)
-	cfg.Config.Sync.DownloadChunkSize = uint64(chunkSize)
-	receiver := testNetwork.NewNode()
-	receiver.Start()
-
-	testNetwork.WaitForEstablished()
-
-	// Error on wrong height
-	mq := new(syncpb.MetaQuery)
-	mq.From = uint64(nBlocks + 1)
-	mq.Hash = receiver.Tail().Hash()
-	mq.ChunkSize = 10
-
-	sendData, err := proto.Marshal(mq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
-
-	// Error on wrong hash
-	mq = new(syncpb.MetaQuery)
-	mq.From = uint64(nBlocks)
-	mq.Hash = receiver.Tail().Hash()
-	mq.ChunkSize = 10
-
-	sendData, err = proto.Marshal(mq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
-
-	// Error on chunksize check
-	mq = new(syncpb.MetaQuery)
-	mq.From = receiver.Tail().Height()
-	mq.Hash = receiver.Tail().Hash()
-	mq.ChunkSize = seedingMaxChunkSize + 1
-
-	sendData, err = proto.Marshal(mq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
-
-	mq = new(syncpb.MetaQuery)
-	mq.From = receiver.Tail().Height()
-	mq.Hash = receiver.Tail().Hash()
-	mq.ChunkSize = seedingMinChunkSize - 1
-
-	sendData, err = proto.Marshal(mq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
-
-	// Too close to make one chunk
-	mq = new(syncpb.MetaQuery)
-	mq.From = uint64(1)
-	mq.Hash = receiver.Tail().Hash()
-	mq.ChunkSize = uint64(seed.Tail().Height() + 1)
-
-	sendData, err = proto.Marshal(mq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
-
-	cq := new(syncpb.BlockChunkQuery)
-	cq.From = receiver.Tail().Height()
-	cq.ChunkSize = seedingMaxChunkSize + 1
-
-	sendData, err = proto.Marshal(cq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID().Pretty())
-
-	// From + chunk size > tail height
-	cq = new(syncpb.BlockChunkQuery)
-	cq.From = uint64(1)
-	cq.ChunkSize = uint64(seed.Tail().Height() + 1)
-
-	sendData, err = proto.Marshal(cq)
-	require.NoError(t, err)
-	receiver.Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID().Pretty())
-
-	time.Sleep(3 * time.Second)
-	require.True(t, seed.Med.SyncService().IsSeedActivated(), "SeedTester is shutdown")
-}
+//func TestForInvalidMessageToSeed(t *testing.T) {
+//	var (
+//		nBlocks   = 5
+//		chunkSize = 2
+//	)
+//
+//	testNetwork := testutil.NewNetwork(t, 3)
+//	defer testNetwork.Cleanup()
+//
+//	seed := testNetwork.NewSeedNode()
+//	seed.Start()
+//
+//	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist)
+//
+//	seedingMinChunkSize := seed.Config.Config.Sync.SeedingMinChunkSize
+//	seedingMaxChunkSize := seed.Config.Config.Sync.SeedingMaxChunkSize
+//
+//	tail := seed.Tail()
+//	for i := 1; i < nBlocks; i++ {
+//		var b *core.Block
+//		if i == 1 {
+//			b = bb.Block(tail).Child().Stake().Tx().RandomTx().Execute().SignProposer().Build()
+//		} else {
+//			b = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
+//		}
+//		tail = b
+//		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
+//		require.NoError(t, err)
+//	}
+//	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
+//	require.NoError(t, err)
+//
+//	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
+//	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
+//
+//	//create First Receiver
+//
+//	cfg := testutil.NewConfig(t)
+//	cfg.Config.Sync.DownloadChunkSize = uint64(chunkSize)
+//	receiver := testNetwork.NewNode()
+//	receiver.Start()
+//
+//	testNetwork.WaitForEstablished()
+//
+//	// Error on wrong height
+//	mq := new(syncpb.MetaQuery)
+//	mq.From = uint64(nBlocks + 1)
+//	mq.Hash = receiver.Tail().Hash()
+//	mq.ChunkSize = 10
+//
+//	sendData, err := proto.Marshal(mq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+//
+//	// Error on wrong hash
+//	mq = new(syncpb.MetaQuery)
+//	mq.From = uint64(nBlocks)
+//	mq.Hash = receiver.Tail().Hash()
+//	mq.ChunkSize = 10
+//
+//	sendData, err = proto.Marshal(mq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+//
+//	// Error on chunksize check
+//	mq = new(syncpb.MetaQuery)
+//	mq.From = receiver.Tail().Height()
+//	mq.Hash = receiver.Tail().Hash()
+//	mq.ChunkSize = seedingMaxChunkSize + 1
+//
+//	sendData, err = proto.Marshal(mq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+//
+//	mq = new(syncpb.MetaQuery)
+//	mq.From = receiver.Tail().Height()
+//	mq.Hash = receiver.Tail().Hash()
+//	mq.ChunkSize = seedingMinChunkSize - 1
+//
+//	sendData, err = proto.Marshal(mq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+//
+//	// Too close to make one chunk
+//	mq = new(syncpb.MetaQuery)
+//	mq.From = uint64(1)
+//	mq.Hash = receiver.Tail().Hash()
+//	mq.ChunkSize = uint64(seed.Tail().Height() + 1)
+//
+//	sendData, err = proto.Marshal(mq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeers(sync.SyncMetaRequest, sendData, net.MessagePriorityLow, new(net.ChainSyncPeersFilter))
+//
+//	cq := new(syncpb.BlockChunkQuery)
+//	cq.From = receiver.Tail().Height()
+//	cq.ChunkSize = seedingMaxChunkSize + 1
+//
+//	sendData, err = proto.Marshal(cq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID().Pretty())
+//
+//	// From + chunk size > tail height
+//	cq = new(syncpb.BlockChunkQuery)
+//	cq.From = uint64(1)
+//	cq.ChunkSize = uint64(seed.Tail().Height() + 1)
+//
+//	sendData, err = proto.Marshal(cq)
+//	require.NoError(t, err)
+//	receiver.Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, sendData, net.MessagePriorityLow, seed.Med.NetService().Node().ID().Pretty())
+//
+//	time.Sleep(3 * time.Second)
+//	require.True(t, seed.Med.SyncService().IsSeedActivated(), "SeedTester is shutdown")
+//}
 
 // func TestForUnmarshalFailedMsg(t *testing.T) {
 //

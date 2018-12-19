@@ -133,13 +133,25 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	return nil
 }
 
-//ToBytes convert transaction to
+//ToBytes convert transaction to byte slice
 func (t *Transaction) ToBytes() ([]byte, error) {
 	pb, err := t.ToProto()
 	if err != nil {
 		return nil, err
 	}
 	return proto.Marshal(pb)
+}
+
+//FromBytes generate transaction from bytes slice
+func (t *Transaction) FromBytes(bytes []byte) error {
+	pbTx := new(corepb.Transaction)
+	if err := proto.Unmarshal(bytes, pbTx); err != nil {
+		return err
+	}
+	if err := t.FromProto(pbTx); err != nil {
+		return err
+	}
+	return nil
 }
 
 //Hash returns hash

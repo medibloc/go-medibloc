@@ -48,14 +48,17 @@ func (filter *ChainSyncPeersFilter) Filter(peers []peer.ID) []peer.ID {
 
 // RandomPeerFilter will filter a peer randomly
 type RandomPeerFilter struct {
+	N int
 }
 
 // Filter implements PeerFilterAlgorithm interface
 func (filter *RandomPeerFilter) Filter(peers []peer.ID) []peer.ID {
-	if len(peers) == 0 {
+	if len(peers) <= filter.N {
 		return peers
 	}
-
-	selection := rand.Intn(len(peers))
-	return peers[selection : selection+1]
+	for i := 0; i < filter.N; i++ {
+		index := rand.Intn(len(peers) - i)
+		peers[index], peers[len(peers)-1-i] = peers[len(peers)-1-i], peers[index]
+	}
+	return peers[len(peers)-filter.N:]
 }

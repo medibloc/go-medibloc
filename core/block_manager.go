@@ -54,6 +54,7 @@ type BlockManager struct {
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
+	loopFinishedCh        chan bool
 
 	// workManager
 	finishWorkCh   chan *blockResult
@@ -107,6 +108,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		finishWorkCh:          make(chan *blockResult, finishWorkChannelSize),
 		newBlockCh:            make(chan *BlockData, newBlockChannelSize),
 		quitCh:                make(chan int),
+		loopFinishedCh:        make(chan bool),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
 		trigCh:                make(chan bool, 1),
@@ -167,6 +169,7 @@ func (bm *BlockManager) Stop() {
 	close(bm.finishChainManagerCh)
 	<-bm.cmFinishedCh
 	close(bm.quitCh)
+	<-bm.loopFinishedCh
 }
 
 func (bm *BlockManager) processTask(newData *BlockData) {
@@ -357,6 +360,11 @@ func (bm *BlockManager) registerInNetwork() {
 // ChainID return BlockChain.ChainID
 func (bm *BlockManager) ChainID() uint32 {
 	return bm.bc.ChainID()
+}
+
+//BlockHashByHeight returns the hash of the block contaied in the chain by height.
+func (bm *BlockManager) BlockHashByHeight(height uint64) ([]byte, error) {
+	return bm.bc.BlockHashByHeight(height)
 }
 
 // BlockByHeight returns the block contained in the chain by height.
@@ -632,6 +640,7 @@ func (bm *BlockManager) loop() {
 	for {
 		select {
 		case <-bm.quitCh:
+			close(bm.loopFinishedCh)
 			return
 		case msg := <-bm.receiveBlockMessageCh:
 			bm.handleReceiveBlock(msg)
@@ -712,7 +721,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 		return false
 	}
 
-	if err := bm.syncService.ActiveDownload(bd.Height()); err != nil {
+	if err := bm.syncService.Download(bd); err != nil {
 		logging.WithFields(logrus.Fields{
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
