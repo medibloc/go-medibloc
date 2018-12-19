@@ -103,9 +103,13 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 		receipt = nil
 	}
 
+	err = t.to.FromBytes(pbTx.To)
+	if err != nil {
+		return err
+	}
+
 	t.hash = pbTx.Hash
 	t.txType = pbTx.TxType
-	t.to.FromBytes(pbTx.To)
 	t.value = value
 	t.nonce = pbTx.Nonce
 	t.chainID = pbTx.ChainId
@@ -1060,7 +1064,11 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 		return err
 	}
 	// change cert on certified's cert received list
-	certified, err := b.State().GetAccount(common.BytesToAddress(pbCert.Certified))
+	certAddr, err := common.BytesToAddress(pbCert.Certified)
+	if err != nil {
+		return err
+	}
+	certified, err := b.State().GetAccount(certAddr)
 	if err != nil {
 		return err
 	}
@@ -1218,7 +1226,10 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	}
 	aa.Account = tx.addr
 	aa.Alias = tx.aliasName
-	b.State().accState.PutAliasAccount(aa, tx.aliasName)
+	err = b.State().accState.PutAliasAccount(aa, tx.aliasName)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

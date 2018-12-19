@@ -68,7 +68,8 @@ func TestService_Start(t *testing.T) {
 	receiver := testNetwork.NewNode()
 	receiver.Start()
 
-	receiver.Med.SyncService().ActiveDownload(seed.Tail().Height())
+	err = receiver.Med.SyncService().ActiveDownload(seed.Tail().Height())
+	require.NoError(t, err)
 	count := 0
 	prevSize := uint64(0)
 	for {
@@ -200,7 +201,8 @@ func TestForkResistance(t *testing.T) {
 
 	testNetwork.WaitForEstablished()
 
-	newbie.Med.SyncService().ActiveDownload(seed.Tail().Height())
+	err := newbie.Med.SyncService().ActiveDownload(seed.Tail().Height())
+	require.NoError(t, err)
 
 	count := 0
 	prevSize := uint64(0)
@@ -267,7 +269,8 @@ func TestForAutoActivation(t *testing.T) {
 		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 		require.NoError(t, err)
 	}
-	seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
+	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
+	require.NoError(t, err)
 	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
 
 	cfg := testutil.NewConfig(t)
@@ -286,7 +289,8 @@ func TestForAutoActivation(t *testing.T) {
 	startTime := time.Now()
 	for {
 		require.True(t, time.Now().Sub(startTime) < time.Duration(10)*time.Second, "Timeout: Failed to activate sync automatically")
-		seed.Med.BlockManager().BroadCast(seed.Tail().BlockData)
+		err := seed.Med.BlockManager().BroadCast(seed.Tail().BlockData)
+		require.NoError(t, err)
 		if receiver.Med.SyncService().IsDownloadActivated() {
 			t.Logf("Timespend for auto activate: %v", time.Now().Sub(startTime))
 			t.Log("Success to activate sync automatically")
@@ -322,7 +326,7 @@ func TestForAutoActivation(t *testing.T) {
 	b = bb.Block(seed.Tail()).ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer().Build()
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	time.Sleep(time.Unix(b.Timestamp(), 0).Sub(time.Now()))
-	seed.Med.BlockManager().BroadCast(b.BlockData)
+	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
 
 	startTime = time.Now()
 	prevSize = receiver.Tail().Height()

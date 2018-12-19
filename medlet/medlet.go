@@ -180,7 +180,14 @@ func (m *Medlet) StartPprof(listen string) error {
 			logging.Console().WithFields(logrus.Fields{
 				"listen": listen,
 			}).Info("Starting pprof...")
-			http.ListenAndServe(listen, nil)
+			err := http.ListenAndServe(listen, nil)
+			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"listen": listen,
+					"err":    err,
+				}).Info("Failed to listen...")
+				return
+			}
 		}()
 	}
 	return nil

@@ -34,7 +34,9 @@ func checkPortAvailable(listen []string) error {
 	for _, v := range listen {
 		conn, err := net.DialTimeout("tcp", v, time.Second*1)
 		if err == nil {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				return err
+			}
 			return ErrListenPortIsNotAvailable
 		}
 	}

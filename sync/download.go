@@ -34,6 +34,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	maxRetryCount = 10
+)
+
 type download struct {
 	netService net.Service
 	bm         BlockManager
@@ -98,7 +102,7 @@ func (d *download) setup(netService net.Service, bm BlockManager) {
 	d.bm = bm
 }
 
-func (d *download) start(targetHeight uint64) {
+func (d *download) start(targetHeight uint64) error {
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, SyncBlockChunk, net.MessageWeightZero))
 
@@ -113,13 +117,18 @@ func (d *download) start(targetHeight uint64) {
 		offset:    d.from,
 		chunkSize: d.chunkSize,
 	}
-	d.sendMetaQuery()
+
+	err := d.sendMetaQuery()
+	if err != nil {
+		return err
+	}
 
 	d.mu.Lock()
 	d.activated = true
 	d.mu.Unlock()
 
 	go d.subscribeLoop()
+	return nil
 }
 
 func (d *download) stop() {
@@ -164,7 +173,10 @@ func (d *download) subscribeLoop() {
 			hasWork := false
 			if prevEstablishedPeersCount < d.netService.Node().EstablishedPeersCount() {
 				hasWork = true
-				d.sendMetaQuery()
+				err := d.sendMetaQuery()
+				if err != nil {
+					return
+				}
 				prevEstablishedPeersCount = d.netService.Node().EstablishedPeersCount()
 			}
 

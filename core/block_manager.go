@@ -683,7 +683,14 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 	}
 
 	if msg.MessageType() == MessageTypeNewBlock {
-		bm.BroadCast(bd)
+		if err := bm.BroadCast(bd); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"sender": msg.MessageFrom(),
+				"block":  bd,
+				"err":    err,
+			}).Error("Failed to broadcast block.")
+			return
+		}
 	}
 }
 

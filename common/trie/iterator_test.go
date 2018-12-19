@@ -48,20 +48,20 @@ func TestIterator1(t *testing.T) {
 		valHashes = append(valHashes, valHash)
 	}
 
-	tr.Put(keys[0], []byte(names[0]))
+	require.NoError(t, tr.Put(keys[0], []byte(names[0])))
 	t.Log("Put 1st node")
 	t.Log(KeyToRoute(keys[0]), ":", tr.ShowPath(keys[0]))
 	assert.Equal(t, "[ext([1 2 3 4 5 0]) val]", fmt.Sprintf("%v", tr.ShowPath(keys[0])))
 
 	t.Log("Put 2nd node")
-	tr.Put(keys[1], []byte(names[1]))
+	require.NoError(t, tr.Put(keys[1], []byte(names[1])))
 	t.Log(KeyToRoute(keys[0]), ":", tr.ShowPath(keys[0]))
 	t.Log(KeyToRoute(keys[1]), ":", tr.ShowPath(keys[1]))
 	assert.Equal(t, "[ext([1 2 3]) branch(4) ext([5 0]) val]", fmt.Sprintf("%v", tr.ShowPath(keys[0])))
 	assert.Equal(t, "[ext([1 2 3]) branch(3) ext([5 0]) val]", fmt.Sprintf("%v", tr.ShowPath(keys[1])))
 
 	t.Log("Put 3rd node")
-	tr.Put(keys[2], []byte(names[2]))
+	require.NoError(t, tr.Put(keys[2], []byte(names[2])))
 	t.Log(KeyToRoute(keys[0]), ":", tr.ShowPath(keys[0]))
 	t.Log(KeyToRoute(keys[1]), ":", tr.ShowPath(keys[1]))
 	t.Log(KeyToRoute(keys[2]), ":", tr.ShowPath(keys[2]))
@@ -71,7 +71,7 @@ func TestIterator1(t *testing.T) {
 	assert.Equal(t, "[ext([1 2]) branch(2) ext([4 5 0]) val]", fmt.Sprintf("%v", tr.ShowPath(keys[2])))
 
 	t.Log("Put 4th node")
-	tr.Put(keys[3], []byte(names[3]))
+	require.NoError(t, tr.Put(keys[3], []byte(names[3])))
 	t.Log(KeyToRoute(keys[0]), ":", tr.ShowPath(keys[0]))
 	t.Log(KeyToRoute(keys[1]), ":", tr.ShowPath(keys[1]))
 	t.Log(KeyToRoute(keys[2]), ":", tr.ShowPath(keys[2]))
@@ -83,7 +83,7 @@ func TestIterator1(t *testing.T) {
 	assert.Equal(t, "[branch(2) ext([2 3 3 5 0]) val]", fmt.Sprintf("%v", tr.ShowPath(keys[3])))
 
 	t.Log("Put 5th node")
-	tr.Put(keys[4], []byte(names[4]))
+	require.NoError(t, tr.Put(keys[4], []byte(names[4])))
 	t.Log(KeyToRoute(keys[0]), ":", tr.ShowPath(keys[0]))
 	t.Log(KeyToRoute(keys[1]), ":", tr.ShowPath(keys[1]))
 	t.Log(KeyToRoute(keys[2]), ":", tr.ShowPath(keys[2]))
@@ -132,7 +132,7 @@ func TestIterator2(t *testing.T) {
 		require.NoError(t, err)
 		keys = append(keys, key)
 	}
-	tr.Put(keys[0], []byte(names[0]))
+	require.NoError(t, tr.Put(keys[0], []byte(names[0])))
 
 	iter, err1 := tr.Iterator([]byte{0x12, 0x34, 0x50, 0x12})
 	assert.Nil(t, err1)
@@ -149,7 +149,7 @@ func TestIterator2(t *testing.T) {
 	assert.Equal(t, it.Value(), []byte(names[0]))
 	assert.Equal(t, it.Key(), []byte(keys[0]))
 
-	tr.Put(keys[1], []byte(names[1]))
+	require.NoError(t, tr.Put(keys[1], []byte(names[1])))
 	it, err = tr.Iterator([]byte{0x12})
 	assert.Nil(t, err)
 	next, err = it.Next()
@@ -162,7 +162,7 @@ func TestIterator2(t *testing.T) {
 	assert.Equal(t, it.Value(), []byte(names[0]))
 	assert.Equal(t, it.Key(), []byte(keys[0]))
 
-	tr.Put(keys[2], []byte(names[2]))
+	require.NoError(t, tr.Put(keys[2], []byte(names[2])))
 
 	it, err = tr.Iterator(nil)
 	assert.Nil(t, err)

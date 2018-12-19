@@ -374,7 +374,13 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		return err
 	}
 
-	d.bm.BroadCast(block.GetBlockData())
+	err = d.bm.BroadCast(block.GetBlockData())
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": block,
+			"err":   err,
+		}).Error("Failed to broadcast block")
+	}
 
 	return nil
 }
@@ -604,7 +610,10 @@ func (d *Dpos) loop() {
 	for {
 		select {
 		case now := <-ticker.C:
-			d.mintBlock(now)
+			err := d.mintBlock(now)
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("failed to mint block")
 		case <-d.quitCh:
 			logging.Console().Info("Stopped Dpos Mining.")
 			return

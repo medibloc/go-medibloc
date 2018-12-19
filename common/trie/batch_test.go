@@ -68,31 +68,24 @@ func TestTrieBatch(t *testing.T) {
 		}
 	}
 
-	err = trieBatch.Put(key1, val1)
-	assert.Nil(t, err)
+	assert.NoError(t, trieBatch.Put(key1, val1))
 	testGetValue(key1, val1)
 
-	err = trieBatch.Commit()
-	assert.Nil(t, err)
-
+	assert.NoError(t, trieBatch.Commit())
 	testGetValue(key1, val1)
 
-	err = trieBatch.BeginBatch()
-	assert.Nil(t, err)
+	assert.NoError(t, trieBatch.BeginBatch())
 
-	err = trieBatch.Put(key1, val2)
-	assert.Nil(t, err)
+	assert.NoError(t, trieBatch.Put(key1, val2))
 	testGetValue(key1, val2)
-	trieBatch.RollBack()
+	assert.NoError(t, trieBatch.RollBack())
 	testGetValue(key1, val1)
 
-	err = trieBatch.BeginBatch()
-	assert.Nil(t, err)
+	assert.NoError(t, trieBatch.BeginBatch())
 
-	err = trieBatch.Delete(key1)
-	assert.Nil(t, err)
+	assert.NoError(t, trieBatch.Delete(key1))
 	testGetValue(key1, nil)
-	trieBatch.RollBack()
+	assert.NoError(t, trieBatch.RollBack())
 	testGetValue(key1, val1)
 }
 

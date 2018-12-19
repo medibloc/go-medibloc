@@ -209,7 +209,9 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		return nil, err
 	}
 
-	genesisBlock.Seal()
+	if err := genesisBlock.Seal(); err != nil {
+		return nil, err
+	}
 
 	return genesisBlock, nil
 }

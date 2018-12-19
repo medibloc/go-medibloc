@@ -89,7 +89,10 @@ func newAccount(stor storage.Storage) (*Account, error) {
 func (acc *Account) fromProto(pbAcc *corepb.Account) error {
 	var err error
 
-	acc.Address.FromBytes(pbAcc.Address)
+	err = acc.Address.FromBytes(pbAcc.Address)
+	if err != nil {
+		return err
+	}
 	acc.Balance, err = util.NewUint128FromFixedSizeByteSlice(pbAcc.Balance)
 	if err != nil {
 		return err
@@ -416,7 +419,10 @@ func newAliasAccount() (*AliasAccount, error) {
 }
 
 func (aa *AliasAccount) fromProto(pbAcc *corepb.AliasAccount) error {
-	aa.Account.FromBytes(pbAcc.Account)
+	err := aa.Account.FromBytes(pbAcc.Account)
+	if err != nil {
+		return err
+	}
 	aa.Alias = pbAcc.Alias
 	return nil
 }

@@ -113,14 +113,20 @@ func (tm *TransactionManager) PushAndBroadcast(transactions ...*Transaction) (fa
 	}
 
 	for _, transaction := range pended {
-		tm.Broadcast(transaction)
+		err := tm.Broadcast(transaction)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"transaction": transaction,
+				"err":         err,
+			}).Debug("failed to broadcast transaction")
+		}
 	}
 
 	for hash, err := range failed {
 		logging.Console().WithFields(logrus.Fields{
 			"txHash": hash,
 			"err":    err,
-		}).Debug("dropped during tx transition ")
+		}).Debug("dropped during tx transition")
 	}
 	return failed
 }
@@ -141,7 +147,13 @@ func (tm *TransactionManager) PushAndExclusiveBroadcast(transactions ...*Transac
 		if _, ok := exclusiveFilter[transaction.HexHash()]; ok {
 			continue
 		}
-		tm.Broadcast(transaction)
+		err := tm.Broadcast(transaction)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"transaction": transaction,
+				"err":         err,
+			}).Debug("failed to broadcast transaction")
+		}
 	}
 
 	for hash, err := range failed {
@@ -372,7 +384,13 @@ func (tm *TransactionManager) Pop() *Transaction {
 
 	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), tx.From())
 	for _, t := range success {
-		tm.Broadcast(t)
+		err := tm.Broadcast(t)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"transaction": t,
+				"err":         err,
+			}).Debug("failed to broadcast transaction")
+		}
 	}
 	return tx.Transaction
 }
@@ -414,7 +432,13 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 	}
 	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), addr)
 	for _, t := range success {
-		tm.Broadcast(t)
+		err := tm.Broadcast(t)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"transaction": t,
+				"err":         err,
+			}).Debug("failed to broadcast transaction")
+		}
 	}
 }
 

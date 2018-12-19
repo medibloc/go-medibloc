@@ -437,7 +437,10 @@ func (t *Trie) saveNode(n *node) ([]byte, error) {
 		}
 		return hash, nil
 	}
-	t.storage.Put(hash, b)
+	err = t.storage.Put(hash, b)
+	if err != nil {
+		return nil, err
+	}
 	return hash, nil
 }
 

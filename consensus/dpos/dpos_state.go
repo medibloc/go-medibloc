@@ -319,7 +319,10 @@ func (s *State) Candidates() ([]common.Address, error) {
 		return nil, err
 	}
 	for exist {
-		addr := common.BytesToAddress(iter.Key())
+		addr, err := common.BytesToAddress(iter.Key())
+		if err != nil {
+			return nil, err
+		}
 		candidates = append(candidates, addr)
 		exist, err = iter.Next()
 		if err != nil {
@@ -343,7 +346,10 @@ func (s *State) Dynasty() ([]common.Address, error) {
 		if err != nil {
 			return nil, err
 		}
-		addr := common.BytesToAddress(iter.Value())
+		addr, err := common.BytesToAddress(iter.Value())
+		if err != nil {
+			return nil, err
+		}
 		dynasty = append(dynasty, addr)
 
 		exist, err = iter.Next()

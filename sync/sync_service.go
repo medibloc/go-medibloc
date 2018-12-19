@@ -70,7 +70,10 @@ func (ss *Service) ActiveDownload(targetHeight uint64) error {
 	if ss.Download.IsActivated() == true {
 		return ErrAlreadyDownlaodActivated
 	}
-	ss.Download.start(targetHeight)
+	err := ss.Download.start(targetHeight)
+	if err != nil {
+		return err
+	}
 	logging.Info("Sync: Download manager started.")
 
 	return nil
@@ -104,7 +107,13 @@ func generateHashTrie(hashes [][]byte) *trie.Trie {
 	}
 
 	for _, h := range hashes {
-		hashTrie.Put(h, h)
+		err := hashTrie.Put(h, h)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to put hash to tree")
+			return nil
+		}
 	}
 
 	return hashTrie

@@ -104,7 +104,6 @@ func TestTrie_Operations(t *testing.T) {
 
 	err = tr.Delete(key1)
 	assert.Nil(t, err)
-	tr.Get(key2)
 	assert.Nil(t, tr.RootHash())
 }
 

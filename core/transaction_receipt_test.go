@@ -53,8 +53,8 @@ func TestReceipt(t *testing.T) {
 	tx3 := tb.Nonce(2).Type(core.TxOpUnstake).Value(50).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
 
-	seed.Med.BlockManager().PushBlockData(b.BlockData)
-	seed.Med.BlockManager().BroadCast(b.BlockData)
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
 
 	time.Sleep(1000 * time.Millisecond)
 	tx1r, err := receiver.Tail().State().GetTx(tx1.Hash())
@@ -99,8 +99,8 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	tx3 := tb.Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, core.ErrRecordAlreadyAdded).SignProposer().Build()
 
-	seed.Med.BlockManager().PushBlockData(b.BlockData)
-	seed.Med.BlockManager().BroadCast(b.BlockData)
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
 
 	time.Sleep(1000 * time.Millisecond)
 	tx1r, err := receiver.Tail().State().GetTx(tx1.Hash())
@@ -133,7 +133,7 @@ func TestWrongReceipt(t *testing.T) {
 
 	b.Transactions()[0].Receipt().SetPoints(util.NewUint128())
 
-	seed.Med.BlockManager().PushBlockData(b.BlockData)
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.Error(t, testutil.ErrExecutionTimeout, seed.WaitUntilTailHeight(b.Height(), 1*time.Second))
 }
 
@@ -182,8 +182,8 @@ func TestVoteTransactionReceipt(t *testing.T) {
 		ExecuteTx(validTx).
 		SignProposer().Build()
 
-	seed.Med.BlockManager().PushBlockData(b.BlockData)
-	seed.Med.BlockManager().BroadCast(b.BlockData)
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
+	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
 
 	time.Sleep(1000 * time.Millisecond)
 	invalidTxr, err := receiver.Tail().State().GetTx(invalidTx.Hash())

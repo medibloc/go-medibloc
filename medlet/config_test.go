@@ -38,7 +38,7 @@ func init() {
 func TestConfigNotExist(t *testing.T) {
 	f, err := ioutil.TempFile(os.TempDir(), "config")
 	require.Nil(t, err)
-	os.Remove(f.Name())
+	require.NoError(t, os.Remove(f.Name()))
 
 	pb, err := LoadConfig(f.Name())
 	require.NoError(t, err)
@@ -49,7 +49,7 @@ func TestConfigNotExist(t *testing.T) {
 func TestDefaultConfig(t *testing.T) {
 	path := filepath.Join(strings.ToLower(t.Name()) + ".golden")
 	if *update {
-		ioutil.WriteFile(path, []byte(defaultConfigString()), 0644)
+		require.NoError(t, ioutil.WriteFile(path, []byte(defaultConfigString()), 0644))
 	}
 
 	golden, _ := ioutil.ReadFile(path)

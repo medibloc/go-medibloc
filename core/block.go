@@ -106,7 +106,10 @@ func (b *BlockHeader) FromProto(msg proto.Message) error {
 		b.accStateRoot = msg.AccStateRoot
 		b.txStateRoot = msg.TxStateRoot
 		b.dposRoot = msg.DposRoot
-		b.coinbase.FromBytes(msg.Coinbase)
+		err := b.coinbase.FromBytes(msg.Coinbase)
+		if err != nil {
+			return err
+		}
 		reward, err := util.NewUint128FromFixedSizeByteSlice(msg.Reward)
 		if err != nil {
 			return err
@@ -987,10 +990,15 @@ func currentPoints(payer *Account, curTs int64) (*util.Uint128, error) {
 
 // VerifyExecution executes txs in block and verify root hashes using block header
 func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFactory) error {
-	b.BeginBatch()
+	err := b.BeginBatch()
+	if err != nil {
+		return err
+	}
 
 	if err := b.SetMintDynastyState(parent, consensus); err != nil {
-		b.RollBack()
+		if err := b.RollBack(); err != nil {
+			return err
+		}
 		return err
 	}
 
@@ -1002,7 +1010,10 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 		}).Warn("Failed to verifyProposer")
 		return err
 	}
-	b.Commit()
+	err = b.Commit()
+	if err != nil {
+		return err
+	}
 	if err := b.ExecuteAll(txMap); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -1011,7 +1022,10 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 		return err
 	}
 
-	b.BeginBatch()
+	err = b.BeginBatch()
+	if err != nil {
+		return err
+	}
 	if err := b.PayReward(b.coinbase, b.State().Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -1019,7 +1033,10 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 		}).Error("Failed to pay block reward.")
 		return err
 	}
-	b.Commit()
+	err = b.Commit()
+	if err != nil {
+		return err
+	}
 
 	if err := b.VerifyState(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -1046,7 +1063,10 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 
 // Execute executes a transaction.
 func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
-	b.BeginBatch()
+	err := b.BeginBatch()
+	if err != nil {
+		return err
+	}
 
 	receipt, err := b.ExecuteTransaction(tx, txMap)
 	if receipt == nil {
@@ -1059,9 +1079,13 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 	}
 
 	if err != nil {
-		b.RollBack()
+		if err := b.RollBack(); err != nil {
+			return err
+		}
 	} else {
-		b.Commit()
+		if err := b.Commit(); err != nil {
+			return err
+		}
 	}
 
 	if !receipt.Equal(tx.receipt) {
@@ -1074,7 +1098,10 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return ErrWrongReceipt
 	}
 
-	b.BeginBatch()
+	err = b.BeginBatch()
+	if err != nil {
+		return err
+	}
 
 	if err := b.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -1084,7 +1111,10 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		}).Warn("Failed to accept a transaction.")
 		return err
 	}
-	b.Commit()
+	err = b.Commit()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

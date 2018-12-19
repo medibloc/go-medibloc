@@ -41,7 +41,7 @@ func TestTransactionManager_Broadcast(t *testing.T) {
 	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 
 	tx := tb.RandomTx().Build()
-	seed.Med.TransactionManager().Broadcast(tx)
+	require.NoError(t, seed.Med.TransactionManager().Broadcast(tx))
 
 	var actual *core.Transaction
 	startTime := time.Now()
@@ -52,7 +52,7 @@ func TestTransactionManager_Broadcast(t *testing.T) {
 	}
 
 	tx = tb.RandomTx().Build()
-	node.Med.TransactionManager().Broadcast(tx)
+	require.NoError(t, node.Med.TransactionManager().Broadcast(tx))
 
 	actual = nil
 	startTime = time.Now()

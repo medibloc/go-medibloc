@@ -36,16 +36,21 @@ const (
 type Address [AddressLength]byte
 
 // BytesToAddress gets Address from bytes.
-func BytesToAddress(b []byte) Address {
+func BytesToAddress(b []byte) (Address, error) {
 	var a Address
-	a.FromBytes(b)
-	return a
+	if err := a.FromBytes(b); err != nil {
+		return Address{}, err
+	}
+	return a, nil
 }
 
 // HexToAddress gets Address from hex string.
 func HexToAddress(s string) (Address, error) {
 	addr, err := byteutils.FromHex(s)
-	return BytesToAddress(addr), err
+	if err != nil {
+		return Address{}, err
+	}
+	return BytesToAddress(addr)
 }
 
 // IsHexAddress checks hex address.
@@ -69,7 +74,7 @@ func PublicKeyToAddress(p signature.PublicKey) (Address, error) {
 		if err != nil {
 			return Address{}, err
 		}
-		return BytesToAddress(buf), nil
+		return BytesToAddress(buf)
 	default:
 		return Address{}, algorithm.ErrInvalidCryptoAlgorithm
 	}

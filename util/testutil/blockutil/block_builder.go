@@ -265,7 +265,7 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	txs := n.B.Transactions()
 	txs = append(txs, tx)
-	n.B.SetTransactions(txs)
+	require.NoError(n.t, n.B.SetTransactions(txs))
 	return n
 }
 

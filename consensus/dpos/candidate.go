@@ -20,7 +20,9 @@ type Candidate struct {
 func (c *Candidate) fromProto(pbCandidate *dpospb.Candidate) error {
 	var err error
 	c.ID = pbCandidate.Id
-	c.Addr.FromBytes(pbCandidate.Addr)
+	if err := c.Addr.FromBytes(pbCandidate.Addr); err != nil {
+		return err
+	}
 	c.Collateral, err = util.NewUint128FromFixedSizeByteSlice(pbCandidate.Collateral)
 	if err != nil {
 		return err
@@ -61,7 +63,9 @@ func (c *Candidate) FromBytes(bytes []byte) error {
 		return err
 	}
 	c.ID = pbCandidate.Id
-	c.Addr.FromBytes(pbCandidate.Addr)
+	if err := c.Addr.FromBytes(pbCandidate.Addr); err != nil {
+		return err
+	}
 	c.Collateral, err = util.NewUint128FromFixedSizeByteSlice(pbCandidate.Collateral)
 	if err != nil {
 		return err

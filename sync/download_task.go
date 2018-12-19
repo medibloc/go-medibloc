@@ -115,7 +115,10 @@ func (dt *downloadTask) verifyBlockChunkMessage(message net.Message) error {
 	blocks := make([]*core.BlockData, 0, dt.chunkSize)
 	for _, pbBlock := range blockChunk.Blocks {
 		block := new(core.BlockData)
-		block.FromProto(pbBlock)
+		err := block.FromProto(pbBlock)
+		if err != nil {
+			return err
+		}
 		blocks = append(blocks, block)
 
 		if err := block.VerifyIntegrity(); err != nil {

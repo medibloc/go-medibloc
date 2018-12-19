@@ -62,7 +62,10 @@ func (s *Server) Start() error {
 	}()
 	logging.Console().Info("GRPC Server is running...")
 
-	s.RunGateway()
+	err = s.RunGateway()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
