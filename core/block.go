@@ -592,6 +592,25 @@ func (bd *BlockData) verifyTotalBandwidth() error {
 	return nil
 }
 
+// EmitTxExecutionEvent emits events of txs in the block
+func (bd *BlockData) EmitTxExecutionEvent(emitter *EventEmitter) {
+	for _, tx := range bd.Transactions() {
+		tx.TriggerEvent(emitter, TopicTransactionExecutionResult)
+		tx.TriggerAccEvent(emitter, TypeAccountTransactionExecution)
+	}
+}
+
+// EmitBlockEvent emits block related event
+func (bd *BlockData) EmitBlockEvent(emitter *EventEmitter, eTopic string) {
+	event := &Event{
+		Topic: eTopic,
+		Data:  byteutils.Bytes2Hex(bd.Hash()),
+		Type:  "",
+	}
+	emitter.Trigger(event)
+
+}
+
 // Block represents block with actual state tries
 type Block struct {
 	*BlockData
@@ -1249,25 +1268,6 @@ func (b *Block) Flush() error {
 // GetBlockData returns data part of block
 func (b *Block) GetBlockData() *BlockData {
 	return b.BlockData
-}
-
-// EmitTxExecutionEvent emits events of txs in the block
-func (b *Block) EmitTxExecutionEvent(emitter *EventEmitter) {
-	for _, tx := range b.Transactions() {
-		tx.TriggerEvent(emitter, TopicTransactionExecutionResult)
-		tx.TriggerAccEvent(emitter, TypeAccountTransactionExecution)
-	}
-}
-
-// EmitBlockEvent emits block related event
-func (b *Block) EmitBlockEvent(emitter *EventEmitter, eType string) {
-	event := &Event{
-		Topic: eType,
-		Data:  byteutils.Bytes2Hex(b.Hash()),
-		Type:  "",
-	}
-	emitter.Trigger(event)
-
 }
 
 // BytesToBlockData unmarshals proto bytes to BlockData.
