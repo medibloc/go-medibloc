@@ -256,11 +256,10 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 
 func TestTransactionManager_BandwidthLimit(t *testing.T) {
 	const (
-		numberOfNodes        = 5
+		numberOfNodes = 3
 	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -273,12 +272,12 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 	from := seed.Config.TokenDist[testutil.DynastySize]
 
 	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).Block(seed.Tail()).Child().SignProposer()
+	err := seed.Med.BlockManager().PushBlockDataSync(bb.Build().GetBlockData(), 1000*time.Millisecond)
+	assert.NoError(t, err)
 
 	tx1 := bb.Tx().Type(core.TxOpTransfer).Value(1000).SignPair(from).Build()
 	tx2 := bb.Tx().Type(core.TxOpStake).Value(1000).SignPair(from).Build()
 	tx3 := bb.Tx().Type(core.TxOpUnstake).Nonce(tx2.Nonce() + 1).Value(1000).SignPair(from).Build()
-	err := seed.Med.BlockManager().PushBlockDataSync(bb.Build().GetBlockData(), 1000*time.Millisecond)
-	assert.NoError(t, err)
 
 	failed := seedTm.PushAndBroadcast(tx1)
 	err = failed[byteutils.Bytes2Hex(tx1.Hash())]
@@ -302,7 +301,6 @@ func TestTransactionManager_ReplacePending(t *testing.T) {
 	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()

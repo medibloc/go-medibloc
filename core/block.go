@@ -907,7 +907,14 @@ func (b *Block) consumePoints(transaction *Transaction) error {
 		return err
 	}
 
-	updated, err := acc.Points.Sub(transaction.receipt.points)
+	if err := acc.UpdatePoints(b.timestamp); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("failed to update account's points")
+		return err
+	}
+
+	acc.Points, err = acc.Points.Sub(transaction.receipt.points)
 	if err == util.ErrUint128Underflow {
 		logging.Console().WithFields(logrus.Fields{
 			"tx_points":  transaction.receipt.points,
@@ -920,9 +927,6 @@ func (b *Block) consumePoints(transaction *Transaction) error {
 	if err != nil {
 		return err
 	}
-
-	acc.Points = updated
-	acc.LastPointsTs = b.Timestamp()
 
 	err = b.State().PutAccount(acc)
 	if err != nil {
