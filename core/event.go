@@ -12,18 +12,18 @@ import (
 const (
 	// TopicLibBlock latest irreversible block.
 	TopicLibBlock = "chain.latestIrreversibleBlock"
-
 	// TopicNewTailBlock new tail block set
 	TopicNewTailBlock = "chain.newTailBlock"
-
 	// TopicPendingTransaction Pending transactions in a transaction pool.
 	TopicPendingTransaction = "chain.pendingTransaction"
-
 	// TopicRevertBlock revert block
 	TopicRevertBlock = "chain.revertBlock"
-
 	// TopicTransactionExecutionResult transaction execution result
 	TopicTransactionExecutionResult = "chain.transactionResult"
+	// TopicBlockAccepted new block accepted on the chain
+	TopicAcceptedBlock = "chain.acceptedBlock"
+	// TopicInvalidBLock block is invalid
+	TopicInvalidBlock = "chain.invalidBlock"
 )
 
 // Type for account transaction result
@@ -53,6 +53,8 @@ func topicList() map[string]bool {
 	topicList[TopicPendingTransaction] = true
 	topicList[TopicRevertBlock] = true
 	topicList[TopicTransactionExecutionResult] = true
+	topicList[TopicAcceptedBlock] = true
+	topicList[TopicInvalidBlock] = true
 	return topicList
 }
 

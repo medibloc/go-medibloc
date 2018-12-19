@@ -165,6 +165,7 @@ var (
 	ErrAlreadyOnTheChain               = errors.New("block is already on the chain")
 	ErrCannotFindParentBlockOnTheChain = errors.New("cannot find parent block on the chain")
 	ErrForkedBeforeLIB                 = errors.New("block is forked before LIB")
+	ErrInvalidBlock                    = errors.New("invalid block")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

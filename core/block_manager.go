@@ -16,7 +16,6 @@
 package core
 
 import (
-	"bytes"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -52,25 +51,18 @@ type BlockManager struct {
 
 	// workManager
 	finishWorkCh   chan *blockResult
-	newBlockCh     chan *blockPackage
+	newBlockCh     chan *BlockData
 	closeWorkersCh chan bool
 	workFinishedCh chan bool
 
 	// chainManager
-	trigCh               chan *blockPackage
+	trigCh               chan bool
 	finishChainManagerCh chan bool
 	cmFinishedCh         chan bool
 }
 
-type blockPackage struct {
-	*BlockData
-	okCh         chan bool
-	execCh       chan error
-	trigResultCh chan bool
-}
-
 type blockResult struct {
-	block   *blockPackage
+	block   *BlockData
 	isValid bool
 }
 
@@ -107,11 +99,11 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		finishWorkCh:          make(chan *blockResult, 100), // TODO @ggomma use config
-		newBlockCh:            make(chan *blockPackage, 100),
+		newBlockCh:            make(chan *BlockData, 100),
 		quitCh:                make(chan int),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
-		trigCh:                make(chan *blockPackage, 100),
+		trigCh:                make(chan bool, 1),
 		finishChainManagerCh:  make(chan bool),
 		cmFinishedCh:          make(chan bool),
 	}, nil
@@ -171,7 +163,7 @@ func (bm *BlockManager) Stop() {
 	close(bm.quitCh)
 }
 
-func (bm *BlockManager) processTask(newData *blockPackage) {
+func (bm *BlockManager) processTask(newData *BlockData) {
 	if b := bm.bc.BlockByHash(newData.Hash()); b != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"block": newData,
@@ -198,7 +190,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		return
 	}
 
-	if err := verifyBlockHeight(newData.BlockData, parent); err != nil {
+	if err := verifyBlockHeight(newData, parent); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyBlockHeight")
@@ -206,7 +198,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		return
 	}
 
-	if err := verifyTimestamp(newData.BlockData, parent); err != nil {
+	if err := verifyTimestamp(newData, parent); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warn("Failed to verifyTimestamp")
@@ -214,7 +206,7 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		return
 	}
 
-	if err := bm.consensus.VerifyInterval(newData.BlockData, parent); err != nil {
+	if err := bm.consensus.VerifyInterval(newData, parent); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
 			"timestamp": newData.timestamp,
@@ -243,19 +235,16 @@ func (bm *BlockManager) processTask(newData *blockPackage) {
 		return
 	}
 
-	if newData.execCh != nil {
-		newData.trigResultCh = make(chan bool)
+	select {
+	case bm.trigCh <- true:
+	default:
 	}
-	bm.trigCh <- newData
 
 	logging.Console().WithFields(logrus.Fields{
 		"block": child,
 		"ts":    time.Unix(newData.Timestamp(), 0),
 	}).Info("Block pushed.")
-
-	if newData.trigResultCh != nil {
-		<-newData.trigResultCh
-	}
+	bm.alarmExecutionResult(newData, nil)
 	return
 }
 
@@ -266,7 +255,7 @@ func (bm *BlockManager) runDistributor() {
 		select {
 		case result := <-bm.finishWorkCh:
 			// remove from workQ
-			wm.removeBlock(result.block.BlockData)
+			wm.remove(result.block)
 			bm.bp.Remove(result.block)
 
 			// if block is invalid, remove block from pool
@@ -276,32 +265,27 @@ func (bm *BlockManager) runDistributor() {
 
 			children := bm.bp.FindChildren(result.block)
 			for _, c := range children {
-				wm.addBlock(c.(*blockPackage).BlockData)
-				go bm.processTask(c.(*blockPackage))
+				wm.add(c.(*BlockData))
+				go bm.processTask(c.(*BlockData))
 			}
-		case blockPackage := <-bm.newBlockCh:
-
+		case blockData := <-bm.newBlockCh:
 			// skip if ancestor is already on workQ
-			if wm.hasBlock(blockPackage.BlockData) {
-				close(blockPackage.okCh)
+			if wm.has(blockData) {
 				continue
 			}
 
 			// skip if ancestor's parent is not on the chain
-			if bd := bm.bc.BlockByHash(blockPackage.ParentHash()); bd == nil {
-				close(blockPackage.okCh)
+			if bd := bm.bc.BlockByHash(blockData.ParentHash()); bd == nil {
 				continue
 			}
 
-			wm.addBlock(blockPackage.BlockData)
-
-			go bm.processTask(blockPackage)
-			close(blockPackage.okCh)
+			wm.add(blockData)
+			go bm.processTask(blockData)
 		case <-bm.closeWorkersCh:
 			wm.finishWork()
 		}
 
-		if wm.finish && len(wm.q) == 0 {
+		if wm.finish && len(wm.blocks) == 0 {
 			close(bm.workFinishedCh)
 			return
 		}
@@ -316,11 +300,10 @@ func (bm *BlockManager) runChainManager() {
 		case <-bm.finishChainManagerCh:
 			close(bm.cmFinishedCh)
 			return
-		case newData := <-bm.trigCh:
+		case <-bm.trigCh:
 			// newData is used only for alarming not affecting lib, tailblock, indexing process
 			newTail := bm.consensus.ForkChoice(bm.bc)
 			if byteutils.Equal(mainTail.Hash(), newTail.Hash()) {
-				bm.alarmExecutionResult(newData, nil)
 				continue
 			}
 			mainTail = newTail
@@ -330,18 +313,15 @@ func (bm *BlockManager) runChainManager() {
 				logging.WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to set new tail block.")
-				bm.alarmExecutionResult(newData, err)
 				continue
 			}
 
 			if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-				bm.alarmExecutionResult(newData, err)
 				continue
 			}
 
 			newLIB := bm.consensus.FindLIB(bm.bc)
 			if byteutils.Equal(LIB.Hash(), newLIB.Hash()) {
-				bm.alarmExecutionResult(newData, nil)
 				continue
 			}
 			LIB = newLIB
@@ -351,7 +331,6 @@ func (bm *BlockManager) runChainManager() {
 				logging.WithFields(logrus.Fields{
 					"err": err,
 				}).Error("Failed to set LIB.")
-				bm.alarmExecutionResult(newData, err)
 				continue
 			}
 
@@ -359,8 +338,6 @@ func (bm *BlockManager) runChainManager() {
 				"LIB":         newLIB,
 				"newMainTail": newTail,
 			}).Info("Block accepted.")
-
-			bm.alarmExecutionResult(newData, nil)
 		}
 	}
 }
@@ -429,7 +406,32 @@ func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 // PushBlockDataSync pushes block to distributor and wait for execution
 // Warning! - Use this method only for test for time efficiency.
 func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
-	return bm.pushSync(bd)
+	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
+	bm.bc.eventEmitter.Register(eventSubscriber)
+	if err != nil {
+		return err
+	}
+	eCh := eventSubscriber.EventChan()
+
+	if err := bm.push(bd); err != nil {
+		return err
+	}
+
+	timeout := time.After(5000 * time.Millisecond)
+	for {
+		select {
+		case e := <-eCh:
+			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {
+				if e.Topic == TopicInvalidBlock {
+					return ErrInvalidBlock
+				} else {
+					return nil
+				}
+			}
+		case <-timeout:
+			return ErrBlockExecutionTimeout
+		}
+	}
 }
 
 func (bm *BlockManager) directPush(b *Block) error {
@@ -443,7 +445,11 @@ func (bm *BlockManager) directPush(b *Block) error {
 		return ErrFailedToDirectPush
 	}
 
-	bm.trigCh <- nil
+	select {
+	case bm.trigCh <- true:
+	default:
+	}
+
 	logging.Console().WithFields(logrus.Fields{
 		"block": b,
 		"ts":    time.Unix(b.Timestamp(), 0),
@@ -457,13 +463,7 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	newBlockPackage := &blockPackage{
-		BlockData: bd,
-		okCh:      nil,
-		execCh:    nil,
-	}
-
-	if err := bm.bp.Push(newBlockPackage); err != nil {
+	if err := bm.bp.Push(bd); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":       err,
 			"blockData": bd,
@@ -471,57 +471,17 @@ func (bm *BlockManager) push(bd *BlockData) error {
 		return err
 	}
 
-	bm.pushToDistributor(newBlockPackage)
+	bm.pushToDistributor(bd)
 
 	return nil
 }
 
-func (bm *BlockManager) pushSync(bd *BlockData) error {
-	if err := bm.verifyBlockData(bd); err != nil {
-		return err
+func (bm *BlockManager) pushToDistributor(bd *BlockData) {
+	if ancestor := bm.bp.FindUnlinkedAncestor(bd); ancestor != nil {
+		bm.newBlockCh <- ancestor.(*BlockData)
+		return
 	}
-
-	execCh := make(chan error, 1)
-	newBlockPackage := &blockPackage{
-		BlockData: bd,
-		okCh:      nil,
-		execCh:    execCh,
-	}
-
-	if err := bm.bp.Push(newBlockPackage); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":       err,
-			"blockData": bd,
-		}).Error("Failed to push to block pool.")
-		return err
-	}
-
-	bm.pushToDistributor(newBlockPackage)
-
-	timeout := time.After(5 * time.Second) // TODO @ggomma use config for duration
-	select {
-	case err := <-execCh:
-		return err
-	case <-timeout:
-		return ErrBlockExecutionTimeout
-	}
-}
-
-func (bm *BlockManager) pushToDistributor(bp *blockPackage) {
-	newBlockPackage := &blockPackage{
-		bp.BlockData,
-		make(chan bool),
-		bp.execCh,
-		nil,
-	}
-	if v := bm.bp.FindUnlinkedAncestor(bp); v != nil {
-		newBlockPackage.BlockData = v.(*blockPackage).BlockData
-		newBlockPackage.execCh = v.(*blockPackage).execCh
-	}
-
-	bm.newBlockCh <- newBlockPackage
-	<-newBlockPackage.okCh
-
+	bm.newBlockCh <- bd
 	return
 }
 
@@ -597,22 +557,9 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 	return nil
 }
 
-func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
-	// for direct push
-	if bp == nil {
-		return
-	}
-
-	if bp.execCh != nil {
-		bp.execCh <- error
-	}
-
-	if bp.trigResultCh != nil {
-		close(bp.trigResultCh)
-	}
-
+func (bm *BlockManager) alarmExecutionResult(bd *BlockData, error error) {
 	result := &blockResult{
-		bp,
+		bd,
 		true,
 	}
 
@@ -621,6 +568,7 @@ func (bm *BlockManager) alarmExecutionResult(bp *blockPackage, error error) {
 	} else {
 		result.isValid = false
 		bm.finishWorkCh <- result
+		bd.EmitBlockEvent(bm.bc.eventEmitter, TopicInvalidBlock)
 	}
 }
 
@@ -638,7 +586,7 @@ func (bm *BlockManager) requestMissingBlock(sender string, bd *BlockData) error 
 
 	unlinkedBlock := bd
 	if v := bm.bp.FindUnlinkedAncestor(bd); v != nil {
-		unlinkedBlock = v.(*blockPackage).BlockData
+		unlinkedBlock = v.(*BlockData)
 	}
 
 	if b := bm.bc.BlockByHash(unlinkedBlock.ParentHash()); b != nil {
