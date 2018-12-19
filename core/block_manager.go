@@ -424,9 +424,8 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
 			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {
 				if e.Topic == TopicInvalidBlock {
 					return ErrInvalidBlock
-				} else {
-					return nil
 				}
+				return nil
 			}
 		case <-timeout:
 			return ErrBlockExecutionTimeout
