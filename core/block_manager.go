@@ -831,38 +831,30 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 }
 
 type workManager struct {
-	q      []*BlockData
+	blocks map[string]*BlockData
 	finish bool
 }
 
 func newWorkManager() *workManager {
 	return &workManager{
-		q:      make([]*BlockData, 0),
+		blocks: make(map[string]*BlockData),
 		finish: false,
 	}
 }
 
-func (wm *workManager) hasBlock(bd *BlockData) bool {
-	for _, b := range wm.q {
-		if bytes.Equal(b.Hash(), bd.Hash()) {
-			return true
-		}
+func (wm *workManager) has(bd *BlockData) bool {
+	if wm.blocks[byteutils.Bytes2Hex(bd.Hash())] == nil {
+		return false
 	}
-	return false
+	return true
 }
 
-func (wm *workManager) removeBlock(bd *BlockData) {
-	for i, v := range wm.q {
-		if bytes.Equal(v.Hash(), bd.Hash()) {
-			wm.q = append(wm.q[:i], wm.q[i+1:]...)
-			return
-		}
-	}
+func (wm *workManager) remove(bd *BlockData) {
+	delete(wm.blocks, byteutils.Bytes2Hex(bd.Hash()))
 }
 
-func (wm *workManager) addBlock(bd *BlockData) {
-	wm.q = append(wm.q, bd)
-	return
+func (wm *workManager) add(bd *BlockData) {
+	wm.blocks[byteutils.Bytes2Hex(bd.Hash())] = bd
 }
 
 func (wm *workManager) finishWork() {
