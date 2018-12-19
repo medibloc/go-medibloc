@@ -57,7 +57,7 @@ type Node struct {
 	cachePeriod     time.Duration
 }
 
-//Addrs returns opened addrs (w/o p2p-circuit)
+// Addrs returns opened addrs (w/o p2p-circuit)
 func (node *Node) Addrs() []multiaddr.Multiaddr {
 	addrs := make([]multiaddr.Multiaddr, 0)
 	for _, v := range node.Host.Addrs() {
@@ -69,7 +69,7 @@ func (node *Node) Addrs() []multiaddr.Multiaddr {
 	return addrs
 }
 
-//DHT returns distributed hashed table
+// DHT returns distributed hashed table
 func (node *Node) DHT() *dht.IpfsDHT {
 	return node.dht
 }
@@ -86,7 +86,7 @@ func (node *Node) EstablishedPeersCount() int32 {
 	return node.PeersCount()
 }
 
-//Connected returns connected peer ids
+// Connected returns connected peer ids
 func (node *Node) Connected() []peer.ID {
 	connections := node.Network().Conns()
 	peers := make([]peer.ID, len(connections))
@@ -133,7 +133,7 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 		libp2p.Identity(networkKey),
 		libp2p.ListenAddrStrings(cfg.Network.Listens...),
 		libp2p.ConnectionManager(connMgr),
-		//libp2p.BandwidthReporter()
+		// TODO libp2p.BandwidthReporter(),
 	)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -210,6 +210,14 @@ func (node *Node) Start() error {
 		}
 	}()
 
+	err = node.loadPeerStoreFromCache(node.cacheFile)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Info("Failed to load peer store cache file.")
+		return err
+	}
+
 	node.messageSender.Start()
 	node.messageReceiver.Start()
 	node.Bootstrap()
@@ -227,8 +235,12 @@ func (node *Node) Start() error {
 
 func (node *Node) loop() {
 	cacheTicker := time.NewTicker(node.cachePeriod)
+	defer cacheTicker.Stop()
 	bootstrapTicker := time.NewTicker(node.bootstrapConfig.Period)
+	defer bootstrapTicker.Stop()
 	dhtTicker := time.NewTicker(dht.DefaultBootstrapConfig.Period)
+	defer dhtTicker.Stop()
+
 	for {
 		// route table sync ticker
 		select {
@@ -249,7 +261,7 @@ func (node *Node) loop() {
 	}
 }
 
-//DHTSync run dht bootstrap
+// DHTSync run dht bootstrap
 func (node *Node) DHTSync() {
 	node.dhtTicker <- time.Now()
 }
@@ -274,15 +286,6 @@ func (node *Node) SendMessageToPeer(msgType string, data []byte, priority int, p
 		return // ignore
 	}
 
-	err = node.Connect(node.context, node.Peerstore().PeerInfo(id))
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"id":  id.Pretty(),
-			"err": err,
-		}).Debug("failed to connect to peer")
-		return // TODO
-	}
-
 	msg, err := newSendMessage(node.chainID, msgType, data, priority, id)
 	if err != nil {
 		logging.Console().Debug("failed to make new sendMessage")
@@ -292,17 +295,17 @@ func (node *Node) SendMessageToPeer(msgType string, data []byte, priority int, p
 	node.sendMessage(msg)
 }
 
-//SendMessageToPeers send messages to filtered peers
+// SendMessageToPeers send messages to filtered peers
 func (node *Node) SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) (peers []string) {
-	msg, err := newSendMessage(node.chainID, msgType, data, priority, "")
+	tempMsg, err := newSendMessage(node.chainID, msgType, data, priority, "")
 	if err != nil {
 		logging.Console().Debug("failed to make new sendMessage")
-		return
+		return nil
 	}
 
 	receivers := filter.Filter(node.Connected())
 	for _, p := range receivers {
-		msg := msg.copy()
+		msg := tempMsg.copy()
 		msg.SetReceiver(p)
 		node.sendMessage(msg)
 	}
@@ -322,7 +325,7 @@ func (node *Node) BroadcastMessage(msgType string, data []byte, priority int) {
 		return
 	}
 
-	receivers := node.Connected() //TODO: minimize broadcast target @drsleepytiger
+	receivers := node.Connected() // TODO: minimize broadcast target @drsleepytiger
 	for _, p := range receivers {
 		msg := tempMsg.copy()
 		msg.SetReceiver(p)
@@ -338,7 +341,7 @@ func (node *Node) BroadcastMessage(msgType string, data []byte, priority int) {
 	}
 }
 
-//ClosePeer close the connection to peer
+// ClosePeer close the connection to peer
 func (node *Node) ClosePeer(peerID string, reason error) {
 	id, err := peer.IDB58Decode(peerID)
 	if err != nil {
@@ -397,7 +400,7 @@ func (node *Node) addPeersFromProto(peers *netpb.Peers) error {
 // loadPeerStoreFromCache load peerstore from cache file
 func (node *Node) loadPeerStoreFromCache(cacheFile string) error {
 	_, err := os.Stat(cacheFile)
-	if err == os.ErrNotExist {
+	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
 		return err

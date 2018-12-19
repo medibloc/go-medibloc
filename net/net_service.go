@@ -109,7 +109,7 @@ func (ms *MedService) Broadcast(msgType string, data []byte, priority int) {
 	ms.node.BroadcastMessage(msgType, data, priority)
 }
 
-//ClosePeer close connection
+// ClosePeer close connection
 func (ms *MedService) ClosePeer(peerID string, reason error) {
 	ms.node.ClosePeer(peerID, reason)
 }

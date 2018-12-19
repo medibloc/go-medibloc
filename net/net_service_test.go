@@ -19,8 +19,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/medibloc/go-medibloc/util/logging"
-
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/net"
@@ -36,7 +34,6 @@ var (
 )
 
 func TestNewMedService(t *testing.T) {
-	//logging.SetTestHook()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)
@@ -64,7 +61,6 @@ func TestNewMedService(t *testing.T) {
 }
 
 func NewTestNetService(t *testing.T, ctx context.Context) (*net.MedService, peerstore.PeerInfo) {
-	logging.SetTestHook()
 	cfg := medlet.DefaultConfig()
 	cfg.Global.Datadir = testutil.TempDir(t)
 

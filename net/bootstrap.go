@@ -23,6 +23,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	host "github.com/libp2p/go-libp2p-host"
+	net "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
@@ -32,28 +33,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//BootstrapConfig is a struct for bootstrapping node
+// BootstrapConfig is a struct for bootstrapping node
 type BootstrapConfig struct {
 	MinConnThreshold  uint32
 	Period            time.Duration
 	ConnectionTimeout time.Duration
-	BootstrapPeers    []pstore.PeerInfo //seed host
-	CacheFile         string
+	BootstrapPeers    []pstore.PeerInfo // seed host
 }
 
-//NewBootstrapConfig return new BootstrapConfig
-func NewBootstrapConfig(cfg *medletpb.Config) (_ *BootstrapConfig, err error) {
+// NewBootstrapConfig return new BootstrapConfig
+func NewBootstrapConfig(cfg *medletpb.Config) (bConfig *BootstrapConfig, err error) {
 	bootstrapPeriod := DefaultBootstrapPeriod
 	if cfg.Network.BootstrapPeriod != 0 {
 		bootstrapPeriod = time.Duration(cfg.Network.BootstrapPeriod) * time.Second
 	}
 
-	bConfig := &BootstrapConfig{
+	bConfig = &BootstrapConfig{
 		MinConnThreshold:  cfg.Network.MinimumConnections,
 		Period:            bootstrapPeriod,
-		ConnectionTimeout: time.Duration(3) * time.Second,
+		ConnectionTimeout: 3 * time.Second,
 		BootstrapPeers:    make([]pstore.PeerInfo, 0),
-		CacheFile:         "",
 	}
 
 	for _, seed := range cfg.Network.Seeds {
@@ -67,7 +66,7 @@ func NewBootstrapConfig(cfg *medletpb.Config) (_ *BootstrapConfig, err error) {
 	return bConfig, nil
 }
 
-//Bootstrap run bootstrap
+// Bootstrap run bootstrap
 func (node *Node) Bootstrap() {
 	cfg := node.bootstrapConfig
 	connected := node.Network().Peers()
@@ -91,6 +90,10 @@ func bootstrapConnect(ph host.Host, peers []pstore.PeerInfo) {
 		wg.Add(1)
 		go func(p pstore.PeerInfo) {
 			defer wg.Done()
+
+			if ph.Network().Connectedness(p.ID) == net.Connected {
+				return
+			}
 			logging.Console().WithFields(logrus.Fields{
 				"to":   p.ID.Pretty(),
 				"from": ph.ID().Pretty(),

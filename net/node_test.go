@@ -27,7 +27,6 @@ import (
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	netpb "github.com/medibloc/go-medibloc/net/pb"
-	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -35,7 +34,6 @@ import (
 )
 
 func TestBroadCastStorm(t *testing.T) {
-	logging.SetTestHook()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)
@@ -56,7 +54,6 @@ func TestBroadCastStorm(t *testing.T) {
 }
 
 func TestTrimConnections(t *testing.T) {
-	logging.SetTestHook()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)
@@ -80,13 +77,12 @@ func TestTrimConnections(t *testing.T) {
 		node.SendMessageToPeer(TestMessageType, TestMessageData, net.MessagePriorityNormal, seed.ID().Pretty())
 		fmt.Println(len(seed.Network().Conns()))
 	}
-	time.Sleep(GracePeriod * time.Second)
+	time.Sleep((GracePeriod + 3) * time.Second)
 	seed.ConnManager().TrimOpenConns(ctx)
 	assert.Equal(t, LowWaterMark, len(seed.Network().Conns()))
 }
 
 func TestLargeMessage(t *testing.T) {
-	logging.SetTestHook()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)

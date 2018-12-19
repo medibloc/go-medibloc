@@ -37,7 +37,7 @@ const (
 // Network system parameters
 const (
 	MaxMessageSize = inet.MessageSizeMax
-	StreamTTL      = 1024 * time.Second
+	StreamTTL      = 10 * time.Second
 )
 
 // Message Priority.
@@ -99,7 +99,6 @@ type Service interface {
 	SendMessageToPeer(msgType string, data []byte, priority int, peerID string)
 	SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) []string
 	Broadcast(msgType string, data []byte, priority int)
-	//Relay(string, Serializable, int)
 	ClosePeer(peerID string, reason error)
 }
 
@@ -133,10 +132,6 @@ type Subscriber struct {
 	// doFilter dup message
 	doFilter bool
 }
-
-// func NewSubscriber(id interface{}, msgChan chan Message, doFilter bool, msgTypes ...string) *Subscriber {
-// 	return &Subscriber{id, msgChan, msgTypes, doFilter}
-// }
 
 // NewSubscriber return new Subscriber instance.
 func NewSubscriber(id interface{}, msgChan chan Message, doFilter bool, msgType string, weight MessageWeight) *Subscriber {

@@ -401,11 +401,6 @@ func (bm *BlockManager) ForceLIB(b *Block) error {
 	return bm.bc.SetLIB(b)
 }
 
-// Relay relays BlockData to network.
-//func (bm *BlockManager) Relay(bd *BlockData) {
-//	bm.ns.Relay(MessageTypeNewBlock, bd, net.MessagePriorityHigh)
-//}
-
 // BroadCast broadcasts BlockData to network.
 func (bm *BlockManager) BroadCast(bd *BlockData) error {
 	logging.Console().WithFields(logrus.Fields{

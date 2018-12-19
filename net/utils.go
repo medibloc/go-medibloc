@@ -41,7 +41,7 @@ func checkPortAvailable(listen []string) error {
 	return nil
 }
 
-//PeersToProto convert peers to peer list for config
+// PeersToProto convert peers to peer list for config
 func PeersToProto(peers ...peerstore.PeerInfo) []*netpb.PeerInfo {
 	pbPeers := make([]*netpb.PeerInfo, len(peers))
 	for i, p := range peers {
@@ -57,7 +57,7 @@ func PeersToProto(peers ...peerstore.PeerInfo) []*netpb.PeerInfo {
 	return pbPeers
 }
 
-//PeerInfoToProto convert peerinfo to peerinfo for config file
+// PeerInfoToProto convert peerinfo to peerinfo for config file
 func PeerInfoToProto(p peerstore.PeerInfo) *netpb.PeerInfo {
 	pb := new(netpb.PeerInfo)
 	pb.Id = p.ID.Pretty()

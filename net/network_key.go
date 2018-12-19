@@ -111,9 +111,3 @@ func MarshalNetworkKey(key libcrypto.PrivKey) (string, error) {
 	}
 	return base64.StdEncoding.EncodeToString(binaryData), nil
 }
-
-// GenerateEd25519Key return a new generated Ed22519 Private key.
-func GenerateEd25519Key() (libcrypto.PrivKey, error) {
-	key, _, err := libcrypto.GenerateEd25519Key(rand.Reader)
-	return key, err
-}

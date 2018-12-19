@@ -98,7 +98,7 @@ func (node *Node) Stop() {
 	node.Med.Stop()
 }
 
-//Restart restart node
+// Restart restart node
 func (node *Node) Restart() {
 	node.Stop()
 
@@ -209,7 +209,7 @@ func (n *Network) NewNode() *Node {
 	return n.NewNodeWithConfig(NewConfig(n.t))
 }
 
-//NewNodeWithConfig creates node with custom config
+// NewNodeWithConfig creates node with custom config
 func (n *Network) NewNodeWithConfig(cfg *NodeConfig) *Node {
 	require.NotNil(n.t, n.Seed)
 	require.True(n.t, len(n.Nodes) > 0)
@@ -309,7 +309,7 @@ func (n *Network) assignedProposers() []*AddrKeyPair {
 	return proposers
 }
 
-//FindProposer returns block proposer for time stamp
+// FindProposer returns block proposer for time stamp
 func (n *Network) FindProposer(ts int64, parent *core.Block) *AddrKeyPair {
 	dynasties := n.Seed.Config.Dynasties
 	d := n.Seed.Med.Consensus()

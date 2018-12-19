@@ -122,11 +122,6 @@ func (mgr *TransactionManager) GetByAddress(address common.Address) []*Transacti
 	return mgr.pool.GetByAddress(address)
 }
 
-// Relay relays transaction to network.
-//func (mgr *TransactionManager) Relay(tx *Transaction) {
-//	mgr.ns.Relay(MessageTypeNewTx, tx, net.MessagePriorityNormal)
-//}
-
 // Broadcast broadcasts transaction to network.
 func (mgr *TransactionManager) Broadcast(tx *Transaction) error {
 	b, err := tx.ToBytes()
