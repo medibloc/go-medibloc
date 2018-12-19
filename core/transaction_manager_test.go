@@ -254,6 +254,49 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 	//seedTm.PushAndExclusiveBroadcast(txs[numberOfPop:numberOfPop+numberOfDel]...)
 }
 
+func TestTransactionManager_BandwidthLimit(t *testing.T) {
+	const (
+		timeout              = 50 * time.Millisecond
+		numberOfNodes        = 5
+		numberOfTransactions = 10
+		newReplaceAllowTime  = 10 * time.Millisecond
+	)
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.LogTestHook()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	seedTm := seed.Med.TransactionManager()
+
+	for i := 1; i < numberOfNodes; i++ {
+		testNetwork.NewNode().Start()
+	}
+	testNetwork.WaitForEstablished()
+	from := seed.Config.TokenDist[testutil.DynastySize]
+
+	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).Block(seed.Tail()).Child().SignProposer()
+
+	tx1 := bb.Tx().Type(core.TxOpTransfer).Value(1000).SignPair(from).Build()
+	tx2 := bb.Tx().Type(core.TxOpStake).Value(1000).SignPair(from).Build()
+	tx3 := bb.Tx().Type(core.TxOpUnstake).Nonce(tx2.Nonce() + 1).Value(1000).SignPair(from).Build()
+	err := seed.Med.BlockManager().PushBlockDataSync(bb.Build().GetBlockData(), 1000*time.Millisecond)
+	assert.NoError(t, err)
+
+	failed := seedTm.PushAndBroadcast(tx1)
+	err = failed[byteutils.Bytes2Hex(tx1.Hash())]
+	require.Equal(t, core.ErrPointNotEnough, err)
+
+	failed = seedTm.PushAndBroadcast(tx2)
+	err = failed[byteutils.Bytes2Hex(tx2.Hash())]
+	require.Nil(t, err)
+
+	failed = seedTm.PushAndBroadcast(tx3)
+	err = failed[byteutils.Bytes2Hex(tx3.Hash())]
+	require.Equal(t, core.ErrStakingNotEnough, err)
+
+}
+
 func TestTransactionManager_ReplacePending(t *testing.T) {
 	const (
 		timeout              = 50 * time.Millisecond
