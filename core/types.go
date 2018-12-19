@@ -36,7 +36,7 @@ const (
 	TxOpAddCertification    = "add_certification"
 	TxOpRevokeCertification = "revoke_certification"
 	TxOpRegisterAlias       = "register_alias"
-	TxOpDeregisterAlias     = "Deregister_alias"
+	TxOpDeregisterAlias     = "deregister_alias"
 )
 
 // constants for staking and regeneration
