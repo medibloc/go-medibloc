@@ -41,7 +41,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -137,7 +137,7 @@ func TestAPIService_GetBlock(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -236,7 +236,7 @@ func TestAPIService_GetBlocks(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -336,7 +336,7 @@ func TestAPIService_GetDynasty(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	require.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -367,7 +367,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -425,7 +425,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -485,7 +485,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 
 	err = seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -551,7 +551,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	payer := seed.Config.TokenDist[3]
@@ -611,7 +611,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
-	err = seed.WaitUntilTailHeight(b.Height())
+	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	tx := make([]*core.Transaction, testutil.DynastySize)

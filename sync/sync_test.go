@@ -59,7 +59,7 @@ func TestService_Start(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash())
+	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
 	require.NoError(t, err)
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().Hash())
@@ -136,7 +136,7 @@ func TestForkResistance(t *testing.T) {
 
 		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 		assert.NoError(t, err)
-		err = seed.WaitUntilTailHeight(b.Height())
+		err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 		require.NoError(t, err)
 
 		for _, n := range majorNodes {
@@ -144,7 +144,7 @@ func TestForkResistance(t *testing.T) {
 			assert.NoError(t, err)
 			err = n.Med.BlockManager().PushBlockData(b.BlockData)
 			assert.NoError(t, err)
-			err = n.WaitUntilTailHeight(b.Height())
+			err = n.WaitUntilTailHeight(b.Height(), 10*time.Second)
 			require.NoError(t, err)
 		}
 	}
@@ -179,7 +179,7 @@ func TestForkResistance(t *testing.T) {
 			assert.NoError(t, err)
 			err = n.Med.BlockManager().PushBlockData(b.BlockData)
 			assert.NoError(t, err)
-			err = n.WaitUntilTailHeight(b.Height())
+			err = n.WaitUntilTailHeight(b.Height(), 10*time.Second)
 			require.NoError(t, err)
 		}
 	}
@@ -267,7 +267,7 @@ func TestForAutoActivation(t *testing.T) {
 		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 		require.NoError(t, err)
 	}
-	seed.WaitUntilBlockAcceptedOnChain(tail.Hash())
+	seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
 	require.Equal(t, nBlocks-1, int(seed.Tail().Height()))
 
 	cfg := testutil.NewConfig(t)
@@ -382,7 +382,7 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 		require.NoError(t, err)
 	}
-	err := seed.WaitUntilTailHeight(tail.Height())
+	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
 	require.NoError(t, err)
 
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())

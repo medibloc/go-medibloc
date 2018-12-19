@@ -270,7 +270,7 @@ func TestTopicRevertBlock(t *testing.T) {
 	forkedBlock := bb.Block(b).Child().SignProposer().Build()
 	assert.NoError(t, bm.PushBlockData(b.BlockData))
 	assert.NoError(t, bm.PushBlockData(forkedBlock.BlockData))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash()))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 10*time.Second))
 
 	canonicalBlocks := make([]*core.Block, 2)
 	b1 := bb.Block(b).Child().Tx().RandomTx().Execute().SignProposer().Build()
@@ -282,7 +282,7 @@ func TestTopicRevertBlock(t *testing.T) {
 		for _, v := range canonicalBlocks {
 			err := bm.PushBlockData(v.BlockData)
 			assert.NoError(t, err)
-			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash()))
+			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 10*time.Second))
 		}
 		return
 	}()
@@ -369,7 +369,7 @@ func TestTypeAccountTransaction(t *testing.T) {
 		seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx)
 		err := bm.PushBlockData(b.BlockData)
 		assert.NoError(t, err)
-		err = seed.WaitUntilTailHeight(b.Height())
+		err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 		require.NoError(t, err)
 		return
 	}()

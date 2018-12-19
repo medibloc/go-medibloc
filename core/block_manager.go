@@ -32,7 +32,6 @@ import (
 var (
 	defaultBlockMessageChanSize = 128
 	newBlockBroadcastTimeLimit  = 3 * time.Second
-	pushBlockTimeLimit          = 10 * time.Second
 )
 
 var (
@@ -412,7 +411,7 @@ func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 
 // PushBlockDataSync pushes block to distributor and wait for execution
 // Warning! - Use this method only for test for time efficiency.
-func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
+func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration) error {
 	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
 	bm.bc.eventEmitter.Register(eventSubscriber)
 	if err != nil {
@@ -424,7 +423,7 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
 		return err
 	}
 
-	timeout := time.After(pushBlockTimeLimit)
+	timeout := time.After(timeLimit)
 	for {
 		select {
 		case e := <-eCh:

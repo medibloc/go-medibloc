@@ -136,8 +136,8 @@ func (node *Node) Tail() *core.Block {
 }
 
 // WaitUntilTailHeight waits until blockchain has a designated height or timeout
-func (node *Node) WaitUntilTailHeight(height uint64) error {
-	timeout := time.After(10 * time.Second)
+func (node *Node) WaitUntilTailHeight(height uint64, timeLimit time.Duration) error {
+	timeout := time.After(timeLimit)
 	tick := time.Tick(10 * time.Millisecond)
 
 	for {
@@ -153,8 +153,8 @@ func (node *Node) WaitUntilTailHeight(height uint64) error {
 }
 
 // WaitUntilBlockAcceptedOnChain waits until the block is accepted on the blockchain
-func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte) error {
-	timeout := time.After(5 * time.Second)
+func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte, timeLimit time.Duration) error {
+	timeout := time.After(timeLimit)
 	tick := time.Tick(10 * time.Millisecond)
 
 	for {
