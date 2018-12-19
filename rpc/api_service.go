@@ -25,8 +25,8 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"golang.org/x/net/context"
@@ -368,8 +368,9 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
 	}
 
-	if err = s.tm.PushAndRelay(tx); err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
+	failed := s.tm.PushAndBroadcast(tx)
+	if err, ok := failed[tx.HexHash()]; ok {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return &rpcpb.TransactionHash{
 		Hash: byteutils.Bytes2Hex(tx.Hash()),

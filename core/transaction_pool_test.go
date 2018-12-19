@@ -17,6 +17,7 @@ package core_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -29,33 +30,34 @@ func TestTransactionGetDel(t *testing.T) {
 	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
 
 	tx1 := tb.RandomTx().Build()
-	tx2 := tb.RandomTx().Build()
+	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
 
 	pool := core.NewTransactionPool(128)
 	pool.SetEventEmitter(core.NewEventEmitter(128))
 
-	err := pool.Push(tx1)
-	assert.NoError(t, err)
-	err = pool.Push(tx2)
-	assert.NoError(t, err)
+	tp1, err := core.NewTransactionInPool(tx1, blockutil.DefaultTxMap)
+	require.NoError(t, err)
+	tp2, err := core.NewTransactionInPool(tx2, blockutil.DefaultTxMap)
+	require.NoError(t, err)
 
-	assert.Equal(t, tx1, pool.Get(tx1.Hash()))
-	assert.Equal(t, tx2, pool.Get(tx2.Hash()))
+	pool.Push(tp1)
+	pool.Push(tp2)
 
-	pool.Del(tx1)
-	pool.Del(tx1)
+	assert.Equal(t, tx1, pool.Get(tx1.Hash()).Transaction)
+	assert.Equal(t, tx2, pool.Get(tx2.Hash()).Transaction)
+
+	pool.Del(tx1.Hash())
 	assert.Nil(t, pool.Get(tx1.Hash()))
 
-	assert.Equal(t, tx2, pool.Get(tx2.Hash()))
-	assert.Equal(t, tx2, pool.Pop())
+	assert.Equal(t, tx2, pool.Get(tx2.Hash()).Transaction)
+	assert.Equal(t, tx2, pool.Pop().Transaction)
 	assert.Nil(t, pool.Get(tx2.Hash()))
 
-	err = pool.Push(tx1)
-	assert.Nil(t, err)
-	err = pool.Push(tx2)
-	assert.Nil(t, err)
-	pool.Del(tx1)
-	pool.Del(tx2)
+	pool.Push(tp1)
+	pool.Push(tp2)
+
+	pool.Del(tp1.Hash())
+	pool.Del(tp2.Hash())
 	assert.Nil(t, pool.Pop())
 }
 
@@ -79,10 +81,12 @@ func TestTransactionPoolEvict(t *testing.T) {
 	pool := core.NewTransactionPool(poolSize)
 	pool.SetEventEmitter(core.NewEventEmitter(128))
 	for _, tx := range txs {
-		err := pool.Push(tx)
-		assert.NoError(t, err)
+		tp, err := core.NewTransactionInPool(tx, blockutil.DefaultTxMap)
+		require.NoError(t, err)
+		pool.Push(tp)
 	}
-
+	pool.Evict()
+	assert.Equal(t, 3, len(pool.GetAll()))
 	for i := 3; i < nTransaction; i++ {
 		assert.Nil(t, pool.Get(txs[i].Hash()))
 	}
@@ -95,7 +99,7 @@ func TestEmptyPool(t *testing.T) {
 	pool := core.NewTransactionPool(128)
 	assert.Nil(t, pool.Pop())
 	assert.Nil(t, pool.Get(tx.Hash()))
-	pool.Del(tx)
+	pool.Del(tx.Hash())
 }
 
 func TestInfiniteLoop(t *testing.T) {
@@ -111,40 +115,55 @@ func TestInfiniteLoop(t *testing.T) {
 	from2Nonce2 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
 		SignPair(from2).Build()
 
+	tmp1, err := core.NewTransactionInPool(from1Nonce2, blockutil.DefaultTxMap)
+	require.NoError(t, err)
+	tmp2, err := core.NewTransactionInPool(from2Nonce1, blockutil.DefaultTxMap)
+	require.NoError(t, err)
+	tmp2.SetIncomeTimestamp(tmp1.IncomeTimestamp() + 1000)
+	tmp3, err := core.NewTransactionInPool(from2Nonce2, blockutil.DefaultTxMap)
+	require.NoError(t, err)
+	tmp3.SetIncomeTimestamp(tmp2.IncomeTimestamp() + 1000)
+
 	pool := core.NewTransactionPool(128)
-	err := pool.Push(from1Nonce2)
+	pool.Push(tmp1)
 	require.NoError(t, err)
-	err = pool.Push(from2Nonce2)
+	pool.Push(tmp2)
 	require.NoError(t, err)
-	err = pool.Push(from2Nonce1)
+	pool.Push(tmp3)
 	require.NoError(t, err)
 
 	tx := pool.Pop()
+	require.Equal(t, from1.Addr.Hex(), tx.From().Hex())
 	require.Equal(t, uint64(2), tx.Nonce())
-	require.Equal(t, from1.Addr, tx.From())
+	time.Sleep(time.Millisecond)
+	tx.SetIncomeTimestamp(time.Now().UnixNano())
 	pool.Push(tx)
 
 	tx = pool.Pop()
+	require.Equal(t, from2.Addr, tx.From())
 	require.Equal(t, uint64(1), tx.Nonce())
-	require.Equal(t, from2.Addr, tx.From())
+	time.Sleep(time.Millisecond)
+	tx.SetIncomeTimestamp(time.Now().UnixNano())
 	pool.Push(tx)
 
 	tx = pool.Pop()
-	require.Equal(t, uint64(2), tx.Nonce())
 	require.Equal(t, from1.Addr, tx.From())
+	require.Equal(t, uint64(2), tx.Nonce())
+	time.Sleep(time.Millisecond)
+	tx.SetIncomeTimestamp(time.Now().UnixNano())
 	pool.Push(tx)
 
 	tx = pool.Pop()
+	require.Equal(t, from2.Addr, tx.From())
 	require.Equal(t, uint64(1), tx.Nonce())
-	require.Equal(t, from2.Addr, tx.From())
 
 	tx = pool.Pop()
+	require.Equal(t, from2.Addr, tx.From())
 	require.Equal(t, uint64(2), tx.Nonce())
+
+	tx = pool.Pop()
 	require.Equal(t, from1.Addr, tx.From())
-
-	tx = pool.Pop()
 	require.Equal(t, uint64(2), tx.Nonce())
-	require.Equal(t, from2.Addr, tx.From())
 
 	tx = pool.Pop()
 	require.Nil(t, tx)

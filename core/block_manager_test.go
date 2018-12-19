@@ -126,9 +126,8 @@ func TestBlockManager_Forked(t *testing.T) {
 	}
 
 	tm := seed.Med.TransactionManager()
-	for _, tx := range txs {
-		assert.NoError(t, tm.Push(tx))
-	}
+	failed := tm.PushAndExclusiveBroadcast(txs...)
+	assert.Zero(t, len(failed))
 	assert.Equal(t, len(txs), len(tm.GetAll()))
 
 	bm := seed.Med.BlockManager()

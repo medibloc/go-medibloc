@@ -54,18 +54,14 @@ func TestBlock_BasicTx(t *testing.T) {
 
 	tb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Tx()
 	tx1 := tb.RandomTx().Build()
-	tx2 := tb.RandomTx().Build()
-	tx3 := tb.RandomTx().Build()
+	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
+	tx3 := tb.Nonce(tx2.Nonce() + 1).RandomTx().Build()
 
-	err := seed.Med.TransactionManager().Push(tx1)
-	require.NoError(t, err)
-	err = seed.Med.TransactionManager().Push(tx2)
-	require.NoError(t, err)
-	err = seed.Med.TransactionManager().Push(tx3)
-	require.NoError(t, err)
+	failed := seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx1, tx2, tx3)
+	require.Zero(t, len(failed))
 
 	for seed.Tail().Height() < 2 {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

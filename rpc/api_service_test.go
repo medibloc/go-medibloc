@@ -381,10 +381,9 @@ func TestAPIService_GetPendingTransactions(t *testing.T) {
 		Array().Length().Equal(0)
 
 	tb := bb.Tx()
-
-	for i := 1; i <= 10; i++ {
-		tx := tb.RandomTx().Build()
-		seed.Med.TransactionManager().Push(tx)
+	for i := 0; i < 10; i++ {
+		tx := tb.Nonce(5 + uint64(i)).RandomTx().Build()
+		seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx)
 		assert.Equal(t, tx, seed.Med.TransactionManager().Get(tx.Hash()))
 	}
 
@@ -426,7 +425,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
 
 	tx = bb.Tx().RandomTx().Build()
-	seed.Med.TransactionManager().Push(tx)
+	seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx)
 
 	e.GET("/v1/transaction").
 		WithQuery("hash", byteutils.Bytes2Hex(tx.Hash())).
@@ -633,7 +632,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 	for i := 0; i < testutil.DynastySize; i++ {
 		// At least 3 seconds for next block
 		time.Sleep(1000 * time.Millisecond)
-		seed.Med.TransactionManager().Push(tx[i])
+		seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx[i])
 	}
 
 	bb = bb.ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
