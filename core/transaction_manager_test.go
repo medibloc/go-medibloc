@@ -339,11 +339,15 @@ func TestTransactionManager_ReplacePending(t *testing.T) {
 }
 
 func waitForTransaction(t *testing.T, deadline time.Duration, node *testutil.Node, tx *core.Transaction, has bool) {
+	timeout := time.NewTimer(deadline)
+	defer timeout.Stop()
+
 	ticker := time.NewTicker(10 * time.Millisecond)
-	timer := time.NewTimer(deadline)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case <-timer.C:
+		case <-timeout.C:
 			require.False(t, has, "failed to wait transaction")
 			return
 		case <-ticker.C:

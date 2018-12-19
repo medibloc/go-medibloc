@@ -91,10 +91,12 @@ func (dp *Dispatcher) Start() {
 func (dp *Dispatcher) loop() {
 	logging.Console().Info("Started NewService Dispatcher.")
 
-	timerChan := time.NewTicker(time.Second).C
+	timer := time.NewTicker(time.Second)
+	defer timer.Stop()
+
 	for {
 		select {
-		case <-timerChan:
+		case <-timer.C:
 			metricsDispatcherCached.Update(int64(len(dp.receivedMessageCh)))
 		case <-dp.context.Done():
 			logging.Console().Info("Stopped MedService Dispatcher.")

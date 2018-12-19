@@ -426,7 +426,8 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 		return err
 	}
 
-	timeout := time.After(timeLimit)
+	timeout := time.NewTimer(timeLimit)
+	defer timeout.Stop()
 	for {
 		select {
 		case e := <-eCh:
@@ -436,7 +437,7 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 				}
 				return nil
 			}
-		case <-timeout:
+		case <-timeout.C:
 			return ErrBlockExecutionTimeout
 		}
 	}

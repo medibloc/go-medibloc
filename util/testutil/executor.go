@@ -137,14 +137,17 @@ func (node *Node) Tail() *core.Block {
 
 // WaitUntilTailHeight waits until blockchain has a designated height or timeout
 func (node *Node) WaitUntilTailHeight(height uint64, timeLimit time.Duration) error {
-	timeout := time.After(timeLimit)
-	tick := time.Tick(10 * time.Millisecond)
+	timeout := time.NewTimer(timeLimit)
+	defer timeout.Stop()
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case <-timeout:
+		case <-timeout.C:
 			return ErrExecutionTimeout
-		case <-tick:
+		case <-ticker.C:
 			if node.Med.BlockManager().TailBlock().Height() == height {
 				return nil
 			}
@@ -154,14 +157,17 @@ func (node *Node) WaitUntilTailHeight(height uint64, timeLimit time.Duration) er
 
 // WaitUntilBlockAcceptedOnChain waits until the block is accepted on the blockchain
 func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte, timeLimit time.Duration) error {
-	timeout := time.After(timeLimit)
-	tick := time.Tick(10 * time.Millisecond)
+	timeout := time.NewTimer(timeLimit)
+	defer timeout.Stop()
+
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
 		select {
-		case <-timeout:
+		case <-timeout.C:
 			return ErrExecutionTimeout
-		case <-tick:
+		case <-ticker.C:
 			if node.Med.BlockManager().BlockByHash(hash) != nil {
 				return nil
 			}

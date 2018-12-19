@@ -141,8 +141,12 @@ func (d *download) subscribeLoop() {
 	logging.Console().Info("Sync: Download manager is started.")
 
 	intervalTicker := time.NewTicker(d.interval)
+	defer intervalTicker.Stop()
+
 	timeoutTimerStart := time.Now()
 	timeoutTimer := time.NewTimer(d.timeout)
+	defer timeoutTimer.Stop()
+
 	prevEstablishedPeersCount := int32(0)
 
 	for {

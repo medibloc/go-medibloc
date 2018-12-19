@@ -107,6 +107,8 @@ func waitForMessage(timeout time.Duration, nodeRecvMsgCh chan net.Message) chan 
 	recv := make(chan net.Message)
 	go func() {
 		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+
 		select {
 		case <-timer.C:
 			recv <- nil
@@ -120,12 +122,16 @@ func waitForMessage(timeout time.Duration, nodeRecvMsgCh chan net.Message) chan 
 }
 
 func waitForConnection(t *testing.T, timeout time.Duration, node *net.Node, targeNum int) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
-		timer := time.NewTimer(timeout)
-		ticker := time.NewTicker(100 * time.Millisecond)
 		select {
 		case <-timer.C:
 			t.Error("Timeout to reach target connection number ", targeNum)
+			return
 		case <-ticker.C:
 			if len(node.Network().Conns()) >= targeNum {
 				return
