@@ -413,10 +413,13 @@ func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 // Warning! - Use this method only for test for time efficiency.
 func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration) error {
 	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
-	bm.bc.eventEmitter.Register(eventSubscriber)
 	if err != nil {
 		return err
 	}
+
+	bm.bc.eventEmitter.Register(eventSubscriber)
+	defer bm.bc.eventEmitter.Deregister(eventSubscriber)
+
 	eCh := eventSubscriber.EventChan()
 
 	if err := bm.push(bd); err != nil {
