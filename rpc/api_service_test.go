@@ -39,8 +39,10 @@ func TestAPIService_GetAccount(t *testing.T) {
 	tx1 := tb.Nonce(1).StakeTx(payer, 400000000).Build()
 	b := bb.ExecuteTx(tx1).SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -133,8 +135,10 @@ func TestAPIService_GetBlock(t *testing.T) {
 		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).
 		Stake().Tx().RandomTx().Execute().SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -230,8 +234,10 @@ func TestAPIService_GetBlocks(t *testing.T) {
 	b := bb.Block(seed.GenesisBlock()).
 		ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -328,7 +334,9 @@ func TestAPIService_GetDynasty(t *testing.T) {
 	b := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).
 		Block(seed.Tail()).Child().SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
+	require.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
 	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
@@ -357,8 +365,10 @@ func TestAPIService_GetMedState(t *testing.T) {
 		NextMintSlot2(time.Now().Unix()))
 	b := bb.SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -414,8 +424,10 @@ func TestAPIService_GetTransaction(t *testing.T) {
 	tx := bb.Tx().RandomTx().Build()
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -472,8 +484,10 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 	tx2 := bb.Tx().Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrRecordAlreadyAdded).SignProposer().Build()
 
-	err = seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err = seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -536,8 +550,10 @@ func TestAPIService_SendTransaction(t *testing.T) {
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake()
 	b := bb.SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	payer := seed.Config.TokenDist[3]
 	receiver := seed.Config.TokenDist[4]
@@ -594,8 +610,10 @@ func TestAPIService_Subscribe(t *testing.T) {
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix())).Stake()
 	b := bb.SignProposer().Build()
 
-	err := seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
+	err = seed.WaitUntilTailHeight(b.Height(), 10000)
+	require.NoError(t, err)
 
 	tx := make([]*core.Transaction, testutil.DynastySize)
 	payer := seed.Config.TokenDist[testutil.DynastySize]
@@ -656,6 +674,6 @@ func TestAPIService_Subscribe(t *testing.T) {
 		bb.ExecuteTx(tx[i])
 	}
 	b = bb.SignProposer().Build()
-	err = seed.Med.BlockManager().PushBlockDataSync(b.BlockData)
+	err = seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
 }

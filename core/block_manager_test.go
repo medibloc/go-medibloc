@@ -47,12 +47,14 @@ func TestBlockManager_Sequential(t *testing.T) {
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
+	tail := seed.Tail()
 	for i := 1; i < nBlocks; i++ {
-		tail := seed.Tail()
-		mint := bb.Block(tail).Child().SignProposer().Build()
-		err := bm.PushBlockDataSync(mint.BlockData)
+		tail = bb.Block(tail).Child().SignProposer().Build()
+		err := bm.PushBlockData(tail.BlockData)
 		assert.NoError(t, err)
-		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
+		err = seed.WaitUntilBlockAcceptedOnChain(tail.Hash(), 10000)
+		assert.NoError(t, err)
+		assert.Equal(t, bm.TailBlock().Hash(), tail.Hash())
 	}
 }
 
@@ -142,12 +144,13 @@ func TestBlockManager_Forked(t *testing.T) {
 	assert.Equal(t, 0, len(tm.GetAll()))
 
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
-		err := bm.PushBlockDataSync(mainChainBlocks[len(mainChainBlocks)-i].BlockData)
+		err := bm.PushBlockData(mainChainBlocks[len(mainChainBlocks)-i].BlockData)
 		assert.NoError(t, err)
 	}
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight), 10000))
 	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
+	time.Sleep(1 * time.Second)
 	assert.Equal(t, len(txs), len(tm.GetAll()))
-
 }
 
 func TestBlockManager_CircularParentLink(t *testing.T) {
@@ -164,7 +167,9 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 	block1 := bb.Block(tail).Child().SignProposer().Build()
 	block2 := bb.Block(block1).Child().SignProposer().Build()
 
-	err := bm.PushBlockDataSync(block1.GetBlockData())
+	err := bm.PushBlockData(block1.GetBlockData())
+	require.NoError(t, err)
+	err = seed.WaitUntilBlockAcceptedOnChain(block1.Hash(), 10000)
 	require.NoError(t, err)
 
 	bb = bb.Block(block2).Child().Hash(block2.ParentHash()).ParentHash(block2.Hash())
@@ -196,10 +201,13 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 			block = bb.Block(tail).Child().SignProposer().Build()
 		}
 		blocks = append(blocks, block)
-		err := bm.PushBlockDataSync(block.GetBlockData())
+		err := bm.PushBlockData(block.GetBlockData())
 		require.NoError(t, err)
 		tail = block
 	}
+	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash(), 10000)
+	require.NoError(t, err)
+
 	recordHash, err := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
 	require.NoError(t, err)
 	payload := &core.AddRecordPayload{
@@ -312,11 +320,12 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 				Tx().RandomTx().Execute().
 				SignProposer().Build()
 		}
-		err := bm.PushBlockDataSync(block.GetBlockData())
+		err := bm.PushBlockData(block.GetBlockData())
 		assert.NoError(t, err)
 		tail = block
 	}
-
+	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash(), 10000)
+	assert.NoError(t, err)
 	parent, err := bm.BlockByHeight(3)
 	require.Nil(t, err)
 
@@ -326,8 +335,8 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	}{
 		{0, core.ErrFailedValidateHeightAndHeight},
 		{1, core.ErrFailedValidateHeightAndHeight},
-		{2, core.ErrInvalidBlockHeight},
-		{3, core.ErrInvalidBlockHeight},
+		{2, core.ErrInvalidBlock},
+		{3, core.ErrInvalidBlock},
 		{5, core.ErrFailedValidateHeightAndHeight},
 		{6, core.ErrFailedValidateHeightAndHeight},
 		{999, core.ErrFailedValidateHeightAndHeight},
@@ -565,19 +574,22 @@ func TestBlockManager_PushBlockDataSync(t *testing.T) {
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
+	tail := seed.Tail()
 	for i := 1; i < nBlocks; i++ {
-		tail := seed.Tail()
 		mint := bb.Block(tail).Child().SignProposer().Build()
 		err := bm.PushBlockDataSync(mint.BlockData)
 		assert.NoError(t, err)
-		assert.Equal(t, bm.TailBlock().Hash(), mint.Hash())
+		assert.Equal(t, bm.BlockByHash(mint.Hash()).Height(), mint.Height())
+		tail = mint
 	}
+	err := seed.WaitUntilTailHeight(tail.Height(), 10000)
+	assert.NoError(t, err)
 
 	// Timeout test
-	tail := seed.Tail()
+	tail = seed.Tail()
 	parentBlock := bb.Block(tail).Child().SignProposer().Build()
 	gappedBlock := bb.Block(parentBlock).Child().SignProposer().Build()
-	err := bm.PushBlockDataSync(gappedBlock.BlockData)
+	err = bm.PushBlockDataSync(gappedBlock.BlockData)
 	assert.Equal(t, core.ErrBlockExecutionTimeout, err)
 
 	// Holding channel in the block pool test
@@ -594,7 +606,7 @@ func TestBlockManager_PushBlockDataSync(t *testing.T) {
 	// Execution error sent via execCh test
 	invalidBlock := bb.Block(childBlock).Child().Height(tail.Height() + 2).SignProposer().Build()
 	err = bm.PushBlockDataSync(invalidBlock.BlockData)
-	assert.Equal(t, core.ErrInvalidBlockHeight, err)
+	assert.Equal(t, core.ErrInvalidBlock, err)
 }
 
 /*

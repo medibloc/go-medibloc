@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/medibloc/go-medibloc/util/byteutils"
 
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -164,15 +166,16 @@ func TestTopicLibBlock(t *testing.T) {
 	subscriber := register(emitter, topics[0])
 
 	newLIB := bb.Build()
-	err := bm.PushBlockDataSync(newLIB.BlockData)
+	err := bm.PushBlockData(newLIB.BlockData)
 	assert.NoError(t, err)
 
+	tail := newLIB
 	go func() {
 		for i := 0; i < dynastySize*2/3; i++ {
-			tail := seed.Tail()
 			b := bb.Block(tail).Child().SignProposer().Build()
-			err := bm.PushBlockDataSync(b.BlockData)
+			err := bm.PushBlockData(b.BlockData)
 			assert.NoError(t, err)
+			tail = b
 		}
 		return
 	}()
@@ -199,12 +202,12 @@ func TestTopicNewTailBlock(t *testing.T) {
 	subscriber := register(emitter, topics[0])
 
 	b := bb.Build()
-	err := bm.PushBlockDataSync(b.BlockData)
+	err := bm.PushBlockData(b.BlockData)
 	assert.NoError(t, err)
 
 	go func() {
 		b = bb.Child().SignProposer().Build()
-		err := bm.PushBlockDataSync(b.BlockData)
+		err := bm.PushBlockData(b.BlockData)
 		assert.NoError(t, err)
 		return
 	}()
@@ -267,7 +270,7 @@ func TestTopicRevertBlock(t *testing.T) {
 	forkedBlock := bb.Block(b).Child().SignProposer().Build()
 	assert.NoError(t, bm.PushBlockData(b.BlockData))
 	assert.NoError(t, bm.PushBlockData(forkedBlock.BlockData))
-	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 5000))
+	assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 10000))
 
 	canonicalBlocks := make([]*core.Block, 2)
 	b1 := bb.Block(b).Child().Tx().RandomTx().Execute().SignProposer().Build()
@@ -277,9 +280,9 @@ func TestTopicRevertBlock(t *testing.T) {
 
 	go func() {
 		for _, v := range canonicalBlocks {
-			err := bm.PushBlockDataSync(v.BlockData)
+			err := bm.PushBlockData(v.BlockData)
 			assert.NoError(t, err)
-			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 5000))
+			assert.NoError(t, seed.WaitUntilBlockAcceptedOnChain(v.Hash(), 10000))
 		}
 		return
 	}()
@@ -308,7 +311,8 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 
 	go func() {
 		b := bb.ExecuteTx(tx).SignProposer().Build()
-		seed.Med.BlockManager().PushBlockData(b.BlockData)
+		err := seed.Med.BlockManager().PushBlockData(b.BlockData)
+		require.NoError(t, err)
 		return
 	}()
 
@@ -339,8 +343,10 @@ func TestTypeAccountTransaction(t *testing.T) {
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 	go func() {
 		seed.Med.TransactionManager().Push(tx)
-		err := bm.PushBlockDataSync(b.BlockData)
+		err := bm.PushBlockData(b.BlockData)
 		assert.NoError(t, err)
+		err = seed.WaitUntilTailHeight(b.Height(), 10000)
+		require.NoError(t, err)
 		return
 	}()
 
