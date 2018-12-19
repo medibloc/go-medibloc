@@ -31,6 +31,12 @@ import (
 var (
 	defaultBlockMessageChanSize = 128
 	newBlockBroadcastTimeLimit  = 3 * time.Second
+	pushBlockTimeLimit          = 10 * time.Second
+)
+
+var (
+	finishWorkChannelSize = 128
+	newBlockChannelSize   = 128
 )
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
@@ -98,8 +104,8 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		syncActivationHeight:  cfg.Sync.SyncActivationHeight,
 		receiveBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
 		requestBlockMessageCh: make(chan net.Message, defaultBlockMessageChanSize),
-		finishWorkCh:          make(chan *blockResult, 100), // TODO @ggomma use config
-		newBlockCh:            make(chan *BlockData, 100),
+		finishWorkCh:          make(chan *blockResult, finishWorkChannelSize),
+		newBlockCh:            make(chan *BlockData, newBlockChannelSize),
 		quitCh:                make(chan int),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
@@ -417,7 +423,7 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData) error {
 		return err
 	}
 
-	timeout := time.After(5000 * time.Millisecond)
+	timeout := time.After(pushBlockTimeLimit)
 	for {
 		select {
 		case e := <-eCh:

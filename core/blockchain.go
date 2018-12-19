@@ -460,7 +460,6 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 			return nil, err
 		}
 		blocks = append(blocks, to)
-		// TODO @cl9200 Remove tx in block from tx pool.
 
 		to, err = bc.parentBlock(to)
 		if err != nil {
