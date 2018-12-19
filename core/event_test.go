@@ -241,7 +241,7 @@ func TestTopicPendingTransaction(t *testing.T) {
 
 	tx := bb.Tx().RandomTx().Build()
 	go func() {
-		tm.Push(tx)
+		tm.PushAndExclusiveBroadcast(tx)
 		return
 	}()
 
@@ -366,7 +366,7 @@ func TestTypeAccountTransaction(t *testing.T) {
 
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 	go func() {
-		seed.Med.TransactionManager().Push(tx)
+		seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx)
 		err := bm.PushBlockData(b.BlockData)
 		assert.NoError(t, err)
 		err = seed.WaitUntilTailHeight(b.Height())

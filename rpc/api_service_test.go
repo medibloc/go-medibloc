@@ -574,7 +574,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 	e.POST("/v1/transaction").
 		WithJSON(TX).
 		Expect().
-		JSON().Object().ValueEqual("error", rpc.ErrMsgInvalidTransaction)
+		JSON().Object().ValueEqual("error", core.ErrDuplicatedTransaction.Error())
 
 	TX.Payload = "WRONG PAYLOAD"
 	e.POST("/v1/transaction").

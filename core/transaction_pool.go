@@ -143,7 +143,7 @@ func (pool *TransactionPool) Pop() *TransactionInPool {
 }
 
 func (pool *TransactionPool) push(tx *TransactionInPool) {
-	old := pool.GetByAddressAndNonce(tx.from, tx.nonce)
+	old := pool.getByAddressAndNonce(tx.from, tx.nonce)
 	if old != nil {
 		delete(pool.all, old.HexHash())
 	}
@@ -249,6 +249,8 @@ func (pool *TransactionPool) LenByAddress(addr common.Address) int {
 
 //PeekFirstByAddress returns transaction with lowest nonce among specific address's transactions
 func (pool *TransactionPool) PeekFirstByAddress(addr common.Address) *TransactionInPool {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
 	v := pool.buckets.Get(addr.Hex())
 	if v == nil {
 		return nil
@@ -258,6 +260,8 @@ func (pool *TransactionPool) PeekFirstByAddress(addr common.Address) *Transactio
 
 //PeekLastByAddress returns transaction with highest nonce among specific address's transactions
 func (pool *TransactionPool) PeekLastByAddress(addr common.Address) *TransactionInPool {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
 	v := pool.buckets.Get(addr.Hex())
 	if v == nil {
 		return nil
@@ -267,6 +271,12 @@ func (pool *TransactionPool) PeekLastByAddress(addr common.Address) *Transaction
 
 //GetByAddressAndNonce returns transaction with addr-nonce
 func (pool *TransactionPool) GetByAddressAndNonce(addr common.Address, nonce uint64) *TransactionInPool {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	return pool.getByAddressAndNonce(addr, nonce)
+}
+
+func (pool *TransactionPool) getByAddressAndNonce(addr common.Address, nonce uint64) *TransactionInPool {
 	v := pool.buckets.Get(addr.Hex())
 	if v == nil {
 		return nil

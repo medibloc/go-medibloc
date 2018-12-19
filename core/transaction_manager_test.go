@@ -114,7 +114,6 @@ func TestTransactionManager_PushAndBroadcast(t *testing.T) {
 	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -159,7 +158,6 @@ func TestTransactionManager_PushAndExclusiveBroadcast(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -200,14 +198,13 @@ func TestTransactionManager_PushAndExclusiveBroadcast(t *testing.T) {
 func TestTransactionManager_MaxPending(t *testing.T) {
 	const (
 		timeout              = 50 * time.Millisecond
-		numberOfNodes        = 5
+		numberOfNodes        = 3
 		numberOfTransactions = 100
 		numberOfPop          = 10
 		numberOfDel          = 5
 	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
