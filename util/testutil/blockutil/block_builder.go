@@ -273,7 +273,7 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	receipt, err := n.B.ExecuteTransaction(tx)
 	require.NoError(n.t, err)
 	tx.SetReceipt(receipt)
 	require.NoError(n.t, n.B.AcceptTransaction(tx))
@@ -287,7 +287,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	receipt, err := n.B.ExecuteTransaction(tx)
 	require.Equal(n.t, expected, err)
 	require.NoError(n.t, n.B.RollBack())
 	if receipt == nil {

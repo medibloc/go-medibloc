@@ -496,15 +496,6 @@ func (t *Transaction) Size() (int, error) {
 	return len(txBytes), nil
 }
 
-//Executable returns executable transaction
-func (t *Transaction) Executable(txMap TxFactory) (ExecutableTx, error) {
-	newTxFunc, ok := txMap[t.TxType()]
-	if !ok {
-		return nil, ErrInvalidTransactionType
-	}
-	return newTxFunc(t)
-}
-
 //TransferTx is a structure for sending MED
 type TransferTx struct {
 	from    common.Address

@@ -90,7 +90,7 @@ func TestCheckGenesisBlock(t *testing.T) {
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	consensus := dpos.New(testutil.DynastySize)
-	genesis, err := core.NewGenesisBlock(conf, consensus, blockutil.DefaultTxMap, stor)
+	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 
 	ok := core.CheckGenesisConf(genesis, conf)

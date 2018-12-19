@@ -62,7 +62,7 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 }
 
 // NewGenesisBlock generates genesis block
-func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory, sto storage.Storage) (*Block, error) {
+func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Storage) (*Block, error) {
 	if conf == nil {
 		return nil, ErrNilArgument
 	}
@@ -183,7 +183,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		if err := tx.FromProto(pbTx); err != nil {
 			return nil, err
 		}
-		receipt, err := genesisBlock.ExecuteTransaction(tx, txMap)
+		receipt, err := genesisBlock.ExecuteTransaction(tx)
 		if err != nil {
 			return nil, err
 		}

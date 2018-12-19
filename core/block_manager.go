@@ -46,7 +46,6 @@ type BlockManager struct {
 	tm        *TransactionManager
 	ns        net.Service
 	consensus Consensus
-	txMap     TxFactory
 
 	syncService          SyncService
 	syncActivationHeight uint64
@@ -70,16 +69,6 @@ type BlockManager struct {
 type blockResult struct {
 	block   *BlockData
 	isValid bool
-}
-
-//TxMap returns txMap
-func (bm *BlockManager) TxMap() TxFactory {
-	return bm.txMap
-}
-
-//SetTxMap inject txMap
-func (bm *BlockManager) SetTxMap(txMap TxFactory) {
-	bm.txMap = txMap
 }
 
 // NewBlockManager returns BlockManager.
@@ -125,17 +114,16 @@ func (bm *BlockManager) InjectTransactionManager(tm *TransactionManager) {
 	bm.tm = tm
 }
 
-//InjectSyncService inject sync service generated from medlet to block manager
+// InjectSyncService inject sync service generated from medlet to block manager
 func (bm *BlockManager) InjectSyncService(syncService SyncService) {
 	bm.syncService = syncService
 }
 
 // Setup sets up BlockManager.
-func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus, txMap TxFactory) error {
+func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus) error {
 	bm.consensus = consensus
-	bm.txMap = txMap
 
-	err := bm.bc.Setup(genesis, consensus, txMap, stor)
+	err := bm.bc.Setup(genesis, consensus, stor)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -221,7 +209,7 @@ func (bm *BlockManager) processTask(newData *BlockData) {
 		return
 	}
 
-	child, err := newData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
+	child, err := newData.ExecuteOnParentBlock(parent, bm.consensus)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":    err,
@@ -379,7 +367,7 @@ func (bm *BlockManager) LIB() *Block {
 	return bm.bc.LIB()
 }
 
-//ForceLIB set LIB force
+// ForceLIB set LIB force
 func (bm *BlockManager) ForceLIB(b *Block) error {
 	return bm.bc.SetLIB(b)
 }
@@ -507,7 +495,7 @@ func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 	}
 
 	if err := bm.consensus.VerifyHeightAndTimestamp(bm.bc.LIB().BlockData, bd); err != nil {
-		//if bd.Height() <= bm.bc.LIB().Height() {
+		// if bd.Height() <= bm.bc.LIB().Height() {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
 		}).Debug("Received a block forked before current LIB.")

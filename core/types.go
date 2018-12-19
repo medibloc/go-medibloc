@@ -70,7 +70,7 @@ const (
 	NetLimit                         = 3000000 // 3MB
 )
 
-//MinimumAliasCollateral limit value for register alias
+// MinimumAliasCollateral limit value for register alias
 const MinimumAliasCollateral = "1000000000000000000"
 
 // Points Price related defaults
@@ -198,7 +198,12 @@ type Consensus interface {
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
 }
 
-//DposState is an interface for dpos state
+// Canonical is an interface of canonical chain.
+type Canonical interface {
+	TailBlock() *Block
+}
+
+// DposState is an interface for dpos state
 type DposState interface {
 	Clone() (DposState, error)
 	Prepare() error
@@ -221,16 +226,13 @@ type DposState interface {
 	SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error
 }
 
-//SyncService interface for sync
+// SyncService interface for sync
 type SyncService interface {
 	ActiveDownload(targetHeight uint64) error
 	IsDownloadActivated() bool
 }
 
-//TxFactory is a map for tx.TxType() to NewTxFunc
-type TxFactory map[string]func(transaction *Transaction) (ExecutableTx, error)
-
-//ExecutableTx interface for execute transaction on state
+// ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
 	Execute(b *Block) error
 	Bandwidth() (cpuUsage uint64, netUsage uint64)

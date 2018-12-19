@@ -478,7 +478,7 @@ func (bd *BlockData) VerifyIntegrity() error {
 }
 
 // ExecuteOnParentBlock returns Block object with state after block execution
-func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, txMap TxFactory) (*Block, error) {
+func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus) (*Block, error) {
 	// Prepare Execution
 	block, err := parent.Child()
 	if err != nil {
@@ -497,7 +497,7 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, tx
 		return nil, err
 	}
 
-	if err := block.VerifyExecution(parent, consensus, txMap); err != nil {
+	if err := block.VerifyExecution(parent, consensus); err != nil {
 		return nil, err
 	}
 	err = block.Flush()
@@ -782,7 +782,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 }
 
 // ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*Receipt, error) {
+func (b *Block) ExecuteTransaction(transaction *Transaction) (*Receipt, error) {
 	// Executing process consists of two major parts
 	// Part 1 : Verify transaction and not affect state trie
 	// Part 2 : Execute transaction and affect state trie(store)
@@ -795,16 +795,12 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 	}
 
 	// STEP 2. Check tx type
-	newTxFunc, ok := txMap[transaction.TxType()]
-	if !ok {
-		return nil, ErrInvalidTransactionType
-	}
-
-	// STEP 3. Check tx components and set cpu, net usage on receipt
-	tx, err := newTxFunc(transaction)
+	tx, err := TxConv(transaction)
 	if err != nil {
 		return nil, err
 	}
+
+	// STEP 3. Check tx components and set cpu, net usage on receipt
 	cpuUsage, netUsage := tx.Bandwidth()
 	cpuPoints, err := b.state.cpuPrice.Mul(util.NewUint128FromUint(cpuUsage))
 	if err != nil {
@@ -990,7 +986,7 @@ func currentPoints(payer *Account, curTs int64) (*util.Uint128, error) {
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFactory) error {
+func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 	err := b.BeginBatch()
 	if err != nil {
 		return err
@@ -1015,7 +1011,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 	if err != nil {
 		return err
 	}
-	if err := b.ExecuteAll(txMap); err != nil {
+	if err := b.ExecuteAll(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
@@ -1051,9 +1047,9 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 }
 
 // ExecuteAll executes all txs in block
-func (b *Block) ExecuteAll(txMap TxFactory) error {
+func (b *Block) ExecuteAll() error {
 	for _, transaction := range b.transactions {
-		err := b.Execute(transaction, txMap)
+		err := b.Execute(transaction)
 		if err != nil {
 			return err
 		}
@@ -1063,13 +1059,13 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 }
 
 // Execute executes a transaction.
-func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
+func (b *Block) Execute(tx *Transaction) error {
 	err := b.BeginBatch()
 	if err != nil {
 		return err
 	}
 
-	receipt, err := b.ExecuteTransaction(tx, txMap)
+	receipt, err := b.ExecuteTransaction(tx)
 	if receipt == nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,

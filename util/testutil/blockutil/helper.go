@@ -25,7 +25,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,9 +34,6 @@ const (
 
 var unitMed = util.NewUint128FromUint(1000000000000)
 
-//DefaultTxMap is default txmap for block util
-var DefaultTxMap = medlet.DefaultTxMap
-
 func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	signer, err := crypto.NewSignature(defaultSignAlg)
 	require.NoError(t, err)
@@ -45,9 +41,9 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	return signer
 }
 
-//Points returns bandwidth usage of a transaction.
+// Points returns bandwidth usage of a transaction.
 func Points(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
-	execTx, err := DefaultTxMap[tx.TxType()](tx)
+	execTx, err := core.TxConv(tx)
 	require.NoError(t, err)
 	cpu, net := execTx.Bandwidth()
 	require.NoError(t, err)
@@ -63,7 +59,7 @@ func Points(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
 	return points
 }
 
-//FloatToUint128 covert float to uint128 (precision is only 1e-03)
+// FloatToUint128 covert float to uint128 (precision is only 1e-03)
 func FloatToUint128(t *testing.T, med float64) *util.Uint128 {
 	value, err := unitMed.MulWithRat(big.NewRat(int64(med*1000), 1000))
 	require.NoError(t, err)

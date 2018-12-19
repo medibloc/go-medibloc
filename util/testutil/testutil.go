@@ -34,7 +34,6 @@ import (
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -217,7 +216,7 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	d := dpos.New(dynastySize)
-	genesis, err = core.NewGenesisBlock(conf, d, medlet.DefaultTxMap, s)
+	genesis, err = core.NewGenesisBlock(conf, d, s)
 	require.NoError(t, err)
 
 	return genesis, dynasties, distributed

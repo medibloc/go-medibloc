@@ -36,12 +36,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	metricsMedstartGauge = metrics.GetOrRegisterGauge("med.start", nil)
-)
+func init() {
+	core.InjectTxFactory(DefaultTxFactory)
+}
 
 // DefaultTxMap is default map of transactions.
-var DefaultTxMap = core.TxFactory{
+var DefaultTxFactory = core.MapTxFactory{
 	core.TxOpTransfer:            core.NewTransferTx,
 	core.TxOpAddRecord:           core.NewAddRecordTx,
 	core.TxOpStake:               core.NewStakeTx,
@@ -55,6 +55,10 @@ var DefaultTxMap = core.TxFactory{
 	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
 	dpos.TxOpVote:            dpos.NewVoteTx,
 }
+
+var (
+	metricsMedstartGauge = metrics.GetOrRegisterGauge("med.start", nil)
+)
 
 // Medlet manages blockchain services.
 type Medlet struct {
@@ -133,7 +137,7 @@ func (m *Medlet) Setup() error {
 
 	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter, m.netService)
 
-	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus, DefaultTxMap)
+	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

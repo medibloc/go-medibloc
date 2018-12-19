@@ -444,7 +444,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}
 
 		// Execute transaction and change states
-		receipt, err := block.ExecuteTransaction(transaction, d.bm.TxMap())
+		receipt, err := block.ExecuteTransaction(transaction)
 		if err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
