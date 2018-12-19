@@ -418,8 +418,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 	seed.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
-		NextMintSlot2(time.Now().Unix())).Stake()
+	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Child().Stake()
 	tx := bb.Tx().RandomTx().Build()
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 
