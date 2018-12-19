@@ -290,7 +290,7 @@ func TestRegisterAliasTable(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 	from := bb.TokenDist[testutil.DynastySize]
 	const (
-		collateralAmount = 1000
+		collateralAmount = 1000000
 	)
 	type aliasErrSet struct {
 		name string
@@ -307,6 +307,9 @@ func TestRegisterAliasTable(t *testing.T) {
 		{"testalias!", common.ErrAliasInvalidChar},
 		{"test_alias", common.ErrAliasInvalidChar},
 		{"test	as", common.ErrAliasInvalidChar},
+		{"메디블록", common.ErrAliasInvalidChar},
+		{"!@#%%ㅁㄴ", common.ErrAliasInvalidChar},
+		{"a!@#%123", common.ErrAliasInvalidChar},
 	}
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute()
