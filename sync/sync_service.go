@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//Service Sync
+// Service Sync
 type Service struct {
 	config *medletpb.SyncConfig
 
@@ -34,7 +34,7 @@ type Service struct {
 	quitCh chan bool
 }
 
-//NewService returns new syncService
+// NewService returns new syncService
 func NewService(config *medletpb.SyncConfig) *Service {
 	return &Service{
 		config:   config,
@@ -44,7 +44,7 @@ func NewService(config *medletpb.SyncConfig) *Service {
 	}
 }
 
-//Setup makes seeding and block manager on syncService
+// Setup makes seeding and block manager on syncService
 func (ss *Service) Setup(netService net.Service, bm BlockManager) {
 	ss.Seeding = newSeeding(ss.config)
 	ss.Seeding.setup(netService, bm)
@@ -58,14 +58,14 @@ func (ss *Service) Start() {
 	ss.Seeding.start()
 }
 
-//Stop Sync Service
+// Stop Sync Service
 func (ss *Service) Stop() {
 	ss.Seeding.stop()
 	ss.Download.stop()
 	logging.Console().Info("SyncService is stopped.")
 }
 
-//ActiveDownload start download manager
+// ActiveDownload start download manager
 func (ss *Service) ActiveDownload(targetHeight uint64) error {
 	if ss.Download.IsActivated() == true {
 		return ErrAlreadyDownlaodActivated
@@ -76,12 +76,12 @@ func (ss *Service) ActiveDownload(targetHeight uint64) error {
 	return nil
 }
 
-//IsDownloadActivated return download isActivated
+// IsDownloadActivated return download isActivated
 func (ss *Service) IsDownloadActivated() bool {
 	return ss.Download.IsActivated()
 }
 
-//IsSeedActivated return download isActivated
+// IsSeedActivated return download isActivated
 func (ss *Service) IsSeedActivated() bool {
 	return ss.Seeding.IsActivated()
 }

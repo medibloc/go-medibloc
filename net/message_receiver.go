@@ -20,11 +20,11 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"sync/atomic"
 	"time"
 
 	inet "github.com/libp2p/go-libp2p-net"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 type messageReceiver struct {
@@ -68,21 +68,21 @@ func (mr *messageReceiver) loop() {
 			logging.Console().Info("Stop Message Receiver")
 			return
 		case s := <-mr.streamCh:
-			mr.handelNewStream(s)
+			mr.handleNewStream(s)
 		case err := <-mr.doneCh:
 			mr.finishReadMessage(err)
 		}
 	}
 }
 
-func (mr *messageReceiver) handelNewStream(s inet.Stream) {
+func (mr *messageReceiver) handleNewStream(s inet.Stream) {
 	// writing concurrency is fulfilled. put message receiver queue
-	if atomic.LoadInt32(&mr.receiving) >= mr.maxReceiving {
+	if mr.receiving >= mr.maxReceiving {
 		logging.Console().Debug("Read concurrency is full")
 		mr.streamQ.put(s)
 		return
 	}
-	atomic.AddInt32(&mr.receiving, 1)
+	mr.receiving++
 	go mr.readMessage(s)
 }
 
@@ -90,7 +90,14 @@ func (mr *messageReceiver) readMessage(s inet.Stream) {
 	defer s.Reset()
 	sender := s.Conn().RemotePeer()
 
-	s.SetReadDeadline(time.Now().Add(StreamTTL))
+	err := s.SetReadDeadline(time.Now().Add(StreamTTL))
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Debug("failed to set read deadline")
+		mr.doneCh <- err
+		return
+	}
 
 	r := io.LimitReader(s, MaxMessageSize)
 
@@ -114,42 +121,30 @@ func (mr *messageReceiver) readMessage(s inet.Stream) {
 func (mr *messageReceiver) finishReadMessage(err error) {
 	s := mr.streamQ.pop()
 	if s == nil { // no message in Queue
-		atomic.AddInt32(&mr.receiving, -1)
+		mr.receiving--
 		return
 	}
 	go mr.readMessage(s)
 }
 
 type streamQ struct {
-	highPriorityStreams   *list.List
-	normalPriorityStreams *list.List
+	streams *list.List
 }
 
 func newStreamQ() *streamQ {
 	return &streamQ{
-		highPriorityStreams:   list.New(),
-		normalPriorityStreams: list.New(),
+		streams: list.New(),
 	}
 }
 
 func (q *streamQ) pop() inet.Stream {
-	out := q.highPriorityStreams.Front()
+	out := q.streams.Front()
 	if out != nil {
-		return q.highPriorityStreams.Remove(out).(inet.Stream)
-	}
-	out = q.normalPriorityStreams.Front()
-	if out != nil {
-		return q.normalPriorityStreams.Remove(out).(inet.Stream)
+		return q.streams.Remove(out).(inet.Stream)
 	}
 	return nil
 }
 
 func (q *streamQ) put(s inet.Stream) {
-	//switch s.priority {
-	//case MessagePriorityHigh:
-	//	q.highPriorityStreams.PushBack(s)
-	//default:
-	//	q.normalPriorityStreams.PushBack(s)
-	//}
-	q.normalPriorityStreams.PushBack(s)
+	q.streams.PushBack(s)
 }

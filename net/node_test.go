@@ -80,7 +80,7 @@ func TestTrimConnections(t *testing.T) {
 		node.SendMessageToPeer(TestMessageType, TestMessageData, net.MessagePriorityNormal, seed.ID().Pretty())
 		fmt.Println(len(seed.Network().Conns()))
 	}
-	time.Sleep(GracePeriod * time.Second)
+	time.Sleep((GracePeriod + 3) * time.Second)
 	seed.ConnManager().TrimOpenConns(ctx)
 	assert.Equal(t, LowWaterMark, len(seed.Network().Conns()))
 }

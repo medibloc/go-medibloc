@@ -40,7 +40,7 @@ var (
 	metricsMedstartGauge = metrics.GetOrRegisterGauge("med.start", nil)
 )
 
-//DefaultTxMap is default map of transactions.
+// DefaultTxMap is default map of transactions.
 var DefaultTxMap = core.TxFactory{
 	core.TxOpTransfer:            core.NewTransferTx,
 	core.TxOpAddRecord:           core.NewAddRecordTx,
@@ -223,7 +223,7 @@ func (m *Medlet) Start() error {
 func (m *Medlet) Stop() {
 	m.eventEmitter.Stop()
 
-	//m.netService.Stop()
+	// m.netService.Stop()
 
 	m.blockManager.Stop()
 
@@ -290,7 +290,7 @@ func (m *Medlet) EventEmitter() *core.EventEmitter {
 	return m.eventEmitter
 }
 
-//SyncService returns sync service
+// SyncService returns sync service
 func (m *Medlet) SyncService() *sync.Service {
 	return m.syncService
 }

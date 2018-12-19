@@ -36,7 +36,6 @@ var (
 )
 
 func TestNewMedService(t *testing.T) {
-	//logging.SetTestHook()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	defer cleanup(t)

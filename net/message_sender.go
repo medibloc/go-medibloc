@@ -18,7 +18,7 @@ package net
 import (
 	"container/list"
 	"context"
-	"sync/atomic"
+	"time"
 
 	host "github.com/libp2p/go-libp2p-host"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -65,14 +65,14 @@ func (ms *messageSender) loop() {
 			logging.Console().Info("Stop Message Sender")
 			return
 		case msg := <-ms.msgCh:
-			ms.handelNewMessage(msg)
+			ms.handleNewMessage(msg)
 		case err := <-ms.doneCh:
 			ms.finishSendMessage(err)
 		}
 	}
 }
 
-func (ms *messageSender) handelNewMessage(msg *SendMessage) {
+func (ms *messageSender) handleNewMessage(msg *SendMessage) {
 	// writing concurrency is fulfilled. put message to queue
 	if ms.sending >= ms.maxSending {
 		ms.messageQ.put(msg)
@@ -87,7 +87,6 @@ func (ms *messageSender) writeMessage(msg *SendMessage) {
 	defer cancel()
 
 	s, err := ms.host.NewStream(ctx, msg.receiver, MedProtocolID)
-	defer s.Close()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"to":  msg.receiver.Pretty(),
@@ -96,7 +95,16 @@ func (ms *messageSender) writeMessage(msg *SendMessage) {
 		ms.doneCh <- err
 		return
 	}
+	defer s.Close()
 
+	err = s.SetWriteDeadline(time.Now().Add(StreamTTL))
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Debug("failed to set write deadline")
+		ms.doneCh <- err
+		return
+	}
 	if n, err := s.Write(msg.Bytes()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"to":           msg.receiver.Pretty(),
@@ -114,7 +122,7 @@ func (ms *messageSender) writeMessage(msg *SendMessage) {
 func (ms *messageSender) finishSendMessage(err error) {
 	msg := ms.messageQ.pop()
 	if msg == nil { // no message in Queue
-		atomic.AddInt32(&ms.sending, -1)
+		ms.sending--
 		return
 	}
 	go ms.writeMessage(msg)

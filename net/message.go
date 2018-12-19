@@ -23,29 +23,29 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
-//RecvMessage is a struct for received message
+// RecvMessage is a struct for received message
 type RecvMessage struct {
 	pb     *netpb.Message
 	sender peer.ID
 	hash   string
 }
 
-//MessageType returns message type
+// MessageType returns message type
 func (m *RecvMessage) MessageType() string {
 	return m.pb.Type
 }
 
-//MessageFrom returns peer id of message sender
+// MessageFrom returns peer id of message sender
 func (m *RecvMessage) MessageFrom() string {
 	return m.sender.Pretty()
 }
 
-//Data returns data
+// Data returns data
 func (m *RecvMessage) Data() []byte {
 	return m.pb.Data
 }
 
-//Hash returns hash
+// Hash returns hash
 func (m *RecvMessage) Hash() string {
 	return m.hash
 }
@@ -62,7 +62,7 @@ func newRecvMessage(bytes []byte, sender peer.ID) (*RecvMessage, error) {
 	}, nil
 }
 
-//SendMessage is a struct for sending message
+// SendMessage is a struct for sending message
 type SendMessage struct {
 	bytes    []byte
 	receiver peer.ID
@@ -70,17 +70,17 @@ type SendMessage struct {
 	hash     string
 }
 
-//SetReceiver sets receiver
+// SetReceiver sets receiver
 func (m *SendMessage) SetReceiver(receiver peer.ID) {
 	m.receiver = receiver
 }
 
-//Bytes returns bytes
+// Bytes returns bytes
 func (m *SendMessage) Bytes() []byte {
 	return m.bytes
 }
 
-//MessageType returns message type
+// MessageType returns message type
 func (m *SendMessage) MessageType() string {
 	pb := new(netpb.Message)
 	if err := proto.Unmarshal(m.bytes, pb); err != nil {
@@ -89,7 +89,7 @@ func (m *SendMessage) MessageType() string {
 	return pb.Type
 }
 
-//Data returns data
+// Data returns data
 func (m *SendMessage) Data() []byte {
 	pb := new(netpb.Message)
 	if err := proto.Unmarshal(m.bytes, pb); err != nil {
@@ -98,7 +98,7 @@ func (m *SendMessage) Data() []byte {
 	return pb.Data
 }
 
-//Hash returns hash
+// Hash returns hash
 func (m *SendMessage) Hash() string {
 	return m.hash
 }

@@ -39,27 +39,24 @@ type Dispatcher struct {
 	receivedMessageCh  chan Message
 	dispatchedMessages *lru.Cache
 	filters            *sync.Map
-	//filters            map[string]bool
 }
 
-//ReceivedMessageCh return dispatcher's received message channel
+// ReceivedMessageCh return dispatcher's received message channel
 func (dp *Dispatcher) ReceivedMessageCh() chan<- Message {
 	return dp.receivedMessageCh
 }
 
 // NewDispatcher create Dispatcher instance.
 func NewDispatcher(ctx context.Context) *Dispatcher {
-	dp := &Dispatcher{
-		subscribersMap:    new(sync.Map),
-		context:           ctx,
-		receivedMessageCh: make(chan Message, 65536),
-		filters:           new(sync.Map),
-		//filters:           make(map[string]bool),
+	dispatchedMessages, _ := lru.New(51200)
+
+	return &Dispatcher{
+		subscribersMap:     new(sync.Map),
+		context:            ctx,
+		receivedMessageCh:  make(chan Message, 65536),
+		filters:            new(sync.Map),
+		dispatchedMessages: dispatchedMessages,
 	}
-
-	dp.dispatchedMessages, _ = lru.New(51200)
-
-	return dp
 }
 
 // Register register subscribers.
@@ -69,13 +66,11 @@ func (dp *Dispatcher) Register(subscribers ...*Subscriber) {
 		m, _ := dp.subscribersMap.LoadOrStore(mt, new(sync.Map))
 		m.(*sync.Map).Store(v, true)
 		dp.filters.Store(mt, v.DoFilter())
-		//dp.filters[mt] = v.DoFilter()
 	}
 }
 
 // Deregister deregister subscribers.
 func (dp *Dispatcher) Deregister(subscribers ...*Subscriber) {
-
 	for _, v := range subscribers {
 		mt := v.MessageType()
 		m, _ := dp.subscribersMap.Load(mt)
@@ -84,7 +79,6 @@ func (dp *Dispatcher) Deregister(subscribers ...*Subscriber) {
 		}
 		m.(*sync.Map).Delete(v)
 		dp.filters.Delete(mt)
-		//delete(dp.filters, mt)
 	}
 }
 
@@ -106,7 +100,9 @@ func (dp *Dispatcher) loop() {
 			logging.Console().Info("Stopped MedService Dispatcher.")
 			return
 		case msg := <-dp.receivedMessageCh:
-			dp.handleNewMessage(msg)
+			if dp.isFiltered(msg) {
+				continue
+			}
 
 			msgType := msg.MessageType()
 			v, _ := dp.subscribersMap.Load(msgType)
@@ -129,9 +125,8 @@ func (dp *Dispatcher) loop() {
 	}
 }
 
-// handleNewMessage handle new message to chan, then subscribers will be notified to process.
-func (dp *Dispatcher) handleNewMessage(msg Message) {
-
+// filter handle new message to chan, then subscribers will be notified to process.
+func (dp *Dispatcher) isFiltered(msg Message) bool {
 	hash := msg.Hash()
 	mt := msg.MessageType()
 	v, ok := dp.filters.Load(mt)
@@ -141,16 +136,17 @@ func (dp *Dispatcher) handleNewMessage(msg Message) {
 			"from": msg.MessageFrom(),
 			"type": msg.MessageType(),
 		}).Warn("Unregistered message received.")
-		return
+		return true
 	}
 
 	if v.(bool) {
 		if exist, _ := dp.dispatchedMessages.ContainsOrAdd(hash, hash); exist == true {
 			// duplicated message, ignore.
 			metricsDuplicatedMessage(msg.MessageType())
-			return
+			return true
 		}
 	}
+	return false
 }
 
 func metricsDuplicatedMessage(messageName string) {

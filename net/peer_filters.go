@@ -26,7 +26,7 @@ type ChainSyncPeersFilter struct {
 	excludedPIDs map[string]struct{}
 }
 
-//SetExcludedPIDs set excludedPIDs
+// SetExcludedPIDs set excludedPIDs
 func (filter *ChainSyncPeersFilter) SetExcludedPIDs(excludedPIDs map[string]struct{}) {
 	filter.excludedPIDs = excludedPIDs
 }

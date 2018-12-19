@@ -81,17 +81,12 @@ func (bf *BloomFilter) HasKey(key string) bool {
 
 // HasRecvMessage use bloom filter sender check if the key exists quickly
 func (bf *BloomFilter) HasRecvMessage(msg *SendMessage) bool {
-	bf.bloomFilterMutex.Lock()
-	defer bf.bloomFilterMutex.Unlock()
-
 	key := fmt.Sprintf("%s-%v", msg.receiver.Pretty(), msg.Hash())
-
-	return bf.bloomFilter.TestString(key)
+	return bf.HasKey(key)
 }
 
 // RecordRecvMessage records received message
 func (bf *BloomFilter) RecordRecvMessage(msg *RecvMessage) {
 	key := fmt.Sprintf("%s-%v", msg.sender.Pretty(), msg.Hash())
-	//fmt.Println("add bf:", key, "-", msg.MessageType())
 	bf.RecordKey(key)
 }

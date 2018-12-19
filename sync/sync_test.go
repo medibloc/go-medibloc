@@ -443,47 +443,48 @@ func TestForInvalidMessageToSeed(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	require.True(t, seed.Med.SyncService().IsSeedActivated(), "SeedTester is shutdown")
 }
-func TestForUnmarshalFailedMsg(t *testing.T) {
 
-	//create First Tester(Seed Node)
-	testNetwork := testutil.NewNetwork(t, 3)
-	defer testNetwork.Cleanup()
-	testNetwork.SetLogTestHook()
-
-	seed := testNetwork.NewSeedNode()
-	seed.Start()
-
-	//create Abuse Tester
-	nTesters := 4
-	abuseNodes := make([]*testutil.Node, nTesters)
-	for i := 0; i < nTesters; i++ {
-		abuseNodes[i] = testNetwork.NewNode()
-		t.Logf("Tester #%v listen:%v", i, abuseNodes[i].Config.Config.Network.Listens)
-		abuseNodes[i].Start()
-	}
-
-	testNetwork.WaitForEstablished()
-
-	seedID := seed.Med.NetService().Node().ID()
-
-	// Error on unmarshal
-	dummyData := []byte{72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100}
-	abuseNodes[0].Med.NetService().SendMessageToPeer(sync.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedID.Pretty())
-	abuseNodes[1].Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedID.Pretty())
-
-	seed.Med.SyncService().ActiveDownload(100)
-	abuseNodes[2].Med.NetService().SendMessageToPeer(sync.SyncMeta, dummyData, net.MessagePriorityLow, seedID.Pretty())
-	abuseNodes[3].Med.NetService().SendMessageToPeer(sync.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedID.Pretty())
-
-	count := 0
-	for {
-		nPeers := seed.Med.NetService().Node().EstablishedPeersCount()
-		if nPeers == int32(0) {
-			t.Logf("Disconnection complete.(Connected Node: %v)", nPeers)
-			break
-		}
-		require.Truef(t, count < 100, "Timeout(Connected nNode: %v)", nPeers)
-		count++
-		time.Sleep(100 * time.Millisecond)
-	}
-}
+// func TestForUnmarshalFailedMsg(t *testing.T) {
+//
+// 	//create First Tester(Seed Node)
+// 	testNetwork := testutil.NewNetwork(t, 3)
+// 	defer testNetwork.Cleanup()
+// 	testNetwork.SetLogTestHook()
+//
+// 	seed := testNetwork.NewSeedNode()
+// 	seed.Start()
+//
+// 	//create Abuse Tester
+// 	nTesters := 4
+// 	abuseNodes := make([]*testutil.Node, nTesters)
+// 	for i := 0; i < nTesters; i++ {
+// 		abuseNodes[i] = testNetwork.NewNode()
+// 		t.Logf("Tester #%v listen:%v", i, abuseNodes[i].Config.Config.Network.Listens)
+// 		abuseNodes[i].Start()
+// 	}
+//
+// 	testNetwork.WaitForEstablished()
+//
+// 	seedID := seed.Med.NetService().Node().ID()
+//
+// 	// Error on unmarshal
+// 	dummyData := []byte{72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100}
+// 	abuseNodes[0].Med.NetService().SendMessageToPeer(sync.SyncMetaRequest, dummyData, net.MessagePriorityLow, seedID.Pretty())
+// 	abuseNodes[1].Med.NetService().SendMessageToPeer(sync.SyncBlockChunkRequest, dummyData, net.MessagePriorityLow, seedID.Pretty())
+//
+// 	seed.Med.SyncService().ActiveDownload(100)
+// 	abuseNodes[2].Med.NetService().SendMessageToPeer(sync.SyncMeta, dummyData, net.MessagePriorityLow, seedID.Pretty())
+// 	abuseNodes[3].Med.NetService().SendMessageToPeer(sync.SyncBlockChunk, dummyData, net.MessagePriorityLow, seedID.Pretty())
+//
+// 	count := 0
+// 	for {
+// 		nPeers := seed.Med.NetService().Node().EstablishedPeersCount()
+// 		if nPeers == int32(0) {
+// 			t.Logf("Disconnection complete.(Connected Node: %v)", nPeers)
+// 			break
+// 		}
+// 		require.Truef(t, count < 100, "Timeout(Connected nNode: %v)", nPeers)
+// 		count++
+// 		time.Sleep(100 * time.Millisecond)
+// 	}
+// }
