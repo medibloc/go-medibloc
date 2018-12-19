@@ -256,10 +256,7 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 
 func TestTransactionManager_BandwidthLimit(t *testing.T) {
 	const (
-		timeout              = 50 * time.Millisecond
 		numberOfNodes        = 5
-		numberOfTransactions = 10
-		newReplaceAllowTime  = 10 * time.Millisecond
 	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
@@ -299,7 +296,6 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 
 func TestTransactionManager_ReplacePending(t *testing.T) {
 	const (
-		timeout              = 50 * time.Millisecond
 		numberOfNodes        = 5
 		numberOfTransactions = 10
 		newReplaceAllowTime  = 10 * time.Millisecond
