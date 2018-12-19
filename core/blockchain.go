@@ -253,6 +253,7 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 
 	if bc.eventEmitter != nil {
 		child.EmitTxExecutionEvent(bc.eventEmitter)
+		child.EmitBlockEvent(bc.eventEmitter, TopicAcceptedBlock)
 	}
 
 	return nil
