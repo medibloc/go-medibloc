@@ -293,8 +293,10 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	}
 
 	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height()))
-	assert.Nil(t, bm.BlockByHash(blocks[1].Hash()))
-	assert.NotNil(t, bm.BlockByHash(blocks[2].Hash()))
+	block, err := bm.BlockByHeight(3)
+	require.NoError(t, err)
+	assert.NotEqual(t, blocks[1].Hash(), block.Hash())
+	assert.Equal(t, blocks[2].Hash(), block.Hash())
 }
 
 func TestBlockManager_InvalidHeight(t *testing.T) {
