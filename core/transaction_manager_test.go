@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestTransactionManager_BroadcastAndRelay(t *testing.T) {
+func TestTransactionManager_Broadcast(t *testing.T) {
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
 
@@ -106,11 +106,14 @@ func TestTransactionManager_Push(t *testing.T) {
 
 }
 
-func TestTransactionManager_PushAndRelay(t *testing.T) {
-	numberOfNodes := 5
-
+func TestTransactionManager_PushAndBroadcast(t *testing.T) {
+	const (
+		timeout       = 50 * time.Millisecond
+		numberOfNodes = 3
+	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
+	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -121,25 +124,197 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 	}
 	testNetwork.WaitForEstablished()
 
-	randomTx := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx().Build()
+	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+	randomTx1 := tb.RandomTx().Build()
+	randomTx2 := tb.Nonce(randomTx1.Nonce() + 1).RandomTx().Build()
 
-	failed := seedTm.PushAndBroadcast(randomTx)
-	require.Nil(t, failed[randomTx.HexHash()])
+	failed := seedTm.PushAndBroadcast(randomTx2)
+	require.Nil(t, failed[randomTx2.HexHash()])
 
-	startTime := time.Now()
-	relayCompleted := false
-	for time.Now().Sub(startTime) < 10*time.Second && relayCompleted == false {
-		relayCompleted = true
-		for _, n := range testNetwork.Nodes {
-			txs := n.Med.TransactionManager().GetAll()
-			if len(txs) == 0 {
-				relayCompleted = false
-				break
-			}
+	for i, n := range testNetwork.Nodes {
+		if i == 0 {
+			continue
 		}
-		time.Sleep(10 * time.Millisecond)
+		waitForTransaction(t, timeout, n, randomTx2, false)
 	}
 
-	t.Logf("Waiting time to relay tx: %v", time.Now().Sub(startTime))
-	assert.True(t, relayCompleted)
+	failed = seedTm.PushAndBroadcast(randomTx1)
+	require.Nil(t, failed[randomTx1.HexHash()])
+
+	startTime := time.Now()
+	for _, n := range testNetwork.Nodes {
+		waitForTransaction(t, timeout, n, randomTx1, true)
+		waitForTransaction(t, timeout, n, randomTx2, true)
+	}
+
+	t.Logf("Waiting time to broadcast tx: %v", time.Now().Sub(startTime))
+}
+
+func TestTransactionManager_PushAndExclusiveBroadcast(t *testing.T) {
+	const (
+		timeout       = 50 * time.Millisecond
+		numberOfNodes = 3
+	)
+
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.LogTestHook()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	seedTm := seed.Med.TransactionManager()
+
+	for i := 1; i < numberOfNodes; i++ {
+		testNetwork.NewNode().Start()
+	}
+	testNetwork.WaitForEstablished()
+
+	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+	randomTx1 := tb.RandomTx().Build()
+	randomTx2 := tb.Nonce(randomTx1.Nonce() + 1).RandomTx().Build()
+
+	failed := seedTm.PushAndBroadcast(randomTx2)
+	require.Nil(t, failed[randomTx2.HexHash()])
+
+	for i, n := range testNetwork.Nodes {
+		if i == 0 {
+			continue
+		}
+		waitForTransaction(t, timeout, n, randomTx2, false)
+	}
+
+	failed = seedTm.PushAndExclusiveBroadcast(randomTx1)
+	require.Nil(t, failed[randomTx1.HexHash()])
+
+	startTime := time.Now()
+	for i, n := range testNetwork.Nodes {
+		if i == 0 {
+			waitForTransaction(t, timeout, n, randomTx1, true)
+		}
+		waitForTransaction(t, timeout, n, randomTx2, true)
+	}
+	t.Logf("Waiting time to broadcast tx: %v", time.Now().Sub(startTime))
+}
+
+func TestTransactionManager_MaxPending(t *testing.T) {
+	const (
+		timeout              = 50 * time.Millisecond
+		numberOfNodes        = 5
+		numberOfTransactions = 100
+		numberOfPop          = 10
+		numberOfDel          = 5
+	)
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.LogTestHook()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	seedTm := seed.Med.TransactionManager()
+
+	for i := 1; i < numberOfNodes; i++ {
+		testNetwork.NewNode().Start()
+	}
+	testNetwork.WaitForEstablished()
+
+	txs := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).
+		Tx().RandomTxs(numberOfTransactions)
+
+	failed := seedTm.PushAndBroadcast(txs...)
+	require.Zero(t, len(failed))
+
+	for i, n := range testNetwork.Nodes {
+		for j := 0; j < core.MaxPending; j++ {
+			waitForTransaction(t, timeout, n, txs[j], true)
+		}
+		for j := core.MaxPending; j < numberOfTransactions; j++ {
+			waitForTransaction(t, timeout, n, txs[j], i == 0)
+		}
+	}
+
+	for i := 0; i < numberOfPop; i++ {
+		seedTm.Pop()
+	}
+
+	for _, n := range testNetwork.Nodes {
+		for j := core.MaxPending; j < core.MaxPending+numberOfPop; j++ {
+			waitForTransaction(t, timeout, n, txs[j], true)
+		}
+	}
+
+	addr := txs[numberOfPop+numberOfDel-1].From()
+	nonce := txs[numberOfPop+numberOfDel-1].Nonce()
+
+	seedTm.DelByAddressNonce(addr, nonce)
+
+	for _, n := range testNetwork.Nodes {
+		for j := core.MaxPending + numberOfPop; j < core.MaxPending+numberOfPop+numberOfDel; j++ {
+			waitForTransaction(t, timeout, n, txs[j], true)
+		}
+	}
+
+	//seedTm.PushAndExclusiveBroadcast(txs[numberOfPop:numberOfPop+numberOfDel]...)
+}
+
+func TestTransactionManager_ReplacePending(t *testing.T) {
+	const (
+		timeout              = 50 * time.Millisecond
+		numberOfNodes        = 5
+		numberOfTransactions = 10
+		newReplaceAllowTime  = 10 * time.Millisecond
+	)
+	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	defer testNetwork.Cleanup()
+	testNetwork.LogTestHook()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	seedTm := seed.Med.TransactionManager()
+
+	for i := 1; i < numberOfNodes; i++ {
+		testNetwork.NewNode().Start()
+	}
+	testNetwork.WaitForEstablished()
+
+	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+
+	txs := tb.RandomTxs(numberOfTransactions)
+
+	failed := seedTm.PushAndBroadcast(txs...)
+	require.Zero(t, len(failed))
+
+	newTxs := tb.RandomTxs(numberOfTransactions)
+	failed = seedTm.PushAndBroadcast(newTxs...)
+	require.Equal(t, numberOfTransactions, len(failed))
+	for _, err := range failed {
+		require.Equal(t, err, core.ErrFailedToReplacePendingTx)
+	}
+
+	core.AllowReplacePendingDuration = newReplaceAllowTime
+	time.Sleep(newReplaceAllowTime)
+
+	failed = seedTm.PushAndBroadcast(newTxs...)
+	require.Zero(t, len(failed))
+
+	for _, tx := range txs {
+		require.Nil(t, seedTm.Get(tx.Hash()))
+	}
+}
+
+func waitForTransaction(t *testing.T, deadline time.Duration, node *testutil.Node, tx *core.Transaction, has bool) {
+	ticker := time.NewTicker(10 * time.Millisecond)
+	timer := time.NewTimer(deadline)
+	for {
+		select {
+		case <-timer.C:
+			require.False(t, has, "failed to wait transaction")
+			return
+		case <-ticker.C:
+			receivedTx := node.Med.TransactionManager().Get(tx.Hash())
+			if receivedTx != nil {
+				require.True(t, has)
+				return
+			}
+		}
+	}
 }

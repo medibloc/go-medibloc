@@ -169,6 +169,7 @@ var (
 	ErrInvalidHash                   = errors.New("invalid hash")
 	ErrInvalidRecordHash             = errors.New("invalid record hash")
 	ErrInvalidCertificationHash      = errors.New("invalid certification hash")
+	ErrFailedToReplacePendingTx      = errors.New("cannot replace pending transaction in 10 minute")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

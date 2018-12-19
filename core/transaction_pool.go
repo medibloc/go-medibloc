@@ -311,7 +311,9 @@ func NewTransactionInPool(transaction *Transaction, txMap TxFactory) (*Transacti
 }
 
 //Less returns if it has earlier timestamp
-func (tx *TransactionInPool) Less(o interface{}) bool { return tx.incomeTimestamp < o.(*TransactionInPool).incomeTimestamp }
+func (tx *TransactionInPool) Less(o interface{}) bool {
+	return tx.incomeTimestamp < o.(*TransactionInPool).incomeTimestamp
+}
 
 // minNonce assigns a sequence by nonce to the transaction.
 type minNonce struct{ *TransactionInPool }
