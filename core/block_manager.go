@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -534,13 +535,19 @@ func verifyBlockHeight(bd *BlockData, parent *Block) error {
 }
 
 func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []*Block) error {
+	addrNonce := make(map[common.Address]uint64)
 	exclusiveFilter := make(map[*Transaction]bool)
 
 	for _, newBlock := range newBlocks {
 		for _, tx := range newBlock.Transactions() {
-			bm.tm.DelByAddressNonce(tx.From(), tx.Nonce())
+			if addrNonce[tx.From()] < tx.Nonce() {
+				addrNonce[tx.From()] = tx.Nonce()
+			}
 			exclusiveFilter[tx] = true
 		}
+	}
+	for addr, nonce := range addrNonce {
+		bm.tm.DelByAddressNonce(addr, nonce)
 	}
 
 	// revert block

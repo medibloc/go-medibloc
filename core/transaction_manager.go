@@ -17,6 +17,7 @@ package core
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -28,9 +29,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var defaultTransactionMessageChanSize = 128
-
-const maxPending = 64
+// Parameters for transaction manager
+var (
+	MaxPending                        = 64
+	AllowReplacePendingDuration       = 10 * time.Minute
+	defaultTransactionMessageChanSize = 128
+)
 
 // TransactionManager manages transactions' pool and network service.
 type TransactionManager struct {
@@ -41,8 +45,10 @@ type TransactionManager struct {
 	bm                *BlockManager
 	ns                net.Service
 
-	pendingPool   *TransactionPool
-	futurePool    *TransactionPool
+	pendingPool *TransactionPool
+	futurePool  *TransactionPool
+
+	bwInfoMu      sync.Mutex
 	bandwidthInfo map[common.Address]*Bandwidth // how much bandwidth used by transactions payed by payer in pending pool
 }
 
@@ -76,7 +82,7 @@ func (tm *TransactionManager) InjectEmitter(emitter *EventEmitter) {
 // Start starts TransactionManager.
 func (tm *TransactionManager) Start() {
 	logging.Console().WithFields(logrus.Fields{
-		"maxPending":     maxPending,
+		"MaxPending":     MaxPending,
 		"futurePoolSize": tm.futurePool.size,
 	}).Info("Starting TransactionManager...")
 
@@ -235,8 +241,8 @@ func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address
 					pended = append(pended, firstInFuture.Transaction)
 					continue
 				}
-				if time.Now().Sub(time.Unix(old.incomeTimestamp, 0)) < time.Duration(10*time.Minute) {
-					dropped[firstInFuture.HexHash()] = errors.New("cannot replace pending transaction in 10 minute")
+				if time.Now().Sub(time.Unix(0, old.incomeTimestamp)) < AllowReplacePendingDuration {
+					dropped[firstInFuture.HexHash()] = ErrFailedToReplacePendingTx
 					continue
 				}
 				// replace case
@@ -248,7 +254,7 @@ func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address
 				pended = append(pended, firstInFuture.Transaction)
 				continue
 			}
-			if tm.pendingPool.LenByAddress(addr) > maxPending {
+			if MaxPending <= tm.pendingPool.LenByAddress(addr) {
 				break // pending bucket is full
 			}
 			// append case
@@ -276,6 +282,9 @@ func (tm *TransactionManager) replaceBandwidthInfo(bs *BlockState, new, old *Tra
 	if new == nil || old == nil {
 		return ErrNilArgument
 	}
+
+	tm.bwInfoMu.Lock()
+	defer tm.bwInfoMu.Unlock()
 
 	newBandwidthInfo, ok := tm.bandwidthInfo[new.payer]
 	if !ok {
@@ -305,6 +314,10 @@ func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionI
 	if new == nil {
 		return ErrNilArgument
 	}
+
+	tm.bwInfoMu.Lock()
+	defer tm.bwInfoMu.Unlock()
+
 	newBandwidthInfo, ok := tm.bandwidthInfo[new.payer]
 	if !ok {
 		newBandwidthInfo = NewBandwidth(0, 0)
@@ -343,10 +356,13 @@ func (tm *TransactionManager) Pop() *Transaction {
 	if tx == nil {
 		return nil
 	}
+	tm.bwInfoMu.Lock()
 	tm.bandwidthInfo[tx.payer].Sub(tx.bandwidth)
 	if tm.bandwidthInfo[tx.payer].IsZero() {
 		delete(tm.bandwidthInfo, tx.payer)
 	}
+	tm.bwInfoMu.Unlock()
+
 	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), tx.From())
 	for _, t := range success {
 		tm.Broadcast(t)
@@ -374,6 +390,12 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 		if tx == nil || nonce < tx.nonce {
 			break
 		}
+		tm.bwInfoMu.Lock()
+		tm.bandwidthInfo[tx.payer].Sub(tx.bandwidth)
+		if tm.bandwidthInfo[tx.payer].IsZero() {
+			delete(tm.bandwidthInfo, tx.payer)
+		}
+		tm.bwInfoMu.Unlock()
 		tm.pendingPool.Del(tx.hash)
 	}
 	for {

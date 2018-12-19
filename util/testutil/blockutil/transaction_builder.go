@@ -197,6 +197,21 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 	return n.Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
 }
 
+//RandomTxs generate random transactions
+func (tb *TxBuilder) RandomTxs(n int) []*core.Transaction {
+	require.NotEqual(tb.t, 0, len(tb.bb.KeyPairs), "No key pair added on block builder")
+	txs := make([]*core.Transaction, 0, n)
+
+	from := tb.bb.KeyPairs[0]
+	acc, err := tb.bb.B.State().GetAccount(from.Addr)
+	require.NoError(tb.t, err)
+	nonce := acc.Nonce + 1
+	for i := 0; i < n; i++ {
+		txs = append(txs, tb.Nonce(nonce+uint64(i)).RandomTx().Build())
+	}
+	return txs
+}
+
 //StakeTx generate stake Tx
 func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
