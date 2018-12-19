@@ -25,14 +25,14 @@ import (
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/rpc"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/sync"
 	"github.com/medibloc/go-medibloc/util/logging"
-	metrics "github.com/rcrowley/go-metrics"
+	"github.com/rcrowley/go-metrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -141,7 +141,7 @@ func (m *Medlet) Setup() error {
 		return err
 	}
 
-	m.transactionManager.Setup(m.netService)
+	m.transactionManager.Setup(m.blockManager, m.netService)
 
 	err = m.consensus.Setup(m.config, m.genesis, m.blockManager, m.transactionManager)
 	if err != nil {

@@ -20,7 +20,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -146,6 +146,11 @@ func (t *Transaction) Hash() []byte {
 //SetHash sets hash
 func (t *Transaction) SetHash(hash []byte) {
 	t.hash = hash
+}
+
+//HexHash returns hex converted hash
+func (t *Transaction) HexHash() string {
+	return byteutils.Bytes2Hex(t.hash)
 }
 
 //TxType returns type
@@ -485,6 +490,15 @@ func (t *Transaction) Size() (int, error) {
 		return 0, err
 	}
 	return len(txBytes), nil
+}
+
+//Executable returns executable transaction
+func (t *Transaction) Executable(txMap TxFactory) (ExecutableTx, error) {
+	newTxFunc, ok := txMap[t.TxType()]
+	if !ok {
+		return nil, ErrInvalidTransactionType
+	}
+	return newTxFunc(t)
 }
 
 //TransferTx is a structure for sending MED

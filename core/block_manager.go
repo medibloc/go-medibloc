@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -534,24 +534,21 @@ func verifyBlockHeight(bd *BlockData, parent *Block) error {
 }
 
 func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []*Block) error {
-	var txs = make(map[*Transaction]bool)
+	exclusiveFilter := make(map[*Transaction]bool)
 
 	for _, newBlock := range newBlocks {
 		for _, tx := range newBlock.Transactions() {
-			bm.tm.pool.Del(tx)
-			txs[tx] = true
+			bm.tm.DelByAddressNonce(tx.From(), tx.Nonce())
+			exclusiveFilter[tx] = true
 		}
 	}
 
 	// revert block
+	pushTxs := make([]*Transaction, 0)
 	for _, block := range revertBlock {
 		for _, tx := range block.Transactions() {
-			if _, ok := txs[tx]; !ok {
-				// Return transactions
-				err := bm.tm.Push(tx)
-				if err != nil && err != ErrDuplicatedTransaction {
-					return err
-				}
+			if _, ok := exclusiveFilter[tx]; !ok {
+				pushTxs = append(pushTxs, tx)
 			}
 		}
 		if bm.bc.eventEmitter != nil {
@@ -559,6 +556,7 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 		}
 		logging.Console().Warn("A block is reverted.")
 	}
+	bm.tm.PushAndExclusiveBroadcast(pushTxs...)
 	return nil
 }
 
@@ -702,7 +700,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
 			"syncActivationHeight": bm.syncActivationHeight,
-			"err":                  err,
+			"err": err,
 		}).Debug("Failed to activate sync download manager.")
 		return false
 	}

@@ -75,17 +75,20 @@ func TestTransactionManager_Push(t *testing.T) {
 
 	// Wrong chainID
 	wrongChainIDTx := randomTb.ChainID(testutil.ChainID + 1).Build()
-	assert.Equal(t, core.ErrInvalidChainID, tm.Push(wrongChainIDTx))
+	failed := tm.PushAndExclusiveBroadcast(wrongChainIDTx)
+	assert.Equal(t, core.ErrInvalidChainID, failed[wrongChainIDTx.HexHash()])
 
 	// Wrong hash
 	wrongHash, err := byteutils.Hex2Bytes("1234567890123456789012345678901234567890123456789012345678901234")
 	require.NoError(t, err)
 	wrongHashTx := randomTb.Hash(wrongHash).Build()
-	assert.Equal(t, core.ErrInvalidTransactionHash, tm.Push(wrongHashTx))
+	failed = tm.PushAndExclusiveBroadcast(wrongHashTx)
+	assert.Equal(t, core.ErrInvalidTransactionHash, failed[wrongHashTx.HexHash()])
 
 	// No signature
 	noSignTx := randomTb.Sign([]byte{}).Build()
-	assert.Equal(t, core.ErrTransactionSignatureNotExist, tm.Push(noSignTx))
+	failed = tm.PushAndExclusiveBroadcast(noSignTx)
+	assert.Equal(t, core.ErrTransactionSignatureNotExist, failed[noSignTx.HexHash()])
 
 	//// Invalid signature
 	//invalidSigner := testutil.NewAddrKeyPair(t)
@@ -97,8 +100,10 @@ func TestTransactionManager_Push(t *testing.T) {
 
 	// Push duplicate transaction push
 	tx := randomTb.Build()
-	assert.NoError(t, tm.Push(tx))
-	assert.Equal(t, core.ErrDuplicatedTransaction, tm.Push(tx))
+	failed = tm.PushAndExclusiveBroadcast(tx)
+	assert.Nil(t, failed[tx.HexHash()])
+	failed = tm.PushAndExclusiveBroadcast(tx)
+	assert.Equal(t, core.ErrDuplicatedTransaction, failed[tx.HexHash()])
 
 }
 
@@ -119,7 +124,8 @@ func TestTransactionManager_PushAndRelay(t *testing.T) {
 
 	randomTx := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx().Build()
 
-	require.NoError(t, seedTm.PushAndRelay(randomTx))
+	failed := seedTm.PushAndBroadcast(randomTx)
+	require.Nil(t, failed[randomTx.HexHash()])
 
 	startTime := time.Now()
 	relayCompleted := false

@@ -447,11 +447,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				return nil, err
 			}
 			if isRetryable(err) {
-				if err = d.tm.Push(transaction); err != nil {
-					logging.Console().WithFields(logrus.Fields{
-						"err": err,
-					}).Error("failed to push back transaction to tx poll")
-				}
+				d.tm.PushAndExclusiveBroadcast(transaction)
 				continue
 			}
 			if receipt == nil {
