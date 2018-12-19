@@ -62,7 +62,7 @@ func TestChangeDynasty(t *testing.T) {
 	block := bb.Build().BlockData
 	err = seed.Med.BlockManager().PushBlockData(block)
 	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10000)
+	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash())
 	require.NoError(t, err)
 	t.Log(seed.Tail().State().DposState().Dynasty())
 
@@ -74,7 +74,7 @@ func TestChangeDynasty(t *testing.T) {
 	block = bb.Build().BlockData
 	err = seed.Med.BlockManager().PushBlockData(block)
 	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10000)
+	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash())
 	require.NoError(t, err)
 	t.Log(seed.Tail().State().DposState().Dynasty())
 
@@ -88,7 +88,7 @@ func TestChangeDynasty(t *testing.T) {
 	block = bb.Build().BlockData
 	err = seed.Med.BlockManager().PushBlockData(block)
 	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10000)
+	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash())
 	require.NoError(t, err)
 
 	acc, err = bb.Build().State().GetAccount(newCandidate.Addr)
@@ -106,7 +106,7 @@ func TestChangeDynasty(t *testing.T) {
 	block = bb.Build().BlockData
 	err = seed.Med.BlockManager().PushBlockData(block)
 	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10000)
+	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash())
 	require.NoError(t, err)
 
 	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)

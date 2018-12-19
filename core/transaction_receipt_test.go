@@ -134,7 +134,7 @@ func TestWrongReceipt(t *testing.T) {
 	b.Transactions()[0].Receipt().SetPoints(util.NewUint128())
 
 	seed.Med.BlockManager().PushBlockData(b.BlockData)
-	require.Error(t, testutil.ErrExecutionTimeout, seed.WaitUntilTailHeight(b.Height(), 1000))
+	require.Error(t, testutil.ErrExecutionTimeout, seed.WaitUntilTailHeight(b.Height()))
 }
 
 func TestVoteTransactionReceipt(t *testing.T) {

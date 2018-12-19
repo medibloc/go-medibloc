@@ -52,7 +52,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 		tail = bb.Block(tail).Child().SignProposer().Build()
 		err := bm.PushBlockData(tail.BlockData)
 		assert.NoError(t, err)
-		err = seed.WaitUntilBlockAcceptedOnChain(tail.Hash(), 10000)
+		err = seed.WaitUntilBlockAcceptedOnChain(tail.Hash())
 		assert.NoError(t, err)
 		assert.Equal(t, bm.TailBlock().Hash(), tail.Hash())
 	}
@@ -81,7 +81,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 	for i := len(blocks) - 1; i >= 0; i-- {
 		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
 	}
-	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 10000))
+	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks)))
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
@@ -139,7 +139,7 @@ func TestBlockManager_Forked(t *testing.T) {
 	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
 		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 10000))
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight)))
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
 	assert.Equal(t, 0, len(tm.GetAll()))
 
@@ -147,7 +147,7 @@ func TestBlockManager_Forked(t *testing.T) {
 		err := bm.PushBlockData(mainChainBlocks[len(mainChainBlocks)-i].BlockData)
 		assert.NoError(t, err)
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight), 10000))
+	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight)))
 	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, len(txs), len(tm.GetAll()))
@@ -169,7 +169,7 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 
 	err := bm.PushBlockData(block1.GetBlockData())
 	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block1.Hash(), 10000)
+	err = seed.WaitUntilBlockAcceptedOnChain(block1.Hash())
 	require.NoError(t, err)
 
 	bb = bb.Block(block2).Child().Hash(block2.ParentHash()).ParentHash(block2.Hash())
@@ -205,7 +205,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		require.NoError(t, err)
 		tail = block
 	}
-	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash(), 10000)
+	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash())
 	require.NoError(t, err)
 
 	recordHash, err := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
@@ -292,7 +292,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height(), 10000))
+	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height()))
 	assert.Nil(t, bm.BlockByHash(blocks[1].Hash()))
 	assert.NotNil(t, bm.BlockByHash(blocks[2].Hash()))
 }
@@ -324,7 +324,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 		assert.NoError(t, err)
 		tail = block
 	}
-	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash(), 10000)
+	err := seed.WaitUntilBlockAcceptedOnChain(tail.Hash())
 	assert.NoError(t, err)
 	parent, err := bm.BlockByHeight(3)
 	require.Nil(t, err)
@@ -481,7 +481,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	// Invalid Transaction Hash
 	pair = testutil.NewAddrKeyPair(t)
@@ -535,22 +535,22 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	block := bb.Clone().AccountRoot(hash([]byte("invalid account root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	block = bb.Clone().TxRoot(hash([]byte("invalid txs root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	block = bb.Clone().DposRoot(hash([]byte("invalid dpos root"))).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	block = bb.Clone().Timestamp(time.Now().Add(11111 * time.Second).Unix()).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	block = bb.Clone().ChainID(1111111).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
@@ -559,7 +559,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	block = bb.Clone().Coinbase(to.Addr).CalcHash().SignKey(proposer.PrivKey).Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
-	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 200))
+	assert.Equal(t, testutil.ErrExecutionTimeout, seed.WaitUntilBlockAcceptedOnChain(block.Hash()))
 }
 
 func TestBlockManager_PushBlockDataSync(t *testing.T) {
@@ -582,7 +582,7 @@ func TestBlockManager_PushBlockDataSync(t *testing.T) {
 		assert.Equal(t, bm.BlockByHash(mint.Hash()).Height(), mint.Height())
 		tail = mint
 	}
-	err := seed.WaitUntilTailHeight(tail.Height(), 10000)
+	err := seed.WaitUntilTailHeight(tail.Height())
 	assert.NoError(t, err)
 
 	// Timeout test
@@ -625,7 +625,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 
 	block := bb.Build()
 	assert.NoError(t, bm.PushBlockData(block.BlockData))
-	assert.NoError(t, seed1.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+	assert.NoError(t, seed1.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	blocks := make([]*core.Block, 100)
 	for i := 0; i < 100; i++ {
@@ -640,7 +640,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 	start := time.Now()
 	for _, bbb := range blocks {
 		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
-		seed1.WaitUntilBlockAcceptedOnChain(bbb.Hash(), 2000)
+		seed1.WaitUntilBlockAcceptedOnChain(bbb.Hash()
 	}
 	sequentialElapsed := time.Since(start).Seconds()
 	t.Log("SEQUENTIAL : ", sequentialElapsed)
@@ -654,7 +654,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 
 	block = bb.Build()
 	assert.NoError(t, bm.PushBlockData(block.BlockData))
-	assert.NoError(t, seed2.WaitUntilBlockAcceptedOnChain(block.Hash(), 1000))
+	assert.NoError(t, seed2.WaitUntilBlockAcceptedOnChain(block.Hash()))
 
 	blocks = make([]*core.Block, 100)
 	for i := 0; i < 100; i++ {
@@ -672,7 +672,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 	for _, bbb := range blocks {
 		assert.NoError(t, bm.PushBlockData(bbb.BlockData))
 	}
-	seed2.WaitUntilTailHeight(4, 6000)
+	seed2.WaitUntilTailHeight(4)
 	parallelElapsed := time.Since(start).Seconds()
 	t.Log("PARALLEL : ", parallelElapsed)
 }
