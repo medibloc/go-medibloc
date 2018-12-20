@@ -113,9 +113,13 @@ func TestUpdatePoints(t *testing.T) {
 	remain, err = staking.Sub(consumed)
 	require.NoError(t, err)
 
-	bb.ChildWithTimestamp(afterWeek).
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Execute().
-		Expect().Points(from.Addr, remain)
+	bb = bb.ChildWithTimestamp(afterWeek)
+	tx = bb.Tx().Type(core.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
+	consumed = blockutil.Points(t, tx, bb.Build())
+	remain, err = staking.Sub(consumed)
+	require.Nil(t, err)
+
+	bb.ExecuteTx(tx).Expect().Points(from.Addr, remain)
 }
 
 func TestUpdatePayerPoints(t *testing.T) {
