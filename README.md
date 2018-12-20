@@ -6,8 +6,30 @@ Official implementation of the medibloc blockchain.
 [![codecov](https://codecov.io/gh/medibloc/go-medibloc/branch/master/graph/badge.svg)](https://codecov.io/gh/medibloc/go-medibloc)
 
 ## How to Build
+### Install RocksDB
+* Download rocksDB dependencies
+    * https://github.com/facebook/rocksdb/blob/master/INSTALL.md
+* Get rocksDB
+```bash
+git clone https://github.com/facebook/rocksdb.git
+```
+* Checkout to v5.15.10
+```bash
+cd rocksdb/
+git reset --hard v5.15.10
+```
+* Compile
+```bash
+sudo apt-get update
+sudo apt-get -y upgrade
+sudo apt-get -y install build-essential
+sudo DEBUG_LEVEL=0 make shared_lib install-shared
+sudo cp --preserve=links ./librocksdb.* /usr/lib/
+sudo cp -r ./include/rocksdb/ /usr/include/
+```
+
 ### Build Requirements
-* Golang v1.10 or higher
+* Golang v1.11 or higher (not v2)
     * [Golang.org](https://Golang.org)
 * dep
 ```bash
@@ -25,7 +47,7 @@ go get -u golang.org/x/lint/golint
 ### Building
 ```bash
 # Go get medibloc repository.
-go get -u github.com/medibloc/go-medibloc
+go get -u github.com/medibloc/go-medibloc/...
 
 # Change directory to medibloc repository.
 cd $GOPATH/src/github.com/medibloc/go-medibloc
@@ -77,7 +99,7 @@ INFO[2018-05-18T06:55:30Z] Block pushed.                                 block="
 cd $GOPATH/src/github.com/medibloc/go-medibloc
 
 # Run 6 nodes
-nohup build/medi conf/test/nodes/nodes.conf &> /dev/null &
+build/medi conf/test/nodes/nodes.conf
 ```
 
 ### Endpoints of the Local Testnet
@@ -101,6 +123,8 @@ $ curl localhost:9921/v1/account?address=02fc22ea22d02fc2469f5ec8fab44bc3de42dda
 # View each node's logs
 $ tail -f logs/log/medibloc.log
 ```
+
+for more details, visit http://testnet-node.medibloc.org/swagger/ 
 
 ### Demo
 * [Demo video link](https://youtu.be/igmLEfxw-u8)
