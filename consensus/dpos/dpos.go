@@ -610,10 +610,7 @@ func (d *Dpos) loop() {
 	for {
 		select {
 		case now := <-ticker.C:
-			err := d.mintBlock(now)
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("failed to mint block")
+			d.mintBlock(now)
 		case <-d.quitCh:
 			logging.Console().Info("Stopped Dpos Mining.")
 			return
