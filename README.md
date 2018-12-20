@@ -23,8 +23,6 @@ git reset --hard v5.15.10
 sudo apt-get update
 sudo apt-get -y upgrade
 sudo DEBUG_LEVEL=0 make shared_lib install-shared
-export LD_LIBRARY_PATH=/usr/local/lib
-## save to .profile to 
 ```
 * Set Environment Variable(save to profile to keep setting)
 ```bash
