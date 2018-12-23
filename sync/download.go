@@ -41,6 +41,7 @@ var (
 type download struct {
 	netService net.Service
 	bm         BlockManager
+	cm         ChainManager
 	messageCh  chan net.Message
 	quitCh     chan bool
 
@@ -97,16 +98,17 @@ func newDownload(config *medletpb.SyncConfig) *download {
 	}
 }
 
-func (d *download) setup(netService net.Service, bm BlockManager) {
+func (d *download) setup(netService net.Service, bm BlockManager, cm ChainManager) {
 	d.netService = netService
 	d.bm = bm
+	d.cm = cm
 }
 
 func (d *download) start(targetHeight uint64) error {
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, SyncMeta, net.MessageWeightZero))
 	d.netService.Register(net.NewSubscriber(d, d.messageCh, false, SyncBlockChunk, net.MessageWeightZero))
 
-	d.from = d.bm.LIB().Height()
+	d.from = d.cm.LIB().Height()
 	if targetHeight-d.from+1 > maxNumberOfBlocks {
 		d.to = maxNumberOfBlocks + d.from - 1
 	} else {
@@ -160,17 +162,17 @@ func (d *download) subscribeLoop() {
 				"runningTasks":                d.runningTasks,
 				"finishedTasks":               d.finishedTasks,
 				"targetHeight":                d.to,
-				"currentTailHeight":           d.bm.TailBlock().Height(),
+				"currentTailHeight":           d.cm.MainTailBlock().Height(),
 				"prevEstablishedPeersCount":   prevEstablishedPeersCount,
 				"currentEstablishedPeerCount": d.netService.Node().EstablishedPeersCount(),
 				"timeout":                     time.Now().Sub(timeoutTimerStart),
 			}).Info("Sync: download service status")
 
-			if d.bm.TailBlock().Height() >= ((d.to-d.from+1)/d.chunkSize)*d.chunkSize+d.from-1 {
+			if d.cm.MainTailBlock().Height() >= ((d.to-d.from+1)/d.chunkSize)*d.chunkSize+d.from-1 {
 				logging.Console().WithFields(logrus.Fields{
 					"chunkSize":         d.chunkSize,
 					"targetHeight":      d.to,
-					"currentTailHeight": d.bm.TailBlock().Height(),
+					"currentTailHeight": d.cm.MainTailBlock().Height(),
 				}).Info("Sync: Download manager is stopped.")
 				return
 			}
@@ -197,14 +199,14 @@ func (d *download) subscribeLoop() {
 		case <-timeoutTimer.C:
 			logging.Console().WithFields(logrus.Fields{
 				"from":      d.from,
-				"to":        d.bm.TailBlock().Height(),
+				"to":        d.cm.MainTailBlock().Height(),
 				"timeLimit": d.timeout,
 			}).Info("Sync: Download manager is stopped by timeout")
 			return
 		case <-d.quitCh:
 			logging.Console().WithFields(logrus.Fields{
 				"from": d.from,
-				"to":   d.bm.TailBlock().Height(),
+				"to":   d.cm.MainTailBlock().Height(),
 			}).Info("Sync: Download manager is stopped.")
 			return
 		case message := <-d.messageCh:
@@ -379,7 +381,7 @@ func (d *download) sendMetaQuery() error {
 	mq := new(syncpb.MetaQuery)
 	mq.From = d.from
 	mq.To = d.to
-	mq.Hash = d.bm.LIB().Hash()
+	mq.Hash = d.cm.LIB().Hash()
 	mq.ChunkSize = d.chunkSize
 
 	sendData, err := proto.Marshal(mq)
@@ -424,7 +426,7 @@ func (d *download) pushBlockDataChunk() error {
 			}
 		}
 
-		if err := d.bm.ForceLIB(d.bm.TailBlock()); err != nil {
+		if err := d.cm.SetLIB(d.cm.MainTailBlock()); err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
 			}).Error("Failed to force set LIB")

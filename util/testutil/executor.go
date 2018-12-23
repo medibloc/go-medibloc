@@ -124,14 +124,14 @@ func (node *Node) String() string {
 
 // GenesisBlock returns genesis block.
 func (node *Node) GenesisBlock() *core.Block {
-	block, err := node.Med.BlockManager().BlockByHeight(core.GenesisHeight)
-	require.NoError(node.t, err)
+	block := node.Med.ChainManager().BlockByHeight(core.GenesisHeight)
+	require.NotNil(node.t, block)
 	return block
 }
 
 // Tail returns tail block.
 func (node *Node) Tail() *core.Block {
-	block := node.Med.BlockManager().TailBlock()
+	block := node.Med.ChainManager().MainTailBlock()
 	return block
 }
 
@@ -148,7 +148,7 @@ func (node *Node) WaitUntilTailHeight(height uint64, timeLimit time.Duration) er
 		case <-timeout.C:
 			return ErrExecutionTimeout
 		case <-ticker.C:
-			if node.Med.BlockManager().TailBlock().Height() == height {
+			if node.Med.ChainManager().MainTailBlock().Height() == height {
 				return nil
 			}
 		}
@@ -168,7 +168,7 @@ func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte, timeLimit time.Dura
 		case <-timeout.C:
 			return ErrExecutionTimeout
 		case <-ticker.C:
-			if node.Med.BlockManager().BlockByHash(hash) != nil {
+			if node.Med.ChainManager().BlockByHash(hash) != nil {
 				return nil
 			}
 		}

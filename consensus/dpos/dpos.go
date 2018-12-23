@@ -45,6 +45,7 @@ type Dpos struct {
 	proposers    map[common.Address]*Proposer
 
 	bm *core.BlockManager
+	cm *core.ChainManager
 	tm *core.TransactionManager
 
 	quitCh chan int
@@ -104,7 +105,8 @@ func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (c
 }
 
 // Setup sets up dpos.
-func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
+func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.BlockManager,
+	cm *core.ChainManager, tm *core.TransactionManager) error {
 	// Setup proposer
 	d.startPropose = cfg.Chain.StartMine
 	if cfg.Chain.StartMine {
@@ -172,6 +174,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 	}
 
 	d.bm = bm
+	d.cm = cm
 	d.tm = tm
 	return nil
 }
@@ -202,14 +205,14 @@ func (d *Dpos) DynastyInterval() time.Duration {
 }
 
 // ForkChoice chooses fork.
-func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
-	newTail = bc.MainTailBlock()
-	tails := bc.TailBlocks()
+func (d *Dpos) ForkChoice(cm *core.ChainManager) (newTail *core.Block) {
+	newTail = cm.MainTailBlock()
+	tails := cm.TailBlocks()
 	for _, block := range tails {
-		if bc.IsForkedBeforeLIB(block) {
+		if cm.IsForkedBeforeLIB(block) {
 			logging.WithFields(logrus.Fields{
 				"block": block,
-				"lib":   bc.LIB(),
+				"lib":   cm.LIB(),
 			}).Debug("Blocks forked before LIB can not be selected.")
 			continue
 		}
@@ -222,9 +225,9 @@ func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
 }
 
 // FindLIB finds new LIB.
-func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
-	lib := bc.LIB()
-	tail := bc.MainTailBlock()
+func (d *Dpos) FindLIB(cm *core.ChainManager) (newLIB *core.Block) {
+	lib := cm.LIB()
+	tail := cm.MainTailBlock()
 	tailDynastyIndex := d.calcDynastyIndex(tail.Timestamp())
 
 	cur := tail
@@ -238,7 +241,7 @@ func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 			return cur
 		}
 
-		cur = bc.BlockByHash(cur.ParentHash())
+		cur = cm.BlockByHash(cur.ParentHash())
 		if cur == nil {
 			logging.Console().WithFields(logrus.Fields{
 				"cur": cur,
@@ -293,7 +296,7 @@ func (d *Dpos) VerifyProposer(b *core.Block) error {
 }
 
 func (d *Dpos) mintBlock(now time.Time) error {
-	tail := d.bm.TailBlock()
+	tail := d.cm.MainTailBlock()
 
 	deadline, err := checkDeadline(tail, now)
 	if err != nil {

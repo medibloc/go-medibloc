@@ -64,6 +64,7 @@ type Medlet struct {
 	rpc                *rpc.Server
 	storage            storage.Storage
 	blockManager       *core.BlockManager
+	chainManager       *core.ChainManager
 	transactionManager *core.TransactionManager
 	consensus          *dpos.Dpos
 	eventEmitter       *core.EventEmitter
@@ -80,6 +81,8 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		}).Error("Failed to load genesis config.")
 		return nil, err
 	}
+
+	consensus := dpos.New(int(genesis.Meta.DynastySize))
 
 	ns, err := net.NewMedService(context.Background(), cfg)
 	if err != nil {
@@ -99,7 +102,29 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		return nil, err
 	}
 
-	bm, err := core.NewBlockManager(cfg)
+	bc, err := core.NewBlockChain(cfg)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create blockchain.")
+		return nil, err
+	}
+	if err := bc.Setup(genesis, consensus, DefaultTxMap, stor); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to setup Blockchain.")
+		return nil, err
+	}
+
+	cm, err := core.NewChainManager(cfg, bc)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to create ChainManager.")
+		return nil, err
+	}
+
+	bm, err := core.NewBlockManager(cfg, bc)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -108,8 +133,6 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 	}
 
 	tm := core.NewTransactionManager(cfg)
-
-	consensus := dpos.New(int(genesis.Meta.DynastySize))
 
 	ss := sync.NewService(cfg.Sync)
 
@@ -120,6 +143,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		rpc:                RPC,
 		storage:            stor,
 		blockManager:       bm,
+		chainManager:       cm,
 		transactionManager: tm,
 		consensus:          consensus,
 		eventEmitter:       core.NewEventEmitter(40960),
@@ -131,9 +155,17 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 func (m *Medlet) Setup() error {
 	logging.Console().Info("Setting up Medlet...")
 
-	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter)
+	m.rpc.Setup(m.chainManager, m.transactionManager, m.eventEmitter)
 
-	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus, DefaultTxMap)
+	err := m.chainManager.Setup(m.transactionManager, m.consensus)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to setup ChainManager.")
+		return err
+	}
+
+	err = m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus, m.chainManager, DefaultTxMap)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -143,7 +175,7 @@ func (m *Medlet) Setup() error {
 
 	m.transactionManager.Setup(m.blockManager, m.netService)
 
-	err = m.consensus.Setup(m.config, m.genesis, m.blockManager, m.transactionManager)
+	err = m.consensus.Setup(m.config, m.genesis, m.blockManager, m.chainManager, m.transactionManager)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -153,11 +185,11 @@ func (m *Medlet) Setup() error {
 
 	m.consensus.SetEventEmitter(m.eventEmitter)
 	m.transactionManager.InjectEmitter(m.eventEmitter)
-	m.blockManager.InjectEmitter(m.eventEmitter)
+	m.chainManager.InjectEmitter(m.eventEmitter)
 	m.blockManager.InjectTransactionManager(m.transactionManager)
 
 	m.blockManager.InjectSyncService(m.syncService)
-	m.syncService.Setup(m.netService, m.blockManager)
+	m.syncService.Setup(m.netService, m.blockManager, m.chainManager)
 
 	logging.Console().Info("Set up Medlet.")
 	return nil
@@ -215,6 +247,8 @@ func (m *Medlet) Start() error {
 
 	m.blockManager.Start()
 
+	m.chainManager.Start()
+
 	m.transactionManager.Start()
 
 	m.consensus.Start()
@@ -234,6 +268,8 @@ func (m *Medlet) Stop() {
 	// m.netService.Stop()
 
 	m.blockManager.Stop()
+
+	m.chainManager.Stop()
 
 	m.transactionManager.Stop()
 
@@ -281,6 +317,10 @@ func (m *Medlet) Storage() storage.Storage {
 // BlockManager returns BlockManager.
 func (m *Medlet) BlockManager() *core.BlockManager {
 	return m.blockManager
+}
+
+func (m *Medlet) ChainManager() *core.ChainManager {
+	return m.chainManager
 }
 
 // TransactionManager returns TransactionManager.

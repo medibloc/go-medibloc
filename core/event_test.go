@@ -197,6 +197,7 @@ func TestTopicNewTailBlock(t *testing.T) {
 		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
 
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 	emitter := seed.Med.EventEmitter()
 	topics := []string{core.TopicNewTailBlock}
 	subscriber := register(emitter, topics[0])
@@ -216,8 +217,8 @@ func TestTopicNewTailBlock(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		count++
 		event := <-subscriber.EventChan()
-		block, err := bm.BlockByHeight(uint64(count))
-		assert.NoError(t, err)
+		block := cm.BlockByHeight(uint64(count))
+		assert.NotNil(t, block)
 		assert.Equal(t, core.TopicNewTailBlock, event.Topic)
 		assert.Equal(t, byteutils.Bytes2Hex(block.Hash()), event.Data)
 	}

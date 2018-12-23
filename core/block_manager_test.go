@@ -44,6 +44,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
@@ -54,7 +55,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 		assert.NoError(t, err)
 		err = seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
 		assert.NoError(t, err)
-		assert.Equal(t, bm.TailBlock().Hash(), tail.Hash())
+		assert.Equal(t, cm.MainTailBlock().Hash(), tail.Hash())
 	}
 }
 
@@ -67,6 +68,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
@@ -82,7 +84,7 @@ func TestBlockManager_Reverse(t *testing.T) {
 		require.NoError(t, bm.PushBlockData(blocks[i].BlockData))
 	}
 	require.NoError(t, seed.WaitUntilTailHeight(uint64(nBlocks), 10*time.Second))
-	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
+	assert.Equal(t, nBlocks, int(cm.MainTailBlock().Height()))
 }
 
 func TestBlockManager_Forked(t *testing.T) {
@@ -187,6 +189,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
@@ -236,8 +239,8 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
 
-	parent, err := bm.BlockByHeight(3)
-	require.NoError(t, err)
+	parent := cm.BlockByHeight(3)
+	require.NotNil(t, parent)
 	b := bb.Block(parent).Child().
 		Tx().Type(core.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
@@ -253,6 +256,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	tail := seed.Tail()
@@ -292,8 +296,8 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 	}
 
 	assert.NoError(t, seed.WaitUntilTailHeight(blocks[len(blocks)-1].Height(), 10*time.Second))
-	block, err := bm.BlockByHeight(3)
-	require.NoError(t, err)
+	block := cm.BlockByHeight(3)
+	require.NotNil(t, block)
 	assert.NotEqual(t, blocks[1].Hash(), block.Hash())
 	assert.Equal(t, blocks[2].Hash(), block.Hash())
 }
@@ -306,6 +310,7 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 
 	tail := seed.Tail()
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
@@ -327,8 +332,8 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 	}
 	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)
 	assert.NoError(t, err)
-	parent, err := bm.BlockByHeight(3)
-	require.Nil(t, err)
+	parent := cm.BlockByHeight(3)
+	require.NotNil(t, parent)
 
 	tests := []struct {
 		height uint64
@@ -353,21 +358,23 @@ func TestBlockManager_InvalidHeight(t *testing.T) {
 
 func TestBlockManager_Setup(t *testing.T) {
 	cfg := medlet.DefaultConfig()
-	cfg.Chain.BlockPoolSize = 0
-	bm, err := core.NewBlockManager(cfg)
-	require.Nil(t, bm)
+	cfg.Chain.BlockCacheSize = 0
+	bc, err := core.NewBlockChain(cfg)
+	require.Nil(t, bc)
 	require.EqualError(t, err, "Must provide a positive size")
 
 	cfg = medlet.DefaultConfig()
-	cfg.Chain.BlockCacheSize = 0
-	bm, err = core.NewBlockManager(cfg)
+	cfg.Chain.BlockPoolSize = 0
+	bc, err = core.NewBlockChain(cfg)
+	require.NoError(t, err)
+	bm, err := core.NewBlockManager(cfg, bc)
 	require.Nil(t, bm)
 	require.EqualError(t, err, "Must provide a positive size")
 
 	cfg = medlet.DefaultConfig()
 	cfg.Chain.TailCacheSize = 0
-	bm, err = core.NewBlockManager(cfg)
-	require.Nil(t, bm)
+	cm, err := core.NewChainManager(cfg, bc)
+	require.Nil(t, cm)
 	require.EqualError(t, err, "Must provide a positive size")
 }
 
@@ -566,6 +573,7 @@ func TestBlockManager_PushBlockDataSync(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
 
 	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
@@ -574,7 +582,7 @@ func TestBlockManager_PushBlockDataSync(t *testing.T) {
 		mint := bb.Block(tail).Child().SignProposer().Build()
 		err := bm.PushBlockDataSync(mint.BlockData, 10*time.Second)
 		assert.NoError(t, err)
-		assert.Equal(t, bm.BlockByHash(mint.Hash()).Height(), mint.Height())
+		assert.Equal(t, cm.BlockByHash(mint.Hash()).Height(), mint.Height())
 		tail = mint
 	}
 	err := seed.WaitUntilTailHeight(tail.Height(), 10*time.Second)

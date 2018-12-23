@@ -94,10 +94,10 @@ func TestService_Start(t *testing.T) {
 	t.Logf("receiver Tail: %v floor, %v", receiver.Tail().Height(), receiver.Tail().Hash())
 	require.True(t, int(receiver.Tail().Height()) > nBlocks-chunkSize)
 	for i := uint64(1); i <= receiver.Tail().Height(); i++ {
-		seedTesterBlock, seedErr := seed.Med.BlockManager().BlockByHeight(i)
-		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
-		receiveTesterBlock, receiveErr := receiver.Med.BlockManager().BlockByHeight(i)
-		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
+		seedTesterBlock := seed.Med.ChainManager().BlockByHeight(i)
+		require.NotNil(t, seedTesterBlock, " Missing Seeder Height:%v", i)
+		receiveTesterBlock := receiver.Med.ChainManager().BlockByHeight(i)
+		require.NotNil(t, receiveTesterBlock, "Missing Receiver Height :%v", i)
 
 		require.Equal(t, seedTesterBlock.Hash(), receiveTesterBlock.Hash())
 	}
@@ -230,10 +230,10 @@ func TestForkResistance(t *testing.T) {
 	t.Logf("Height(%v) block of newbie tester	: %v", newTail.Height(), newTail.Hash())
 	t.Logf("Height(%v) block of seed tester	  : %v", newTail.Height(), seed.Tail().Hash())
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		seedTesterBlock, seedErr := seed.Med.BlockManager().BlockByHeight(i)
-		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
-		newbieTesterBlock, receiveErr := newbie.Med.BlockManager().BlockByHeight(i)
-		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
+		seedTesterBlock := seed.Med.ChainManager().BlockByHeight(i)
+		require.NotNil(t, seedTesterBlock, " Missing Seeder Height:%v", i)
+		newbieTesterBlock := newbie.Med.ChainManager().BlockByHeight(i)
+		require.NotNil(t, newbieTesterBlock, "Missing Receiver Height :%v", i)
 
 		require.Equal(t, seedTesterBlock.Hash(), newbieTesterBlock.Hash())
 	}
@@ -348,10 +348,10 @@ func TestForAutoActivation(t *testing.T) {
 	t.Logf("Height(%v) block of Reciever Node	(after next mintblock): %v", newTail.Height(), byteutils.Bytes2Hex(newTail.Hash()))
 
 	for i := uint64(1); i <= newTail.Height(); i++ {
-		seedNodeBlock, seedErr := seed.Med.BlockManager().BlockByHeight(i)
-		require.Nil(t, seedErr, " Missing Seeder Height:%v", i)
-		receiveNodeBlock, receiveErr := receiver.Med.BlockManager().BlockByHeight(i)
-		require.Nil(t, receiveErr, "Missing Receiver Height :%v", i)
+		seedNodeBlock := seed.Med.ChainManager().BlockByHeight(i)
+		require.NotNil(t, seedNodeBlock, " Missing Seeder Height:%v", i)
+		receiveNodeBlock := receiver.Med.ChainManager().BlockByHeight(i)
+		require.NotNil(t, receiveNodeBlock, "Missing Receiver Height :%v", i)
 
 		require.Equal(t, seedNodeBlock.Hash(), receiveNodeBlock.Hash())
 	}

@@ -37,11 +37,14 @@ var (
 //BlockManager is interface of core.blockmanager.
 type BlockManager interface {
 	Start()
-	BlockByHeight(height uint64) (*core.Block, error)
-	BlockByHash(hash []byte) *core.Block
-	LIB() *core.Block
-	ForceLIB(b *core.Block) error
-	TailBlock() *core.Block
 	PushBlockData(block *core.BlockData) error
 	BroadCast(block *core.BlockData) error
+}
+
+//ChainManager is interface of core.chainManager
+type ChainManager interface {
+	LIB() *core.Block
+	SetLIB(block *core.Block) error
+	MainTailBlock() *core.Block
+	BlockByHeight(uint64) *core.Block
 }

@@ -107,7 +107,7 @@ func (tm *TransactionManager) PushAndBroadcast(transactions ...*Transaction) (fa
 	for k, v := range dropped {
 		failed[k] = v
 	}
-	pended, dropped := tm.transitTxs(tm.bm.bc.MainTailBlock().State(), addrs...)
+	pended, dropped := tm.transitTxs(tm.bm.cm.MainTailBlock().State(), addrs...)
 	for k, v := range dropped {
 		failed[k] = v
 	}
@@ -138,7 +138,7 @@ func (tm *TransactionManager) PushAndExclusiveBroadcast(transactions ...*Transac
 	for k, v := range dropped {
 		failed[k] = v
 	}
-	pended, dropped := tm.transitTxs(tm.bm.bc.MainTailBlock().State(), addrs...)
+	pended, dropped := tm.transitTxs(tm.bm.cm.MainTailBlock().State(), addrs...)
 	for k, v := range dropped {
 		failed[k] = v
 	}
@@ -382,7 +382,7 @@ func (tm *TransactionManager) Pop() *Transaction {
 	}
 	tm.bwInfoMu.Unlock()
 
-	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), tx.From())
+	success, _ := tm.transitTxs(tm.bm.cm.mainTailBlock.State(), tx.From())
 	for _, t := range success {
 		err := tm.Broadcast(t)
 		if err != nil {
@@ -430,7 +430,7 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 		}
 		tm.futurePool.Del(tx.hash)
 	}
-	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), addr)
+	success, _ := tm.transitTxs(tm.bm.cm.mainTailBlock.State(), addr)
 	for _, t := range success {
 		err := tm.Broadcast(t)
 		if err != nil {

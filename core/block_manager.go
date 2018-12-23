@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -43,6 +42,7 @@ var (
 type BlockManager struct {
 	bc        *BlockChain
 	bp        *BlockPool
+	cm        *ChainManager
 	tm        *TransactionManager
 	ns        net.Service
 	consensus Consensus
@@ -60,11 +60,6 @@ type BlockManager struct {
 	newBlockCh     chan *BlockData
 	closeWorkersCh chan bool
 	workFinishedCh chan bool
-
-	// chainManager
-	trigCh               chan bool
-	finishChainManagerCh chan bool
-	cmFinishedCh         chan bool
 }
 
 type blockResult struct {
@@ -83,7 +78,7 @@ func (bm *BlockManager) SetTxMap(txMap TxFactory) {
 }
 
 // NewBlockManager returns BlockManager.
-func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
+func NewBlockManager(cfg *medletpb.Config, bc *BlockChain) (*BlockManager, error) {
 	bp, err := NewBlockPool(int(cfg.Chain.BlockPoolSize))
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -91,13 +86,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		}).Error("Failed to create blockpool.")
 		return nil, err
 	}
-	bc, err := NewBlockChain(cfg)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to create blockchain.")
-		return nil, err
-	}
+
 	return &BlockManager{
 		bc:                    bc,
 		bp:                    bp,
@@ -109,15 +98,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		quitCh:                make(chan int),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
-		trigCh:                make(chan bool, 1),
-		finishChainManagerCh:  make(chan bool),
-		cmFinishedCh:          make(chan bool),
 	}, nil
-}
-
-// InjectEmitter inject emitter generated from medlet to block manager
-func (bm *BlockManager) InjectEmitter(emitter *EventEmitter) {
-	bm.bc.SetEventEmitter(emitter)
 }
 
 // InjectTransactionManager inject transaction manager from medlet to block manager
@@ -131,17 +112,12 @@ func (bm *BlockManager) InjectSyncService(syncService SyncService) {
 }
 
 // Setup sets up BlockManager.
-func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus, txMap TxFactory) error {
+func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service,
+	consensus Consensus, cm *ChainManager,
+	txMap TxFactory) error {
+	bm.cm = cm
 	bm.consensus = consensus
 	bm.txMap = txMap
-
-	err := bm.bc.Setup(genesis, consensus, txMap, stor)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to setup Blockchain.")
-		return err
-	}
 
 	if ns != nil {
 		bm.ns = ns
@@ -154,7 +130,6 @@ func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns 
 func (bm *BlockManager) Start() {
 	logging.Console().Info("Starting BlockManager...")
 	go bm.runDistributor()
-	go bm.runChainManager()
 	go bm.loop()
 }
 
@@ -164,8 +139,6 @@ func (bm *BlockManager) Stop() {
 
 	close(bm.closeWorkersCh)
 	<-bm.workFinishedCh
-	close(bm.finishChainManagerCh)
-	<-bm.cmFinishedCh
 	close(bm.quitCh)
 }
 
@@ -188,7 +161,7 @@ func (bm *BlockManager) processTask(newData *BlockData) {
 		return
 	}
 
-	if bm.bc.IsForkedBeforeLIB(parent) {
+	if bm.cm.IsForkedBeforeLIB(parent) {
 		logging.WithFields(logrus.Fields{
 			"blockData": newData,
 		}).Debug("Received a block forked before current LIB.")
@@ -240,9 +213,11 @@ func (bm *BlockManager) processTask(newData *BlockData) {
 		bm.alarmExecutionResult(newData, err)
 		return
 	}
+	bm.cm.AddToTailBlocks(child)
+	bm.cm.RemoveFromTailBlocks(parent)
 
 	select {
-	case bm.trigCh <- true:
+	case bm.cm.TrigCh <- true:
 	default:
 	}
 
@@ -298,90 +273,10 @@ func (bm *BlockManager) runDistributor() {
 	}
 }
 
-func (bm *BlockManager) runChainManager() {
-	mainTail := bm.TailBlock()
-	LIB := bm.LIB()
-	for {
-		select {
-		case <-bm.finishChainManagerCh:
-			close(bm.cmFinishedCh)
-			return
-		case <-bm.trigCh:
-			// newData is used only for alarming not affecting lib, tailblock, indexing process
-			newTail := bm.consensus.ForkChoice(bm.bc)
-			if byteutils.Equal(mainTail.Hash(), newTail.Hash()) {
-				continue
-			}
-			mainTail = newTail
-
-			revertBlocks, newBlocks, err := bm.bc.SetTailBlock(newTail)
-			if err != nil {
-				logging.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to set new tail block.")
-				continue
-			}
-
-			if err := bm.rearrangeTransactions(revertBlocks, newBlocks); err != nil {
-				continue
-			}
-
-			newLIB := bm.consensus.FindLIB(bm.bc)
-			if byteutils.Equal(LIB.Hash(), newLIB.Hash()) {
-				continue
-			}
-			LIB = newLIB
-
-			err = bm.bc.SetLIB(newLIB)
-			if err != nil {
-				logging.WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to set LIB.")
-				continue
-			}
-
-			logging.Console().WithFields(logrus.Fields{
-				"LIB":         newLIB,
-				"newMainTail": newTail,
-			}).Info("Block accepted.")
-		}
-	}
-}
-
 func (bm *BlockManager) registerInNetwork() {
 	bm.ns.Register(net.NewSubscriber(bm, bm.receiveBlockMessageCh, true, MessageTypeNewBlock, net.MessageWeightNewBlock))
 	bm.ns.Register(net.NewSubscriber(bm, bm.receiveBlockMessageCh, false, MessageTypeResponseBlock, net.MessageWeightZero))
 	bm.ns.Register(net.NewSubscriber(bm, bm.requestBlockMessageCh, false, MessageTypeRequestBlock, net.MessageWeightZero))
-}
-
-// ChainID return BlockChain.ChainID
-func (bm *BlockManager) ChainID() uint32 {
-	return bm.bc.ChainID()
-}
-
-// BlockByHeight returns the block contained in the chain by height.
-func (bm *BlockManager) BlockByHeight(height uint64) (*Block, error) {
-	return bm.bc.BlockByHeight(height)
-}
-
-// BlockByHash returns the block contained in the chain by hash.
-func (bm *BlockManager) BlockByHash(hash []byte) *Block {
-	return bm.bc.BlockByHash(hash)
-}
-
-// TailBlock getter for mainTailBlock
-func (bm *BlockManager) TailBlock() *Block {
-	return bm.bc.MainTailBlock()
-}
-
-// LIB returns latest irreversible block of the chain.
-func (bm *BlockManager) LIB() *Block {
-	return bm.bc.LIB()
-}
-
-//ForceLIB set LIB force
-func (bm *BlockManager) ForceLIB(b *Block) error {
-	return bm.bc.SetLIB(b)
 }
 
 // BroadCast broadcasts BlockData to network.
@@ -453,9 +348,11 @@ func (bm *BlockManager) directPush(b *Block) error {
 	if err := bm.bc.PutVerifiedNewBlock(parentOnChain, b); err != nil {
 		return ErrFailedToDirectPush
 	}
+	bm.cm.AddToTailBlocks(b)
+	bm.cm.RemoveFromTailBlocks(parentOnChain)
 
 	select {
-	case bm.trigCh <- true:
+	case bm.cm.TrigCh <- true:
 	default:
 	}
 
@@ -495,7 +392,7 @@ func (bm *BlockManager) pushToDistributor(bd *BlockData) {
 }
 
 func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
-	if bm.bc.chainID != bd.ChainID() {
+	if bm.cm.ChainID() != bd.ChainID() {
 		return ErrInvalidChainID
 	}
 
@@ -506,7 +403,7 @@ func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 		return ErrDuplicatedBlock
 	}
 
-	if err := bm.consensus.VerifyHeightAndTimestamp(bm.bc.LIB().BlockData, bd); err != nil {
+	if err := bm.consensus.VerifyHeightAndTimestamp(bm.cm.LIB().BlockData, bd); err != nil {
 		//if bd.Height() <= bm.bc.LIB().Height() {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
@@ -534,39 +431,6 @@ func verifyBlockHeight(bd *BlockData, parent *Block) error {
 	if parent.Height()+1 != bd.Height() {
 		return ErrInvalidBlockHeight
 	}
-	return nil
-}
-
-func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []*Block) error {
-	addrNonce := make(map[common.Address]uint64)
-	exclusiveFilter := make(map[*Transaction]bool)
-
-	for _, newBlock := range newBlocks {
-		for _, tx := range newBlock.Transactions() {
-			if addrNonce[tx.From()] < tx.Nonce() {
-				addrNonce[tx.From()] = tx.Nonce()
-			}
-			exclusiveFilter[tx] = true
-		}
-	}
-	for addr, nonce := range addrNonce {
-		bm.tm.DelByAddressNonce(addr, nonce)
-	}
-
-	// revert block
-	pushTxs := make([]*Transaction, 0)
-	for _, block := range revertBlock {
-		for _, tx := range block.Transactions() {
-			if _, ok := exclusiveFilter[tx]; !ok {
-				pushTxs = append(pushTxs, tx)
-			}
-		}
-		if bm.bc.eventEmitter != nil {
-			block.EmitBlockEvent(bm.bc.eventEmitter, TopicRevertBlock)
-		}
-		logging.Console().Warn("A block is reverted.")
-	}
-	bm.tm.PushAndExclusiveBroadcast(pushTxs...)
 	return nil
 }
 
@@ -708,14 +572,14 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 		return true
 	}
 
-	if bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight {
+	if bd.Height() <= bm.cm.MainTailBlock().Height()+bm.syncActivationHeight {
 		return false
 	}
 
 	if err := bm.syncService.ActiveDownload(bd.Height()); err != nil {
 		logging.WithFields(logrus.Fields{
 			"newBlockHeight":       bd.Height(),
-			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+			"mainTailBlockHeight":  bm.cm.MainTailBlock().Height(),
 			"syncActivationHeight": bm.syncActivationHeight,
 			"err":                  err,
 		}).Debug("Failed to activate sync download manager.")
@@ -724,7 +588,7 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 
 	logging.Console().WithFields(logrus.Fields{
 		"newBlockHeight":       bd.Height(),
-		"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),
+		"mainTailBlockHeight":  bm.cm.MainTailBlock().Height(),
 		"syncActivationHeight": bm.syncActivationHeight,
 	}).Info("Sync download manager is activated.")
 	return true

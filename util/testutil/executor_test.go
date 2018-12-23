@@ -79,7 +79,7 @@ func TestNetworkProposer(t *testing.T) {
 
 	for _, node := range nt.Nodes {
 		for {
-			height := node.Med.BlockManager().TailBlock().Height()
+			height := node.Med.ChainManager().MainTailBlock().Height()
 			if height >= 2 {
 				break
 			}

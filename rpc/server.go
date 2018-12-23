@@ -44,8 +44,9 @@ func New(cfg *medletpb.Config) *Server {
 }
 
 //Setup sets up server.
-func (s *Server) Setup(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter) {
-	api := newAPIService(bm, tm, ee)
+func (s *Server) Setup(cm *core.ChainManager, tm *core.TransactionManager,
+	ee *core.EventEmitter) {
+	api := newAPIService(cm, tm, ee)
 	rpcpb.RegisterApiServiceServer(s.rpcServer, api)
 }
 

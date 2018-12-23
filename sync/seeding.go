@@ -34,7 +34,7 @@ const maxNumberOfBlocks = 3600 // number of blocks for 3 hours
 
 type seeding struct {
 	netService net.Service
-	bm         BlockManager
+	cm         ChainManager
 	quitCh     chan bool
 
 	mu        sync.Mutex
@@ -49,7 +49,6 @@ type seeding struct {
 func newSeeding(config *medletpb.SyncConfig) *seeding {
 	return &seeding{
 		netService:   nil,
-		bm:           nil,
 		quitCh:       make(chan bool, 2),
 		activated:    false,
 		messageCh:    make(chan net.Message, 128),
@@ -66,9 +65,9 @@ func (s *seeding) IsActivated() bool {
 	return s.activated
 }
 
-func (s *seeding) setup(netService net.Service, bm BlockManager) {
+func (s *seeding) setup(netService net.Service, cm ChainManager) {
 	s.netService = netService
-	s.bm = bm
+	s.cm = cm
 }
 
 func (s *seeding) start() {
@@ -138,8 +137,8 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		"chunkSize": q.ChunkSize,
 	}).Info("Sync: Seeding manager received hashMeta request.")
 
-	block, err := s.bm.BlockByHeight(q.From)
-	if err != nil {
+	block := s.cm.BlockByHeight(q.From)
+	if block == nil {
 		logging.WithFields(logrus.Fields{
 			"height": q.From,
 			"err":    err,
@@ -163,7 +162,7 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 		return
 	}
 
-	tailHeight := s.bm.TailBlock().Height()
+	tailHeight := s.cm.MainTailBlock().Height()
 	if q.From+q.ChunkSize-1 > tailHeight || q.To > tailHeight {
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
@@ -199,8 +198,8 @@ func (s *seeding) sendRootHashMeta(message net.Message) {
 
 	allHashes := make([][]byte, numberOfBlocks)
 	for i := q.From; i <= q.To; i++ {
-		block, err = s.bm.BlockByHeight(i)
-		if err != nil {
+		block = s.cm.BlockByHeight(i)
+		if block == nil {
 			logging.WithFields(logrus.Fields{
 				"height": i,
 				"err":    err,
@@ -265,7 +264,7 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 		return
 	}
 
-	tailHeight := s.bm.TailBlock().Height()
+	tailHeight := s.cm.MainTailBlock().Height()
 	if q.From+q.ChunkSize-1 > tailHeight {
 		logging.WithFields(logrus.Fields{
 			"err":        "request tail height is too high",
@@ -279,8 +278,8 @@ func (s *seeding) sendBlockChunk(message net.Message) {
 	pbBlockChunk := make([]*corepb.Block, q.ChunkSize)
 
 	for i := uint64(0); i < q.ChunkSize; i++ {
-		block, err := s.bm.BlockByHeight(i + q.From)
-		if err != nil {
+		block := s.cm.BlockByHeight(i + q.From)
+		if block == nil {
 			logging.WithFields(logrus.Fields{
 				"height": i,
 				"err":    err,

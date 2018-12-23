@@ -36,14 +36,15 @@ import (
 
 // APIService is blockchain api rpc service.
 type APIService struct {
-	bm *core.BlockManager
+	cm *core.ChainManager
 	tm *core.TransactionManager
 	ee *core.EventEmitter
 }
 
-func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter) *APIService {
+func newAPIService(cm *core.ChainManager, tm *core.TransactionManager,
+	ee *core.EventEmitter) *APIService {
 	return &APIService{
-		bm: bm,
+		cm: cm,
 		tm: tm,
 		ee: ee,
 	}
@@ -63,20 +64,20 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	if req.Type != "" {
 		switch req.GetType() {
 		case GENESIS:
-			block, err = s.bm.BlockByHeight(core.GenesisHeight)
-			if err != nil {
+			block = s.cm.BlockByHeight(core.GenesisHeight)
+			if block == nil {
 				return nil, status.Error(codes.Internal, ErrMsgInternalError)
 			}
 		case CONFIRMED:
-			block = s.bm.LIB()
+			block = s.cm.LIB()
 		case TAIL:
-			block = s.bm.TailBlock()
+			block = s.cm.MainTailBlock()
 		default:
 			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockType)
 		}
 	} else {
-		block, err = s.bm.BlockByHeight(req.GetHeight())
-		if err != nil {
+		block = s.cm.BlockByHeight(req.GetHeight())
+		if block == nil {
 			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
 		}
 	}
@@ -113,7 +114,6 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 // GetBlock returns block
 func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (*rpcpb.Block, error) {
 	var block *core.Block
-	var err error
 
 	if !math.TernaryXOR(common.IsHash(req.Hash), req.Type != "", req.Height != 0) {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
@@ -124,7 +124,7 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 		}
-		block = s.bm.BlockByHash(hash)
+		block = s.cm.BlockByHash(hash)
 		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
@@ -133,17 +133,17 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 
 	switch req.Type {
 	case GENESIS:
-		block, err = s.bm.BlockByHeight(1)
-		if err != nil {
+		block = s.cm.BlockByHeight(1)
+		if block == nil {
 			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
 		}
 	case CONFIRMED:
-		block = s.bm.LIB()
+		block = s.cm.LIB()
 	case TAIL:
-		block = s.bm.TailBlock()
+		block = s.cm.MainTailBlock()
 	default:
-		block, err = s.bm.BlockByHeight(req.Height)
-		if err != nil {
+		block = s.cm.BlockByHeight(req.Height)
+		if block == nil {
 			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHeight)
 		}
 	}
@@ -166,13 +166,13 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 		return nil, status.Error(codes.InvalidArgument, ErrMsgTooManyBlocksRequest)
 	}
 
-	if s.bm.TailBlock().Height() < req.To {
-		req.To = s.bm.TailBlock().Height()
+	if s.cm.MainTailBlock().Height() < req.To {
+		req.To = s.cm.MainTailBlock().Height()
 	}
 
 	for i := req.From; i <= req.To; i++ {
-		block, err := s.bm.BlockByHeight(i)
-		if err != nil {
+		block := s.cm.BlockByHeight(i)
+		if block == nil {
 			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
 		}
 
@@ -187,7 +187,7 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 
 // GetCandidate returns matched candidate information
 func (s *APIService) GetCandidate(ctx context.Context, req *rpcpb.GetCandidateRequest) (*rpcpb.Candidate, error) {
-	block := s.bm.TailBlock()
+	block := s.cm.MainTailBlock()
 
 	if len(req.CandidateId) != 64 {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
@@ -216,7 +216,7 @@ func (s *APIService) GetCandidate(ctx context.Context, req *rpcpb.GetCandidateRe
 func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Candidates,
 	error) {
 	var rpcCandidates []*rpcpb.Candidate
-	block := s.bm.TailBlock()
+	block := s.cm.MainTailBlock()
 
 	cs := block.State().DposState().CandidateState()
 	candidates := make([]*dpos.Candidate, 0)
@@ -255,7 +255,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Dynasty, error) {
 	var addresses []string
 
-	block := s.bm.TailBlock()
+	block := s.cm.MainTailBlock()
 	dynasty, err := block.State().GetDynasty()
 	if err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
@@ -271,8 +271,8 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest)
 // GetMedState return mednet state
 func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.MedState,
 	error) {
-	tailBlock := s.bm.TailBlock()
-	lib := s.bm.LIB()
+	tailBlock := s.cm.MainTailBlock()
+	lib := s.cm.LIB()
 
 	return &rpcpb.MedState{
 		ChainId: tailBlock.ChainID(),
@@ -300,7 +300,7 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
 	}
 
-	tailBlock := s.bm.TailBlock()
+	tailBlock := s.cm.MainTailBlock()
 	if tailBlock == nil {
 		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}
@@ -331,7 +331,7 @@ func (s *APIService) GetTransactionReceipt(ctx context.Context, req *rpcpb.GetTr
 		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
 	}
 
-	tailBlock := s.bm.TailBlock()
+	tailBlock := s.cm.MainTailBlock()
 	if tailBlock == nil {
 		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
 	}

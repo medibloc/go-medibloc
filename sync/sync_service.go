@@ -45,11 +45,11 @@ func NewService(config *medletpb.SyncConfig) *Service {
 }
 
 // Setup makes seeding and block manager on syncService
-func (ss *Service) Setup(netService net.Service, bm BlockManager) {
+func (ss *Service) Setup(netService net.Service, bm BlockManager, cm ChainManager) {
 	ss.Seeding = newSeeding(ss.config)
-	ss.Seeding.setup(netService, bm)
+	ss.Seeding.setup(netService, cm)
 	ss.Download = newDownload(ss.config)
-	ss.Download.setup(netService, bm)
+	ss.Download.setup(netService, bm, cm)
 }
 
 // Start Sync Service
