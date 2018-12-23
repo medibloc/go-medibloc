@@ -135,7 +135,7 @@ func (cm *ChainManager) updateChain() {
 	}
 
 	newLIB := cm.consensus.FindLIB(cm)
-	if byteutils.Equal(cm.lib.Hash(), newLIB.Hash()) {
+	if byteutils.Equal(cm.LIB().Hash(), newLIB.Hash()) {
 		return
 	}
 
