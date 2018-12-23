@@ -173,7 +173,7 @@ func (bc *BlockChain) initGenesisToStorage(txMap TxFactory) error {
 		}).Error("Failed to update block height of new genesis block. ")
 		return err
 	}
-	if err = bc.storeLIBHashToStorage(genesisBlock); err != nil {
+	if err = bc.StoreLIBHashToStorage(genesisBlock); err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to update lib to new genesis block.")
@@ -200,6 +200,7 @@ func (bc *BlockChain) BlockByHeight(height uint64) *Block {
 	return block
 }
 
+// ParentBlock returns parent block
 func (bc *BlockChain) ParentBlock(block *Block) (*Block, error) {
 	parentHash := block.ParentHash()
 	block = bc.BlockByHash(parentHash)
@@ -212,6 +213,7 @@ func (bc *BlockChain) ParentBlock(block *Block) (*Block, error) {
 	return block, nil
 }
 
+// LoadBetweenBlocks returns blocks between fromBlock and toBlock
 func (bc *BlockChain) LoadBetweenBlocks(from *Block, to *Block) ([]*Block, error) {
 	// Normal case (ancestor === mainTail)
 	if byteutils.Equal(from.Hash(), to.Hash()) {
@@ -261,6 +263,7 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 	return nil
 }
 
+// BuildIndexByBlockHeight save block with height key
 func (bc *BlockChain) BuildIndexByBlockHeight(from *Block, to *Block) ([]*Block, error) {
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
@@ -333,6 +336,7 @@ func (bc *BlockChain) loadBlockByHeight(height uint64) (*Block, error) {
 	return bc.loadBlockByHash(hash)
 }
 
+// LoadTailFromStorage loads tail block from storage
 func (bc *BlockChain) LoadTailFromStorage() (*Block, error) {
 	hash, err := bc.storage.Get([]byte(tailBlockKey))
 	if err != nil {
@@ -344,6 +348,7 @@ func (bc *BlockChain) LoadTailFromStorage() (*Block, error) {
 	return bc.loadBlockByHash(hash)
 }
 
+// LoadLIBFromStorage loads LIB from storage
 func (bc *BlockChain) LoadLIBFromStorage() (*Block, error) {
 	hash, err := bc.storage.Get([]byte(libKey))
 	if err != nil {
@@ -389,11 +394,13 @@ func (bc *BlockChain) storeBlock(block *Block) error {
 	return nil
 }
 
+// StoreTailHashToStorage stores tail hash to storage
 func (bc *BlockChain) StoreTailHashToStorage(block *Block) error {
 	return bc.storage.Put([]byte(tailBlockKey), block.Hash())
 }
 
-func (bc *BlockChain) storeLIBHashToStorage(block *Block) error {
+// StoreLIBHashToStorage stores LIB hash to storage
+func (bc *BlockChain) StoreLIBHashToStorage(block *Block) error {
 	return bc.storage.Put([]byte(libKey), block.Hash())
 }
 
@@ -414,7 +421,8 @@ func (bc *BlockChain) loadBlockFromCache(hash []byte) *Block {
 	return v.(*Block)
 }
 
-func (bc *BlockChain) removeBlock(block *Block) error {
+// RemoveBlock removes block from stroage
+func (bc *BlockChain) RemoveBlock(block *Block) error {
 	canonical := bc.BlockByHeight(block.Height())
 
 	if canonical == nil {

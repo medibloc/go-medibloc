@@ -318,6 +318,7 @@ func (m *Medlet) BlockManager() *core.BlockManager {
 	return m.blockManager
 }
 
+// ChainManager returns ChainManager.
 func (m *Medlet) ChainManager() *core.ChainManager {
 	return m.chainManager
 }

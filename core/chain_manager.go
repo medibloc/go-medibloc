@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ChainManager manages blockchain features
 type ChainManager struct {
 	mu sync.RWMutex
 
@@ -31,6 +32,7 @@ type ChainManager struct {
 	quitResCh chan bool
 }
 
+// NewChainManager returns new ChainManager instance
 func NewChainManager(cfg *medletpb.Config, bc *BlockChain) (*ChainManager, error) {
 	var err error
 
@@ -52,11 +54,13 @@ func NewChainManager(cfg *medletpb.Config, bc *BlockChain) (*ChainManager, error
 	return cm, nil
 }
 
+// InjectEmitter injects event emitter
 func (cm *ChainManager) InjectEmitter(emitter *EventEmitter) {
 	cm.eventEmitter = emitter
 	cm.bc.SetEventEmitter(emitter)
 }
 
+// Setup setups chainManager
 func (cm *ChainManager) Setup(tm *TransactionManager, consensus Consensus) error {
 	cm.tm = tm
 	cm.consensus = consensus
@@ -86,11 +90,13 @@ func (cm *ChainManager) Setup(tm *TransactionManager, consensus Consensus) error
 	return nil
 }
 
+// Start starts chainManager
 func (cm *ChainManager) Start() {
 	logging.Console().Info("Starting ChainManager...")
 	go cm.loop()
 }
 
+// Stop stops chainManager
 func (cm *ChainManager) Stop() {
 	logging.Console().Info("Stopping ChainManager...")
 	close(cm.quitCh)
@@ -186,7 +192,7 @@ func (cm *ChainManager) ChainID() uint32 {
 	return cm.chainID
 }
 
-// TailBlock getter for mainTailBlock
+// MainTailBlock getter for mainTailBlock
 func (cm *ChainManager) MainTailBlock() *Block {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
@@ -243,7 +249,7 @@ func (cm *ChainManager) setTailBlock(newTail *Block) ([]*Block, []*Block, error)
 	return blocks, newBlocks, nil
 }
 
-// TailBlock getter for mainTailBlock
+// TailBlocks returns tailBlocks
 func (cm *ChainManager) TailBlocks() []*Block {
 	blocks := make([]*Block, 0, cm.tailBlocks.Len())
 	for _, k := range cm.tailBlocks.Keys() {
@@ -256,10 +262,12 @@ func (cm *ChainManager) TailBlocks() []*Block {
 	return blocks
 }
 
+// AddToTailBlocks adds blocks to tailBlocks
 func (cm *ChainManager) AddToTailBlocks(block *Block) {
 	cm.tailBlocks.Add(byteutils.Bytes2Hex(block.Hash()), block)
 }
 
+// RemoveFromTailBlocks removes block from tailBlocks
 func (cm *ChainManager) RemoveFromTailBlocks(block *Block) {
 	cm.tailBlocks.Remove(byteutils.Bytes2Hex(block.Hash()))
 }
@@ -271,6 +279,7 @@ func (cm *ChainManager) LIB() *Block {
 	return cm.lib
 }
 
+// SetLIB sets LIB
 func (cm *ChainManager) SetLIB(newLIB *Block) error {
 	prevLIB := cm.LIB()
 	if prevLIB.height > newLIB.height || byteutils.Equal(prevLIB.hash, newLIB.hash) {
@@ -280,7 +289,7 @@ func (cm *ChainManager) SetLIB(newLIB *Block) error {
 		return nil
 	}
 
-	err := cm.bc.storeLIBHashToStorage(newLIB)
+	err := cm.bc.StoreLIBHashToStorage(newLIB)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":     err,
@@ -312,7 +321,6 @@ func (cm *ChainManager) SetLIB(newLIB *Block) error {
 	return nil
 }
 
-// FindAncestorOnCanonical finds most recent ancestor block in canonical chain.
 func (cm *ChainManager) findAncestorOnCanonical(block *Block, breakAtLIB bool) (*Block, error) {
 	var err error
 
@@ -354,6 +362,7 @@ func (cm *ChainManager) findAncestorOnCanonical(block *Block, breakAtLIB bool) (
 	return block, nil
 }
 
+// IsForkedBeforeLIB checks that if the block is forked before LIB
 func (cm *ChainManager) IsForkedBeforeLIB(block *Block) bool {
 	_, err := cm.findAncestorOnCanonical(block, true)
 	if err != nil {
@@ -373,7 +382,7 @@ func (cm *ChainManager) removeForkedBranch(tail *Block) error {
 
 	block := tail
 	for !byteutils.Equal(ancestor.Hash(), block.Hash()) {
-		err = cm.bc.removeBlock(block)
+		err = cm.bc.RemoveBlock(block)
 		if err != nil {
 			return err
 		}
@@ -388,6 +397,7 @@ func (cm *ChainManager) removeForkedBranch(tail *Block) error {
 	return nil
 }
 
+// BlockByHeight returns block by height
 func (cm *ChainManager) BlockByHeight(height uint64) *Block {
 	if height > cm.MainTailBlock().Height() {
 		return nil
@@ -395,6 +405,7 @@ func (cm *ChainManager) BlockByHeight(height uint64) *Block {
 	return cm.bc.BlockByHeight(height)
 }
 
+// BlockByHash returns block by hash
 func (cm *ChainManager) BlockByHash(hash []byte) *Block {
 	return cm.bc.BlockByHash(hash)
 }
