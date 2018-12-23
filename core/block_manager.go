@@ -40,10 +40,10 @@ var (
 
 // BlockManager handles all logic related to BlockChain and BlockPool.
 type BlockManager struct {
-	bc        *BlockChain
-	bp        *BlockPool
-	cm        *ChainManager
-	tm        *TransactionManager
+	bc *BlockChain
+	bp *BlockPool
+	cm *ChainManager
+
 	ns        net.Service
 	consensus Consensus
 	txMap     TxFactory
@@ -99,11 +99,6 @@ func NewBlockManager(cfg *medletpb.Config, bc *BlockChain) (*BlockManager, error
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
 	}, nil
-}
-
-// InjectTransactionManager inject transaction manager from medlet to block manager
-func (bm *BlockManager) InjectTransactionManager(tm *TransactionManager) {
-	bm.tm = tm
 }
 
 //InjectSyncService inject sync service generated from medlet to block manager
