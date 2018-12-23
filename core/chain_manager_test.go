@@ -106,3 +106,30 @@ func TestChainManager_SetLIB(t *testing.T) {
 	blockFromChain = cm.BlockByHash(forkedBlock.Hash())
 	assert.Nil(t, blockFromChain)
 }
+
+func TestChainManager_TailBlocks(t *testing.T) {
+	blocks := 5
+	dynastySize := 6
+	testNetwork := testutil.NewNetwork(t, dynastySize)
+	defer testNetwork.Cleanup()
+
+	seed := testNetwork.NewSeedNode()
+	seed.Start()
+	bm := seed.Med.BlockManager()
+	cm := seed.Med.ChainManager()
+
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
+	payer := bb.KeyPairs[0]
+	tail := seed.Tail()
+	for i := 0; i < blocks; i++ {
+		newTail := bb.Block(tail).Child().Tx().Nonce(5).Type(core.TxOpTransfer).Value(float64(i + 1)).To(payer.
+			Addr).
+			SignPair(payer).Execute().SignProposer().Build()
+		err := bm.PushBlockData(newTail.BlockData)
+		assert.NoError(t, err)
+		err = seed.WaitUntilBlockAcceptedOnChain(newTail.Hash(), 10*time.Second)
+		assert.NoError(t, err)
+	}
+	assert.Equal(t, blocks, len(cm.TailBlocks()))
+}
