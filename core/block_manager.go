@@ -54,6 +54,7 @@ type BlockManager struct {
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
+	managerFinishedCh     chan bool
 
 	// workManager
 	finishWorkCh   chan *blockResult
@@ -96,6 +97,7 @@ func NewBlockManager(cfg *medletpb.Config, bc *BlockChain) (*BlockManager, error
 		finishWorkCh:          make(chan *blockResult, finishWorkChannelSize),
 		newBlockCh:            make(chan *BlockData, newBlockChannelSize),
 		quitCh:                make(chan int),
+		managerFinishedCh:     make(chan bool),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
 	}, nil
@@ -135,6 +137,7 @@ func (bm *BlockManager) Stop() {
 	close(bm.closeWorkersCh)
 	<-bm.workFinishedCh
 	close(bm.quitCh)
+	<-bm.managerFinishedCh
 }
 
 func (bm *BlockManager) processTask(newData *BlockData) {
@@ -491,6 +494,7 @@ func (bm *BlockManager) loop() {
 	for {
 		select {
 		case <-bm.quitCh:
+			close(bm.managerFinishedCh)
 			return
 		case msg := <-bm.receiveBlockMessageCh:
 			bm.handleReceiveBlock(msg)
