@@ -293,7 +293,7 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 	}
 	expectedNonce := fromAcc.Nonce + 1
 	if tx.nonce > expectedNonce {
-		logging.Console().WithFields(logrus.Fields{
+		logging.WithFields(logrus.Fields{
 			"hash":        tx.Hash(),
 			"nonce":       tx.Nonce(),
 			"expected":    expectedNonce,
