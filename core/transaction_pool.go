@@ -205,25 +205,24 @@ func (pool *TransactionPool) Evict() []*TransactionInPool {
 	evictedTxs := make([]*TransactionInPool, 0)
 	for {
 		if len(pool.all) <= pool.size || pool.size < 0 { // 상수 선언
-			return nil
+			return evictedTxs
 		}
 
 		// Peek longest bucket
 		v := pool.buckets.Peek()
 		if v == nil {
-			return nil
+			return evictedTxs
 		}
 		bkt := v.(*bucket)
 
 		tx := bkt.peekLast()
 		if tx == nil {
-			return nil
+			return evictedTxs
 		}
 
 		pool.del(tx.hash)
 		evictedTxs = append(evictedTxs, tx)
 	}
-	return evictedTxs
 }
 
 //LenByAddress returns number of transactions of specific address
