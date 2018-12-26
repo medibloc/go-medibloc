@@ -28,6 +28,7 @@ import (
 	syncpb "github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -84,6 +85,12 @@ func (s *Service) findBaseBlock() (*core.BlockData, error) {
 	high := s.targetHeight
 
 	for {
+		select {
+		case <-s.ctx.Done():
+			return nil, ErrContextDone
+		default:
+		}
+
 		try := (high + low) / 2
 		if try == low {
 			break
@@ -98,6 +105,11 @@ func (s *Service) findBaseBlock() (*core.BlockData, error) {
 		rf := &net.RandomPeerFilter{N: SimultaneousRequest}
 		retry := 0
 		for {
+			select {
+			case <-s.ctx.Done():
+				return nil, ErrContextDone
+			default:
+			}
 			retry++
 			if retry > s.numberOfRetries {
 				s.netService.Deregister(net.NewSubscriber(query, responseCh, false, query.Id, net.MessageWeightZero))
@@ -112,6 +124,7 @@ func (s *Service) findBaseBlock() (*core.BlockData, error) {
 			timeout := time.NewTimer(s.responseTimeLimit)
 			for i := 0; i < len(peers); i++ {
 				select {
+				case <-s.ctx.Done():
 				case <-timeout.C:
 				case msg := <-responseCh:
 					bd, err := s.handleFindBaseResponse(msg)
@@ -201,21 +214,19 @@ func (s *Service) handleFindBaseResponse(msg net.Message) (*core.BlockData, erro
 }
 
 func (s *Service) stepUpRequest() error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	height := s.baseBlock.Height()
+	ticker := time.NewTicker(50 * time.Millisecond)
 	for {
 		select {
-		case <-ctx.Done():
+		case <-s.ctx.Done():
 			return ErrContextDone
 		case err := <-s.downloadErrCh:
 			if err != nil {
 				return err
 			}
 			s.numberOfRequests--
-		default:
+		case <-ticker.C:
 			if s.numberOfRequests >= s.activeDownloadLimit {
-				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 			s.numberOfRequests++
@@ -223,12 +234,12 @@ func (s *Service) stepUpRequest() error {
 			if height > s.targetHeight {
 				return nil
 			}
-			go s.downloadBlockByHeight(ctx, height)
+			go s.downloadBlockByHeight(height)
 		}
 	}
 }
 
-func (s *Service) downloadBlockByHeight(ctx context.Context, height uint64) {
+func (s *Service) downloadBlockByHeight(height uint64) {
 	query, err := s.newBlockByHeightRequest(height)
 	if err != nil {
 		s.downloadErrCh <- err
@@ -245,12 +256,17 @@ func (s *Service) downloadBlockByHeight(ctx context.Context, height uint64) {
 	rf := &net.RandomPeerFilter{N: SimultaneousRequest}
 	retry := 0
 	for {
+		select {
+		case <-s.ctx.Done():
+			s.downloadErrCh <- ErrContextDone
+		default:
+		}
+
 		retry++
 		if retry > s.numberOfRetries {
 			s.downloadErrCh <- ErrLimitedRetry
 			return
 		}
-
 		peers := s.netService.SendPbMessageToPeers(BlockRequest, query, net.MessagePriorityHigh, rf)
 		if len(peers) == 0 {
 			s.downloadErrCh <- ErrFailedToConnect
@@ -259,10 +275,10 @@ func (s *Service) downloadBlockByHeight(ctx context.Context, height uint64) {
 		timeout := time.NewTimer(s.responseTimeLimit)
 		for i := 0; i < len(peers); i++ {
 			select {
+			case <-s.ctx.Done():
 			case <-timeout.C:
-			case <-ctx.Done():
 			case msg := <-responseCh:
-				if err := s.handleBlockByHeightResponse(ctx, msg); err != nil {
+				if err := s.handleBlockByHeightResponse(msg); err != nil {
 					continue
 				}
 				s.downloadErrCh <- err
@@ -319,7 +335,7 @@ func (s *Service) handleBlockByHeightRequest(msg net.Message) {
 	res.Status = true
 }
 
-func (s *Service) handleBlockByHeightResponse(ctx context.Context, msg net.Message) error {
+func (s *Service) handleBlockByHeightResponse(msg net.Message) error {
 	res := new(syncpb.BlockByHeightResponse)
 	if err := proto.Unmarshal(msg.Data(), res); err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -345,5 +361,16 @@ func (s *Service) handleBlockByHeightResponse(ctx context.Context, msg net.Messa
 	if resHeight.(uint64) != bd.Height() {
 		return ErrWrongHeightBlock
 	}
-	return s.bm.PushBlockDataSync(bd, 30*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
+	defer cancel()
+	if err := s.bm.PushBlockDataSync2(ctx, bd); err != nil {
+		return err
+	}
+
+	// Duplicated block attack case
+	if s.bm.BlockByHash(bd.Hash()).Height() != bd.Height() {
+		return errors.New("Different block data was accepted")
+	}
+
+	return nil
 }

@@ -16,6 +16,7 @@
 package sync
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -44,6 +45,7 @@ type BlockManager interface {
 	BlockByHash(hash []byte) *core.Block
 	LIB() *core.Block
 	PushBlockDataSync(bd *core.BlockData, timeLimit time.Duration) error
+	PushBlockDataSync2(ctx context.Context, bd *core.BlockData) error
 }
 
 // Error types

@@ -16,6 +16,7 @@
 package core
 
 import (
+	"context"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -26,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -451,6 +453,37 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 	}
 }
 
+// PushBlockDataSync2 pushes block to distributor and wait for execution
+// Warning! - Use this method only for test for time efficiency.
+func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) error {
+	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
+	if err != nil {
+		return err
+	}
+
+	bm.bc.eventEmitter.Register(eventSubscriber)
+	defer bm.bc.eventEmitter.Deregister(eventSubscriber)
+
+	eCh := eventSubscriber.EventChan()
+	if err := bm.push(bd); err != nil && err != ErrDuplicatedBlock {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("context is done")
+		case e := <-eCh:
+			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {
+				if e.Topic == TopicInvalidBlock {
+					return ErrInvalidBlock
+				}
+				return nil
+			}
+		}
+	}
+}
+
 func (bm *BlockManager) directPush(b *Block) error {
 	// Parent block doesn't exist in blockchain.
 	parentOnChain := bm.bc.BlockByHash(b.ParentHash())
@@ -717,7 +750,11 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 		return true
 	}
 
-	if bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight {
+	myMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bm.TailBlock().BlockData)
+	newMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bd)
+
+	if !(myMissingBlocks > newMissingBlocks && bm.bc.MainTailBlock().Height() < bd.height) &&
+		(bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight) {
 		return false
 	}
 

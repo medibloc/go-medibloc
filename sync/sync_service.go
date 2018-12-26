@@ -40,7 +40,6 @@ type Service struct {
 	targetHeight     uint64
 	targetHash       []byte
 	baseBlock        *core.BlockData
-	lastBlock        *core.BlockData
 	subscribeMap     *sync.Map // key: queryID, value: blockHeight
 	numberOfRequests int
 	downloadErrCh    chan error
@@ -61,7 +60,7 @@ func (s *Service) IsDownloadActivated() bool {
 func NewService(cfg *medletpb.SyncConfig) *Service {
 	responseTimeLimit := time.Duration(cfg.ResponseTimeLimit) * time.Second
 	if responseTimeLimit == 0 {
-		responseTimeLimit = DefaultNumberOfRetry
+		responseTimeLimit = DefaultResponseTimeLimit
 	}
 	numberOfRetries := int(cfg.NumberOfRetries)
 	if numberOfRetries == 0 {
@@ -108,8 +107,14 @@ func (s *Service) stop() {
 	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, BaseSearch, net.MessageWeightZero))
 	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, BlockRequest, net.MessageWeightZero))
 
+	if s.subscribeMap != nil {
+		s.subscribeMap.Range(func(key, _ interface{}) bool {
+			qID := key.(string)
+			s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, qID, net.MessageWeightZero))
+			return true
+		})
+	}
 	logging.Console().Info("SyncService is started.")
-
 }
 
 func (s *Service) loop() {
