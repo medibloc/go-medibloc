@@ -198,29 +198,32 @@ func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {
 }
 
 //Evict remove transaction when pool is fulfilled.
-func (pool *TransactionPool) Evict() {
+func (pool *TransactionPool) Evict() []*TransactionInPool {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
+	evictedTxs := make([]*TransactionInPool, 0)
 	for {
 		if len(pool.all) <= pool.size || pool.size < 0 { // 상수 선언
-			return
+			return nil
 		}
 
 		// Peek longest bucket
 		v := pool.buckets.Peek()
 		if v == nil {
-			return
+			return nil
 		}
 		bkt := v.(*bucket)
 
 		tx := bkt.peekLast()
 		if tx == nil {
-			return
+			return nil
 		}
 
 		pool.del(tx.hash)
+		evictedTxs = append(evictedTxs, tx)
 	}
+	return evictedTxs
 }
 
 //LenByAddress returns number of transactions of specific address

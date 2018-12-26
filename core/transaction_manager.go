@@ -199,7 +199,14 @@ func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (ad
 			tp.TriggerEvent(tm.eventEmitter, TopicFutureTransaction)
 			tp.TriggerAccEvent(tm.eventEmitter, TypeAccountTransactionFuture)
 		}
-		tm.futurePool.Evict()
+		evictedTxs := tm.futurePool.Evict()
+		if tm.eventEmitter != nil {
+			for _, tx := range evictedTxs {
+				tx.TriggerEvent(tm.eventEmitter, TopicTransactionDeleted)
+				tx.TriggerAccEvent(tm.eventEmitter, TypeAccountTransactionDeleted)
+			}
+		}
+
 		addrMap[transaction.from]++
 		future[transaction.HexHash()] = true
 	}

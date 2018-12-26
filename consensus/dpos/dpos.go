@@ -444,7 +444,8 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 					"transaction": transaction.Hash(),
 					"err":         err,
 				}).Info("failed to execute transaction")
-				transaction.TriggerEvent(d.eventEmitter, core.TypeAccountTransactionDeleted)
+				transaction.TriggerEvent(d.eventEmitter, core.TopicTransactionDeleted)
+				transaction.TriggerAccEvent(d.eventEmitter, core.TypeAccountTransactionDeleted)
 				continue
 			}
 			if err := block.BeginBatch(); err != nil {
