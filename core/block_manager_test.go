@@ -140,6 +140,7 @@ func TestBlockManager_Forked(t *testing.T) {
 	}
 	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 10*time.Second))
 	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
+	time.Sleep(1 * time.Second)
 	assert.Equal(t, 0, len(tm.GetAll()))
 
 	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
