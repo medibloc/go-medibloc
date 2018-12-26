@@ -185,13 +185,12 @@ func TestVoteTransactionReceipt(t *testing.T) {
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
 
-	time.Sleep(1000 * time.Millisecond)
+	receiver.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	invalidTxr, err := receiver.Tail().State().GetTx(invalidTx.Hash())
 	assert.NoError(t, err)
 	assert.False(t, invalidTxr.Receipt().Executed())
 	assert.Equal(t, dpos.ErrNotCandidate.Error(), string(invalidTxr.Receipt().Error()))
 
-	time.Sleep(1000 * time.Millisecond)
 	validTxr, err := receiver.Tail().State().GetTx(validTx.Hash())
 	assert.NoError(t, err)
 	assert.True(t, validTxr.Receipt().Executed())
