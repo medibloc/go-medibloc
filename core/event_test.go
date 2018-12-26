@@ -366,7 +366,10 @@ func TestTypeAccountTransaction(t *testing.T) {
 	subscriber := register(emitter, topics[0], topics[1])
 
 	b := bb.ExecuteTx(tx).SignProposer().Build()
+	var wait sync.WaitGroup
+	wait.Add(1)
 	go func() {
+		defer wait.Done()
 		seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx)
 		err := bm.PushBlockData(b.BlockData)
 		assert.NoError(t, err)
@@ -388,4 +391,5 @@ func TestTypeAccountTransaction(t *testing.T) {
 	}
 
 	assert.Equal(t, 0, fromEventCount, toEventCount)
+	wait.Wait()
 }
