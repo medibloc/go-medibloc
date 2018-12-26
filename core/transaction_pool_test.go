@@ -33,7 +33,6 @@ func TestTransactionGetDel(t *testing.T) {
 	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
 
 	pool := core.NewTransactionPool(128)
-	pool.SetEventEmitter(core.NewEventEmitter(128))
 
 	tp1, err := core.NewTransactionInPool(tx1, blockutil.DefaultTxMap)
 	require.NoError(t, err)
@@ -79,7 +78,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 	}
 
 	pool := core.NewTransactionPool(poolSize)
-	pool.SetEventEmitter(core.NewEventEmitter(128))
+
 	for _, tx := range txs {
 		tp, err := core.NewTransactionInPool(tx, blockutil.DefaultTxMap)
 		require.NoError(t, err)

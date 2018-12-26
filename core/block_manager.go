@@ -61,6 +61,8 @@ type BlockManager struct {
 	newBlockCh     chan *BlockData
 	closeWorkersCh chan bool
 	workFinishedCh chan bool
+
+	eventEmitter *EventEmitter
 }
 
 type blockResult struct {
@@ -101,6 +103,11 @@ func NewBlockManager(cfg *medletpb.Config, bc *BlockChain) (*BlockManager, error
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
 	}, nil
+}
+
+// InjectEmitter inject emitter generated from medlet to block manager
+func (bm *BlockManager) InjectEmitter(emitter *EventEmitter) {
+	bm.eventEmitter = emitter
 }
 
 //InjectSyncService inject sync service generated from medlet to block manager
@@ -211,6 +218,11 @@ func (bm *BlockManager) processTask(newData *BlockData) {
 		bm.alarmExecutionResult(newData, err)
 		return
 	}
+	if bm.eventEmitter != nil {
+		child.EmitTxExecutionEvent(bm.eventEmitter)
+		child.EmitBlockEvent(bm.eventEmitter, TopicAcceptedBlock)
+	}
+
 	bm.cm.AddToTailBlocks(child)
 	bm.cm.RemoveFromTailBlocks(parent)
 
@@ -310,8 +322,8 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 		return err
 	}
 
-	bm.bc.eventEmitter.Register(eventSubscriber)
-	defer bm.bc.eventEmitter.Deregister(eventSubscriber)
+	bm.eventEmitter.Register(eventSubscriber)
+	defer bm.eventEmitter.Deregister(eventSubscriber)
 
 	eCh := eventSubscriber.EventChan()
 
@@ -346,6 +358,11 @@ func (bm *BlockManager) directPush(b *Block) error {
 	if err := bm.bc.PutVerifiedNewBlock(parentOnChain, b); err != nil {
 		return ErrFailedToDirectPush
 	}
+	if bm.eventEmitter != nil {
+		b.EmitTxExecutionEvent(bm.eventEmitter)
+		b.EmitBlockEvent(bm.eventEmitter, TopicAcceptedBlock)
+	}
+
 	bm.cm.AddToTailBlocks(b)
 	bm.cm.RemoveFromTailBlocks(parentOnChain)
 
@@ -443,7 +460,9 @@ func (bm *BlockManager) alarmExecutionResult(bd *BlockData, error error) {
 	} else {
 		result.isValid = false
 		bm.finishWorkCh <- result
-		bd.EmitBlockEvent(bm.bc.eventEmitter, TopicInvalidBlock)
+		if bm.eventEmitter != nil {
+			bd.EmitBlockEvent(bm.eventEmitter, TopicInvalidBlock)
+		}
 	}
 }
 

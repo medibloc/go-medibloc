@@ -47,8 +47,6 @@ type BlockChain struct {
 	consensus Consensus
 
 	storage storage.Storage
-
-	eventEmitter *EventEmitter
 }
 
 // NewBlockChain return new BlockChain instance
@@ -66,11 +64,6 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 	}
 
 	return bc, nil
-}
-
-// SetEventEmitter set emitter to blockchian
-func (bc *BlockChain) SetEventEmitter(emitter *EventEmitter) {
-	bc.eventEmitter = emitter
 }
 
 // Setup sets up BlockChain.
@@ -252,11 +245,6 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 	logging.WithFields(logrus.Fields{
 		"block": child,
 	}).Info("Accepted the new block on chain")
-
-	if bc.eventEmitter != nil {
-		child.EmitTxExecutionEvent(bc.eventEmitter)
-		child.EmitBlockEvent(bc.eventEmitter, TopicAcceptedBlock)
-	}
 
 	return nil
 }

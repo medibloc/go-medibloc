@@ -57,7 +57,6 @@ func NewChainManager(cfg *medletpb.Config, bc *BlockChain) (*ChainManager, error
 // InjectEmitter injects event emitter
 func (cm *ChainManager) InjectEmitter(emitter *EventEmitter) {
 	cm.eventEmitter = emitter
-	cm.bc.SetEventEmitter(emitter)
 }
 
 // Setup setups chainManager
@@ -178,7 +177,7 @@ func (cm *ChainManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 				pushTxs = append(pushTxs, tx)
 			}
 		}
-		if cm.bc.eventEmitter != nil {
+		if cm.eventEmitter != nil {
 			block.EmitBlockEvent(cm.eventEmitter, TopicRevertBlock)
 		}
 		logging.Console().Warn("A block is reverted.")

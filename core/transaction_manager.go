@@ -51,6 +51,8 @@ type TransactionManager struct {
 
 	bwInfoMu      sync.Mutex
 	bandwidthInfo map[common.Address]*Bandwidth // how much bandwidth used by transactions payed by payer in pending pool
+
+	eventEmitter *EventEmitter
 }
 
 // NewTransactionManager create a new TransactionManager.
@@ -77,7 +79,7 @@ func (tm *TransactionManager) Setup(bm *BlockManager, ns net.Service) {
 
 // InjectEmitter inject emitter generated from medlet to transaction manager
 func (tm *TransactionManager) InjectEmitter(emitter *EventEmitter) {
-	tm.pendingPool.SetEventEmitter(emitter)
+	tm.eventEmitter = emitter
 }
 
 // Start starts TransactionManager.
@@ -175,7 +177,7 @@ func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (ad
 			dropped[transaction.HexHash()] = ErrDuplicatedTransaction
 			continue
 		}
-		tm.bm.bc.eventEmitter.Register()
+		tm.eventEmitter.Register()
 		if err := transaction.VerifyIntegrity(tm.chainID); err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"transaction": transaction,
@@ -193,6 +195,10 @@ func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (ad
 
 		// add to future pool
 		tm.futurePool.Push(tp)
+		if tm.eventEmitter != nil {
+			tp.TriggerEvent(tm.eventEmitter, TopicFutureTransaction)
+			tp.TriggerAccEvent(tm.eventEmitter, TypeAccountTransactionFuture)
+		}
 		tm.futurePool.Evict()
 		addrMap[transaction.from]++
 		future[transaction.HexHash()] = true
@@ -264,6 +270,11 @@ func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address
 					continue
 				}
 				tm.pendingPool.Push(firstInFuture)
+				if tm.eventEmitter != nil {
+					firstInFuture.TriggerEvent(tm.eventEmitter, TopicPendingTransaction)
+					firstInFuture.TriggerAccEvent(tm.eventEmitter, TypeAccountTransactionPending)
+				}
+
 				pended = append(pended, firstInFuture.Transaction)
 				continue
 			}
@@ -288,6 +299,11 @@ func (tm *TransactionManager) addToPendingPool(bs *BlockState, tx *TransactionIn
 		return err
 	}
 	tm.pendingPool.Push(tx)
+	if tm.eventEmitter != nil {
+		tx.TriggerEvent(tm.eventEmitter, TopicPendingTransaction)
+		tx.TriggerAccEvent(tm.eventEmitter, TypeAccountTransactionPending)
+	}
+
 	return nil
 }
 
