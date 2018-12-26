@@ -14,8 +14,10 @@ const (
 	TopicLibBlock = "chain.latestIrreversibleBlock"
 	// TopicNewTailBlock new tail block set
 	TopicNewTailBlock = "chain.newTailBlock"
-	// TopicPendingTransaction Pending transactions in a transaction pool.
+	// TopicPendingTransaction Pending transactions in a pending pool.
 	TopicPendingTransaction = "chain.pendingTransaction"
+	// TopicFutureTransaction future transactions in a future pool
+	TopicFutureTransaction = "chain.futureTransaction"
 	// TopicRevertBlock revert block
 	TopicRevertBlock = "chain.revertBlock"
 	// TopicTransactionExecutionResult transaction execution result
@@ -30,6 +32,7 @@ const (
 const (
 	TypeAccountTransactionExecution = "executedTransaction"
 	TypeAccountTransactionPending   = "pendingTransaction"
+	TypeAccountTransactionFuture    = "futureTransaction"
 	TypeAccountTransactionDeleted   = "deletedTransaction"
 )
 
@@ -51,6 +54,7 @@ func topicList() map[string]bool {
 	topicList[TopicLibBlock] = true
 	topicList[TopicNewTailBlock] = true
 	topicList[TopicPendingTransaction] = true
+	topicList[TopicFutureTransaction] = true
 	topicList[TopicRevertBlock] = true
 	topicList[TopicTransactionExecutionResult] = true
 	topicList[TopicAcceptedBlock] = true
