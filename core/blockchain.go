@@ -43,8 +43,6 @@ type BlockChain struct {
 	genesisBlock *Block
 
 	cachedBlocks *lru.Cache
-	// tailBlocks all tail blocks including mainTailBlock
-	tailBlocks *lru.Cache
 
 	consensus Consensus
 
