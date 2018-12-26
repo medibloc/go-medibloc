@@ -80,7 +80,7 @@ func New(dynastySize int) *Dpos {
 }
 
 // SetEventEmitter sets eventEmitter
-func (d *Dpos) SetEventEmitter(emitter *core.EventEmitter) {
+func (d *Dpos) InjectEmitter(emitter *core.EventEmitter) {
 	d.eventEmitter = emitter
 }
 
