@@ -126,7 +126,7 @@ func TestChainManager_TailBlocks(t *testing.T) {
 		newTail := bb.Block(tail).Child().Tx().Nonce(5).Type(core.TxOpTransfer).Value(float64(i + 1)).To(payer.
 			Addr).
 			SignPair(payer).Execute().SignProposer().Build()
-		err := bm.PushBlockData(newTail.BlockData)
+		err := bm.PushBlockDataSync(newTail.BlockData, 10*time.Second)
 		assert.NoError(t, err)
 		err = seed.WaitUntilBlockAcceptedOnChain(newTail.Hash(), 10*time.Second)
 		assert.NoError(t, err)
