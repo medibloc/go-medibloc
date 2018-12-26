@@ -117,7 +117,7 @@ func (cm *ChainManager) loop() {
 }
 
 func (cm *ChainManager) updateChain() {
-	newTail := cm.consensus.ForkChoice(cm)
+	newTail := cm.forkChoice()
 	if byteutils.Equal(cm.mainTailBlock.Hash(), newTail.Hash()) {
 		return
 	}
@@ -408,4 +408,23 @@ func (cm *ChainManager) BlockByHeight(height uint64) *Block {
 // BlockByHash returns block by hash
 func (cm *ChainManager) BlockByHash(hash []byte) *Block {
 	return cm.bc.BlockByHash(hash)
+}
+
+func (cm *ChainManager) forkChoice() *Block {
+	newTail := cm.MainTailBlock()
+	tails := cm.TailBlocks()
+	for _, block := range tails {
+		if cm.IsForkedBeforeLIB(block) {
+			logging.WithFields(logrus.Fields{
+				"block": block,
+				"lib":   cm.LIB(),
+			}).Debug("Blocks forked before LIB can not be selected.")
+			continue
+		}
+		if block.Height() > newTail.Height() {
+			newTail = block
+		}
+	}
+
+	return newTail
 }

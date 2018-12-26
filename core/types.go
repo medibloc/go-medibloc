@@ -191,7 +191,6 @@ type Consensus interface {
 	MakeMintDynasty(ts int64, parent *Block) ([]common.Address, error)
 
 	VerifyHeightAndTimestamp(lib, bd *BlockData) error
-	ForkChoice(cm *ChainManager) (newTail *Block)
 	VerifyInterval(bd *BlockData, parent *Block) error
 	VerifyProposer(b *Block) error
 	FindLIB(cm *ChainManager) (newLIB *Block)
