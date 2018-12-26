@@ -92,7 +92,7 @@ func TestChainManager_SetLIB(t *testing.T) {
 	assert.NoError(t, err)
 
 	forkedBlock := bb.Block(LIB).Child().Tx().RandomTx().Execute().SignProposer().Build()
-	err = bm.PushBlockData(forkedBlock.BlockData)
+	err = bm.PushBlockDataSync(forkedBlock.BlockData, 10*time.Second)
 	assert.NoError(t, err)
 	err = seed.WaitUntilBlockAcceptedOnChain(forkedBlock.Hash(), 10*time.Second)
 	assert.NoError(t, err)
