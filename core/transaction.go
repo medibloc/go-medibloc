@@ -1156,17 +1156,12 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	//aliasBytes, err := acc.GetData(AliasPrefix, []byte("alias"))
+
 	aliasBytes, err := acc.GetData(AliasPrefix, []byte(common.AliasKey))
 	if err != nil && err != ErrNotFound {
 		return err
 	}
-	pbAlias := new(corepb.Alias)
-	err = proto.Unmarshal(aliasBytes, pbAlias)
-	if err != nil {
-		return err
-	}
-	if pbAlias.AliasName != "" {
+	if aliasBytes != nil {
 		return ErrAlreadyHaveAlias
 	}
 
@@ -1182,7 +1177,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-	pbAlias = &corepb.Alias{
+	pbAlias := &corepb.Alias{
 		AliasName:       tx.aliasName,
 		AliasCollateral: collateralBytes,
 	}
@@ -1271,6 +1266,13 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 	}
 
 	aliasBytes, err := acc.GetData(AliasPrefix, []byte(common.AliasKey))
+	if err != nil && err != ErrNotFound {
+		return err
+	}
+	if err == ErrNotFound || aliasBytes == nil {
+		return ErrAliasNotExist
+	}
+
 	pbAlias := new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
