@@ -465,8 +465,18 @@ func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) e
 	defer bm.bc.eventEmitter.Deregister(eventSubscriber)
 
 	eCh := eventSubscriber.EventChan()
-	if err := bm.push(bd); err != nil && err != ErrDuplicatedBlock {
+	err = bm.push(bd)
+	if err != nil && err != ErrDuplicatedBlock {
 		return err
+	}
+	if err == ErrDuplicatedBlock {
+		if err := bd.VerifyIntegrity(); err != nil {
+			return err
+		}
+	}
+
+	if b := bm.BlockByHash(bd.Hash()); b != nil {
+		return nil
 	}
 
 	for {
@@ -509,6 +519,13 @@ func (bm *BlockManager) directPush(b *Block) error {
 }
 
 func (bm *BlockManager) push(bd *BlockData) error {
+	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
+		logging.WithFields(logrus.Fields{
+			"blockData": bd,
+		}).Debug("Found duplicated blockData.")
+		return ErrDuplicatedBlock
+	}
+
 	if err := bm.verifyBlockData(bd); err != nil {
 		return err
 	}
@@ -538,13 +555,6 @@ func (bm *BlockManager) pushToDistributor(bd *BlockData) {
 func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 	if bm.bc.chainID != bd.ChainID() {
 		return ErrInvalidChainID
-	}
-
-	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
-		logging.WithFields(logrus.Fields{
-			"blockData": bd,
-		}).Debug("Found duplicated blockData.")
-		return ErrDuplicatedBlock
 	}
 
 	if err := bm.consensus.VerifyHeightAndTimestamp(bm.bc.LIB().BlockData, bd); err != nil {

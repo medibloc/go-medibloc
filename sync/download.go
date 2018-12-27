@@ -28,7 +28,6 @@ import (
 	syncpb "github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -68,15 +67,15 @@ func (s *Service) download() {
 		}).Warning("Sync: failed to step-up download")
 	}
 
-	s.mu.Lock()
-	s.downloading = false
-	s.mu.Unlock()
-
 	logging.Console().WithFields(logrus.Fields{
 		"targetHash":   byteutils.Bytes2Hex(s.targetHash),
 		"targetHeight": s.targetHeight,
 		"err":          err,
 	}).Info("Sync: Download is stopped")
+
+	s.mu.Lock()
+	s.downloading = false
+	s.mu.Unlock()
 }
 
 func (s *Service) findBaseBlock() (*core.BlockData, error) {
@@ -363,14 +362,6 @@ func (s *Service) handleBlockByHeightResponse(msg net.Message) error {
 	}
 	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
 	defer cancel()
-	if err := s.bm.PushBlockDataSync2(ctx, bd); err != nil {
-		return err
-	}
 
-	// Duplicated block attack case
-	if s.bm.BlockByHash(bd.Hash()).Height() != bd.Height() {
-		return errors.New("Different block data was accepted")
-	}
-
-	return nil
+	return s.bm.PushBlockDataSync2(ctx, bd)
 }

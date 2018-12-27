@@ -296,10 +296,10 @@ func TestForAutoActivation1(t *testing.T) {
 
 func TestForAutoActivation2(t *testing.T) {
 	const (
-		timeSpend            = 300 // 5 minutes
-		dynastySize          = 21
-		nMinorProposers      = 10
-		nMajorProposers      = dynastySize - nMinorProposers
+		timeSpend       = 300 // 5 minutes
+		dynastySize     = 21
+		nMinorProposers = 10
+		nMajorProposers = dynastySize - nMinorProposers
 	)
 	var (
 		blockInterval = int64(dpos.BlockInterval.Seconds())
