@@ -554,6 +554,10 @@ const (
         "lib": {
           "type": "string",
           "title": "Current LIB hash"
+        },
+        "network_id": {
+          "type": "string",
+          "title": "Network Peer ID"
         }
       }
     },

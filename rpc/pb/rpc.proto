@@ -216,6 +216,8 @@ message MedState {
   uint64 height = 3;
   // Current LIB hash
   string lib = 4;
+  // Network Peer ID
+  string network_id = 10;
 }
 
 message Transactions {

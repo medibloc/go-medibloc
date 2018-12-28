@@ -131,7 +131,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 func (m *Medlet) Setup() error {
 	logging.Console().Info("Setting up Medlet...")
 
-	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter)
+	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter, m.netService)
 
 	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus, DefaultTxMap)
 	if err != nil {

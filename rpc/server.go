@@ -16,10 +16,11 @@
 package rpc
 
 import (
-	"net"
+	goNet "net"
 
 	"github.com/medibloc/go-medibloc/core"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/net"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -44,14 +45,14 @@ func New(cfg *medletpb.Config) *Server {
 }
 
 //Setup sets up server.
-func (s *Server) Setup(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter) {
-	api := newAPIService(bm, tm, ee)
+func (s *Server) Setup(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter, ns net.Service) {
+	api := newAPIService(bm, tm, ee, ns)
 	rpcpb.RegisterApiServiceServer(s.rpcServer, api)
 }
 
 // Start starts rpc server.
 func (s *Server) Start() error {
-	lis, err := net.Listen("tcp", s.addrGrpc)
+	lis, err := goNet.Listen("tcp", s.addrGrpc)
 	if err != nil {
 		return err
 	}

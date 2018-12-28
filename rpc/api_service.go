@@ -18,17 +18,16 @@ package rpc
 import (
 	"encoding/hex"
 
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-
-	"github.com/medibloc/go-medibloc/util/math"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/net"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/math"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -39,13 +38,15 @@ type APIService struct {
 	bm *core.BlockManager
 	tm *core.TransactionManager
 	ee *core.EventEmitter
+	ns net.Service
 }
 
-func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter) *APIService {
+func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter, ns net.Service) *APIService {
 	return &APIService{
 		bm: bm,
 		tm: tm,
 		ee: ee,
+		ns: ns,
 	}
 }
 
@@ -275,10 +276,11 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 	lib := s.bm.LIB()
 
 	return &rpcpb.MedState{
-		ChainId: tailBlock.ChainID(),
-		Tail:    byteutils.Bytes2Hex(tailBlock.Hash()),
-		Height:  tailBlock.Height(),
-		Lib:     byteutils.Bytes2Hex(lib.Hash()),
+		ChainId:   tailBlock.ChainID(),
+		Tail:      byteutils.Bytes2Hex(tailBlock.Hash()),
+		Height:    tailBlock.Height(),
+		Lib:       byteutils.Bytes2Hex(lib.Hash()),
+		NetworkId: s.ns.Node().ID().Pretty(),
 	}, nil
 }
 
