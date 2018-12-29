@@ -28,11 +28,8 @@ const (
 // Errors for rpc
 const (
 	ErrMsgBlockNotFound           = "block not found"
-	ErrMsgBuildTransactionFail    = "cannot build transaction"
-	ErrMsgGetTransactionFailed    = "cannot get transaction from state"
 	ErrMsgInternalError           = "unverified server error"
 	ErrMsgInvalidBlockHeight      = "invalid block height"
-	ErrMsgInvalidTransaction      = "invalid transaction"
 	ErrMsgInvalidTxHash           = "invalid transaction hash"
 	ErrMsgInvalidTxValue          = "invalid transaction value"
 	ErrMsgTransactionNotFound     = "transaction not found"
@@ -43,6 +40,13 @@ const (
 	ErrMsgAliasNotFound           = "alias not found"
 	ErrMsgInvalidBlockType        = "invalid block type"
 	ErrMsgCandidateNotFound       = "candidate not found"
+	ErrMsgInvalidToAddress        = "invalid to address"
+	ErrMsgInvalidSignature        = "invalid signature"
+	ErrMsgInvalidPayerSignature   = "invalid payer signature"
+	ErrMsgInvalidBlockHash        = "invalid block hash"
+	ErrMsgInvalidCandidateID      = "invalid candidate id"
+	ErrMsgInvalidAddress          = "invalid address"
+	ErrMsgInvalidPayload          = "invalid payload"
 )
 
 // Limit for get blocks request

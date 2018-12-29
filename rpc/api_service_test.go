@@ -146,7 +146,7 @@ func TestAPIService_GetBlock(t *testing.T) {
 	e.GET("/v1/block").
 		WithQuery("hash", "0123456789012345678901234567890123456789012345678901234567890123").
 		Expect().
-		Status(http.StatusInternalServerError).
+		Status(http.StatusNotFound).
 		JSON().Object().
 		ValueEqual("error", rpc.ErrMsgBlockNotFound)
 
@@ -439,7 +439,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 	e.GET("/v1/transaction").
 		WithQuery("hash", "0123456789").
 		Expect().
-		Status(http.StatusNotFound).
+		Status(http.StatusBadRequest).
 		JSON().Object().
 		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
 
@@ -510,7 +510,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 	e.GET("/v1/transaction/receipt").
 		WithQuery("hash", "0123456789").
 		Expect().
-		Status(http.StatusNotFound).
+		Status(http.StatusBadRequest).
 		JSON().Object().
 		ValueEqual("error", rpc.ErrMsgInvalidTxHash)
 
@@ -579,9 +579,10 @@ func TestAPIService_SendTransaction(t *testing.T) {
 	e.POST("/v1/transaction").
 		WithJSON(TX).
 		Expect().
-		JSON().Object().ValueEqual("error", rpc.ErrMsgBuildTransactionFail)
+		JSON().Object().ValueEqual("error", rpc.ErrMsgInvalidPayload)
 
-	TX.Value = "abc"
+	TX.Payload = ""
+	TX.Value = "-123"
 	e.POST("/v1/transaction").
 		WithJSON(TX).
 		Expect().

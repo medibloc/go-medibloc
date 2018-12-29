@@ -18,6 +18,8 @@ package rpc
 import (
 	"encoding/hex"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
@@ -27,6 +29,7 @@ import (
 	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/medibloc/go-medibloc/util/math"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -66,6 +69,9 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 		case GENESIS:
 			block, err = s.bm.BlockByHeight(core.GenesisHeight)
 			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Error("Could not get the genesis block.")
 				return nil, status.Error(codes.Internal, ErrMsgInternalError)
 			}
 		case CONFIRMED:
@@ -83,7 +89,11 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 	}
 
 	if block == nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+		logging.Console().WithFields(logrus.Fields{
+			"height": req.Height,
+			"type":   req.Type,
+		}).Error("Could not get the block.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	var addr string
@@ -95,6 +105,10 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 			return nil, status.Error(codes.NotFound, ErrMsgAliasNotFound)
 		}
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"alias": req.Alias,
+				"err":   err,
+			}).Error("Failed to get alias account from state.")
 			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
 		addr = alisAcc.Account.String()
@@ -102,10 +116,14 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 
 	addrAddr, err := common.HexToAddress(addr)
 	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidAddress)
 	}
 	acc, err := block.State().GetAccount(addrAddr)
 	if err != nil && err != trie.ErrNotFound {
+		logging.Console().WithFields(logrus.Fields{
+			"addr": addrAddr,
+			"err":  err,
+		}).Error("Failed to get account from state.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	return coreAccount2rpcAccount(acc, block.Timestamp(), addr)
@@ -123,11 +141,11 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	if common.IsHash(req.Hash) {
 		hash, err := byteutils.FromHex(req.Hash)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+			return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidBlockHash)
 		}
 		block = s.bm.BlockByHash(hash)
 		if block == nil {
-			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+			return nil, status.Error(codes.NotFound, ErrMsgBlockNotFound)
 		}
 		return coreBlock2rpcBlock(block, false), nil
 	}
@@ -136,7 +154,10 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 	case GENESIS:
 		block, err = s.bm.BlockByHeight(1)
 		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Could not get the genesis block.")
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
 	case CONFIRMED:
 		block = s.bm.LIB()
@@ -149,7 +170,12 @@ func (s *APIService) GetBlock(ctx context.Context, req *rpcpb.GetBlockRequest) (
 		}
 	}
 	if block == nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInternalError)
+		logging.Console().WithFields(logrus.Fields{
+			"hash":   req.Hash,
+			"height": req.Height,
+			"type":   req.Type,
+		}).Error("Could not get the block.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	return coreBlock2rpcBlock(block, false), nil
@@ -174,7 +200,11 @@ func (s *APIService) GetBlocks(ctx context.Context, req *rpcpb.GetBlocksRequest)
 	for i := req.From; i <= req.To; i++ {
 		block, err := s.bm.BlockByHeight(i)
 		if err != nil {
-			return nil, status.Error(codes.Internal, ErrMsgBlockNotFound)
+			logging.Console().WithFields(logrus.Fields{
+				"height":         i,
+				"mainTailHeight": s.bm.TailBlock().Height(),
+			}).Error("Could not get the block.")
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
 
 		rpcBlock := coreBlock2rpcBlock(block, true)
@@ -196,17 +226,25 @@ func (s *APIService) GetCandidate(ctx context.Context, req *rpcpb.GetCandidateRe
 
 	candidateID, err := byteutils.Hex2Bytes(req.CandidateId)
 	if err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidCandidateID)
 	}
 	candidate, err := block.State().DposState().CandidateState().Get(candidateID)
 	if err == trie.ErrNotFound {
 		return nil, status.Error(codes.NotFound, ErrMsgCandidateNotFound)
 	}
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"candidateID": candidateID,
+			"err":         err,
+		}).Error("Could not get the candidate.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	cd := &dpos.Candidate{}
 	if err := cd.FromBytes(candidate); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"candidate": candidate,
+			"err":       err,
+		}).Error("Failed to set candidate struct from bytes.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
@@ -224,22 +262,34 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 
 	iter, err := cs.Iterator(nil)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get iterator.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	exist, err := iter.Next()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("failed to find a leaf node.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for exist {
 		candidate := new(dpos.Candidate)
 		err := candidate.FromBytes(iter.Value())
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to set candidate struct from bytes.")
 			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
 		candidates = append(candidates, candidate)
 
 		exist, err = iter.Next()
 		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("failed to find a next leaf node.")
 			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
 	}
@@ -259,6 +309,9 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest)
 	block := s.bm.TailBlock()
 	dynasty, err := block.State().GetDynasty()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("failed to get dynasty.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for _, addr := range dynasty {
@@ -299,21 +352,30 @@ func (s *APIService) GetPendingTransactions(ctx context.Context,
 func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.
 	Transaction, error) {
 	if !common.IsHash(req.Hash) {
-		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxHash)
 	}
 
 	tailBlock := s.bm.TailBlock()
 	if tailBlock == nil {
-		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
+		logging.Console().Error("failed to get tail block.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	txHash, err := byteutils.Hex2Bytes(req.Hash)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"hash": req.Hash,
+			"err":  err,
+		}).Error("failed to convert hex hash to bytes.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	tx, err := tailBlock.State().GetTx(txHash)
 	if err != nil && err != trie.ErrNotFound {
-		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+		logging.Console().WithFields(logrus.Fields{
+			"hash": txHash,
+			"err":  err,
+		}).Error("failed to get transaction.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	} else if err == trie.ErrNotFound { // tx is not in txsState
 		// Get tx from txPool (type *Transaction)
 		tx = s.tm.Get(txHash)
@@ -330,21 +392,30 @@ func (s *APIService) GetTransaction(ctx context.Context, req *rpcpb.GetTransacti
 func (s *APIService) GetTransactionReceipt(ctx context.Context, req *rpcpb.GetTransactionRequest) (*rpcpb.
 	TransactionReceipt, error) {
 	if !common.IsHash(req.Hash) {
-		return nil, status.Error(codes.NotFound, ErrMsgInvalidTxHash)
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxHash)
 	}
 
 	tailBlock := s.bm.TailBlock()
 	if tailBlock == nil {
-		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
+		logging.Console().Error("failed to get tail block.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	txHash, err := byteutils.Hex2Bytes(req.Hash)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, ErrMsgInternalError)
+		logging.Console().WithFields(logrus.Fields{
+			"hash": req.Hash,
+			"err":  err,
+		}).Error("failed to convert hex hash to bytes.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	tx, err := tailBlock.State().GetTx(txHash)
 	if err != nil && err != trie.ErrNotFound {
-		return nil, status.Error(codes.Internal, ErrMsgGetTransactionFailed)
+		logging.Console().WithFields(logrus.Fields{
+			"hash": txHash,
+			"err":  err,
+		}).Error("failed to get transaction.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	} else if err == trie.ErrNotFound { // tx is not in txsState
 		return nil, status.Error(codes.NotFound, ErrMsgTransactionNotFound)
 	}
@@ -355,37 +426,77 @@ func (s *APIService) GetTransactionReceipt(ctx context.Context, req *rpcpb.GetTr
 // SendTransaction sends transaction
 func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransactionRequest) (*rpcpb.
 	TransactionHash, error) {
+	if !common.IsHash(req.Hash) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxHash)
+	}
+	if req.Payload != "" && !byteutils.IsHex(req.Payload) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidPayload)
+	}
+	if req.To != "" && !common.IsHexAddress(req.To) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidToAddress)
+	}
+	if req.Sign == "" || !byteutils.IsHex(req.Sign) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidSignature)
+	}
+	if req.PayerSign != "" && !byteutils.IsHex(req.PayerSign) {
+		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidPayerSignature)
+	}
+
 	value, err := util.NewUint128FromString(req.Value)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTxValue)
 	}
 	valueBytes, err := value.ToFixedSizeByteSlice()
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"value": req.Value,
+			"err":   err,
+		}).Error("failed to covert uint128 to fixed size byte slice.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	payloadBuf, err := hex.DecodeString(req.Payload)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgBuildTransactionFail)
+		logging.Console().WithFields(logrus.Fields{
+			"payload": req.Payload,
+			"err":     err,
+		}).Error("failed to covert payload hex string to byte slice.")
+		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	hashBytes, err := byteutils.Hex2Bytes(req.Hash)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"hash": req.Hash,
+			"err":  err,
+		}).Error("failed to covert hash hex to bytes.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	toBytes, err := byteutils.Hex2Bytes(req.To)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"address": req.To,
+			"err":     err,
+		}).Error("failed to covert hex address to bytes.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	signBytes, err := byteutils.Hex2Bytes(req.Sign)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"sign": req.Sign,
+			"err":  err,
+		}).Error("failed to covert hex signature to bytes.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
 	payerSignBytes, err := byteutils.Hex2Bytes(req.PayerSign)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"payerSign": req.PayerSign,
+			"err":       err,
+		}).Error("failed to covert hex payer signature to bytes.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
@@ -404,7 +515,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 
 	tx := &core.Transaction{}
 	if err := tx.FromProto(pbTx); err != nil {
-		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidTransaction)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	failed := s.tm.PushAndBroadcast(tx)
