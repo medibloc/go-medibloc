@@ -133,7 +133,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	return nil
 }
 
-//ToBytes convert transaction to
+// ToBytes convert transaction to
 func (t *Transaction) ToBytes() ([]byte, error) {
 	pb, err := t.ToProto()
 	if err != nil {
@@ -142,122 +142,132 @@ func (t *Transaction) ToBytes() ([]byte, error) {
 	return proto.Marshal(pb)
 }
 
-//Hash returns hash
+// Hash returns hash
 func (t *Transaction) Hash() []byte {
 	return t.hash
 }
 
-//SetHash sets hash
+// SetHash sets hash
 func (t *Transaction) SetHash(hash []byte) {
 	t.hash = hash
 }
 
-//HexHash returns hex converted hash
+// HexHash returns hex converted hash
 func (t *Transaction) HexHash() string {
 	return byteutils.Bytes2Hex(t.hash)
 }
 
-//TxType returns type
+// TxType returns type
 func (t *Transaction) TxType() string {
 	return t.txType
 }
 
-//SetTxType sets type
+// SetTxType sets type
 func (t *Transaction) SetTxType(txType string) {
 	t.txType = txType
 }
 
-//From returns from
+// From returns from
 func (t *Transaction) From() common.Address {
 	return t.from
 }
 
-//SetFrom sets from
+// SetFrom sets from
 func (t *Transaction) SetFrom(from common.Address) {
 	t.from = from
 }
 
-//To returns to
+// Payer returns payer
+func (t *Transaction) Payer() common.Address {
+	return t.payer
+}
+
+// SetPayer sets payer
+func (t *Transaction) SetPayer(payer common.Address) {
+	t.payer = payer
+}
+
+// To returns to
 func (t *Transaction) To() common.Address {
 	return t.to
 }
 
-//SetTo sets to
+// SetTo sets to
 func (t *Transaction) SetTo(to common.Address) {
 	t.to = to
 }
 
-//Value returns value
+// Value returns value
 func (t *Transaction) Value() *util.Uint128 {
 	return t.value
 }
 
-//SetValue set value
+// SetValue set value
 func (t *Transaction) SetValue(value *util.Uint128) {
 	t.value = value
 }
 
-//Payload returns paylaod
+// Payload returns paylaod
 func (t *Transaction) Payload() []byte {
 	return t.payload
 }
 
-//SetPayload set payload
+// SetPayload set payload
 func (t *Transaction) SetPayload(payload []byte) {
 	t.payload = payload
 }
 
-//Nonce returns nounce
+// Nonce returns nounce
 func (t *Transaction) Nonce() uint64 {
 	return t.nonce
 }
 
-//SetNonce set nonce
+// SetNonce set nonce
 func (t *Transaction) SetNonce(nonce uint64) {
 	t.nonce = nonce
 }
 
-//ChainID returns chainID
+// ChainID returns chainID
 func (t *Transaction) ChainID() uint32 {
 	return t.chainID
 }
 
-//SetChainID set chainID
+// SetChainID set chainID
 func (t *Transaction) SetChainID(chainID uint32) {
 	t.chainID = chainID
 }
 
-//Sign returns sign
+// Sign returns sign
 func (t *Transaction) Sign() []byte {
 	return t.sign
 }
 
-//SetSign set sign
+// SetSign set sign
 func (t *Transaction) SetSign(sign []byte) {
 	t.sign = sign
 }
 
-//PayerSign return payerSign
+// PayerSign return payerSign
 func (t *Transaction) PayerSign() []byte {
 	return t.payerSign
 }
 
-//SetPayerSign set payerSign
+// SetPayerSign set payerSign
 func (t *Transaction) SetPayerSign(payerSign []byte) {
 	t.payerSign = payerSign
 }
 
-//Receipt returns receipt
+// Receipt returns receipt
 func (t *Transaction) Receipt() *Receipt {
 	return t.receipt
 }
 
-//SetReceipt set receipt
+// SetReceipt set receipt
 func (t *Transaction) SetReceipt(receipt *Receipt) {
 	t.receipt = receipt
 }
 
-//IsRelatedToAddress return whether the transaction is related to the address
+// IsRelatedToAddress return whether the transaction is related to the address
 func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
 	if t.from == address || t.to == address {
 		return true
@@ -465,7 +475,7 @@ func (t *Transaction) TriggerAccEvent(e *EventEmitter, eType string) {
 	return
 }
 
-//Clone clone transaction
+// Clone clone transaction
 func (t *Transaction) Clone() (*Transaction, error) {
 	protoTx, err := t.ToProto()
 	if err != nil {
@@ -481,7 +491,7 @@ func (t *Transaction) Clone() (*Transaction, error) {
 	return newTx, nil
 }
 
-//Size returns bytes size of transaction
+// Size returns bytes size of transaction
 func (t *Transaction) Size() (int, error) {
 	pbTx, err := t.ToProto()
 	if err != nil {
@@ -496,7 +506,7 @@ func (t *Transaction) Size() (int, error) {
 	return len(txBytes), nil
 }
 
-//TransferTx is a structure for sending MED
+// TransferTx is a structure for sending MED
 type TransferTx struct {
 	from    common.Address
 	to      common.Address
@@ -505,7 +515,7 @@ type TransferTx struct {
 	size    int
 }
 
-//NewTransferTx returns TransferTx
+// NewTransferTx returns TransferTx
 func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -534,7 +544,7 @@ func NewTransferTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute TransferTx
+// Execute TransferTx
 func (tx *TransferTx) Execute(b *Block) error {
 	// subtract balance from sender's account
 	sender, err := b.state.GetAccount(tx.from)
@@ -569,19 +579,19 @@ func (tx *TransferTx) Execute(b *Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *TransferTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1000, uint64(tx.size)
 }
 
-//AddRecordTx is a structure for adding record
+// AddRecordTx is a structure for adding record
 type AddRecordTx struct {
 	owner      common.Address
 	recordHash []byte
 	size       int
 }
 
-//NewAddRecordTx returns AddRecordTx
+// NewAddRecordTx returns AddRecordTx
 func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -608,7 +618,7 @@ func NewAddRecordTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute AddRecordTx
+// Execute AddRecordTx
 func (tx *AddRecordTx) Execute(b *Block) error {
 	var err error
 	acc, err := b.State().GetAccount(tx.owner)
@@ -656,19 +666,19 @@ func (tx *AddRecordTx) Execute(b *Block) error {
 	return b.State().PutAccount(acc)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *AddRecordTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1500, uint64(tx.size)
 }
 
-//StakeTx is a structure for staking med
+// StakeTx is a structure for staking med
 type StakeTx struct {
 	user   common.Address
 	amount *util.Uint128
 	size   int
 }
 
-//NewStakeTx returns NewTx
+// NewStakeTx returns NewTx
 func NewStakeTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -691,7 +701,7 @@ func NewStakeTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute StakeTx
+// Execute StakeTx
 func (tx *StakeTx) Execute(b *Block) error {
 
 	user, err := b.State().GetAccount(tx.user)
@@ -734,19 +744,19 @@ func (tx *StakeTx) Execute(b *Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *StakeTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1000, uint64(tx.size)
 }
 
-//UnstakeTx is a structure for unstaking med
+// UnstakeTx is a structure for unstaking med
 type UnstakeTx struct {
 	user   common.Address
 	amount *util.Uint128
 	size   int
 }
 
-//NewUnstakeTx returns UnstakeTx
+// NewUnstakeTx returns UnstakeTx
 func NewUnstakeTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -766,7 +776,7 @@ func NewUnstakeTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute UnstakeTx
+// Execute UnstakeTx
 func (tx *UnstakeTx) Execute(b *Block) error {
 	account, err := b.State().GetAccount(tx.user)
 	if err != nil {
@@ -819,12 +829,12 @@ func (tx *UnstakeTx) Execute(b *Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *UnstakeTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1000, uint64(tx.size)
 }
 
-//AddCertificationTx is a structure for adding certification
+// AddCertificationTx is a structure for adding certification
 type AddCertificationTx struct {
 	Issuer          common.Address
 	Certified       common.Address
@@ -834,7 +844,7 @@ type AddCertificationTx struct {
 	size            int
 }
 
-//NewAddCertificationTx returns AddCertificationTx
+// NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -864,7 +874,7 @@ func NewAddCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute AddCertificationTx
+// Execute AddCertificationTx
 func (tx *AddCertificationTx) Execute(b *Block) error {
 	certified, err := b.State().GetAccount(tx.Certified)
 	if err != nil {
@@ -890,7 +900,7 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 		return ErrCertIssuedAlreadyAdded
 	}
 
-	//TODO: certification payload Verify: drsleepytiger
+	// TODO: certification payload Verify: drsleepytiger
 
 	pbCertification := &corepb.Certification{
 		CertificateHash: tx.CertificateHash,
@@ -958,19 +968,19 @@ func (tx *AddCertificationTx) Execute(b *Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *AddCertificationTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1500, uint64(tx.size)
 }
 
-//RevokeCertificationTx is a structure for revoking certification
+// RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
 	Revoker         common.Address
 	CertificateHash []byte
 	size            int
 }
 
-//NewRevokeCertificationTx returns RevokeCertificationTx
+// NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.payload) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -997,7 +1007,7 @@ func NewRevokeCertificationTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute RevokeCertificationTx
+// Execute RevokeCertificationTx
 func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	issuer, err := b.State().GetAccount(tx.Revoker)
 	if err != nil {
@@ -1086,7 +1096,7 @@ func (tx *RevokeCertificationTx) Execute(b *Block) error {
 	return b.State().PutAccount(certified)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *RevokeCertificationTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1500, uint64(tx.size)
 }
@@ -1099,7 +1109,7 @@ type RegisterAliasTx struct {
 	size       int
 }
 
-//NewRegisterAliasTx returns RegisterAliasTx
+// NewRegisterAliasTx returns RegisterAliasTx
 func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -1128,7 +1138,7 @@ func NewRegisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute RegisterAliasTx
+// Execute RegisterAliasTx
 func (tx *RegisterAliasTx) Execute(b *Block) error {
 	collateralLimit, err := util.NewUint128FromString(MinimumAliasCollateral)
 	if err != nil {
@@ -1147,7 +1157,6 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	if err != nil {
 		return err
 	}
-
 	aliasBytes, err := acc.GetData(AliasPrefix, []byte(common.AliasKey))
 	if err != nil && err != ErrNotFound {
 		return err
@@ -1219,7 +1228,7 @@ func (tx *RegisterAliasTx) Execute(b *Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *RegisterAliasTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1500, uint64(tx.size)
 }
@@ -1230,7 +1239,7 @@ type DeregisterAliasTx struct {
 	size int
 }
 
-//NewDeregisterAliasTx returns RegisterAliasTx
+// NewDeregisterAliasTx returns RegisterAliasTx
 func NewDeregisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -1249,7 +1258,7 @@ func NewDeregisterAliasTx(tx *Transaction) (ExecutableTx, error) {
 	}, nil
 }
 
-//Execute DeregisterAliasTx
+// Execute DeregisterAliasTx
 func (tx *DeregisterAliasTx) Execute(b *Block) error {
 	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
@@ -1309,7 +1318,7 @@ func (tx *DeregisterAliasTx) Execute(b *Block) error {
 	return b.State().PutAccount(acc)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *DeregisterAliasTx) Bandwidth() (cpuUsage uint64, netUsage uint64) {
 	return 1500, uint64(tx.size)
 }
