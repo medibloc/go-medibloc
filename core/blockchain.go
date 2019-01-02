@@ -30,8 +30,10 @@ import (
 )
 
 const (
-	tailBlockKey = "blockchain_tail"
-	libKey       = "blockchain_lib"
+	blockByHashPrefix   = "bhash_"
+	blockByHeightPrefix = "bheight_"
+	tailBlockKey        = "blockchain_tail"
+	libKey              = "blockchain_lib"
 )
 
 // BlockChain manages blockchain structure.
@@ -449,7 +451,7 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 	var blocks []*Block
 
 	for !byteutils.Equal(to.Hash(), from.Hash()) {
-		err := bc.storage.Put(byteutils.FromUint64(to.height), to.Hash())
+		err := bc.storeHeightToStorage(to)
 		if err != nil {
 			logging.WithFields(logrus.Fields{
 				"err":    err,
@@ -509,7 +511,7 @@ func (bc *BlockChain) loadBlockByHash(hash []byte) (*Block, error) {
 		return block, nil
 	}
 
-	v, err := bc.storage.Get(hash)
+	v, err := bc.storage.Get(append([]byte(blockByHashPrefix), hash...))
 	if err == storage.ErrKeyNotFound {
 		return nil, ErrNotFound
 	}
@@ -543,7 +545,7 @@ func (bc *BlockChain) loadBlockByHash(hash []byte) (*Block, error) {
 }
 
 func (bc *BlockChain) loadBlockByHeight(height uint64) (*Block, error) {
-	hash, err := bc.storage.Get(byteutils.FromUint64(height))
+	hash, err := bc.storage.Get(append([]byte(blockByHeightPrefix), byteutils.FromUint64(height)...))
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +596,7 @@ func (bc *BlockChain) storeBlock(block *Block) error {
 		}).Error("Failed to marshal block.")
 		return err
 	}
-	err = bc.storage.Put(block.Hash(), value)
+	err = bc.storage.Put(append([]byte(blockByHashPrefix), block.Hash()...), value)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":   err,
@@ -616,7 +618,7 @@ func (bc *BlockChain) storeLIBHashToStorage(block *Block) error {
 
 func (bc *BlockChain) storeHeightToStorage(block *Block) error {
 	height := byteutils.FromUint64(block.Height())
-	return bc.storage.Put(height, block.Hash())
+	return bc.storage.Put(append([]byte(blockByHeightPrefix), height...), block.Hash())
 }
 
 func (bc *BlockChain) cacheBlock(block *Block) {
