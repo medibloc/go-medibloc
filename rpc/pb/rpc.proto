@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package rpcpb;
-option java_package = "org.med4j.core.protobuf";
+option java_package="org.medibloc.panacea.core.protobuf";
 
 import "google/api/annotations.proto";
 

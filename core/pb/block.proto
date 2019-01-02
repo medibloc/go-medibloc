@@ -1,6 +1,6 @@
 syntax = "proto3";
 package corepb;
-option java_package="org.med4j.core.protobuf";
+option java_package="org.medibloc.panacea.core.protobuf";
 option java_outer_classname="BlockChain";
 
 message BlockHeader {
