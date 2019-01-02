@@ -21,12 +21,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/util/byteutils"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/medlet"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -427,8 +426,8 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 
 	// Request Genesis's Parent
 	invalid := &corepb.DownloadParentBlock{
-		Hash: core.GenesisHash,
-		Sign: []byte{},
+		Hash: genesis.Hash(),
+		Sign: genesis.Sign(),
 	}
 	bytes, err := proto.Marshal(invalid)
 	require.NoError(t, err)

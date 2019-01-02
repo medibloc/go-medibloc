@@ -749,18 +749,19 @@ func (bm *BlockManager) handleRequestBlock(msg net.Message) {
 		return
 	}
 
-	if byteutils.Equal(pbDownloadParentBlock.Hash, GenesisHash) {
-		logging.WithFields(logrus.Fields{
-			"hash": byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),
-		}).Debug("Asked to download genesis's parent, ignore it.")
-		return
-	}
-
 	block := bm.bc.BlockByHash(pbDownloadParentBlock.Hash)
 	if block == nil {
 		logging.WithFields(logrus.Fields{
 			"hash": byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),
 		}).Debug("Failed to find the block asked for.")
+		return
+	}
+
+	if block.Height() == GenesisHeight {
+		logging.WithFields(logrus.Fields{
+			"hash":   byteutils.Bytes2Hex(pbDownloadParentBlock.Hash),
+			"height": block.Height(),
+		}).Debug("Asked to download genesis's parent, ignore it.")
 		return
 	}
 

@@ -18,8 +18,6 @@ package core
 import (
 	"io/ioutil"
 
-	"github.com/medibloc/go-medibloc/crypto/hash"
-
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -30,8 +28,8 @@ import (
 )
 
 var (
-	// GenesisHash is hash of genesis block
-	GenesisHash = genesisHash("genesisHash")
+	// GenesisParentHash is hash of genesis block's parent hash
+	GenesisParentHash = make([]byte, common.HashLength)
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
 	// GenesisCoinbase coinbase address of genesis block
@@ -46,10 +44,6 @@ func genesisTxReceipt() *Receipt {
 	receipt := NewReceipt()
 	receipt.SetExecuted(true)
 	return receipt
-}
-
-func genesisHash(quote string) []byte {
-	return hash.Sha3256([]byte(quote))
 }
 
 // LoadGenesisConf loads genesis conf file
@@ -79,8 +73,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 	genesisBlock := &Block{
 		BlockData: &BlockData{
 			BlockHeader: &BlockHeader{
-				hash:       GenesisHash,
-				parentHash: GenesisHash,
+				parentHash: GenesisParentHash,
 				chainID:    conf.Meta.ChainId,
 				coinbase:   GenesisCoinbase,
 				reward:     util.NewUint128FromUint(0),

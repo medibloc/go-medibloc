@@ -160,7 +160,7 @@ func (bp *BlockPool) findChildLinkedBlocks(block HashableBlock) (childBlocks []*
 		}
 
 		lb := v.(*linkedBlock)
-		if byteutils.Equal(lb.block.Hash(), GenesisHash) {
+		if byteutils.Equal(lb.block.ParentHash(), GenesisParentHash) {
 			continue
 		}
 		if byteutils.Equal(lb.block.ParentHash(), block.Hash()) {

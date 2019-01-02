@@ -458,9 +458,6 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 // VerifyIntegrity verifies if block signature is valid
 func (bd *BlockData) VerifyIntegrity() error {
 	if bd.height == GenesisHeight {
-		//if !byteutils.Equal(GenesisHash, bd.hash) {
-		//	return ErrInvalidBlockHash
-		//}
 		return nil
 	}
 	for _, tx := range bd.transactions {
