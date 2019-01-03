@@ -202,6 +202,29 @@ func (pool *AccountPendingPool) Prune(addr common.Address, bs *BlockState) error
 	return nil
 }
 
+func (pool *AccountPendingPool) NonceUpperLimit(addr common.Address, bs *BlockState) uint64 {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+
+	acc, err := bs.GetAccount(addr)
+	if err != nil {
+		return 0
+	}
+
+	pending, exist := pool.pending[addr]
+	if !exist {
+		return acc.Nonce+1
+	}
+
+	upperLimit := acc.Nonce + MaxPendingByAccount
+	if pending.maxNonce+1 < upperLimit {
+		upperLimit = pending.maxNonce+1
+	}
+
+	return upperLimit
+}
+
 func (pool *AccountPendingPool) Next() *Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
