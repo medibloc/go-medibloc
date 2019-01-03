@@ -28,8 +28,8 @@ import (
 func TestTransactionGetDel(t *testing.T) {
 	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
 
-	tx1 := tb.RandomTx().Build()
-	tx2 := tb.RandomTx().Build()
+	tx1 := tb.RandomTx().BuildCtx()
+	tx2 := tb.RandomTx().BuildCtx()
 
 	pool := core.NewTransactionPool(128)
 	pool.SetEventEmitter(core.NewEventEmitter(128))
@@ -70,9 +70,9 @@ func TestTransactionPoolEvict(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	tb := bb.Tx()
-	var txs []*core.Transaction
+	var txs []*core.TxContext
 	for i := 0; i < nTransaction; i++ {
-		tx := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(uint64(i + 1)).SignPair(from).Build()
+		tx := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(uint64(i + 1)).SignPair(from).BuildCtx()
 		txs = append(txs, tx)
 	}
 
@@ -90,7 +90,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 
 func TestEmptyPool(t *testing.T) {
 	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
-	tx := tb.RandomTx().Build()
+	tx := tb.RandomTx().BuildCtx()
 
 	pool := core.NewTransactionPool(128)
 	assert.Nil(t, pool.Pop())
@@ -105,11 +105,11 @@ func TestInfiniteLoop(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	from1Nonce2 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
-		SignPair(from1).Build()
+		SignPair(from1).BuildCtx()
 	from2Nonce1 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).
-		SignPair(from2).Build()
+		SignPair(from2).BuildCtx()
 	from2Nonce2 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
-		SignPair(from2).Build()
+		SignPair(from2).BuildCtx()
 
 	pool := core.NewTransactionPool(128)
 	err := pool.Push(from1Nonce2)

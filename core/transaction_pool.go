@@ -33,7 +33,7 @@ type TransactionPool struct {
 
 	candidates *hashheap.HashedHeap
 	buckets    *hashheap.HashedHeap
-	all        map[string]*Transaction
+	all        map[string]*TxContext
 
 	counter uint64
 
@@ -46,7 +46,7 @@ func NewTransactionPool(size int) *TransactionPool {
 		size:       size,
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
-		all:        make(map[string]*Transaction),
+		all:        make(map[string]*TxContext),
 	}
 }
 
@@ -56,7 +56,7 @@ func (pool *TransactionPool) SetEventEmitter(emitter *EventEmitter) {
 }
 
 // Get returns transaction by tx hash.
-func (pool *TransactionPool) Get(hash []byte) *Transaction {
+func (pool *TransactionPool) Get(hash []byte) *TxContext {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
@@ -78,8 +78,8 @@ func (pool *TransactionPool) GetAll() []*Transaction {
 		return nil
 	}
 
-	for _, tx := range pool.all {
-		txs = append(txs, tx)
+	for _, v := range pool.all {
+		txs = append(txs, v.Transaction)
 	}
 
 	return txs
@@ -96,9 +96,9 @@ func (pool *TransactionPool) GetByAddress(address common.Address) []*Transaction
 		return nil
 	}
 
-	for _, tx := range pool.all {
-		if tx.IsRelatedToAddress(address) {
-			txs = append(txs, tx)
+	for _, v := range pool.all {
+		if v.IsRelatedToAddress(address) {
+			txs = append(txs, v.Transaction)
 		}
 	}
 
@@ -106,7 +106,7 @@ func (pool *TransactionPool) GetByAddress(address common.Address) []*Transaction
 }
 
 // Del deletes transaction.
-func (pool *TransactionPool) Del(tx *Transaction) {
+func (pool *TransactionPool) Del(tx *TxContext) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -114,7 +114,7 @@ func (pool *TransactionPool) Del(tx *Transaction) {
 }
 
 // Push pushes transaction to the pool.
-func (pool *TransactionPool) Push(tx *Transaction) error {
+func (pool *TransactionPool) Push(tx *TxContext) error {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -133,7 +133,7 @@ func (pool *TransactionPool) Push(tx *Transaction) error {
 }
 
 // Pop pop transaction from the pool.
-func (pool *TransactionPool) Pop() *Transaction {
+func (pool *TransactionPool) Pop() *TxContext {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -141,14 +141,14 @@ func (pool *TransactionPool) Pop() *Transaction {
 	if cmpTx == nil {
 		return nil
 	}
-	tx := cmpTx.(*ordered).Transaction
+	tx := cmpTx.(*ordered).TxContext
 
 	pool.del(tx)
 
 	return tx
 }
 
-func (pool *TransactionPool) push(tx *Transaction) error {
+func (pool *TransactionPool) push(tx *TxContext) error {
 	// push to all
 	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; ok {
 		return ErrDuplicatedTransaction
@@ -174,7 +174,7 @@ func (pool *TransactionPool) push(tx *Transaction) error {
 	return nil
 }
 
-func (pool *TransactionPool) del(tx *Transaction) {
+func (pool *TransactionPool) del(tx *TxContext) {
 	// Remove from all
 	if _, ok := pool.all[byteutils.Bytes2Hex(tx.Hash())]; !ok {
 		return
@@ -209,11 +209,11 @@ func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {
 	}
 
 	v := pool.candidates.Get(addr)
-	if v != nil && byteutils.Equal(cand.Hash(), v.(*ordered).Transaction.Hash()) {
+	if v != nil && byteutils.Equal(cand.Hash(), v.(*ordered).TxContext.Hash()) {
 		return
 	}
 	pool.candidates.Del(addr)
-	pool.candidates.Set(addr, &ordered{Transaction: cand, ordering: pool.counter})
+	pool.candidates.Set(addr, &ordered{TxContext: cand, ordering: pool.counter})
 	pool.counter++
 }
 
@@ -238,18 +238,18 @@ func (pool *TransactionPool) evict() {
 }
 
 type ordered struct {
-	*Transaction
+	*TxContext
 	ordering uint64
 }
 
 func (tx *ordered) Less(o interface{}) bool { return tx.ordering < o.(*ordered).ordering }
 
 // minNonce assigns a sequence by nonce to the transaction.
-type minNonce struct{ *Transaction }
+type minNonce struct{ *TxContext }
 
 func (tx *minNonce) Less(o interface{}) bool { return tx.nonce < o.(*minNonce).nonce }
 
-type maxNonce struct{ *Transaction }
+type maxNonce struct{ *TxContext }
 
 func (tx *maxNonce) Less(o interface{}) bool { return tx.nonce > o.(*maxNonce).nonce }
 
@@ -274,28 +274,28 @@ func (b *bucket) isEmpty() bool {
 	return b.minTxs.Len() == 0
 }
 
-func (b *bucket) push(tx *Transaction) {
+func (b *bucket) push(tx *TxContext) {
 	minTx := &minNonce{tx}
 	maxTx := &maxNonce{tx}
 	b.minTxs.Set(byteutils.Bytes2Hex(tx.Hash()), minTx)
 	b.maxTxs.Set(byteutils.Bytes2Hex(tx.Hash()), maxTx)
 }
 
-func (b *bucket) peekFirst() *Transaction {
+func (b *bucket) peekFirst() *TxContext {
 	if b.minTxs.Len() == 0 {
 		return nil
 	}
-	return b.minTxs.Peek().(*minNonce).Transaction
+	return b.minTxs.Peek().(*minNonce).TxContext
 }
 
-func (b *bucket) peekLast() *Transaction {
+func (b *bucket) peekLast() *TxContext {
 	if b.maxTxs.Len() == 0 {
 		return nil
 	}
-	return b.maxTxs.Peek().(*maxNonce).Transaction
+	return b.maxTxs.Peek().(*maxNonce).TxContext
 }
 
-func (b *bucket) del(tx *Transaction) {
+func (b *bucket) del(tx *TxContext) {
 	b.minTxs.Del(byteutils.Bytes2Hex(tx.Hash()))
 	b.maxTxs.Del(byteutils.Bytes2Hex(tx.Hash()))
 }

@@ -224,6 +224,14 @@ func (tb *TxBuilder) Build() *core.Transaction {
 	return n.tx
 }
 
+// BuildCtx build transaction context.
+func (tb *TxBuilder) BuildCtx() *core.TxContext {
+	n := tb.copy()
+	txc, err := core.NewTxContext(n.tx)
+	require.NoError(tb.t, err)
+	return txc
+}
+
 //BuildProto build protobuf transaction
 func (tb *TxBuilder) BuildProto() *corepb.Transaction {
 	n := tb.copy()
