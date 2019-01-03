@@ -16,6 +16,13 @@ func NewBandwidth(cpu, net uint64) *Bandwidth {
 	}
 }
 
+func (b *Bandwidth) Clone() *Bandwidth {
+	return &Bandwidth{
+		cpuUsage: b.cpuUsage,
+		netUsage: b.netUsage,
+	}
+}
+
 //Add add obj's bandwidth
 func (b *Bandwidth) Add(obj *Bandwidth) {
 	b.cpuUsage += obj.cpuUsage
