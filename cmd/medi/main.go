@@ -16,6 +16,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -95,7 +96,10 @@ func runMedi(m *medlet.Medlet) error {
 		return err
 	}
 
-	err = m.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err = m.Start(ctx)
 	if err != nil {
 		log.Console().WithFields(logrus.Fields{
 			"err": err,

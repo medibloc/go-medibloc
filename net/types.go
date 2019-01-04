@@ -16,6 +16,7 @@
 package net
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -87,7 +88,7 @@ type PeerFilterAlgorithm interface {
 
 // Service net Service interface
 type Service interface {
-	Start() error
+	Start(ctx context.Context) error
 
 	Node() *Node
 

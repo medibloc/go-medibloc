@@ -111,12 +111,12 @@ func (cfg *NodeConfig) SetProposer(proposer *AddrKeyPair) *NodeConfig {
 	cfg.Config.Chain.StartMine = true
 	cfg.Config.Chain.Privkey = proposer.PrivateKey()
 
-	cfg.Config.Chain.Proposers[0] = &medletpb.ProposerConfig{
+	pCfg := &medletpb.ProposerConfig{
 		Proposer: proposer.Address(),
 		Privkey:  proposer.PrivateKey(),
 		Coinbase: proposer.Address(),
 	}
-
+	cfg.Config.Chain.Proposers = append(cfg.Config.Chain.Proposers, pCfg)
 	return cfg
 }
 

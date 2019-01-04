@@ -16,6 +16,7 @@
 package testutil
 
 import (
+	"context"
 	"io/ioutil"
 	"net"
 	"os"
@@ -37,6 +38,8 @@ type Node struct {
 	mu sync.RWMutex
 	t  *testing.T
 
+	ctx    context.Context
+	cancel context.CancelFunc
 	Med    *medlet.Medlet
 	Config *NodeConfig
 
@@ -68,7 +71,10 @@ func (node *Node) Start() {
 	err := node.Med.Setup()
 	require.NoError(node.t, err)
 
-	err = node.Med.Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	node.cancel = cancel
+
+	err = node.Med.Start(ctx)
 	require.NoError(node.t, err)
 
 	startTime := time.Now()
@@ -95,6 +101,9 @@ func (node *Node) Stop() {
 	}
 	node.started = false
 
+	if node.cancel != nil {
+		node.cancel()
+	}
 	node.Med.Stop()
 }
 
@@ -242,10 +251,21 @@ func (n *Network) Start() {
 
 // WaitForEstablished waits until connections between peers are established.
 func (n *Network) WaitForEstablished() {
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+
+	ticker := time.NewTicker(1000 * time.Millisecond)
+	defer ticker.Stop()
+
 	for _, node := range n.Nodes {
+		node.Med.NetService().Node().DHTSync()
 		for len(node.Med.NetService().Node().Peerstore().Peers()) != len(n.Nodes) {
-			node.Med.NetService().Node().DHTSync()
-			time.Sleep(1000 * time.Millisecond)
+			select {
+			case <-timer.C:
+				n.t.Error("Failed to wait for established")
+			case <-ticker.C:
+				node.Med.NetService().Node().DHTSync()
+			}
 		}
 	}
 }

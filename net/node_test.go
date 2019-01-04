@@ -169,9 +169,9 @@ func NewTestNodeWithSeed(t *testing.T, ctx context.Context, seed *net.Node) (*ne
 
 func NewTestNodeWithConfig(t *testing.T, ctx context.Context, cfg *medletpb.Config) (*net.Node, chan net.Message) {
 	receiveMsgCh := make(chan net.Message)
-	node, err := net.NewNode(ctx, cfg, receiveMsgCh)
+	node, err := net.NewNode(cfg, receiveMsgCh)
 	require.NoError(t, err)
-	require.NoError(t, node.Start()) // start net service
+	require.NoError(t, node.Start(ctx)) // start net service
 
 	return node, receiveMsgCh
 }

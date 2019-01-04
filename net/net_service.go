@@ -18,6 +18,7 @@ package net
 import (
 	"context"
 
+	"github.com/gogo/protobuf/proto"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -25,28 +26,27 @@ import (
 
 // MedService service for medibloc p2p network
 type MedService struct {
-	context context.Context
+	ctx context.Context
 
 	node       *Node
 	dispatcher *Dispatcher
 }
 
-// NewMedService create netService
-func NewMedService(ctx context.Context, cfg *medletpb.Config) (*MedService, error) {
+// NewNetService create netService
+func NewNetService(cfg *medletpb.Config) (*MedService, error) {
 	if networkConf := cfg.GetNetwork(); networkConf == nil {
 		logging.Console().Error("config.conf should have network")
 		return nil, ErrConfigLackNetWork
 	}
 
-	dispatcher := NewDispatcher(ctx)
-	node, err := NewNode(ctx, cfg, dispatcher.receivedMessageCh)
+	dispatcher := NewDispatcher()
+	node, err := NewNode(cfg, dispatcher.receivedMessageCh)
 	if err != nil {
 		return nil, err
 	}
 
 	ms := &MedService{
 		node:       node,
-		context:    ctx,
 		dispatcher: dispatcher,
 	}
 	return ms, nil
@@ -58,14 +58,15 @@ func (ms *MedService) Node() *Node {
 }
 
 // Start start p2p manager.
-func (ms *MedService) Start() error {
+func (ms *MedService) Start(ctx context.Context) error {
 	logging.Console().Info("Starting MedService...")
+	ms.ctx = ctx
 
 	// start dispatcher.
-	ms.dispatcher.Start()
+	ms.dispatcher.Start(ctx)
 
 	// start host.
-	if err := ms.node.Start(); err != nil {
+	if err := ms.node.Start(ctx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to start MedService.")
@@ -79,7 +80,7 @@ func (ms *MedService) Start() error {
 		case <-ctx.Done():
 			logging.Console().Info("Stopping MedService...")
 		}
-	}(ms.context)
+	}(ms.ctx)
 
 	return nil
 }
@@ -112,4 +113,16 @@ func (ms *MedService) Broadcast(msgType string, data []byte, priority int) {
 // ClosePeer close connection
 func (ms *MedService) ClosePeer(peerID string, reason error) {
 	ms.node.ClosePeer(peerID, reason)
+}
+
+//SendPbMessageToPeer send protobuf message to peer
+func (ms *MedService) SendPbMessageToPeer(msgType string, pb proto.Message, priority int, peerID string) {
+	b, _ := proto.Marshal(pb)
+	ms.node.SendMessageToPeer(msgType, b, priority, peerID)
+}
+
+//SendPbMessageToPeers send protobuf messages to filtered peers
+func (ms *MedService) SendPbMessageToPeers(msgType string, pb proto.Message, priority int, filter PeerFilterAlgorithm) []string {
+	b, _ := proto.Marshal(pb)
+	return ms.SendMessageToPeers(msgType, b, priority, filter)
 }

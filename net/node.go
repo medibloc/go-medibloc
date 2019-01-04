@@ -41,6 +41,9 @@ import (
 
 // Node the host can be used as both the client and the server
 type Node struct {
+	cfg           *medletpb.Config
+	recvMessageCh chan<- Message
+
 	host.Host
 	context context.Context
 
@@ -97,61 +100,7 @@ func (node *Node) Connected() []peer.ID {
 }
 
 // NewNode return new Node according to the config.
-func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Message) (*Node, error) {
-	// check Listen port.
-	if err := checkPortAvailable(cfg.Network.Listens); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":    err,
-			"listen": cfg.Network.Listens,
-		}).Error("Listen port is not available.")
-		return nil, err
-	}
-
-	networkKey, err := LoadOrNewNetworkKey(cfg)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to load network key")
-		return nil, err
-	}
-
-	lw := int(cfg.Network.ConnMgrLowWaterMark)
-	if lw == 0 {
-		lw = DefaultConnMgrLowWater
-	}
-	hw := int(cfg.Network.ConnMgrHighWaterMark)
-	if hw == 0 {
-		hw = DefaultConnMgrHighWater
-	}
-	gp := time.Duration(cfg.Network.ConnMgrGracePeriod) * time.Second
-	if gp == 0 {
-		gp = DefaultConnMgrGracePeriod
-	}
-	connMgr := connmgr.NewConnManager(lw, hw, gp)
-
-	host, err := libp2p.New(ctx,
-		libp2p.Identity(networkKey),
-		libp2p.ListenAddrStrings(cfg.Network.Listens...),
-		libp2p.ConnectionManager(connMgr),
-		// TODO libp2p.BandwidthReporter(),
-	)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to init libp2p host")
-		return nil, err
-	}
-
-	logging.Console().WithFields(logrus.Fields{
-		"id":    host.ID().Pretty(),
-		"addrs": host.Addrs(),
-	}).Info("New host started")
-
-	dht, err := dht.New(ctx, host, dhtopts.Protocols(MedDHTProtocolID))
-	if err != nil {
-		return nil, err
-	}
-
+func NewNode(cfg *medletpb.Config, recvMessageCh chan<- Message) (*Node, error) {
 	bCfg, err := NewBootstrapConfig(cfg)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -178,12 +127,9 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 	)
 
 	return &Node{
-		Host:            host,
-		context:         ctx,
-		dht:             dht,
+		cfg:             cfg,
+		recvMessageCh:   recvMessageCh,
 		dhtTicker:       make(chan time.Time),
-		messageSender:   newMessageSender(ctx, host, int32(cfg.Network.MaxWriteConcurrency)),
-		messageReceiver: newMessageReceiver(ctx, recvMessageCh, bf, int32(cfg.Network.MaxReadConcurrency)),
 		chainID:         cfg.Global.ChainId,
 		bloomFilter:     bf,
 		bootstrapConfig: bCfg,
@@ -192,9 +138,79 @@ func NewNode(ctx context.Context, cfg *medletpb.Config, recvMessageCh chan<- Mes
 	}, nil
 }
 
+func (node *Node) initHost(ctx context.Context) error {
+	cfg := node.cfg
+
+	// check Listen port.
+	if err := checkPortAvailable(cfg.Network.Listens); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err":    err,
+			"listen": cfg.Network.Listens,
+		}).Error("Listen port is not available.")
+		return err
+	}
+
+	networkKey, err := LoadOrNewNetworkKey(cfg)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to load network key")
+		return err
+	}
+
+	lw := int(cfg.Network.ConnMgrLowWaterMark)
+	if lw == 0 {
+		lw = DefaultConnMgrLowWater
+	}
+	hw := int(cfg.Network.ConnMgrHighWaterMark)
+	if hw == 0 {
+		hw = DefaultConnMgrHighWater
+	}
+	gp := time.Duration(cfg.Network.ConnMgrGracePeriod) * time.Second
+	if gp == 0 {
+		gp = DefaultConnMgrGracePeriod
+	}
+	connMgr := connmgr.NewConnManager(lw, hw, gp)
+
+	host, err := libp2p.New(ctx,
+		libp2p.Identity(networkKey),
+		libp2p.ListenAddrStrings(cfg.Network.Listens...),
+		libp2p.ConnectionManager(connMgr),
+		// TODO libp2p.BandwidthReporter(),
+	)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to init libp2p host")
+		return err
+	}
+
+	logging.Console().WithFields(logrus.Fields{
+		"id":    host.ID().Pretty(),
+		"addrs": host.Addrs(),
+	}).Info("New host started")
+
+	d, err := dht.New(ctx, host, dhtopts.Protocols(MedDHTProtocolID))
+	if err != nil {
+		return err
+	}
+
+	node.context = ctx
+	node.Host = host
+	node.dht = d
+	node.messageSender = newMessageSender(ctx, host, int32(cfg.Network.MaxWriteConcurrency))
+	node.messageReceiver = newMessageReceiver(ctx, node.recvMessageCh, node.bloomFilter, int32(cfg.Network.MaxReadConcurrency))
+
+	return nil
+}
+
 // Start host & route table discovery
-func (node *Node) Start() error {
+func (node *Node) Start(ctx context.Context) error {
 	logging.Console().Info("Starting MedService Node...")
+
+	if err := node.initHost(ctx); err != nil {
+		return err
+	}
 
 	node.SetStreamHandler(MedProtocolID, node.receiveMessage)
 

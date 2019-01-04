@@ -9,11 +9,11 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
@@ -38,7 +38,7 @@ func main() {
 	//privKeys := testnet_privKeys()
 	privKeys := randomPrivateKeys()
 
-	const chainId = 181228
+	const chainID = 181228
 	const dynastySize = 21
 
 	chainCfg := new(medletpb.ChainConfig)
@@ -46,7 +46,7 @@ func main() {
 
 	conf := &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
-			ChainId:     chainId,
+			ChainId:     chainID,
 			DynastySize: uint32(dynastySize),
 		},
 		TokenDistribution: nil,
@@ -86,7 +86,7 @@ func main() {
 
 		tx := new(core.Transaction)
 
-		tx.SetChainID(chainId)
+		tx.SetChainID(chainID)
 		tx.SetValue(util.NewUint128())
 
 		txVest, _ := tx.Clone()

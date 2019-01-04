@@ -81,7 +81,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		return nil, err
 	}
 
-	ns, err := net.NewMedService(context.Background(), cfg)
+	ns, err := net.NewNetService(cfg)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -194,8 +194,8 @@ func (m *Medlet) StartPprof(listen string) error {
 }
 
 // Start starts the services of the medlet.
-func (m *Medlet) Start() error {
-	err := m.netService.Start()
+func (m *Medlet) Start(ctx context.Context) error {
+	err := m.netService.Start(ctx)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -241,7 +241,7 @@ func (m *Medlet) Stop() {
 
 	m.consensus.Stop()
 
-	m.syncService.Stop()
+	//m.syncService.Stop()
 
 	err := m.storage.Close()
 	if err != nil {

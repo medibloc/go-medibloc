@@ -64,9 +64,9 @@ func NewTestNetService(t *testing.T, ctx context.Context) (*net.MedService, peer
 	cfg := medlet.DefaultConfig()
 	cfg.Global.Datadir = testutil.TempDir(t)
 
-	ns, err := net.NewMedService(ctx, cfg)
+	ns, err := net.NewNetService(cfg)
 	require.NoError(t, err)
-	require.NoError(t, ns.Start()) // start net service
+	require.NoError(t, ns.Start(ctx)) // start net service
 
 	pi := peerstore.PeerInfo{
 		ID:    ns.Node().ID(),

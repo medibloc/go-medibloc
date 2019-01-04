@@ -18,8 +18,6 @@ chain: <
   tail_cache_size: 128
   block_pool_size: 128
   transaction_pool_size: 262144
-  proposers: <
-  >
 >
 rpc: <
   rpc_listen: "127.0.0.1:9920"

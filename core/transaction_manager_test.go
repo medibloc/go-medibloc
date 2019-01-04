@@ -295,9 +295,8 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 
 func TestTransactionManager_ReplacePending(t *testing.T) {
 	const (
-		numberOfNodes        = 5
 		numberOfTransactions = 10
-		newReplaceAllowTime  = 10 * time.Millisecond
+		newReplaceAllowTime  = 1 * time.Second
 	)
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
@@ -305,11 +304,6 @@ func TestTransactionManager_ReplacePending(t *testing.T) {
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	seedTm := seed.Med.TransactionManager()
-
-	for i := 1; i < numberOfNodes; i++ {
-		testNetwork.NewNode().Start()
-	}
-	testNetwork.WaitForEstablished()
 
 	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 

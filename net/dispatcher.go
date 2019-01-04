@@ -47,12 +47,11 @@ func (dp *Dispatcher) ReceivedMessageCh() chan<- Message {
 }
 
 // NewDispatcher create Dispatcher instance.
-func NewDispatcher(ctx context.Context) *Dispatcher {
+func NewDispatcher() *Dispatcher {
 	dispatchedMessages, _ := lru.New(51200)
 
 	return &Dispatcher{
 		subscribersMap:     new(sync.Map),
-		context:            ctx,
 		receivedMessageCh:  make(chan Message, 65536),
 		filters:            new(sync.Map),
 		dispatchedMessages: dispatchedMessages,
@@ -83,8 +82,9 @@ func (dp *Dispatcher) Deregister(subscribers ...*Subscriber) {
 }
 
 // Start start message dispatch goroutine.
-func (dp *Dispatcher) Start() {
+func (dp *Dispatcher) Start(ctx context.Context) {
 	logging.Console().Info("Starting MedService Dispatcher...")
+	dp.context = ctx
 	go dp.loop()
 }
 

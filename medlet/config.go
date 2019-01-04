@@ -73,24 +73,13 @@ func createDefaultConfigFile(filename string) error {
 
 //DefaultConfig returns default config.
 func DefaultConfig() *medletpb.Config {
-	proposerConfig := make([]*medletpb.ProposerConfig, 1)
-
-	proposerConfig[0] = &medletpb.ProposerConfig{
-		Proposer: "",
-		Privkey:  "",
-		Coinbase: "",
-
-		Keydir:     "",
-		Passphrase: "",
-	}
-
 	return &medletpb.Config{
 		Global: &medletpb.GlobalConfig{
 			ChainId: 1,
 			Datadir: "data.db",
 		},
 		Network: &medletpb.NetworkConfig{
-			Listens:            nil,
+			Listens:            make([]string, 0),
 			NetworkKeyFile:     "",
 			Seeds:              nil,
 			BootstrapPeriod:    5,
@@ -113,7 +102,7 @@ func DefaultConfig() *medletpb.Config {
 			TailCacheSize:       128,
 			BlockPoolSize:       128,
 			TransactionPoolSize: 262144,
-			Proposers:           proposerConfig,
+			Proposers:           make([]*medletpb.ProposerConfig, 0),
 		},
 		Rpc: &medletpb.RPCConfig{
 			RpcListen:        []string{"127.0.0.1:9920"},

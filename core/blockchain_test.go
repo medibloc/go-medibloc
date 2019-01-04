@@ -43,7 +43,9 @@ func TestRestartNode(t *testing.T) {
 	defer testNet.Cleanup()
 
 	seed := testNet.NewSeedNode()
-	testNet.SetProposerFromDynasties(seed)
+	for i := 0; i < testutil.DynastySize; i++ {
+		testNet.SetProposerFromDynasties(seed)
+	}
 	seed.Start()
 
 	for seed.Tail().Height() < 2 {
@@ -55,5 +57,4 @@ func TestRestartNode(t *testing.T) {
 	for seed.Tail().Height() < 3 {
 		time.Sleep(100 * time.Millisecond)
 	}
-
 }
