@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -23,68 +24,67 @@ const (
 
 // AccountPendingPool struct manages pending transactions by account.
 type AccountPendingPool struct {
-	mu       sync.Mutex
+	mu sync.Mutex
 
-	pending  map[common.Address]*AccountPending
-	payer    map[common.Address]*AccountPayer
+	all     map[string]*TxContext
+	pending map[common.Address]*AccountPending
+	payer   map[common.Address]*AccountPayer
 
-	selector *roundRobin
+	selector   *roundRobin
 	nonceCache map[common.Address]uint64
 }
 
 // NewAccountPendingPool creates AccountPendingPool.
 func NewAccountPendingPool() *AccountPendingPool {
 	return &AccountPendingPool{
-		pending:  make(map[common.Address]*AccountPending),
-		payer:    make(map[common.Address]*AccountPayer),
-		selector: newRoundRobin(),
+		all:        make(map[string]*TxContext),
+		pending:    make(map[common.Address]*AccountPending),
+		payer:      make(map[common.Address]*AccountPayer),
+		selector:   newRoundRobin(),
 		nonceCache: make(map[common.Address]uint64),
 	}
 }
 
 // PushOrReplace pushes or replaces a transaction.
-func (pool *AccountPendingPool) PushOrReplace(tx *TxContext, state *BlockState) error {
+func (pool *AccountPendingPool) PushOrReplace(tx *TxContext, acc *Account, price Price) error {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
 	pending, exist := pool.pending[tx.From()]
 	if exist && pending.isDuplicateNonce(tx.Nonce()) {
-		return pool.replace(tx, state)
+		return pool.replace(tx, acc, price)
 	}
-	return pool.push(tx, state)
+	return pool.push(tx, acc, price)
 }
 
-func (pool *AccountPendingPool) push(tx *TxContext, bs *BlockState) error {
+func (pool *AccountPendingPool) push(tx *TxContext, acc *Account, price Price) error {
 	pool.initAccountIfNotExist(tx)
 	defer pool.deleteAccountIfEmpty(tx)
 
+	// TODO delete
+	// if pending.size() >= MaxPendingByAccount {
+	// 	return ErrAccountPendingFull
+	// }
+
 	pending := pool.pending[tx.From()]
-	if pending.size() >= MaxPendingByAccount {
-		return ErrAccountPendingFull
-	}
-
-	acc, err := bs.GetAccount(tx.From())
-	if err != nil {
-		return err
-	}
-
 	if !pending.isAcceptableNonce(tx.Nonce(), acc.Nonce) {
 		return ErrNonceNotAcceptable
 	}
 
 	payer := pool.payer[tx.Payer()]
-	if err := payer.checkPointAvailable(tx, bs); err != nil {
+	if err := payer.checkPointAvailable(tx, acc, price); err != nil {
 		return err
 	}
 
 	pending.add(tx)
 	payer.addOrReplace(tx)
+	pool.all[tx.HexHash()] = tx
 
 	pool.selector.Include(tx.From().Hex())
 	return nil
 }
 
-func (pool *AccountPendingPool) replace(tx *TxContext, bs *BlockState) error {
+func (pool *AccountPendingPool) replace(tx *TxContext, acc *Account, price Price) error {
 	pool.initAccountIfNotExist(tx)
 	defer pool.deleteAccountIfEmpty(tx)
 
@@ -97,13 +97,14 @@ func (pool *AccountPendingPool) replace(tx *TxContext, bs *BlockState) error {
 	}
 
 	payer := pool.payer[tx.Payer()]
-	if err := payer.checkPointAvailable(tx, bs); err != nil {
+	if err := payer.checkPointAvailable(tx, acc, price); err != nil {
 		return err
 	}
 
 	oldTx := pending.replace(tx)
 	payer.addOrReplace(tx)
 
+	// TODO comment
 	if oldTx.Payer().Equals(tx.Payer()) {
 		return nil
 	}
@@ -114,9 +115,13 @@ func (pool *AccountPendingPool) replace(tx *TxContext, bs *BlockState) error {
 		delete(pool.payer, oldTx.Payer())
 	}
 
+	delete(pool.all, oldTx.HexHash())
+	pool.all[tx.HexHash()] = tx
+
 	return nil
 }
 
+// TODO Refactoring
 func (pool *AccountPendingPool) initAccountIfNotExist(tx *TxContext) {
 	_, exist := pool.pending[tx.From()]
 	if !exist {
@@ -145,6 +150,15 @@ func (pool *AccountPendingPool) deleteAccountIfEmpty(tx *TxContext) {
 	}
 }
 
+// Get gets a transaction.
+func (pool *AccountPendingPool) Get(hash []byte) *Transaction {
+	txc, exist := pool.all[byteutils.Bytes2Hex(hash)]
+	if !exist {
+		return nil
+	}
+	return txc.Transaction
+}
+
 // Remove removes a transaction.
 func (pool *AccountPendingPool) Remove(tx *TxContext) error {
 	pool.mu.Lock()
@@ -160,6 +174,8 @@ func (pool *AccountPendingPool) Remove(tx *TxContext) error {
 		pool.selector.Remove(tx.From().Hex())
 	}
 
+	delete(pool.all, tx.HexHash())
+
 	payer, exist := pool.payer[tx.Payer()]
 	if !exist {
 		return ErrNotFound
@@ -172,54 +188,42 @@ func (pool *AccountPendingPool) Remove(tx *TxContext) error {
 }
 
 // Prune prunes transactions by account's current nonce.
-func (pool *AccountPendingPool) Prune(addr common.Address, bs *BlockState) error {
+func (pool *AccountPendingPool) Prune(addr common.Address, nonceLowerLimit uint64) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
 	pending, exist := pool.pending[addr]
 	if !exist {
-		return nil
+		return
 	}
 
-	acc, err := bs.GetAccount(addr)
-	if err != nil {
-		return err
-	}
-	nonce := acc.Nonce
-
-	removed := pending.prune(nonce)
+	removed := pending.prune(nonceLowerLimit)
 	if pending.size() == 0 {
 		delete(pool.pending, addr)
 		pool.selector.Remove(addr.Hex())
 	}
 	for _, tx := range removed {
+		delete(pool.all, tx.HexHash())
 		payer := pool.payer[tx.Payer()]
 		payer.remove(tx)
 		if payer.size() == 0 {
 			delete(pool.payer, tx.Payer())
 		}
 	}
-	return nil
 }
 
-func (pool *AccountPendingPool) NonceUpperLimit(addr common.Address, bs *BlockState) uint64 {
+func (pool *AccountPendingPool) NonceUpperLimit(acc *Account) uint64 {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-
-	acc, err := bs.GetAccount(addr)
-	if err != nil {
-		return 0
-	}
-
-	pending, exist := pool.pending[addr]
+	pending, exist := pool.pending[acc.Address]
 	if !exist {
-		return acc.Nonce+1
+		return acc.Nonce + 1
 	}
 
 	upperLimit := acc.Nonce + MaxPendingByAccount
 	if pending.maxNonce+1 < upperLimit {
-		upperLimit = pending.maxNonce+1
+		upperLimit = pending.maxNonce + 1
 	}
 
 	return upperLimit
@@ -264,7 +268,7 @@ func (pool *AccountPendingPool) SetRequiredNonce(addr common.Address, nonce uint
 	pool.nonceCache[addr] = nonce
 }
 
-func (pool *AccountPendingPool) ResetRequiredNonce() {
+func (pool *AccountPendingPool) ResetSelector() {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -373,7 +377,7 @@ func (pend *AccountPending) prune(targetNonce uint64) (removed []*TxContext) {
 		}
 		delete(pend.nonceToTx, tx.Nonce())
 		delete(pend.hashToTx, tx.HexHash())
-		pend.minNonce = i+1
+		pend.minNonce = i + 1
 		removed = append(removed, tx)
 	}
 	return removed
@@ -398,7 +402,7 @@ func (payer *AccountPayer) size() int {
 	return len(payer.txMap)
 }
 
-func (payer *AccountPayer) checkPointAvailable(tx *TxContext, bs *BlockState) error {
+func (payer *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, price Price) error {
 	bw := payer.bw.Clone()
 
 	key := addrNonceKey(tx)
@@ -407,7 +411,7 @@ func (payer *AccountPayer) checkPointAvailable(tx *TxContext, bs *BlockState) er
 		bw.Sub(NewBandwidth(old.exec.Bandwidth()))
 	}
 	bw.Add(NewBandwidth(tx.exec.Bandwidth()))
-	points, err := bw.CalcPoints(bs.Price())
+	points, err := bw.CalcPoints(price)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -415,10 +419,7 @@ func (payer *AccountPayer) checkPointAvailable(tx *TxContext, bs *BlockState) er
 		return err
 	}
 
-	acc, err := bs.GetAccount(payer.addr)
-	if err != nil {
-		return err
-	}
+	// TODO Refactoring
 	err = acc.UpdatePoints(time.Now().Unix())
 	if err != nil {
 		return err
@@ -447,11 +448,10 @@ func (payer *AccountPayer) addOrReplace(tx *TxContext) (existing *TxContext) {
 
 func (payer *AccountPayer) remove(tx *TxContext) {
 	key := addrNonceKey(tx)
-	old, exist := payer.txMap[key];
+	old, exist := payer.txMap[key]
 	if !exist {
 		return
 	}
 	payer.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
 	delete(payer.txMap, key)
 }
-
