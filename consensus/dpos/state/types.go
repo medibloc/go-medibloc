@@ -1,4 +1,4 @@
-package dposState
+package dposstate
 
 // Transaction's related to dpos
 const (

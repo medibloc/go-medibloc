@@ -81,7 +81,7 @@ func NewAddCertificationTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute AddCertificationTx
-func (tx *AddCertificationTx) Execute(bs BlockState) error {
+func (tx *AddCertificationTx) Execute(bs blockState) error {
 	certified, err := bs.GetAccount(tx.Certified)
 	if err != nil {
 		return err
@@ -240,7 +240,7 @@ func NewRevokeCertificationTx(tx *coreState.Transaction) (*ExecutableTx, error) 
 }
 
 //Execute RevokeCertificationTx
-func (tx *RevokeCertificationTx) Execute(bs BlockState) error {
+func (tx *RevokeCertificationTx) Execute(bs blockState) error {
 	issuer, err := bs.GetAccount(tx.Revoker)
 	if err != nil {
 		return err

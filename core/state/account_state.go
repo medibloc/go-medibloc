@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package coreState
+package corestate
 
 import (
 	"github.com/medibloc/go-medibloc/common"
@@ -157,7 +157,7 @@ func KeyTrieToSlice(trie *trie.Batch) [][]byte {
 	return slice
 }
 
-// GetAliasAccount returns alias account
+// GetAccountByAlias returns account by alias
 func (as *AccountState) GetAccountByAlias(alias string, timestamp int64) (*Account, error) {
 	addrBytes, err := as.Get(append([]byte(AliasAccountPrefix), []byte(alias)...))
 	if err != nil {
@@ -170,12 +170,13 @@ func (as *AccountState) GetAccountByAlias(alias string, timestamp int64) (*Accou
 	return as.GetAccount(addr, timestamp)
 }
 
-// PutAliasAccount put alias account to trie batch
+// PutAccountAlias put alias name for address
 func (as *AccountState) PutAccountAlias(alias string, addr common.Address) error {
 	return as.Put(append([]byte(AliasAccountPrefix), []byte(alias)...), addr.Bytes())
 
 }
 
+//DelAccountAlias del alias name info
 func (as *AccountState) DelAccountAlias(alias string, addr common.Address) error {
 	addrBytes, err := as.Get(append([]byte(AliasAccountPrefix), []byte(alias)...))
 	if err != nil {

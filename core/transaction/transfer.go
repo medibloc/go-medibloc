@@ -74,7 +74,7 @@ func NewTransferTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute TransferTx
-func (tx *TransferTx) Execute(bs BlockState) error {
+func (tx *TransferTx) Execute(bs blockState) error {
 	// subtract balance from sender's account
 	sender, err := bs.GetAccount(tx.from)
 	if err != nil {

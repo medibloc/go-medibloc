@@ -21,12 +21,13 @@ const (
 	AliasCollateralMinimum = "1000000000000000000"
 )
 
+//constants related to dpos
 const (
 	CandidateCollateralMinimum = "1000000000000000000"
 	VoteMaximum                = 15
 )
 
-type BlockState interface {
+type blockState interface {
 	Timestamp() int64
 	GetAccount(address common.Address) (*coreState.Account, error)
 	PutAccount(acc *coreState.Account) error
@@ -36,18 +37,14 @@ type BlockState interface {
 	DposState() *dposState.State
 }
 
-//ExecutableTx interface for execute transaction on state
+//Executable interface for execute transaction on state
 type Executable interface {
-	Execute(bs BlockState) error
+	Execute(bs blockState) error
 	Bandwidth() *common.Bandwidth
 }
 
 //TxFactory is a map for tx.TxType() to NewTxFunc
 type TxFactory map[string]func(transaction *coreState.Transaction) (*ExecutableTx, error)
-
-var (
-	ErrTxTypeInvalid = errors.New("invalid transaction type")
-)
 
 // Payload is an interface of transaction payload.
 type Payload interface {
@@ -55,7 +52,9 @@ type Payload interface {
 	ToBytes() ([]byte, error)
 }
 
+// Errors related to execute transaction
 var (
+	ErrTxTypeInvalid            = errors.New("invalid transaction type")
 	ErrTooLargePayload          = errors.New("too large payload")
 	ErrVoidTransaction          = errors.New("nothing to do with transaction")
 	ErrInvalidAddress           = errors.New("invalid address")

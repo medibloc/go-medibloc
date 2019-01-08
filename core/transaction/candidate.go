@@ -84,7 +84,7 @@ func NewBecomeCandidateTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute NewBecomeCandidateTx
-func (tx *BecomeCandidateTx) Execute(bs BlockState) error {
+func (tx *BecomeCandidateTx) Execute(bs blockState) error {
 	acc, err := bs.GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func NewQuitCandidateTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute QuitCandidateTx
-func (tx *QuitCandidateTx) Execute(bs BlockState) error {
+func (tx *QuitCandidateTx) Execute(bs blockState) error {
 	acc, err := bs.GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err

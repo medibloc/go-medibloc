@@ -17,7 +17,10 @@ package testutil
 
 import "errors"
 
-const TestAliasName = "mediblocmainnet"
+// contants
+const (
+	TestAliasName = "mediblocmainnet"
+)
 
 var (
 	//ChainID is chain id for test configuration.

@@ -1,4 +1,4 @@
-package dposState
+package dposstate
 
 import (
 	"github.com/gogo/protobuf/proto"

@@ -1,4 +1,4 @@
-package coreState
+package corestate
 
 import (
 	"time"

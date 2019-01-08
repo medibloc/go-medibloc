@@ -69,7 +69,7 @@ func NewAddRecordTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute AddRecordTx
-func (tx *AddRecordTx) Execute(bs BlockState) error {
+func (tx *AddRecordTx) Execute(bs blockState) error {
 	var err error
 	acc, err := bs.GetAccount(tx.owner)
 	if err != nil {

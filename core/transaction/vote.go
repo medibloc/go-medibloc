@@ -65,7 +65,7 @@ func NewVoteTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute VoteTx
-func (tx *VoteTx) Execute(bs BlockState) error {
+func (tx *VoteTx) Execute(bs blockState) error {
 	if len(tx.candidateIDs) > VoteMaximum {
 		return ErrOverMaxVote
 	}

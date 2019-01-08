@@ -73,7 +73,7 @@ func NewRegisterAliasTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute RegisterAliasTx
-func (tx *RegisterAliasTx) Execute(bs BlockState) error {
+func (tx *RegisterAliasTx) Execute(bs blockState) error {
 	collateralLimit, err := util.NewUint128FromString(AliasCollateralMinimum)
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func NewDeregisterAliasTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute DeregisterAliasTx
-func (tx *DeregisterAliasTx) Execute(bs BlockState) error {
+func (tx *DeregisterAliasTx) Execute(bs blockState) error {
 	acc, err := bs.GetAccount(tx.addr)
 	if err != nil {
 		return err

@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package coreState
+package corestate
 
 import (
 	"fmt"
@@ -78,6 +78,7 @@ func (r *Receipt) SetNetUsage(netUsage uint64) {
 	r.netUsage = netUsage
 }
 
+//Bandwidth returns bandwidth
 func (r *Receipt) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(r.CPUUsage(), r.NetUsage())
 }

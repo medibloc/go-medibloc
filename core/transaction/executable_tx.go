@@ -23,11 +23,13 @@ var DefaultTxMap = TxFactory{
 	dState.TxOpVote:            NewVoteTx,
 }
 
+//ExecutableTx is a structure to execute transaction
 type ExecutableTx struct {
 	*coreState.Transaction
 	Executable
 }
 
+//NewExecutableTx returns new executable transaction
 func NewExecutableTx(transaction *coreState.Transaction) (*ExecutableTx, error) {
 	newTxFunc, ok := DefaultTxMap[transaction.TxType()]
 	if !ok {
@@ -45,6 +47,7 @@ func NewExecutableTx(transaction *coreState.Transaction) (*ExecutableTx, error) 
 	}, nil
 }
 
+//CalcPoints returns required points to execute transaction
 func (exeTx *ExecutableTx) CalcPoints(price common.Price) (*util.Uint128, error) {
 	return exeTx.Bandwidth().CalcPoints(price)
 }

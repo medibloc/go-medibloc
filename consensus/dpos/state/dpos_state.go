@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package dposState
+package dposstate
 
 import (
 	"sort"
@@ -58,6 +58,7 @@ func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor stora
 	}, nil
 }
 
+//GetCandidate returns candidate from candidate state
 func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
 	candidate := new(Candidate)
 	if err := s.candidateState.GetData(cid, candidate); err != nil {
@@ -66,10 +67,12 @@ func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
 	return candidate, nil
 }
 
+//PutCandidate puts candidate to candidate state
 func (s *State) PutCandidate(cid []byte, candidate *Candidate) error {
 	return s.candidateState.PutData(cid, candidate)
 }
 
+//DelCandidate del candidate from candidate state
 func (s *State) DelCandidate(cid []byte) error {
 	return s.candidateState.Delete(cid)
 }

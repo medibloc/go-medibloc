@@ -446,7 +446,7 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 // PushBlockDataSync2 pushes block to distributor and wait for execution
 // Warning! - Use this method only for test for time efficiency.
 func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) error {
-	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
+	eventSubscriber, err := event.NewSubscriber(1024, []string{event.TopicAcceptedBlock, event.TopicInvalidBlock})
 	if err != nil {
 		return err
 	}
@@ -475,7 +475,7 @@ func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) e
 			return errors.New("context is done")
 		case e := <-eCh:
 			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {
-				if e.Topic == TopicInvalidBlock {
+				if e.Topic == event.TopicInvalidBlock {
 					return ErrInvalidBlock
 				}
 				return nil

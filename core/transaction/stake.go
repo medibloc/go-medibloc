@@ -43,7 +43,7 @@ func NewStakeTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute StakeTx
-func (tx *StakeTx) Execute(bs BlockState) error {
+func (tx *StakeTx) Execute(bs blockState) error {
 	user, err := bs.GetAccount(tx.user)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func NewUnstakeTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 }
 
 //Execute UnstakeTx
-func (tx *UnstakeTx) Execute(bs BlockState) error {
+func (tx *UnstakeTx) Execute(bs blockState) error {
 	account, err := bs.GetAccount(tx.user)
 	if err != nil {
 		return err

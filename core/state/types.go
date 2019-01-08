@@ -1,4 +1,4 @@
-package coreState
+package corestate
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 )
 
+// transaction types
 const (
 	TxOpTransfer            = "transfer"
 	TxOpAddRecord           = "add_record"
@@ -40,14 +41,3 @@ var (
 	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
 	ErrInvalidTxChainID             = errors.New("invalid transaction chainID")
 )
-
-type State interface {
-	Clone() (State, error)
-	Prepare() error
-	BeginBatch() error
-	Commit() error
-	RollBack() error
-	Reset() error
-	Flush() error
-	//RootBytes() ([]byte, error)
-}

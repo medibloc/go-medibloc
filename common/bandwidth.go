@@ -15,8 +15,8 @@ func (b *Bandwidth) CPUUsage() uint64 {
 	return b.cpuUsage
 }
 
-//SetCpuUsage sets cpuUsage
-func (b *Bandwidth) SetCpuUsage(cpuUsage uint64) {
+//SetCPUUsage sets cpuUsage
+func (b *Bandwidth) SetCPUUsage(cpuUsage uint64) {
 	b.cpuUsage = cpuUsage
 }
 
@@ -50,6 +50,7 @@ func (b *Bandwidth) Sub(obj *Bandwidth) {
 	b.netUsage -= obj.netUsage
 }
 
+//Clone copy bandwidth
 func (b *Bandwidth) Clone() *Bandwidth {
 	if b == nil {
 		return NewBandwidth(0, 0)
@@ -57,9 +58,9 @@ func (b *Bandwidth) Clone() *Bandwidth {
 	return NewBandwidth(b.cpuUsage, b.netUsage)
 }
 
-//calcPoints multiply bandwidth and price
+//CalcPoints multiply bandwidth and price
 func (b *Bandwidth) CalcPoints(p Price) (points *util.Uint128, err error) {
-	cpuPoints, err := p.CpuPrice.Mul(util.NewUint128FromUint(b.cpuUsage))
+	cpuPoints, err := p.CPUPrice.Mul(util.NewUint128FromUint(b.cpuUsage))
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +78,6 @@ func (b Bandwidth) IsZero() bool {
 
 //Price is structure for prices of cpu and net
 type Price struct {
-	CpuPrice *util.Uint128
+	CPUPrice *util.Uint128
 	NetPrice *util.Uint128
 }

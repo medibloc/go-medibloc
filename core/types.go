@@ -151,6 +151,7 @@ type SyncService interface {
 	IsDownloadActivated() bool
 }
 
+//Transaction is an interface for transaction
 type Transaction interface {
 	Hash() []byte
 	TxType() string
@@ -162,13 +163,4 @@ type Transaction interface {
 	Payload() []byte
 	Payer() common.Address
 	Receipt() *cState.Receipt
-}
-
-type Receipt interface {
-	Height() uint64
-	Timestamp() int64
-	Bandwidth() *common.Bandwidth
-	Points() *util.Uint128
-	SetPoints(points *util.Uint128)
-	Error() []byte
 }

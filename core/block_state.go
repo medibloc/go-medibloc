@@ -45,10 +45,12 @@ type BlockState struct {
 	storage storage.Storage
 }
 
+//Timestamp returns timestamp
 func (bs *BlockState) Timestamp() int64 {
 	return bs.timestamp
 }
 
+//SetTimestamp sets timestamp
 func (bs *BlockState) SetTimestamp(timestamp int64) {
 	bs.timestamp = timestamp
 }
@@ -96,7 +98,7 @@ func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecat
 
 //Price returns cpu price and net price
 func (bs *BlockState) Price() common.Price {
-	return common.Price{CpuPrice: bs.cpuPrice, NetPrice: bs.netPrice}
+	return common.Price{CPUPrice: bs.cpuPrice, NetPrice: bs.netPrice}
 }
 
 func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
@@ -288,32 +290,37 @@ func (bs *BlockState) PutAccount(acc *coreState.Account) error {
 	return bs.accState.PutAccount(acc)
 }
 
+//GetAccountByAlias returns account by alias name
 func (bs *BlockState) GetAccountByAlias(alias string) (*coreState.Account, error) {
 	return bs.accState.GetAccountByAlias(alias, bs.timestamp)
 }
 
+//PutAccountAlias set alias name for account
 func (bs *BlockState) PutAccountAlias(alias string, addr common.Address) error {
 	return bs.accState.PutAccountAlias(alias, addr)
 }
 
+//DelAccountAlias delete alias information from account state
 func (bs *BlockState) DelAccountAlias(alias string, addr common.Address) error {
 	return bs.accState.DelAccountAlias(alias, addr)
 }
 
-//GetTx returns txs in state
+//GetTx get tx from transaction state
 func (bs *BlockState) GetTx(txHash []byte) (*coreState.Transaction, error) {
 	return bs.txState.GetTx(txHash)
 }
 
-//GetTx returns txs in state
+//PutTx put tx to state
 func (bs *BlockState) PutTx(tx *coreState.Transaction) error {
 	return bs.txState.Put(tx)
 }
 
+//AddVotePowerToCandidate add vote power to candidate
 func (bs *BlockState) AddVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error {
 	return bs.dposState.AddVotePowerToCandidate(candidateID, amount)
 }
 
+//SubVotePowerToCandidate subtract vote power from candidate
 func (bs *BlockState) SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error {
 	return bs.dposState.SubVotePowerToCandidate(candidateID, amount)
 }
