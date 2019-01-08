@@ -46,9 +46,9 @@ func (h *HashedHeap) Get(key string) (value Comparable) {
 }
 
 // Set set value by key.
-func (h *HashedHeap) Set(key string, value Comparable) {
+func (h *HashedHeap) Set(key string, value Comparable) (evictValue Comparable) {
 	if _, ok := h.hash[key]; ok {
-		h.Del(key)
+		evictValue = h.Del(key)
 	}
 
 	e := &entry{
@@ -57,16 +57,19 @@ func (h *HashedHeap) Set(key string, value Comparable) {
 	}
 	h.hash[key] = e
 	heap.Push(&h.pq, e)
+
+	return evictValue
 }
 
 // Del deletes value by key.
-func (h *HashedHeap) Del(key string) {
+func (h *HashedHeap) Del(key string) (deleteValue Comparable) {
 	e, ok := h.hash[key]
 	if !ok {
-		return
+		return nil
 	}
 	heap.Remove(&h.pq, e.index)
 	delete(h.hash, key)
+	return e.value
 }
 
 // Pop pop value by priority.
