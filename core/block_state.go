@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/medibloc/go-medibloc/common"
+	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -27,6 +29,8 @@ import (
 
 // BlockState is block state
 type BlockState struct {
+	timestamp int64
+
 	reward   *util.Uint128
 	supply   *util.Uint128
 	cpuPrice *util.Uint128
@@ -34,11 +38,19 @@ type BlockState struct {
 	netPrice *util.Uint128
 	netUsage uint64
 
-	accState  *AccountState
-	txState   *TransactionState
-	dposState DposState
+	accState  *coreState.AccountState
+	txState   *coreState.TransactionState
+	dposState *dState.State
 
 	storage storage.Storage
+}
+
+func (bs *BlockState) Timestamp() int64 {
+	return bs.timestamp
+}
+
+func (bs *BlockState) SetTimestamp(timestamp int64) {
+	bs.timestamp = timestamp
 }
 
 // Supply returns supply in state
@@ -71,13 +83,8 @@ func (bs *BlockState) NetUsage() uint64 {
 	return bs.netUsage
 }
 
-// AccState returns account state in state
-func (bs *BlockState) AccState() *AccountState {
-	return bs.accState
-}
-
 // DposState returns dpos state in state
-func (bs *BlockState) DposState() DposState {
+func (bs *BlockState) DposState() *dState.State {
 	return bs.dposState
 }
 
@@ -88,17 +95,17 @@ func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecat
 }
 
 //Price returns cpu price and net price
-func (bs *BlockState) Price() Price {
-	return Price{bs.cpuPrice, bs.netPrice}
+func (bs *BlockState) Price() common.Price {
+	return common.Price{CpuPrice: bs.cpuPrice, NetPrice: bs.netPrice}
 }
 
 func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
-	accState, err := NewAccountState(nil, stor)
+	accState, err := coreState.NewAccountState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
 
-	txState, err := NewTransactionState(nil, stor)
+	txState, err := coreState.NewTransactionState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +147,7 @@ func (bs *BlockState) Clone() (*BlockState, error) {
 	}
 
 	return &BlockState{
+		timestamp: bs.timestamp,
 		reward:    bs.reward.DeepCopy(),
 		supply:    bs.supply.DeepCopy(),
 		cpuPrice:  bs.cpuPrice.DeepCopy(),
@@ -253,7 +261,7 @@ func (bs *BlockState) String() string {
 }
 
 func (bs *BlockState) loadAccountState(rootHash []byte) error {
-	accState, err := NewAccountState(rootHash, bs.storage)
+	accState, err := coreState.NewAccountState(rootHash, bs.storage)
 	if err != nil {
 		return err
 	}
@@ -262,7 +270,7 @@ func (bs *BlockState) loadAccountState(rootHash []byte) error {
 }
 
 func (bs *BlockState) loadTransactionState(rootBytes []byte) error {
-	txState, err := NewTransactionState(rootBytes, bs.storage)
+	txState, err := coreState.NewTransactionState(rootBytes, bs.storage)
 	if err != nil {
 		return err
 	}
@@ -271,28 +279,53 @@ func (bs *BlockState) loadTransactionState(rootBytes []byte) error {
 }
 
 //GetAccount returns account in state
-func (bs *BlockState) GetAccount(addr common.Address) (*Account, error) {
-	return bs.accState.GetAccount(addr)
+func (bs *BlockState) GetAccount(addr common.Address) (*coreState.Account, error) {
+	return bs.accState.GetAccount(addr, bs.Timestamp())
 }
 
 //PutAccount put account to state
-func (bs *BlockState) PutAccount(acc *Account) error {
-	return bs.accState.putAccount(acc)
+func (bs *BlockState) PutAccount(acc *coreState.Account) error {
+	return bs.accState.PutAccount(acc)
+}
+
+func (bs *BlockState) GetAccountByAlias(alias string) (*coreState.Account, error) {
+	return bs.accState.GetAccountByAlias(alias, bs.timestamp)
+}
+
+func (bs *BlockState) PutAccountAlias(alias string, addr common.Address) error {
+	return bs.accState.PutAccountAlias(alias, addr)
+}
+
+func (bs *BlockState) DelAccountAlias(alias string, addr common.Address) error {
+	return bs.accState.DelAccountAlias(alias, addr)
 }
 
 //GetTx returns txs in state
-func (bs *BlockState) GetTx(txHash []byte) (*Transaction, error) {
-	return bs.txState.Get(txHash)
+func (bs *BlockState) GetTx(txHash []byte) (*coreState.Transaction, error) {
+	return bs.txState.GetTx(txHash)
+}
+
+//GetTx returns txs in state
+func (bs *BlockState) PutTx(tx *coreState.Transaction) error {
+	return bs.txState.Put(tx)
+}
+
+func (bs *BlockState) AddVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error {
+	return bs.dposState.AddVotePowerToCandidate(candidateID, amount)
+}
+
+func (bs *BlockState) SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error {
+	return bs.dposState.SubVotePowerToCandidate(candidateID, amount)
 }
 
 // checkNonce compare given transaction's nonce with expected account's nonce
-func (bs *BlockState) checkNonce(tx *Transaction) error {
+func (bs *BlockState) checkNonce(tx Transaction) error {
 	fromAcc, err := bs.GetAccount(tx.From())
 	if err != nil {
 		return err
 	}
 	expectedNonce := fromAcc.Nonce + 1
-	if tx.nonce > expectedNonce {
+	if tx.Nonce() > expectedNonce {
 		logging.WithFields(logrus.Fields{
 			"hash":        tx.Hash(),
 			"nonce":       tx.Nonce(),
@@ -300,13 +333,16 @@ func (bs *BlockState) checkNonce(tx *Transaction) error {
 			"transaction": tx,
 		}).Debug("Transaction nonce gap exist")
 		return ErrLargeTransactionNonce
-	} else if tx.nonce < expectedNonce {
+	} else if tx.Nonce() < expectedNonce {
 		return ErrSmallTransactionNonce
 	}
 	return nil
 }
 
-func (bs *BlockState) checkBandwidthLimit(cpu, net uint64) error {
+func (bs *BlockState) checkBandwidthLimit(bandwidth *common.Bandwidth) error {
+	cpu := bandwidth.CPUUsage()
+	net := bandwidth.NetUsage()
+
 	blockCPUUsage := bs.cpuUsage + cpu
 	if CPULimit < blockCPUUsage {
 		logging.Console().WithFields(logrus.Fields{
@@ -327,4 +363,110 @@ func (bs *BlockState) checkBandwidthLimit(cpu, net uint64) error {
 		return ErrExceedBlockMaxNetUsage
 	}
 	return nil
+}
+
+func (bs *BlockState) updateUnstaking(addr common.Address) error {
+	acc, err := bs.GetAccount(addr)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Warn("Failed to get account.")
+		return err
+	}
+
+	if err := acc.UpdateUnstaking(bs.timestamp); err != nil {
+		return err
+	}
+
+	return bs.PutAccount(acc)
+}
+
+//PayReward add reward to coinbase and update reward and supply
+func (bs *BlockState) PayReward(coinbase common.Address, parentSupply *util.Uint128) error {
+	reward, err := calcMintReward(parentSupply)
+	if err != nil {
+		return err
+	}
+
+	acc, err := bs.GetAccount(coinbase)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Add(reward)
+	if err != nil {
+		return err
+	}
+	err = bs.PutAccount(acc)
+	if err != nil {
+		return err
+	}
+
+	supply, err := parentSupply.Add(reward)
+	if err != nil {
+		return err
+	}
+
+	bs.reward = reward
+	bs.supply = supply
+
+	return nil
+}
+
+// AcceptTransaction consume bandwidth and adds tx in block state
+func (bs *BlockState) AcceptTransaction(tx *coreState.Transaction) error {
+	if tx.Receipt() == nil {
+		return ErrNoTransactionReceipt
+	}
+
+	// consume payer's points
+	payer, err := bs.GetAccount(tx.Payer())
+	if err != nil {
+		return err
+	}
+
+	payer.Points, err = payer.Points.Sub(tx.Receipt().Points())
+	if err == util.ErrUint128Underflow {
+		logging.Console().WithFields(logrus.Fields{
+			"tx_points":    tx.Receipt().Points(),
+			"payer_points": payer.Points,
+			"payer":        tx.Payer().Hex(),
+			"err":          err,
+		}).Warn("Points limit exceeded.")
+		return coreState.ErrPointNotEnough
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := bs.PutAccount(payer); err != nil {
+		return err
+	}
+
+	// increase from's points
+	from, err := bs.GetAccount(tx.From())
+	if err != nil {
+		return err
+	}
+	from.Nonce++
+	if err := bs.PutAccount(from); err != nil {
+		return err
+	}
+
+	bs.cpuUsage += tx.Receipt().CPUUsage()
+	bs.netUsage += tx.Receipt().NetUsage()
+
+	if err := bs.PutTx(tx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//SetMintDynastyState set mint dys
+func (bs *BlockState) SetMintDynastyState(parentState *BlockState, consensus Consensus) error {
+	mintDynasty, err := consensus.MakeMintDynasty(bs.timestamp, parentState)
+	if err != nil {
+		return err
+	}
+	return bs.dposState.SetDynasty(mintDynasty)
 }

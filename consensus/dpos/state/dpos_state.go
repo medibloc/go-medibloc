@@ -13,17 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package dpos
+package dposState
 
 import (
-	"bytes"
 	"sort"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
-	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -31,16 +29,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Prefixes for blockState trie
+const (
+	CandidatePrefix = "c_" // alias account prefix for account state trie
+	DynastyPrefix   = "d_" // alias account prefix for account state trie
+)
+
 //State is a structure for dpos state
 type State struct {
 	candidateState *trie.Batch // key: candidate id(txHash), value: candidate
 	dynastyState   *trie.Batch // key: order, value: bpAddr
-
-	storage storage.Storage
 }
 
 //NewDposState returns new dpos state
-func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor storage.Storage) (core.DposState, error) {
+func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor storage.Storage) (*State, error) {
 	cs, err := trie.NewBatch(candidateStateHash, stor)
 	if err != nil {
 		return nil, err
@@ -53,8 +55,23 @@ func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor stora
 	return &State{
 		candidateState: cs,
 		dynastyState:   ds,
-		storage:        stor,
 	}, nil
+}
+
+func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
+	candidate := new(Candidate)
+	if err := s.candidateState.GetData(cid, candidate); err != nil {
+		return nil, err
+	}
+	return candidate, nil
+}
+
+func (s *State) PutCandidate(cid []byte, candidate *Candidate) error {
+	return s.candidateState.PutData(cid, candidate)
+}
+
+func (s *State) DelCandidate(cid []byte) error {
+	return s.candidateState.Delete(cid)
 }
 
 //CandidateState returns candidate state
@@ -134,7 +151,7 @@ func (s *State) Reset() error {
 }
 
 //Clone clone state
-func (s *State) Clone() (core.DposState, error) {
+func (s *State) Clone() (*State, error) {
 	cs, err := s.candidateState.Clone()
 	if err != nil {
 		return nil, err
@@ -147,7 +164,6 @@ func (s *State) Clone() (core.DposState, error) {
 	return &State{
 		candidateState: cs,
 		dynastyState:   ds,
-		storage:        s.storage,
 	}, nil
 }
 
@@ -170,11 +186,12 @@ func (s *State) RootBytes() ([]byte, error) {
 }
 
 //SortByVotePower returns Descending ordered candidate slice
-func SortByVotePower(candidateState *trie.Batch) ([]common.Address, error) {
+func (s *State) SortByVotePower() ([]common.Address, error) {
+	cs := s.CandidateState()
 	addresses := make([]common.Address, 0)
 	candidates := make([]*Candidate, 0)
 
-	iter, err := candidateState.Iterator(nil)
+	iter, err := cs.Iterator(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -214,59 +231,6 @@ func SortByVotePower(candidateState *trie.Batch) ([]common.Address, error) {
 	}
 
 	return addresses, nil
-}
-
-//MakeNewDynasty returns new dynasty slice for new block
-func MakeNewDynasty(sortedCandidates []common.Address, dynastySize int) []common.Address {
-	dynasty := make([]common.Address, 0)
-
-	for i := 0; i < dynastySize; i++ {
-		if i >= len(sortedCandidates) {
-			dynasty = append(dynasty, common.Address{})
-			continue
-		}
-		addr := sortedCandidates[i]
-		dynasty = append(dynasty, addr)
-	}
-	// Todo @drsleepytiger ordering BP
-
-	sort.Slice(dynasty, func(i, j int) bool {
-		return bytes.Compare(dynasty[i].Bytes(), dynasty[j].Bytes()) < 0
-	})
-
-	return dynasty
-}
-
-func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
-	parentDynastyIndex := d.calcDynastyIndex(parentTimestamp)
-	curDynastyIndex := d.calcDynastyIndex(curTimestamp)
-
-	return curDynastyIndex > parentDynastyIndex
-}
-
-//MakeMintDynasty returns dynasty slice for mint block
-func (d *Dpos) MakeMintDynasty(ts int64, parent *core.Block) ([]common.Address, error) {
-	if d.checkTransitionDynasty(parent.Timestamp(), ts) || parent.Timestamp() == core.GenesisTimestamp {
-		cs := parent.State().DposState().CandidateState()
-		sortedCandidates, err := SortByVotePower(cs)
-		if err != nil {
-			return nil, err
-		}
-		newDynasty := MakeNewDynasty(sortedCandidates, d.dynastySize)
-		return newDynasty, nil
-	}
-	return parent.State().DposState().Dynasty()
-}
-
-//FindMintProposer returns proposer for mint block
-func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
-	mintTs := NextMintSlot2(ts)
-	dynasty, err := d.MakeMintDynasty(mintTs, parent)
-	if err != nil {
-		return common.Address{}, err
-	}
-	proposerIndex := d.calcProposerIndex(mintTs)
-	return dynasty[proposerIndex], nil
 }
 
 //SetDynasty set dynastyState by using dynasty slice
@@ -361,9 +325,7 @@ func (s *State) Dynasty() ([]common.Address, error) {
 func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
 	err := s.candidateState.GetData(id, candidate)
-	if err == trie.ErrNotFound {
-		return core.ErrCandidateNotFound
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 
@@ -378,9 +340,7 @@ func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
 	err := s.candidateState.GetData(id, candidate)
-	if err == trie.ErrNotFound {
-		return core.ErrCandidateNotFound
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 

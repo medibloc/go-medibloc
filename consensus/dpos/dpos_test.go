@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/core"
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
@@ -43,9 +44,9 @@ func TestChangeDynasty(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
 
 	bb = bb.ChildNextDynasty().
-		Tx().Type(core.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
-		Tx().Type(core.TxOpRegisterAlias).Value(1000000).Payload(&core.RegisterAliasPayload{AliasName: "testname"}).SignPair(newCandidate).Execute().
-		Tx().Type(dpos.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
+		Tx().Type(coreState.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
+		Tx().Type(coreState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(newCandidate).Execute().
+		Tx().Type(dposState.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
 	acc, err := bb.Build().State().GetAccount(newCandidate.Addr)
 	require.NoError(t, err)
@@ -55,10 +56,10 @@ func TestChangeDynasty(t *testing.T) {
 	_, err = bb.Build().State().DposState().CandidateState().Get(cId)
 	require.NoError(t, err)
 
-	votePayload := new(dpos.VotePayload)
+	votePayload := new(transaction.VotePayload)
 	votePayload.CandidateIDs = append(votePayload.CandidateIDs, acc.CandidateID)
 	bb = bb.
-		Tx().Type(dpos.TxOpVote).
+		Tx().Type(dposState.TxOpVote).
 		Payload(votePayload).SignPair(newCandidate).Execute().SignProposer()
 	block := bb.Build().BlockData
 	err = seed.Med.BlockManager().PushBlockData(block)
@@ -84,7 +85,7 @@ func TestChangeDynasty(t *testing.T) {
 	assert.True(t, ok)
 
 	bb = bb.Child().
-		Tx().Type(dpos.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
+		Tx().Type(dposState.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
 		SignProposer()
 	block = bb.Build().BlockData
 	err = seed.Med.BlockManager().PushBlockData(block)

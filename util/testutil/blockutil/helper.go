@@ -19,13 +19,14 @@ import (
 	"math/big"
 	"testing"
 
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,9 +36,6 @@ const (
 
 var unitMed = util.NewUint128FromUint(1000000000000)
 
-//DefaultTxMap is default txmap for block util
-var DefaultTxMap = medlet.DefaultTxMap
-
 func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	signer, err := crypto.NewSignature(defaultSignAlg)
 	require.NoError(t, err)
@@ -46,18 +44,11 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 }
 
 //Points returns bandwidth usage of a transaction.
-func Points(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
-	execTx, err := DefaultTxMap[tx.TxType()](tx)
-	require.NoError(t, err)
-	cpu, net := execTx.Bandwidth()
+func Points(t *testing.T, tx *coreState.Transaction, b *core.Block) *util.Uint128 {
+	execTx, err := transaction.NewExecutableTx(tx)
 	require.NoError(t, err)
 
-	cpuPoints, err := b.State().CPUPrice().Mul(util.NewUint128FromUint(cpu))
-	require.NoError(t, err)
-	netPoints, err := b.State().NetPrice().Mul(util.NewUint128FromUint(net))
-	require.NoError(t, err)
-
-	points, err := cpuPoints.Add(netPoints)
+	points, err := execTx.CalcPoints(b.State().Price())
 	require.NoError(t, err)
 
 	return points

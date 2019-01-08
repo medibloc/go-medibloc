@@ -7,9 +7,11 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/core"
+	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	cState "github.com/medibloc/go-medibloc/core/state"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
@@ -54,7 +56,7 @@ func main() {
 	}
 
 	var tokenDist []*corepb.GenesisTokenDistribution
-	txs := make([]*core.Transaction, 0)
+	txs := make([]*coreState.Transaction, 0)
 
 	for i, v := range privKeys[:dynastySize] {
 		key, err := secp256k1.NewPrivateKeyFromHex(v)
@@ -81,47 +83,47 @@ func main() {
 		})
 
 		vesting, _ := util.NewUint128FromString("100000000000000000000")
-		collateral, _ := util.NewUint128FromString(dpos.MinimumCandidateCollateral)
-		aliasCollateral, _ := util.NewUint128FromString(core.MinimumAliasCollateral)
+		collateral, _ := util.NewUint128FromString(transaction.CandidateCollateralMinimum)
+		aliasCollateral, _ := util.NewUint128FromString(transaction.AliasCollateralMinimum)
 
-		tx := new(core.Transaction)
+		tx := new(cState.Transaction)
 
 		tx.SetChainID(chainID)
 		tx.SetValue(util.NewUint128())
 
 		txVest, _ := tx.Clone()
-		txVest.SetTxType(core.TxOpStake)
+		txVest.SetTxType(cState.TxOpStake)
 		txVest.SetValue(vesting)
 		txVest.SetNonce(1)
 		txVest.SignThis(key)
 
-		aliasPayload := &core.RegisterAliasPayload{AliasName: "testbp" + strconv.Itoa(i)}
-		aliasePayloadBytes, err := aliasPayload.ToBytes()
+		aliasPayload := &transaction.RegisterAliasPayload{AliasName: "testnetbpname" + strconv.Itoa(i)}
+		aliasePayloadBytes, _ := aliasPayload.ToBytes()
 
 		txAlias, err := tx.Clone()
-		txAlias.SetTxType(core.TxOpRegisterAlias)
+		txAlias.SetTxType(coreState.TxOpRegisterAlias)
 		txAlias.SetValue(aliasCollateral)
 		txAlias.SetNonce(2)
 		txAlias.SetPayload(aliasePayloadBytes)
 		txAlias.SignThis(key)
 
-		becomeCandidatePayload := &dpos.BecomeCandidatePayload{URL: "www.medibloc.org"}
+		becomeCandidatePayload := &transaction.BecomeCandidatePayload{URL: "www.medibloc.org"}
 		becomeCandidatePayloadBytes, _ := becomeCandidatePayload.ToBytes()
 
 		txCandidate, _ := tx.Clone()
-		txCandidate.SetTxType(dpos.TxOpBecomeCandidate)
+		txCandidate.SetTxType(dState.TxOpBecomeCandidate)
 		txCandidate.SetValue(collateral)
 		txCandidate.SetNonce(3)
 		txCandidate.SetPayload(becomeCandidatePayloadBytes)
 		txCandidate.SignThis(key)
 
-		votePayload := new(dpos.VotePayload)
+		votePayload := new(transaction.VotePayload)
 		candidateIds := make([][]byte, 0)
 		votePayload.CandidateIDs = append(candidateIds, txCandidate.Hash())
 		votePayloadBytes, _ := votePayload.ToBytes()
 
 		txVote, _ := tx.Clone()
-		txVote.SetTxType(dpos.TxOpVote)
+		txVote.SetTxType(dState.TxOpVote)
 		txVote.SetNonce(4)
 		txVote.SetPayload(votePayloadBytes)
 		txVote.SignThis(key)

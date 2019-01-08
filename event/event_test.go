@@ -1,4 +1,4 @@
-package core_test
+package event_test
 
 import (
 	"fmt"
@@ -8,29 +8,26 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/medibloc/go-medibloc/util/byteutils"
-
-	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
-
-	"github.com/medibloc/go-medibloc/util/testutil"
-
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/event"
+	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func register(emitter *core.EventEmitter, topics ...string) *core.EventSubscriber {
-	eventSubscriber, _ := core.NewEventSubscriber(1024, topics)
+func register(emitter *event.Emitter, topics ...string) *event.Subscriber {
+	eventSubscriber, _ := event.NewSubscriber(1024, topics)
 	emitter.Register(eventSubscriber)
 	return eventSubscriber
 }
 
 func TestEventEmitter(t *testing.T) {
-	emitter := core.NewEventEmitter(1024)
+	emitter := event.NewEventEmitter(1024)
 	emitter.Start()
 
-	topics := []string{core.TopicPendingTransaction, core.TopicLibBlock}
+	topics := []string{event.TopicPendingTransaction, event.TopicLibBlock}
 
 	subscriber1 := register(emitter, topics[0], topics[1])
 
@@ -50,7 +47,7 @@ func TestEventEmitter(t *testing.T) {
 			topic := topics[rand.Intn(len(topics))]
 			eventCountDist[topic] = eventCountDist[topic] + 1
 
-			e := &core.Event{
+			e := &event.Event{
 				Topic: topic,
 				Data:  fmt.Sprintf("%d", i),
 				Type:  "",
@@ -86,10 +83,10 @@ func TestEventEmitter(t *testing.T) {
 }
 
 func TestEventEmitterWithRunningRegDereg(t *testing.T) {
-	emitter := core.NewEventEmitter(1024)
+	emitter := event.NewEventEmitter(1024)
 	emitter.Start()
 
-	topics := []string{core.TopicPendingTransaction}
+	topics := []string{event.TopicPendingTransaction}
 
 	subscriber1 := register(emitter, topics[0])
 	subscriber2 := register(emitter, topics[0])
@@ -110,7 +107,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 			topic := topics[rand.Intn(len(topics))]
 			eventCountDist[topic] = eventCountDist[topic] + 1
 
-			e := &core.Event{
+			e := &event.Event{
 				Topic: topic,
 				Data:  fmt.Sprintf("%d", i),
 				Type:  "",
@@ -162,7 +159,7 @@ func TestTopicLibBlock(t *testing.T) {
 
 	bm := seed.Med.BlockManager()
 	emitter := seed.Med.EventEmitter()
-	topics := []string{core.TopicLibBlock}
+	topics := []string{event.TopicLibBlock}
 	subscriber := register(emitter, topics[0])
 
 	newLIB := bb.Build()
@@ -180,9 +177,9 @@ func TestTopicLibBlock(t *testing.T) {
 		return
 	}()
 
-	event := <-subscriber.EventChan()
-	assert.Equal(t, core.TopicLibBlock, event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(newLIB.Hash()), event.Data)
+	ev := <-subscriber.EventChan()
+	assert.Equal(t, event.TopicLibBlock, ev.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(newLIB.Hash()), ev.Data)
 }
 
 func TestTopicNewTailBlock(t *testing.T) {
@@ -198,7 +195,7 @@ func TestTopicNewTailBlock(t *testing.T) {
 
 	bm := seed.Med.BlockManager()
 	emitter := seed.Med.EventEmitter()
-	topics := []string{core.TopicNewTailBlock}
+	topics := []string{event.TopicNewTailBlock}
 	subscriber := register(emitter, topics[0])
 
 	b := bb.Build()
@@ -215,11 +212,11 @@ func TestTopicNewTailBlock(t *testing.T) {
 	count := 1
 	for i := 0; i < 2; i++ {
 		count++
-		event := <-subscriber.EventChan()
+		ev := <-subscriber.EventChan()
 		block, err := bm.BlockByHeight(uint64(count))
 		assert.NoError(t, err)
-		assert.Equal(t, core.TopicNewTailBlock, event.Topic)
-		assert.Equal(t, byteutils.Bytes2Hex(block.Hash()), event.Data)
+		assert.Equal(t, event.TopicNewTailBlock, ev.Topic)
+		assert.Equal(t, byteutils.Bytes2Hex(block.Hash()), ev.Data)
 	}
 }
 
@@ -236,7 +233,7 @@ func TestTopicPendingTransaction(t *testing.T) {
 
 	tm := seed.Med.TransactionManager()
 	emitter := seed.Med.EventEmitter()
-	topics := []string{core.TopicPendingTransaction}
+	topics := []string{event.TopicPendingTransaction}
 	subscriber := register(emitter, topics[0])
 
 	tx := bb.Tx().RandomTx().Build()
@@ -245,9 +242,9 @@ func TestTopicPendingTransaction(t *testing.T) {
 		return
 	}()
 
-	event := <-subscriber.EventChan()
-	assert.Equal(t, core.TopicPendingTransaction, event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+	ev := <-subscriber.EventChan()
+	assert.Equal(t, event.TopicPendingTransaction, ev.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), ev.Data)
 }
 
 func TestTopicRevertBlock(t *testing.T) {
@@ -263,7 +260,7 @@ func TestTopicRevertBlock(t *testing.T) {
 
 	bm := seed.Med.BlockManager()
 	emitter := seed.Med.EventEmitter()
-	topics := []string{core.TopicRevertBlock}
+	topics := []string{event.TopicRevertBlock}
 	subscriber := register(emitter, topics[0])
 
 	b := bb.Build()
@@ -287,9 +284,9 @@ func TestTopicRevertBlock(t *testing.T) {
 		return
 	}()
 
-	event := <-subscriber.EventChan()
-	assert.Equal(t, core.TopicRevertBlock, event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(forkedBlock.Hash()), event.Data)
+	ev := <-subscriber.EventChan()
+	assert.Equal(t, event.TopicRevertBlock, ev.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(forkedBlock.Hash()), ev.Data)
 }
 
 func TestTopicTransactionExecutionResult(t *testing.T) {
@@ -304,7 +301,7 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 		TokenDist).Block(seed.GenesisBlock()).Child()
 
 	emitter := seed.Med.EventEmitter()
-	topics := []string{core.TopicTransactionExecutionResult}
+	topics := []string{event.TopicTransactionExecutionResult}
 	subscriber := register(emitter, topics[0])
 
 	tx := bb.Tx().RandomTx().Build()
@@ -316,9 +313,9 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 		return
 	}()
 
-	event := <-subscriber.EventChan()
-	assert.Equal(t, core.TopicTransactionExecutionResult, event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), event.Data)
+	ev := <-subscriber.EventChan()
+	assert.Equal(t, event.TopicTransactionExecutionResult, ev.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(tx.Hash()), ev.Data)
 }
 
 func TestTopicAcceptedBlock(t *testing.T) {
@@ -334,15 +331,15 @@ func TestTopicAcceptedBlock(t *testing.T) {
 	b := bb.SignProposer().Build()
 
 	emitter := seed.Med.EventEmitter()
-	topics := []string{core.TopicAcceptedBlock}
+	topics := []string{event.TopicAcceptedBlock}
 	subscriber := register(emitter, topics[0])
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
 	require.NoError(t, err)
 
-	event := <-subscriber.EventChan()
-	assert.Equal(t, core.TopicAcceptedBlock, event.Topic)
-	assert.Equal(t, byteutils.Bytes2Hex(b.Hash()), event.Data)
+	ev := <-subscriber.EventChan()
+	assert.Equal(t, event.TopicAcceptedBlock, ev.Topic)
+	assert.Equal(t, byteutils.Bytes2Hex(b.Hash()), ev.Data)
 }
 
 func TestTypeAccountTransaction(t *testing.T) {

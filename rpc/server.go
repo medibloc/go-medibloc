@@ -19,6 +19,7 @@ import (
 	goNet "net"
 
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
@@ -45,7 +46,7 @@ func New(cfg *medletpb.Config) *Server {
 }
 
 //Setup sets up server.
-func (s *Server) Setup(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter, ns net.Service) {
+func (s *Server) Setup(bm *core.BlockManager, tm *core.TransactionManager, ee *event.Emitter, ns net.Service) {
 	api := newAPIService(bm, tm, ee, ns)
 	rpcpb.RegisterApiServiceServer(s.rpcServer, api)
 }

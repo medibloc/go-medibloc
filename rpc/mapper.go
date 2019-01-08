@@ -17,24 +17,24 @@ package rpc
 
 import (
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func coreAccount2rpcAccount(account *core.Account, curTs int64, address string) (*rpcpb.Account, error) {
+func coreAccount2rpcAccount(account *coreState.Account, curTs int64, address string) (*rpcpb.Account, error) {
 	if err := account.UpdatePoints(curTs); err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateBandwidth)
 	}
 	if err := account.UpdateUnstaking(curTs); err != nil {
 		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateUnstaking)
 	}
-	aliasBytes, err := account.GetData(core.AliasPrefix, []byte(common.AliasKey))
+	aliasBytes, err := account.GetData("", []byte(coreState.AliasKey))
 	if err != nil && err != core.ErrNotFound {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func coreBlock2rpcBlock(block *core.Block, light bool) *rpcpb.Block {
 			txHashes = append(txHashes, byteutils.Bytes2Hex(tx.Hash()))
 		}
 	} else {
-		txs = coreTxs2rpcTxs(block.Transactions(), true)
+		txs = transactions2rpcTxs(block.Transactions(), true)
 	}
 	return &rpcpb.Block{
 		Height:       block.Height(),
@@ -89,7 +89,7 @@ func coreBlock2rpcBlock(block *core.Block, light bool) *rpcpb.Block {
 	}
 }
 
-func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
+func dposCandidate2rpcCandidate(candidate *dposState.Candidate) *rpcpb.Candidate {
 	return &rpcpb.Candidate{
 		CandidateId: byteutils.Bytes2Hex(candidate.ID),
 		Address:     candidate.Addr.Hex(),
@@ -100,7 +100,7 @@ func dposCandidate2rpcCandidate(candidate *dpos.Candidate) *rpcpb.Candidate {
 }
 
 // CoreTx2rpcTx converts core transaction type to rpcpb response type
-func CoreTx2rpcTx(tx *core.Transaction, onChain bool) *rpcpb.Transaction {
+func CoreTx2rpcTx(tx *coreState.Transaction, onChain bool) *rpcpb.Transaction {
 	var rpcReceipt *rpcpb.TransactionReceipt
 
 	if onChain {
@@ -123,7 +123,7 @@ func CoreTx2rpcTx(tx *core.Transaction, onChain bool) *rpcpb.Transaction {
 	}
 }
 
-func coreTxs2rpcTxs(txs []*core.Transaction, onChain bool) []*rpcpb.Transaction {
+func transactions2rpcTxs(txs []*coreState.Transaction, onChain bool) []*rpcpb.Transaction {
 	var rpcTxs []*rpcpb.Transaction
 	for _, tx := range txs {
 		rpcTx := CoreTx2rpcTx(tx, onChain)
@@ -132,7 +132,7 @@ func coreTxs2rpcTxs(txs []*core.Transaction, onChain bool) []*rpcpb.Transaction 
 	return rpcTxs
 }
 
-func coreReceipt2rpcReceipt(tx *core.Transaction) *rpcpb.TransactionReceipt {
+func coreReceipt2rpcReceipt(tx *coreState.Transaction) *rpcpb.TransactionReceipt {
 	err := string(tx.Receipt().Error())
 	points := tx.Receipt().Points().String()
 

@@ -13,14 +13,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package core_test
+package coreState_test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -48,10 +51,10 @@ func TestReceipt(t *testing.T) {
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 100).Build()
-	tx2 := tb.Nonce(2).Type(core.TxOpUnstake).Value(200).SignPair(payer).
+	tx2 := tb.Nonce(2).Type(coreState.TxOpUnstake).Value(200).SignPair(payer).
 		Build()
-	tx3 := tb.Nonce(2).Type(core.TxOpUnstake).Value(50).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
+	tx3 := tb.Nonce(2).Type(coreState.TxOpUnstake).Value(50).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, coreState.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
@@ -91,13 +94,13 @@ func TestErrorTransactionReceipt(t *testing.T) {
 
 	recordHash, err := byteutils.Hex2Bytes("9eca7128409f609b2a72fc24985645665bbb99152b4b14261c3c3c93fb17cf54")
 	require.NoError(t, err)
-	payload := &core.AddRecordPayload{
+	payload := &transaction.AddRecordPayload{
 		RecordHash: recordHash,
 	}
 
-	tx2 := tb.Nonce(2).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	tx3 := tb.Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, core.ErrRecordAlreadyAdded).SignProposer().Build()
+	tx2 := tb.Nonce(2).Type(coreState.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx3 := tb.Nonce(3).Type(coreState.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, transaction.ErrRecordAlreadyAdded).SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
@@ -116,7 +119,7 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	tx3r, err := receiver.Tail().State().GetTx(tx3.Hash())
 	assert.NoError(t, err)
 	assert.False(t, tx3r.Receipt().Executed())
-	assert.Equal(t, string(tx3r.Receipt().Error()[:]), core.ErrRecordAlreadyAdded.Error())
+	assert.Equal(t, string(tx3r.Receipt().Error()[:]), transaction.ErrRecordAlreadyAdded.Error())
 }
 
 func TestWrongReceipt(t *testing.T) {
@@ -153,32 +156,32 @@ func TestVoteTransactionReceipt(t *testing.T) {
 
 	payer := seed.Config.TokenDist[testutil.DynastySize]
 	payer2 := seed.Config.TokenDist[testutil.DynastySize+1]
-	aliasPayload1 := &core.RegisterAliasPayload{AliasName: "helloworld1"}
-	aliasPayload2 := &core.RegisterAliasPayload{AliasName: "helloworld2"}
-	aliasTx1 := bb.Tx().Nonce(2).Payload(aliasPayload1).Value(1000000).Type(core.TxOpRegisterAlias).SignPair(payer).Build()
-	aliasTx2 := bb.Tx().Nonce(2).Payload(aliasPayload2).Value(1000000).Type(core.TxOpRegisterAlias).SignPair(payer2).Build()
+	aliasPayload1 := &transaction.RegisterAliasPayload{AliasName: "helloworld10"}
+	aliasPayload2 := &transaction.RegisterAliasPayload{AliasName: "helloworld20"}
+	aliasTx1 := bb.Tx().Nonce(2).Payload(aliasPayload1).Value(1000000).Type(coreState.TxOpRegisterAlias).SignPair(payer).Build()
+	aliasTx2 := bb.Tx().Nonce(2).Payload(aliasPayload2).Value(1000000).Type(coreState.TxOpRegisterAlias).SignPair(payer2).Build()
 
-	candidateTx1 := bb.Tx().Value(1000000).Nonce(3).Type(dpos.TxOpBecomeCandidate).SignPair(payer).Build()
-	candidateTx2 := bb.Tx().Value(1000000).Nonce(3).Type(dpos.TxOpBecomeCandidate).SignPair(payer2).Build()
+	candidateTx1 := bb.Tx().Value(1000000).Nonce(3).Type(dposState.TxOpBecomeCandidate).SignPair(payer).Build()
+	candidateTx2 := bb.Tx().Value(1000000).Nonce(3).Type(dposState.TxOpBecomeCandidate).SignPair(payer2).Build()
 
 	candidateId, _ := byteutils.Hex2Bytes(
 		"e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")
-	invalidPayload := &dpos.VotePayload{
+	invalidPayload := &transaction.VotePayload{
 		CandidateIDs: [][]byte{candidateId, candidateTx1.Hash()},
 	}
-	invalidTx := bb.Tx().Nonce(4).Type(dpos.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
+	invalidTx := bb.Tx().Nonce(4).Type(dposState.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
 
-	validPayload := &dpos.VotePayload{
+	validPayload := &transaction.VotePayload{
 		CandidateIDs: [][]byte{candidateTx1.Hash(), candidateTx2.Hash()},
 	}
-	validTx := bb.Tx().Nonce(5).Type(dpos.TxOpVote).Payload(validPayload).SignPair(payer).Build()
+	validTx := bb.Tx().Nonce(5).Type(dposState.TxOpVote).Payload(validPayload).SignPair(payer).Build()
 
 	b := bb.
 		ExecuteTx(aliasTx1).
 		ExecuteTx(aliasTx2).
 		ExecuteTx(candidateTx1).
 		ExecuteTx(candidateTx2).
-		ExecuteTxErr(invalidTx, dpos.ErrNotCandidate).
+		ExecuteTxErr(invalidTx, transaction.ErrNotCandidate).
 		ExecuteTx(validTx).
 		SignProposer().Build()
 
@@ -189,7 +192,7 @@ func TestVoteTransactionReceipt(t *testing.T) {
 	invalidTxr, err := receiver.Tail().State().GetTx(invalidTx.Hash())
 	assert.NoError(t, err)
 	assert.False(t, invalidTxr.Receipt().Executed())
-	assert.Equal(t, dpos.ErrNotCandidate.Error(), string(invalidTxr.Receipt().Error()))
+	assert.Equal(t, transaction.ErrNotCandidate.Error(), string(invalidTxr.Receipt().Error()))
 
 	time.Sleep(1000 * time.Millisecond)
 	validTxr, err := receiver.Tail().State().GetTx(validTx.Hash())

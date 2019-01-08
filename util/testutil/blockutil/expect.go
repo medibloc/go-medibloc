@@ -20,6 +20,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func NewExpect(t *testing.T, block *core.Block) *Expect {
 	}
 }
 
-func (e *Expect) account(addr common.Address) *core.Account {
+func (e *Expect) account(addr common.Address) *coreState.Account {
 	acc, err := e.block.State().GetAccount(addr)
 	require.NoError(e.t, err)
 	return acc

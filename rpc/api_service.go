@@ -18,11 +18,13 @@ package rpc
 import (
 	"encoding/hex"
 
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/event"
 	"github.com/sirupsen/logrus"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -40,11 +42,11 @@ import (
 type APIService struct {
 	bm *core.BlockManager
 	tm *core.TransactionManager
-	ee *core.EventEmitter
+	ee *event.Emitter
 	ns net.Service
 }
 
-func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *core.EventEmitter, ns net.Service) *APIService {
+func newAPIService(bm *core.BlockManager, tm *core.TransactionManager, ee *event.Emitter, ns net.Service) *APIService {
 	return &APIService{
 		bm: bm,
 		tm: tm,
@@ -96,11 +98,12 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 
+	// TODO: api service change
 	var addr string
 	if common.IsHexAddress(req.Address) {
 		addr = req.Address
 	} else {
-		alisAcc, err := block.State().AccState().GetAliasAccount(req.Alias)
+		acc, err := block.State().GetAccountByAlias(req.Alias)
 		if err == trie.ErrNotFound {
 			return nil, status.Error(codes.NotFound, ErrMsgAliasNotFound)
 		}
@@ -111,7 +114,7 @@ func (s *APIService) GetAccount(ctx context.Context, req *rpcpb.GetAccountReques
 			}).Error("Failed to get alias account from state.")
 			return nil, status.Error(codes.Internal, ErrMsgInternalError)
 		}
-		addr = alisAcc.Account.String()
+		addr = acc.Address.String()
 	}
 
 	addrAddr, err := common.HexToAddress(addr)
@@ -224,31 +227,24 @@ func (s *APIService) GetCandidate(ctx context.Context, req *rpcpb.GetCandidateRe
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidRequest)
 	}
 
-	candidateID, err := byteutils.Hex2Bytes(req.CandidateId)
+	cid, err := byteutils.Hex2Bytes(req.CandidateId)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, ErrMsgInvalidCandidateID)
 	}
-	candidate, err := block.State().DposState().CandidateState().Get(candidateID)
+
+	candidate, err := block.State().DposState().GetCandidate(cid)
 	if err == trie.ErrNotFound {
 		return nil, status.Error(codes.NotFound, ErrMsgCandidateNotFound)
 	}
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"candidateID": candidateID,
+			"candidateID": cid,
 			"err":         err,
 		}).Error("Could not get the candidate.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
-	cd := &dpos.Candidate{}
-	if err := cd.FromBytes(candidate); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"candidate": candidate,
-			"err":       err,
-		}).Error("Failed to set candidate struct from bytes.")
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
-	}
 
-	return dposCandidate2rpcCandidate(cd), nil
+	return dposCandidate2rpcCandidate(candidate), nil
 }
 
 // GetCandidates returns all candidates
@@ -258,7 +254,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 	block := s.bm.TailBlock()
 
 	cs := block.State().DposState().CandidateState()
-	candidates := make([]*dpos.Candidate, 0)
+	candidates := make([]*dposState.Candidate, 0)
 
 	iter, err := cs.Iterator(nil)
 	if err != nil {
@@ -275,7 +271,7 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
 	}
 	for exist {
-		candidate := new(dpos.Candidate)
+		candidate := new(dposState.Candidate)
 		err := candidate.FromBytes(iter.Value())
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
@@ -341,7 +337,7 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 func (s *APIService) GetPendingTransactions(ctx context.Context,
 	req *rpcpb.NonParamRequest) (*rpcpb.Transactions, error) {
 	txs := s.tm.GetAll()
-	rpcTxs := coreTxs2rpcTxs(txs, false)
+	rpcTxs := transactions2rpcTxs(txs, false)
 
 	return &rpcpb.Transactions{
 		Transactions: rpcTxs,
@@ -513,7 +509,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		Receipt:   nil,
 	}
 
-	tx := &core.Transaction{}
+	tx := &coreState.Transaction{}
 	if err := tx.FromProto(pbTx); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -530,7 +526,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 // Subscribe to listen event
 func (s *APIService) Subscribe(req *rpcpb.SubscribeRequest, stream rpcpb.ApiService_SubscribeServer) error {
 
-	eventSub, err := core.NewEventSubscriber(1024, req.Topics)
+	eventSub, err := event.NewSubscriber(1024, req.Topics)
 	if err != nil {
 		return err
 	}

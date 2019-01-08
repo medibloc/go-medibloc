@@ -20,8 +20,9 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -32,13 +33,13 @@ import (
 type TxBuilder struct {
 	t  *testing.T
 	bb *BlockBuilder
-	tx *core.Transaction
+	tx *coreState.Transaction
 }
 
 func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
 
-	tx := &core.Transaction{}
+	tx := &coreState.Transaction{}
 	tx.SetChainID(testutil.ChainID)
 	tx.SetValue(util.Uint128Zero())
 
@@ -50,7 +51,7 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 }
 
 func (tb *TxBuilder) copy() *TxBuilder {
-	var tx *core.Transaction
+	var tx *coreState.Transaction
 	var err error
 	if tb.tx != nil {
 		tx, err = tb.tx.Clone()
@@ -102,7 +103,7 @@ func (tb *TxBuilder) Type(txType string) *TxBuilder {
 }
 
 //Payload sets payload
-func (tb *TxBuilder) Payload(payload core.TransactionPayload) *TxBuilder {
+func (tb *TxBuilder) Payload(payload transaction.Payload) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
 
@@ -194,13 +195,13 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 
 	from := n.bb.KeyPairs[0]
 	to := testutil.NewAddrKeyPair(n.t)
-	return n.Type(core.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
+	return n.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
 }
 
 //RandomTxs generate random transactions
-func (tb *TxBuilder) RandomTxs(n int) []*core.Transaction {
+func (tb *TxBuilder) RandomTxs(n int) []*coreState.Transaction {
 	require.NotEqual(tb.t, 0, len(tb.bb.KeyPairs), "No key pair added on block builder")
-	txs := make([]*core.Transaction, 0, n)
+	txs := make([]*coreState.Transaction, 0, n)
 
 	from := tb.bb.KeyPairs[0]
 	acc, err := tb.bb.B.State().GetAccount(from.Addr)
@@ -215,11 +216,11 @@ func (tb *TxBuilder) RandomTxs(n int) []*core.Transaction {
 //StakeTx generate stake Tx
 func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
-	return n.Type(core.TxOpStake).Value(med).SignPair(pair)
+	return n.Type(coreState.TxOpStake).Value(med).SignPair(pair)
 }
 
 //Build build transaction
-func (tb *TxBuilder) Build() *core.Transaction {
+func (tb *TxBuilder) Build() *coreState.Transaction {
 	n := tb.copy()
 	return n.tx
 }

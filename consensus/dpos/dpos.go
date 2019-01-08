@@ -18,17 +18,21 @@ package dpos
 import (
 	"bytes"
 	"io/ioutil"
+	"sort"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	cState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
+	"github.com/medibloc/go-medibloc/event"
 	"github.com/medibloc/go-medibloc/keystore"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
@@ -49,7 +53,7 @@ type Dpos struct {
 
 	quitCh chan int
 
-	eventEmitter *core.EventEmitter
+	eventEmitter *event.Emitter
 }
 
 //Proposer returns proposer
@@ -79,28 +83,28 @@ func New(dynastySize int) *Dpos {
 }
 
 // SetEventEmitter sets eventEmitter
-func (d *Dpos) SetEventEmitter(emitter *core.EventEmitter) {
+func (d *Dpos) SetEventEmitter(emitter *event.Emitter) {
 	d.eventEmitter = emitter
 }
 
 // NewConsensusState generates new dpos state
-func (d *Dpos) NewConsensusState(dposRootBytes []byte, stor storage.Storage) (core.DposState, error) {
+func (d *Dpos) NewConsensusState(dposRootBytes []byte, stor storage.Storage) (*dState.State, error) {
 	pbState := new(dpospb.State)
 	err := proto.Unmarshal(dposRootBytes, pbState)
 	if err != nil {
 		return nil, err
 	}
-	return NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
+	return dState.NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
 }
 
 // LoadConsensusState loads a consensus state from marshalled bytes
-func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (core.DposState, error) {
+func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (*dState.State, error) {
 	pbState := new(dpospb.State)
 	err := proto.Unmarshal(dposRootBytes, pbState)
 	if err != nil {
 		return nil, err
 	}
-	return NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
+	return dState.NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
 }
 
 // Setup sets up dpos.
@@ -395,7 +399,9 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}).Error("Failed to make child block for make block")
 		return nil, err
 	}
-	block.SetTimestamp(nextMintTs.Unix())
+	bs := block.State()
+
+	bs.SetTimestamp(nextMintTs.Unix())
 
 	if err := block.Prepare(); err != nil {
 		return nil, err
@@ -411,7 +417,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	}
 
 	// Change dynasty state for current block
-	if err := block.SetMintDynastyState(tail, d); err != nil {
+	if err := bs.SetMintDynastyState(tail.State(), d); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")
@@ -432,8 +438,8 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}).Debug("Make block is in progress")
 
 		// Get transaction from transaction pool
-		transaction := d.tm.Pop()
-		if transaction == nil {
+		exeTx := d.tm.Pop()
+		if exeTx == nil {
 			logging.Info("No more transactions in block pool.")
 			time.Sleep(10 * time.Millisecond)
 			continue
@@ -444,7 +450,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}
 
 		// Execute transaction and change states
-		receipt, err := block.ExecuteTransaction(transaction, d.bm.TxMap())
+		receipt, err := block.ExecuteTransaction(exeTx)
 		if err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
@@ -453,15 +459,15 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				return nil, err
 			}
 			if isRetryable(err) {
-				d.tm.PushAndExclusiveBroadcast(transaction)
+				d.tm.PushAndExclusiveBroadcast(exeTx.Transaction)
 				continue
 			}
 			if receipt == nil {
 				logging.Console().WithFields(logrus.Fields{
-					"transaction": transaction.Hash(),
+					"transaction": exeTx.Hash,
 					"err":         err,
 				}).Info("failed to execute transaction")
-				transaction.TriggerEvent(d.eventEmitter, core.TypeAccountTransactionDeleted)
+				exeTx.TriggerEvent(d.eventEmitter, event.TypeAccountTransactionDeleted)
 				continue
 			}
 			if err := block.BeginBatch(); err != nil {
@@ -470,7 +476,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				}).Error("Failed to begin batch.")
 				return nil, err
 			}
-			if err := includeTransaction(block, transaction, receipt); err != nil {
+			if err := includeTransaction(block, exeTx.Transaction, receipt); err != nil {
 				if err := block.RollBack(); err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -488,7 +494,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			continue
 		}
 
-		if err := includeTransaction(block, transaction, receipt); err != nil {
+		if err := includeTransaction(block, exeTx.Transaction, receipt); err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,
@@ -513,7 +519,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		return nil, err
 	}
 	block.SetCoinbase(coinbase)
-	if err := block.PayReward(coinbase, tail.Supply()); err != nil {
+	if err := block.State().PayReward(coinbase, tail.Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to pay reward.")
@@ -538,14 +544,66 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	return block, nil
 }
 
+func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64) bool {
+	parentDynastyIndex := d.calcDynastyIndex(parentTimestamp)
+	curDynastyIndex := d.calcDynastyIndex(curTimestamp)
+
+	return curDynastyIndex > parentDynastyIndex
+}
+
+//MakeMintDynasty returns dynasty slice for mint block
+func (d *Dpos) MakeMintDynasty(ts int64, parentState *core.BlockState) ([]common.Address, error) {
+	if d.checkTransitionDynasty(parentState.Timestamp(), ts) || parentState.Timestamp() == core.GenesisTimestamp {
+		sortedCandidates, err := parentState.DposState().SortByVotePower()
+		if err != nil {
+			return nil, err
+		}
+		mintDynasty := makeMintDynasty(sortedCandidates, d.dynastySize)
+		return mintDynasty, nil
+	}
+	return parentState.DposState().Dynasty()
+}
+
+//makeMintDynasty returns new dynasty slice for new block
+func makeMintDynasty(sortedCandidates []common.Address, dynastySize int) []common.Address {
+	dynasty := make([]common.Address, 0)
+
+	for i := 0; i < dynastySize; i++ {
+		if i >= len(sortedCandidates) {
+			dynasty = append(dynasty, common.Address{})
+			continue
+		}
+		addr := sortedCandidates[i]
+		dynasty = append(dynasty, addr)
+	}
+	// Todo @drsleepytiger ordering BP
+
+	sort.Slice(dynasty, func(i, j int) bool {
+		return bytes.Compare(dynasty[i].Bytes(), dynasty[j].Bytes()) < 0
+	})
+
+	return dynasty
+}
+
+//FindMintProposer returns proposer for mint block
+func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
+	mintTs := NextMintSlot2(ts)
+	dynasty, err := d.MakeMintDynasty(mintTs, parent.State())
+	if err != nil {
+		return common.Address{}, err
+	}
+	proposerIndex := d.calcProposerIndex(mintTs)
+	return dynasty[proposerIndex], nil
+}
+
 func isRetryable(err error) bool {
 	return err == core.ErrLargeTransactionNonce || err == core.ErrExceedBlockMaxCPUUsage || err == core.ErrExceedBlockMaxNetUsage
 }
 
-func includeTransaction(block *core.Block, transaction *core.Transaction, receipt *core.Receipt) error {
+func includeTransaction(block *core.Block, transaction *cState.Transaction, receipt *cState.Receipt) error {
 	transaction.SetReceipt(receipt)
 
-	err := block.AcceptTransaction(transaction)
+	err := block.State().AcceptTransaction(transaction)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,

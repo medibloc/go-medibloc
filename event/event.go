@@ -1,4 +1,4 @@
-package core
+package event
 
 import (
 	"sync"
@@ -43,8 +43,8 @@ type Event struct {
 	Type  string
 }
 
-// EventSubscriber structure
-type EventSubscriber struct {
+// Subscriber structure
+type Subscriber struct {
 	eventCh chan *Event
 	topics  []string
 }
@@ -62,8 +62,8 @@ func topicList() map[string]bool {
 	return topicList
 }
 
-// NewEventSubscriber creates new event subscriber
-func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
+// NewSubscriber creates new event subscriber
+func NewSubscriber(size int, topics []string) (*Subscriber, error) {
 	topicList := topicList()
 
 	for _, topic := range topics {
@@ -77,19 +77,19 @@ func NewEventSubscriber(size int, topics []string) (*EventSubscriber, error) {
 	}
 
 	eventCh := make(chan *Event, size)
-	return &EventSubscriber{
+	return &Subscriber{
 		eventCh: eventCh,
 		topics:  topics,
 	}, nil
 }
 
 // EventChan returns event channel
-func (s *EventSubscriber) EventChan() chan *Event {
+func (s *Subscriber) EventChan() chan *Event {
 	return s.eventCh
 }
 
-// EventEmitter structure
-type EventEmitter struct {
+// Emitter structure
+type Emitter struct {
 	eventSubscribers *sync.Map
 	eventCh          chan *Event
 	quitCh           chan bool
@@ -97,8 +97,8 @@ type EventEmitter struct {
 }
 
 // NewEventEmitter creates new event emitter
-func NewEventEmitter(size int) *EventEmitter {
-	return &EventEmitter{
+func NewEventEmitter(size int) *Emitter {
+	return &Emitter{
 		eventSubscribers: new(sync.Map),
 		eventCh:          make(chan *Event, size),
 		quitCh:           make(chan bool),
@@ -117,26 +117,26 @@ func NewEventEmitter(size int) *EventEmitter {
 */
 
 // Start event loop
-func (e *EventEmitter) Start() {
+func (e *Emitter) Start() {
 	logging.Console().Info("Starting Event Emitter")
 
 	go e.loop()
 }
 
 // Stop event loop
-func (e *EventEmitter) Stop() {
+func (e *Emitter) Stop() {
 	logging.Console().Info("Stopping Event Emitter")
 
 	e.quitCh <- true
 }
 
 // Trigger event
-func (e *EventEmitter) Trigger(event *Event) {
+func (e *Emitter) Trigger(event *Event) {
 	e.eventCh <- event
 }
 
 // Register event channel
-func (e *EventEmitter) Register(subscribers ...*EventSubscriber) {
+func (e *Emitter) Register(subscribers ...*Subscriber) {
 	for _, subscriber := range subscribers {
 		for _, topic := range subscriber.topics {
 			m, _ := e.eventSubscribers.LoadOrStore(topic, new(sync.Map))
@@ -146,7 +146,7 @@ func (e *EventEmitter) Register(subscribers ...*EventSubscriber) {
 }
 
 // Deregister event channel
-func (e *EventEmitter) Deregister(subscribers ...*EventSubscriber) {
+func (e *Emitter) Deregister(subscribers ...*Subscriber) {
 	for _, subscriber := range subscribers {
 		for _, topic := range subscriber.topics {
 			m, _ := e.eventSubscribers.Load(topic)
@@ -159,7 +159,7 @@ func (e *EventEmitter) Deregister(subscribers ...*EventSubscriber) {
 	}
 }
 
-func (e *EventEmitter) loop() {
+func (e *Emitter) loop() {
 	logging.Console().Info("Started Event Emitter")
 
 	// timerChan := time.NewTicker(time.Second).C
@@ -182,7 +182,7 @@ func (e *EventEmitter) loop() {
 			subs, _ := subscribers.(*sync.Map)
 			subs.Range(func(key, value interface{}) bool {
 				select {
-				case key.(*EventSubscriber).eventCh <- event:
+				case key.(*Subscriber).eventCh <- event:
 				default:
 					logging.Console().Warn("timeout to dispatch event")
 				}

@@ -18,15 +18,17 @@ package core
 import (
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
+	"github.com/medibloc/go-medibloc/event"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -315,7 +317,7 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 // BlockData represents a block
 type BlockData struct {
 	*BlockHeader
-	transactions []*Transaction
+	transactions []*coreState.Transaction
 	height       uint64
 }
 
@@ -335,7 +337,7 @@ func (bd *BlockData) ToProto() (proto.Message, error) {
 			if tx, ok := tx.(*corepb.Transaction); ok {
 				txs[idx] = tx
 			} else {
-				return nil, ErrCannotConvertTransaction
+				return nil, err
 			}
 		}
 		return &corepb.Block{
@@ -355,9 +357,9 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 			return err
 		}
 
-		bd.transactions = make([]*Transaction, len(msg.Transactions))
+		bd.transactions = make([]*coreState.Transaction, len(msg.Transactions))
 		for idx, v := range msg.Transactions {
-			tx := new(Transaction)
+			tx := new(coreState.Transaction)
 			if err := tx.FromProto(v); err != nil {
 				return err
 			}
@@ -415,12 +417,12 @@ func (bd *BlockData) SetHeight(height uint64) {
 }
 
 // Transactions returns txs in block
-func (bd *BlockData) Transactions() []*Transaction {
+func (bd *BlockData) Transactions() []*coreState.Transaction {
 	return bd.transactions
 }
 
 // SetTransactions sets transactions TO BE REMOVED: For test without block pool
-func (bd *BlockData) SetTransactions(txs []*Transaction) error {
+func (bd *BlockData) SetTransactions(txs []*coreState.Transaction) error {
 	bd.transactions = txs
 	return nil
 }
@@ -478,7 +480,7 @@ func (bd *BlockData) VerifyIntegrity() error {
 }
 
 // ExecuteOnParentBlock returns Block object with state after block execution
-func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, txMap TxFactory) (*Block, error) {
+func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus) (*Block, error) {
 	// Prepare Execution
 	block, err := parent.Child()
 	if err != nil {
@@ -488,6 +490,8 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, tx
 		return nil, err
 	}
 	block.BlockData = bd
+	block.State().SetTimestamp(bd.timestamp)
+
 	err = block.Prepare()
 	if err != nil {
 		return nil, err
@@ -497,7 +501,7 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus, tx
 		return nil, err
 	}
 
-	if err := block.VerifyExecution(parent, consensus, txMap); err != nil {
+	if err := block.VerifyExecution(parent, consensus); err != nil {
 		return nil, err
 	}
 	err = block.Flush()
@@ -579,8 +583,8 @@ func (bd *BlockData) verifyTotalBandwidth() error {
 	cpuUsage := uint64(0)
 	netUsage := uint64(0)
 	for _, tx := range bd.Transactions() {
-		cpuUsage = cpuUsage + tx.receipt.cpuUsage
-		netUsage = netUsage + tx.receipt.netUsage
+		cpuUsage = cpuUsage + tx.Receipt().CPUUsage()
+		netUsage = netUsage + tx.Receipt().NetUsage()
 	}
 
 	if cpuUsage != bd.cpuUsage {
@@ -593,22 +597,21 @@ func (bd *BlockData) verifyTotalBandwidth() error {
 }
 
 // EmitTxExecutionEvent emits events of txs in the block
-func (bd *BlockData) EmitTxExecutionEvent(emitter *EventEmitter) {
+func (bd *BlockData) EmitTxExecutionEvent(emitter *event.Emitter) {
 	for _, tx := range bd.Transactions() {
-		tx.TriggerEvent(emitter, TopicTransactionExecutionResult)
-		tx.TriggerAccEvent(emitter, TypeAccountTransactionExecution)
+		tx.TriggerEvent(emitter, event.TopicTransactionExecutionResult)
+		tx.TriggerAccEvent(emitter, event.TypeAccountTransactionExecution)
 	}
 }
 
 // EmitBlockEvent emits block related event
-func (bd *BlockData) EmitBlockEvent(emitter *EventEmitter, eTopic string) {
-	event := &Event{
+func (bd *BlockData) EmitBlockEvent(emitter *event.Emitter, eTopic string) {
+	ev := &event.Event{
 		Topic: eTopic,
 		Data:  byteutils.Bytes2Hex(bd.Hash()),
 		Type:  "",
 	}
-	emitter.Trigger(event)
-
+	emitter.Trigger(ev)
 }
 
 // Block represents block with actual state tries
@@ -626,32 +629,32 @@ func (b *Block) Clone() (*Block, error) {
 		return nil, err
 	}
 
-	state, err := b.state.Clone()
+	bs, err := b.state.Clone()
 	if err != nil {
 		return nil, err
 	}
 	return &Block{
 		BlockData: bd,
 		storage:   b.storage,
-		state:     state,
+		state:     bs,
 		sealed:    b.sealed,
 	}, nil
 }
 
 //Child return initial child block for verifying or making block
 func (b *Block) Child() (*Block, error) {
-	state, err := b.state.Clone()
+	bs, err := b.state.Clone()
 	if err != nil {
 		return nil, err
 	}
-	state.cpuUsage = 0
-	state.netUsage = 0
+	bs.cpuUsage = 0
+	bs.netUsage = 0
 
-	state.cpuPrice, err = calcCPUPrice(b)
+	bs.cpuPrice, err = calcCPUPrice(b)
 	if err != nil {
 		return nil, err
 	}
-	state.netPrice, err = calcNetPrice(b)
+	bs.netPrice, err = calcNetPrice(b)
 	if err != nil {
 		return nil, err
 	}
@@ -667,11 +670,11 @@ func (b *Block) Child() (*Block, error) {
 				netPrice:   util.NewUint128(),
 				netUsage:   0,
 			},
-			transactions: make([]*Transaction, 0),
+			transactions: make([]*coreState.Transaction, 0),
 			height:       b.height + 1,
 		},
 		storage: b.storage,
-		state:   state,
+		state:   bs,
 		sealed:  false,
 	}, nil
 }
@@ -703,6 +706,7 @@ func (b *Block) Seal() error {
 		return ErrBlockAlreadySealed
 	}
 
+	b.timestamp = b.state.timestamp
 	b.reward = b.state.Reward()
 	b.supply = b.state.Supply()
 	b.cpuPrice = b.state.cpuPrice
@@ -782,61 +786,40 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 }
 
 // ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*Receipt, error) {
+func (b *Block) ExecuteTransaction(exeTx *transaction.ExecutableTx) (*coreState.Receipt, error) {
 	// Executing process consists of two major parts
 	// Part 1 : Verify transaction and not affect state trie
 	// Part 2 : Execute transaction and affect state trie(store)
 
 	// Part 1 : Verify transaction and not affect state trie
 
-	// STEP 1. Check nonce
-	if err := b.state.checkNonce(transaction); err != nil {
-		return nil, err
-	}
+	bs := b.State()
 
-	// STEP 2. Check tx type
-	newTxFunc, ok := txMap[transaction.TxType()]
-	if !ok {
-		return nil, ErrInvalidTransactionType
+	// STEP 1. Check nonce
+	if err := bs.checkNonce(exeTx); err != nil {
+		return nil, err
 	}
 
 	// STEP 3. Check tx components and set cpu, net usage on receipt
-	tx, err := newTxFunc(transaction)
-	if err != nil {
-		return nil, err
-	}
-	cpuUsage, netUsage := tx.Bandwidth()
-	cpuPoints, err := b.state.cpuPrice.Mul(util.NewUint128FromUint(cpuUsage))
-	if err != nil {
-		return nil, err
-	}
-	netPoints, err := b.state.netPrice.Mul(util.NewUint128FromUint(netUsage))
-	if err != nil {
-		return nil, err
-	}
-
-	points, err := cpuPoints.Add(netPoints)
-	if err != nil {
-		return nil, err
-	}
+	bw := exeTx.Bandwidth()
 
 	// STEP 4. Check bandwidth (Exceeding block's max cpu/net bandwidth)
-	if err := b.state.checkBandwidthLimit(cpuUsage, netUsage); err != nil {
-		return nil, err
-	}
-
-	payer, err := b.state.GetAccount(transaction.payer)
-	if err != nil {
-		return nil, err
-	}
-
-	// Update payer's points
-	if err := payer.UpdatePoints(b.timestamp); err != nil {
+	if err := bs.checkBandwidthLimit(bw); err != nil {
 		return nil, err
 	}
 
 	// STEP 5. Check payer's bandwidth
-	if err := payer.checkAccountPoints(transaction, points); err != nil {
+	payer, err := bs.GetAccount(exeTx.Payer())
+	if err != nil {
+		return nil, err
+	}
+
+	points, err := exeTx.CalcPoints(bs.Price())
+	if err != nil {
+		return nil, err
+	}
+
+	if err := exeTx.CheckAccountPoints(payer, bs.Price(), nil); err != nil {
 		return nil, err
 	}
 
@@ -844,13 +827,13 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 	// Even if transaction fails, still consume account's bandwidth
 
 	// Update payer's bandwidth and transaction.from's unstaking status before execute transaction
-	if err := b.State().PutAccount(payer); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to regenerate bandwidth.")
-		return nil, err
-	}
-	err = b.updateUnstaking(transaction.From())
+	//if err := bs.PutAccount(payer); err != nil {
+	//	logging.Console().WithFields(logrus.Fields{
+	//		"err": err,
+	//	}).Warn("Failed to regenerate bandwidth.")
+	//	return nil, err
+	//}
+	err = bs.updateUnstaking(exeTx.From())
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -858,145 +841,34 @@ func (b *Block) ExecuteTransaction(transaction *Transaction, txMap TxFactory) (*
 		return nil, err
 	}
 
-	receipt := &Receipt{
-		executed:  false,
-		timestamp: b.timestamp,
-		height:    b.height,
-		cpuUsage:  cpuUsage,
-		netUsage:  netUsage,
-		points:    points,
-		error:     nil,
-	}
+	receipt := new(coreState.Receipt)
+	receipt.SetExecuted(false)
+	receipt.SetTimestamp(bs.timestamp)
+	receipt.SetHeight(b.height)
+	receipt.SetCPUUsage(bw.CPUUsage())
+	receipt.SetNetUsage(bw.NetUsage())
+	receipt.SetPoints(points)
+	receipt.SetError(nil)
+
 	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
-	err = tx.Execute(b)
+	err = exeTx.Execute(bs)
 	if err != nil {
-		receipt.error = []byte(err.Error())
+		receipt.SetError([]byte(err.Error()))
 		return receipt, err
 	}
-	receipt.executed = true
+	receipt.SetExecuted(true)
 	return receipt, nil
 }
 
-func (b *Block) updateUnstaking(addr common.Address) error {
-	acc, err := b.State().GetAccount(addr)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to get account.")
-		return err
-	}
-
-	if err := acc.UpdateUnstaking(b.timestamp); err != nil {
-		return err
-	}
-
-	return b.State().PutAccount(acc)
-}
-
-func (b *Block) consumePoints(transaction *Transaction) error {
-	var err error
-
-	acc, err := b.State().GetAccount(transaction.payer)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to get account.")
-		return err
-	}
-
-	if err := acc.UpdatePoints(b.timestamp); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to update account's points")
-		return err
-	}
-
-	acc.Points, err = acc.Points.Sub(transaction.receipt.points)
-	if err == util.ErrUint128Underflow {
-		logging.Console().WithFields(logrus.Fields{
-			"tx_points":  transaction.receipt.points,
-			"acc_points": acc.Points,
-			"payer":      transaction.payer.Hex(),
-			"err":        err,
-		}).Warn("Points limit exceeded.")
-		return ErrPointNotEnough
-	}
-	if err != nil {
-		return err
-	}
-
-	err = b.State().PutAccount(acc)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to put account.")
-		return err
-	}
-	return nil
-}
-
-// currentPoints calculates updated points based on current time.
-func currentPoints(payer *Account, curTs int64) (*util.Uint128, error) {
-	staking := payer.Staking
-	used, err := payer.Staking.Sub(payer.Points)
-	if err != nil {
-		return nil, err
-	}
-	lastTs := payer.LastPointsTs
-	elapsed := curTs - lastTs
-	if time.Duration(elapsed)*time.Second >= PointsRegenerateDuration {
-		return staking.DeepCopy(), nil
-	}
-
-	if elapsed < 0 {
-		return nil, ErrInvalidTimestamp
-	}
-
-	if elapsed == 0 {
-		return payer.Points.DeepCopy(), nil
-	}
-
-	// Points means remain points. So 0 means no used
-	// regeneratedPoints = staking * elapsedTime / PointsRegenerateDuration
-	// currentPoints = prevPoints + regeneratedPoints
-	mul := util.NewUint128FromUint(uint64(elapsed))
-	div := util.NewUint128FromUint(uint64(PointsRegenerateDuration / time.Second))
-	v1, err := staking.Mul(mul)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to multiply uint128.")
-		return nil, err
-	}
-	regen, err := v1.Div(div)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to divide uint128.")
-		return nil, err
-	}
-
-	if regen.Cmp(used) >= 0 {
-		return staking.DeepCopy(), nil
-	}
-	cur, err := payer.Points.Add(regen)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to add uint128.")
-		return nil, err
-	}
-	return cur, nil
-}
-
 // VerifyExecution executes txs in block and verify root hashes using block header
-func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFactory) error {
+func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
+
 	err := b.BeginBatch()
 	if err != nil {
 		return err
 	}
 
-	if err := b.SetMintDynastyState(parent, consensus); err != nil {
+	if err := b.State().SetMintDynastyState(parent.State(), consensus); err != nil {
 		if err := b.RollBack(); err != nil {
 			return err
 		}
@@ -1015,7 +887,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 	if err != nil {
 		return err
 	}
-	if err := b.ExecuteAll(txMap); err != nil {
+	if err := b.ExecuteAll(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
@@ -1027,7 +899,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 	if err != nil {
 		return err
 	}
-	if err := b.PayReward(b.coinbase, b.State().Supply()); err != nil {
+	if err := b.State().PayReward(b.coinbase, b.State().Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
@@ -1051,9 +923,9 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus, txMap TxFact
 }
 
 // ExecuteAll executes all txs in block
-func (b *Block) ExecuteAll(txMap TxFactory) error {
+func (b *Block) ExecuteAll() error {
 	for _, transaction := range b.transactions {
-		err := b.Execute(transaction, txMap)
+		err := b.Execute(transaction)
 		if err != nil {
 			return err
 		}
@@ -1063,13 +935,18 @@ func (b *Block) ExecuteAll(txMap TxFactory) error {
 }
 
 // Execute executes a transaction.
-func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
+func (b *Block) Execute(tx *coreState.Transaction) error {
 	err := b.BeginBatch()
 	if err != nil {
 		return err
 	}
 
-	receipt, err := b.ExecuteTransaction(tx, txMap)
+	exeTx, err := transaction.NewExecutableTx(tx)
+	if err != nil {
+		return err
+	}
+
+	receipt, err := b.ExecuteTransaction(exeTx)
 	if receipt == nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
@@ -1089,7 +966,7 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		}
 	}
 
-	if !receipt.Equal(tx.receipt) {
+	if !receipt.Equal(tx.Receipt()) {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
@@ -1104,7 +981,7 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 		return err
 	}
 
-	if err := b.AcceptTransaction(tx); err != nil {
+	if err := b.state.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
@@ -1120,63 +997,8 @@ func (b *Block) Execute(tx *Transaction, txMap TxFactory) error {
 	return nil
 }
 
-//PayReward add reward to coinbase and update reward and supply
-func (b *Block) PayReward(coinbase common.Address, parentSupply *util.Uint128) error {
-	reward, err := calcMintReward(parentSupply)
-	if err != nil {
-		return err
-	}
-
-	acc, err := b.state.GetAccount(coinbase)
-	if err != nil {
-		return err
-	}
-	acc.Balance, err = acc.Balance.Add(reward)
-	if err != nil {
-		return err
-	}
-	err = b.state.PutAccount(acc)
-	if err != nil {
-		return err
-	}
-
-	supply, err := parentSupply.Add(reward)
-	if err != nil {
-		return err
-	}
-
-	b.state.reward = reward
-	b.state.supply = supply
-
-	return nil
-}
-
-// AcceptTransaction consume bandwidth and adds tx in block state
-func (b *Block) AcceptTransaction(transaction *Transaction) error {
-	if transaction.receipt == nil {
-		return ErrNoTransactionReceipt
-	}
-
-	if err := b.consumePoints(transaction); err != nil {
-		return err
-	}
-
-	b.state.cpuUsage += transaction.receipt.cpuUsage
-	b.state.netUsage += transaction.receipt.netUsage
-
-	if err := b.state.accState.incrementNonce(transaction.from); err != nil {
-		return err
-	}
-
-	if err := b.state.txState.Put(transaction); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // AppendTransaction append transaction to block data (only use on making block)
-func (b *Block) AppendTransaction(transaction *Transaction) {
+func (b *Block) AppendTransaction(transaction *coreState.Transaction) {
 	b.BlockData.transactions = append(b.BlockData.transactions, transaction)
 }
 
@@ -1260,15 +1082,6 @@ func (b *Block) SignThis(signer signature.Signature) error {
 	}
 
 	return b.BlockData.SignThis(signer)
-}
-
-//SetMintDynastyState set mint dys
-func (b *Block) SetMintDynastyState(parent *Block, consensus Consensus) error {
-	mintDynasty, err := consensus.MakeMintDynasty(b.timestamp, parent)
-	if err != nil {
-		return err
-	}
-	return b.state.dposState.SetDynasty(mintDynasty)
 }
 
 // Prepare prepare block state

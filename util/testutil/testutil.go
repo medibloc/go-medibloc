@@ -29,12 +29,14 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
-	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -121,7 +123,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
-	txs := make([]*core.Transaction, 0)
+	txs := make([]*coreState.Transaction, 0)
 
 	for i := 0; i < dynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
@@ -139,25 +141,25 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		collateral, err := util.NewUint128FromString("1000000000000000000")
 		require.NoError(t, err)
 
-		tx := new(core.Transaction)
+		tx := new(coreState.Transaction)
 
 		tx.SetChainID(ChainID)
 		tx.SetValue(util.NewUint128())
 
 		txStake, err := tx.Clone()
 		require.NoError(t, err)
-		txStake.SetTxType(core.TxOpStake)
+		txStake.SetTxType(coreState.TxOpStake)
 		txStake.SetValue(staking)
 		txStake.SetNonce(1)
 		require.NoError(t, txStake.SignThis(keypair.PrivKey))
 
-		aliasPayload := &core.RegisterAliasPayload{AliasName: "testalias" + strconv.Itoa(i)}
+		aliasPayload := &transaction.RegisterAliasPayload{AliasName: "accountalias" + strconv.Itoa(i)}
 		aliasePayloadBytes, err := aliasPayload.ToBytes()
 		require.NoError(t, err)
 
 		txAlias, err := tx.Clone()
 		require.NoError(t, err)
-		txAlias.SetTxType(core.TxOpRegisterAlias)
+		txAlias.SetTxType(coreState.TxOpRegisterAlias)
 		txAlias.SetValue(collateral)
 		txAlias.SetNonce(2)
 		txAlias.SetPayload(aliasePayloadBytes)
@@ -165,12 +167,12 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 		txCandidate, err := tx.Clone()
 		require.NoError(t, err)
-		txCandidate.SetTxType(dpos.TxOpBecomeCandidate)
+		txCandidate.SetTxType(dposState.TxOpBecomeCandidate)
 		txCandidate.SetValue(collateral)
 		txCandidate.SetNonce(3)
 		require.NoError(t, txCandidate.SignThis(keypair.PrivKey))
 
-		votePayload := new(dpos.VotePayload)
+		votePayload := new(transaction.VotePayload)
 		candidateIds := make([][]byte, 0)
 		votePayload.CandidateIDs = append(candidateIds, txCandidate.Hash())
 		votePayloadBytes, err := votePayload.ToBytes()
@@ -178,7 +180,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 		txVote, err := tx.Clone()
 		require.NoError(t, err)
-		txVote.SetTxType(dpos.TxOpVote)
+		txVote.SetTxType(dposState.TxOpVote)
 		txVote.SetNonce(4)
 		txVote.SetPayload(votePayloadBytes)
 		require.NoError(t, txVote.SignThis(keypair.PrivKey))
@@ -217,7 +219,7 @@ func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dy
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	d := dpos.New(dynastySize)
-	genesis, err = core.NewGenesisBlock(conf, d, medlet.DefaultTxMap, s)
+	genesis, err = core.NewGenesisBlock(conf, d, s)
 	require.NoError(t, err)
 
 	return genesis, dynasties, distributed

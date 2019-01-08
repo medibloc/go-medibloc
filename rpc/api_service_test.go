@@ -11,6 +11,10 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/common"
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/event"
 
 	"github.com/gavv/httpexpect"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
@@ -308,9 +312,9 @@ func TestAPIService_GetCandidate(t *testing.T) {
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
-	TX := &core.Transaction{}
+	TX := &coreState.Transaction{}
 	for _, tx := range seed.GenesisBlock().Transactions() {
-		if tx.TxType() == dpos.TxOpBecomeCandidate {
+		if tx.TxType() == dposState.TxOpBecomeCandidate {
 			TX = tx
 			break
 		}
@@ -474,13 +478,13 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 	payer := seed.Config.TokenDist[testutil.DynastySize]
 	recordHash, err := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
 	require.NoError(t, err)
-	payload := &core.AddRecordPayload{
+	payload := &transaction.AddRecordPayload{
 		RecordHash: recordHash,
 	}
 
-	tx1 := bb.Tx().Nonce(2).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	tx2 := bb.Tx().Nonce(3).Type(core.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrRecordAlreadyAdded).SignProposer().Build()
+	tx1 := bb.Tx().Nonce(2).Type(coreState.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx2 := bb.Tx().Nonce(3).Type(coreState.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, transaction.ErrRecordAlreadyAdded).SignProposer().Build()
 
 	err = seed.Med.BlockManager().PushBlockData(b.BlockData)
 	assert.NoError(t, err)
@@ -503,7 +507,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 		Expect().
 		JSON().Object().
 		ValueEqual("executed", false).
-		ValueEqual("error", core.ErrRecordAlreadyAdded.Error()).
+		ValueEqual("error", transaction.ErrRecordAlreadyAdded.Error()).
 		ValueEqual("cpu_usage", strconv.FormatUint(tx2.Receipt().CPUUsage(), 10)).
 		ValueEqual("net_usage", strconv.FormatUint(tx2.Receipt().NetUsage(), 10))
 
@@ -555,7 +559,7 @@ func TestAPIService_SendTransaction(t *testing.T) {
 
 	payer := seed.Config.TokenDist[3]
 	receiver := seed.Config.TokenDist[4]
-	tx := bb.Tx().Type(core.TxOpTransfer).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
+	tx := bb.Tx().Type(coreState.TxOpTransfer).To(receiver.Addr).Value(1).Nonce(3).SignPair(payer).Build()
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
@@ -614,17 +618,17 @@ func TestAPIService_Subscribe(t *testing.T) {
 	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
-	tx := make([]*core.Transaction, testutil.DynastySize)
+	tx := make([]*coreState.Transaction, testutil.DynastySize)
 	payer := seed.Config.TokenDist[testutil.DynastySize]
 	for i := 0; i < testutil.DynastySize; i++ {
-		tx[i] = bb.Tx().Type(core.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i + 2)).SignPair(payer).Build()
+		tx[i] = bb.Tx().Type(coreState.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i + 2)).SignPair(payer).Build()
 	}
 
 	go func() {
 		Client := &http.Client{}
 		req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/subscribe?topics=%s&topics=%s&topics=%s",
 			testutil.IP2Local(seed.Config.Config.Rpc.
-				HttpListen[0]), core.TopicPendingTransaction, core.TopicTransactionExecutionResult, core.TopicNewTailBlock), nil)
+				HttpListen[0]), event.TopicPendingTransaction, event.TopicTransactionExecutionResult, event.TopicNewTailBlock), nil)
 		assert.NoError(t, err)
 		req.Header.Set("Accept", "text/event-stream")
 
@@ -650,11 +654,11 @@ func TestAPIService_Subscribe(t *testing.T) {
 
 			t.Logf("Topic : %v, Data: %v", data.Result.Topic, data.Result.Hash)
 			switch data.Result.Topic {
-			case core.TopicPendingTransaction:
+			case event.TopicPendingTransaction:
 				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i%3].Hash()))
-			case core.TopicTransactionExecutionResult:
+			case event.TopicTransactionExecutionResult:
 				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(tx[i%3].Hash()))
-			case core.TopicNewTailBlock:
+			case event.TopicNewTailBlock:
 				assert.Equal(t, data.Result.Hash, byteutils.Bytes2Hex(b.Hash()))
 			}
 			i = i + 1

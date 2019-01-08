@@ -22,6 +22,9 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/hashheap"
+	cState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/event"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -35,9 +38,9 @@ type TransactionPool struct {
 
 	candidates *hashheap.HashedHeap
 	buckets    *hashheap.HashedHeap
-	all        map[string]*TransactionInPool
+	all        map[string]*TransactionContext
 
-	eventEmitter *EventEmitter
+	eventEmitter *event.Emitter
 }
 
 // NewTransactionPool returns TransactionPool.
@@ -46,17 +49,17 @@ func NewTransactionPool(size int) *TransactionPool {
 		size:       size,
 		candidates: hashheap.New(),
 		buckets:    hashheap.New(),
-		all:        make(map[string]*TransactionInPool),
+		all:        make(map[string]*TransactionContext),
 	}
 }
 
 // SetEventEmitter set emitter to transaction pool
-func (pool *TransactionPool) SetEventEmitter(emitter *EventEmitter) {
+func (pool *TransactionPool) SetEventEmitter(emitter *event.Emitter) {
 	pool.eventEmitter = emitter
 }
 
 // Get returns transaction by tx hash.
-func (pool *TransactionPool) Get(hash []byte) *TransactionInPool {
+func (pool *TransactionPool) Get(hash []byte) *TransactionContext {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
@@ -68,11 +71,11 @@ func (pool *TransactionPool) Get(hash []byte) *TransactionInPool {
 }
 
 // GetAll returns all transactions in transaction pool
-func (pool *TransactionPool) GetAll() []*Transaction {
+func (pool *TransactionPool) GetAll() []*cState.Transaction {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
-	var txs []*Transaction
+	var txs []*cState.Transaction
 
 	if len(pool.all) == 0 {
 		return nil
@@ -86,11 +89,11 @@ func (pool *TransactionPool) GetAll() []*Transaction {
 }
 
 // GetByAddress returns transactions related to the address in transaction pool
-func (pool *TransactionPool) GetByAddress(address common.Address) []*Transaction {
+func (pool *TransactionPool) GetByAddress(address common.Address) []*transaction.ExecutableTx {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
-	var txs []*Transaction
+	var txs []*transaction.ExecutableTx
 
 	if len(pool.all) == 0 {
 		return nil
@@ -98,7 +101,7 @@ func (pool *TransactionPool) GetByAddress(address common.Address) []*Transaction
 
 	for _, v := range pool.all {
 		if v.IsRelatedToAddress(address) {
-			txs = append(txs, v.Transaction)
+			txs = append(txs, v.ExecutableTx)
 		}
 	}
 
@@ -114,20 +117,20 @@ func (pool *TransactionPool) Del(hash []byte) {
 }
 
 // Push pushes transaction to the pool.
-func (pool *TransactionPool) Push(tx *TransactionInPool) {
+func (pool *TransactionPool) Push(tx *TransactionContext) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
 	pool.push(tx)
 
 	if pool.eventEmitter != nil {
-		tx.TriggerEvent(pool.eventEmitter, TopicPendingTransaction)
-		tx.TriggerAccEvent(pool.eventEmitter, TypeAccountTransactionPending)
+		tx.TriggerEvent(pool.eventEmitter, event.TopicPendingTransaction)
+		tx.TriggerAccEvent(pool.eventEmitter, event.TypeAccountTransactionPending)
 	}
 }
 
 // Pop pop transaction from the pool.
-func (pool *TransactionPool) Pop() *TransactionInPool {
+func (pool *TransactionPool) Pop() *TransactionContext {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -135,15 +138,15 @@ func (pool *TransactionPool) Pop() *TransactionInPool {
 	if cmpTx == nil {
 		return nil
 	}
-	tx := cmpTx.(*TransactionInPool)
+	tx := cmpTx.(*TransactionContext)
 
 	pool.del(tx.Hash())
 
 	return tx
 }
 
-func (pool *TransactionPool) push(tx *TransactionInPool) {
-	old := pool.getByAddressAndNonce(tx.from, tx.nonce)
+func (pool *TransactionPool) push(tx *TransactionContext) {
+	old := pool.getByAddressAndNonce(tx.From(), tx.Nonce())
 	if old != nil {
 		delete(pool.all, old.HexHash())
 	}
@@ -202,7 +205,7 @@ func (pool *TransactionPool) replaceCandidate(bkt *bucket, addr string) {
 	}
 
 	v := pool.candidates.Get(addr)
-	if v != nil && byteutils.Equal(cand.Hash(), v.(*TransactionInPool).Transaction.Hash()) {
+	if v != nil && byteutils.Equal(cand.Hash(), v.(*TransactionContext).Transaction.Hash()) {
 		return
 	}
 	pool.candidates.Del(addr)
@@ -231,7 +234,7 @@ func (pool *TransactionPool) Evict() {
 			return
 		}
 
-		pool.del(tx.hash)
+		pool.del(tx.Hash())
 	}
 }
 
@@ -248,7 +251,7 @@ func (pool *TransactionPool) LenByAddress(addr common.Address) int {
 }
 
 //PeekFirstByAddress returns transaction with lowest nonce among specific address's transactions
-func (pool *TransactionPool) PeekFirstByAddress(addr common.Address) *TransactionInPool {
+func (pool *TransactionPool) PeekFirstByAddress(addr common.Address) *TransactionContext {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 	v := pool.buckets.Get(addr.Hex())
@@ -259,7 +262,7 @@ func (pool *TransactionPool) PeekFirstByAddress(addr common.Address) *Transactio
 }
 
 //PeekLastByAddress returns transaction with highest nonce among specific address's transactions
-func (pool *TransactionPool) PeekLastByAddress(addr common.Address) *TransactionInPool {
+func (pool *TransactionPool) PeekLastByAddress(addr common.Address) *TransactionContext {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 	v := pool.buckets.Get(addr.Hex())
@@ -270,13 +273,13 @@ func (pool *TransactionPool) PeekLastByAddress(addr common.Address) *Transaction
 }
 
 //GetByAddressAndNonce returns transaction with addr-nonce
-func (pool *TransactionPool) GetByAddressAndNonce(addr common.Address, nonce uint64) *TransactionInPool {
+func (pool *TransactionPool) GetByAddressAndNonce(addr common.Address, nonce uint64) *TransactionContext {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 	return pool.getByAddressAndNonce(addr, nonce)
 }
 
-func (pool *TransactionPool) getByAddressAndNonce(addr common.Address, nonce uint64) *TransactionInPool {
+func (pool *TransactionPool) getByAddressAndNonce(addr common.Address, nonce uint64) *TransactionContext {
 	v := pool.buckets.Get(addr.Hex())
 	if v == nil {
 		return nil
@@ -285,51 +288,47 @@ func (pool *TransactionPool) getByAddressAndNonce(addr common.Address, nonce uin
 	return v.(*bucket).getByAddrNonce(key)
 }
 
-//TransactionInPool is structure to handle transaction in pool
-type TransactionInPool struct {
-	*Transaction
-	executable      ExecutableTx
+//TransactionContext is structure to handle transaction in pool
+type TransactionContext struct {
+	*transaction.ExecutableTx
 	incomeTimestamp int64
-	bandwidth       *Bandwidth
 }
 
 //IncomeTimestamp returns income timestamp
-func (tx *TransactionInPool) IncomeTimestamp() int64 {
+func (tx *TransactionContext) IncomeTimestamp() int64 {
 	return tx.incomeTimestamp
 }
 
 //SetIncomeTimestamp sets income timestamp
-func (tx *TransactionInPool) SetIncomeTimestamp(incomeTimestamp int64) {
+func (tx *TransactionContext) SetIncomeTimestamp(incomeTimestamp int64) {
 	tx.incomeTimestamp = incomeTimestamp
 }
 
-//NewTransactionInPool returns new TransactionInPool with current timestamp
-func NewTransactionInPool(transaction *Transaction, txMap TxFactory) (*TransactionInPool, error) {
-	tx, err := transaction.Executable(txMap)
+//NewTransactionContext returns new TransactionContext with current timestamp
+func NewTransactionContext(tx *cState.Transaction) (*TransactionContext, error) {
+	exeTx, err := transaction.NewExecutableTx(tx)
 	if err != nil {
 		return nil, err
 	}
-	return &TransactionInPool{
-		Transaction:     transaction,
-		executable:      tx,
+	return &TransactionContext{
+		ExecutableTx:    exeTx,
 		incomeTimestamp: time.Now().UnixNano(),
-		bandwidth:       NewBandwidth(tx.Bandwidth()),
 	}, nil
 }
 
 //Less returns if it has earlier timestamp
-func (tx *TransactionInPool) Less(o interface{}) bool {
-	return tx.incomeTimestamp < o.(*TransactionInPool).incomeTimestamp
+func (tx *TransactionContext) Less(o interface{}) bool {
+	return tx.incomeTimestamp < o.(*TransactionContext).incomeTimestamp
 }
 
 // minNonce assigns a sequence by nonce to the transaction.
-type minNonce struct{ *TransactionInPool }
+type minNonce struct{ *TransactionContext }
 
-func (tx *minNonce) Less(o interface{}) bool { return tx.nonce < o.(*minNonce).nonce }
+func (tx *minNonce) Less(o interface{}) bool { return tx.Nonce() < o.(*minNonce).Nonce() }
 
-type maxNonce struct{ *TransactionInPool }
+type maxNonce struct{ *TransactionContext }
 
-func (tx *maxNonce) Less(o interface{}) bool { return tx.nonce > o.(*maxNonce).nonce }
+func (tx *maxNonce) Less(o interface{}) bool { return tx.Nonce() > o.(*maxNonce).Nonce() }
 
 // bucket is a set of transactions for each account.
 type bucket struct {
@@ -356,40 +355,40 @@ func (b *bucket) isEmpty() bool {
 	return b.minTxs.Len() == 0
 }
 
-func (b *bucket) push(tx *TransactionInPool) {
+func (b *bucket) push(tx *TransactionContext) {
 	minTx := &minNonce{tx}
 	maxTx := &maxNonce{tx}
-	key := addrNoncePair(tx.from, tx.nonce)
+	key := addrNoncePair(tx.From(), tx.Nonce())
 	b.minTxs.Set(key, minTx)
 	b.maxTxs.Set(key, maxTx)
 }
 
-func (b *bucket) peekFirst() *TransactionInPool {
+func (b *bucket) peekFirst() *TransactionContext {
 	if b.minTxs.Len() == 0 {
 		return nil
 	}
-	return b.minTxs.Peek().(*minNonce).TransactionInPool
+	return b.minTxs.Peek().(*minNonce).TransactionContext
 }
 
-func (b *bucket) peekLast() *TransactionInPool {
+func (b *bucket) peekLast() *TransactionContext {
 	if b.maxTxs.Len() == 0 {
 		return nil
 	}
-	return b.maxTxs.Peek().(*maxNonce).TransactionInPool
+	return b.maxTxs.Peek().(*maxNonce).TransactionContext
 }
 
-func (b *bucket) del(tx *TransactionInPool) {
-	key := addrNoncePair(tx.from, tx.nonce)
+func (b *bucket) del(tx *TransactionContext) {
+	key := addrNoncePair(tx.From(), tx.Nonce())
 	b.minTxs.Del(key)
 	b.maxTxs.Del(key)
 }
 
-func (b *bucket) getByAddrNonce(pair string) *TransactionInPool {
+func (b *bucket) getByAddrNonce(pair string) *TransactionContext {
 	v := b.minTxs.Get(pair)
 	if v == nil {
 		return nil
 	}
-	return v.(*minNonce).TransactionInPool
+	return v.(*minNonce).TransactionContext
 }
 
 func addrNoncePair(addr common.Address, nonce uint64) string {

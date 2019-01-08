@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/core"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -43,7 +45,7 @@ func TestTransactionManager_Broadcast(t *testing.T) {
 	tx := tb.RandomTx().Build()
 	require.NoError(t, seed.Med.TransactionManager().Broadcast(tx))
 
-	var actual *core.Transaction
+	var actual *transaction.ExecutableTx
 	startTime := time.Now()
 	for actual == nil || !bytes.Equal(tx.Hash(), actual.Hash()) {
 		require.True(t, time.Now().Sub(startTime) < time.Duration(5*time.Second))
@@ -76,19 +78,19 @@ func TestTransactionManager_Push(t *testing.T) {
 	// Wrong chainID
 	wrongChainIDTx := randomTb.ChainID(testutil.ChainID + 1).Build()
 	failed := tm.PushAndExclusiveBroadcast(wrongChainIDTx)
-	assert.Equal(t, core.ErrInvalidChainID, failed[wrongChainIDTx.HexHash()])
+	assert.Equal(t, coreState.ErrInvalidTxChainID, failed[wrongChainIDTx.HexHash()])
 
 	// Wrong hash
 	wrongHash, err := byteutils.Hex2Bytes("1234567890123456789012345678901234567890123456789012345678901234")
 	require.NoError(t, err)
 	wrongHashTx := randomTb.Hash(wrongHash).Build()
 	failed = tm.PushAndExclusiveBroadcast(wrongHashTx)
-	assert.Equal(t, core.ErrInvalidTransactionHash, failed[wrongHashTx.HexHash()])
+	assert.Equal(t, coreState.ErrInvalidTransactionHash, failed[wrongHashTx.HexHash()])
 
 	// No signature
 	noSignTx := randomTb.Sign([]byte{}).Build()
 	failed = tm.PushAndExclusiveBroadcast(noSignTx)
-	assert.Equal(t, core.ErrTransactionSignatureNotExist, failed[noSignTx.HexHash()])
+	assert.Equal(t, coreState.ErrTransactionSignatureNotExist, failed[noSignTx.HexHash()])
 
 	//// Invalid signature
 	//invalidSigner := testutil.NewAddrKeyPair(t)
@@ -275,13 +277,13 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 	err := seed.Med.BlockManager().PushBlockDataSync(bb.Build().GetBlockData(), 1000*time.Millisecond)
 	assert.NoError(t, err)
 
-	tx1 := bb.Tx().Type(core.TxOpTransfer).Value(1000).SignPair(from).Build()
-	tx2 := bb.Tx().Type(core.TxOpStake).Value(1000).SignPair(from).Build()
-	tx3 := bb.Tx().Type(core.TxOpUnstake).Nonce(tx2.Nonce() + 1).Value(1000).SignPair(from).Build()
+	tx1 := bb.Tx().Type(coreState.TxOpTransfer).Value(1000).SignPair(from).Build()
+	tx2 := bb.Tx().Type(coreState.TxOpStake).Value(1000).SignPair(from).Build()
+	tx3 := bb.Tx().Type(coreState.TxOpUnstake).Nonce(tx2.Nonce() + 1).Value(1000).SignPair(from).Build()
 
 	failed := seedTm.PushAndBroadcast(tx1)
 	err = failed[byteutils.Bytes2Hex(tx1.Hash())]
-	require.Equal(t, core.ErrPointNotEnough, err)
+	require.Equal(t, coreState.ErrPointNotEnough, err)
 
 	failed = seedTm.PushAndBroadcast(tx2)
 	err = failed[byteutils.Bytes2Hex(tx2.Hash())]
@@ -289,7 +291,7 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 
 	failed = seedTm.PushAndBroadcast(tx3)
 	err = failed[byteutils.Bytes2Hex(tx3.Hash())]
-	require.Equal(t, core.ErrStakingNotEnough, err)
+	require.Equal(t, coreState.ErrStakingNotEnough, err)
 
 }
 
@@ -330,7 +332,7 @@ func TestTransactionManager_ReplacePending(t *testing.T) {
 	}
 }
 
-func waitForTransaction(t *testing.T, deadline time.Duration, node *testutil.Node, tx *core.Transaction, has bool) {
+func waitForTransaction(t *testing.T, deadline time.Duration, node *testutil.Node, tx *coreState.Transaction, has bool) {
 	timeout := time.NewTimer(deadline)
 	defer timeout.Stop()
 

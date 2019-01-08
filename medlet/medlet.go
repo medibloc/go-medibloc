@@ -26,6 +26,7 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/rpc"
@@ -40,22 +41,6 @@ var (
 	metricsMedstartGauge = metrics.GetOrRegisterGauge("med.start", nil)
 )
 
-// DefaultTxMap is default map of transactions.
-var DefaultTxMap = core.TxFactory{
-	core.TxOpTransfer:            core.NewTransferTx,
-	core.TxOpAddRecord:           core.NewAddRecordTx,
-	core.TxOpStake:               core.NewStakeTx,
-	core.TxOpUnstake:             core.NewUnstakeTx,
-	core.TxOpAddCertification:    core.NewAddCertificationTx,
-	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
-	core.TxOpRegisterAlias:       core.NewRegisterAliasTx,
-	core.TxOpDeregisterAlias:     core.NewDeregisterAliasTx,
-
-	dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
-	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
-	dpos.TxOpVote:            dpos.NewVoteTx,
-}
-
 // Medlet manages blockchain services.
 type Medlet struct {
 	config             *medletpb.Config
@@ -66,7 +51,7 @@ type Medlet struct {
 	blockManager       *core.BlockManager
 	transactionManager *core.TransactionManager
 	consensus          *dpos.Dpos
-	eventEmitter       *core.EventEmitter
+	eventEmitter       *event.Emitter
 	syncService        *sync.Service
 }
 
@@ -122,7 +107,7 @@ func New(cfg *medletpb.Config) (*Medlet, error) {
 		blockManager:       bm,
 		transactionManager: tm,
 		consensus:          consensus,
-		eventEmitter:       core.NewEventEmitter(40960),
+		eventEmitter:       event.NewEventEmitter(40960),
 		syncService:        ss,
 	}, nil
 }
@@ -133,7 +118,7 @@ func (m *Medlet) Setup() error {
 
 	m.rpc.Setup(m.blockManager, m.transactionManager, m.eventEmitter, m.netService)
 
-	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus, DefaultTxMap)
+	err := m.blockManager.Setup(m.genesis, m.storage, m.netService, m.consensus)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -294,7 +279,7 @@ func (m *Medlet) Consensus() core.Consensus {
 }
 
 // EventEmitter returns event emitter.
-func (m *Medlet) EventEmitter() *core.EventEmitter {
+func (m *Medlet) EventEmitter() *event.Emitter {
 	return m.eventEmitter
 }
 

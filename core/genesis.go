@@ -21,6 +21,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -40,8 +42,8 @@ var (
 )
 
 // genesisTxReceipt is a receipt for genesis transaction
-func genesisTxReceipt() *Receipt {
-	receipt := NewReceipt()
+func genesisTxReceipt() *coreState.Receipt {
+	receipt := coreState.NewReceipt()
 	receipt.SetExecuted(true)
 	return receipt
 }
@@ -62,7 +64,7 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 }
 
 // NewGenesisBlock generates genesis block
-func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory, sto storage.Storage) (*Block, error) {
+func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Storage) (*Block, error) {
 	if conf == nil {
 		return nil, ErrNilArgument
 	}
@@ -83,7 +85,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 				netPrice:   util.NewUint128FromUint(0),
 				netUsage:   0,
 			},
-			transactions: make([]*Transaction, 0),
+			transactions: make([]*coreState.Transaction, 0),
 			height:       GenesisHeight,
 		},
 		storage: sto,
@@ -98,7 +100,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 	}
 
 	initialMessage := "Genesis block of MediBloc"
-	payload := &DefaultPayload{
+	payload := &transaction.DefaultPayload{
 		Message: initialMessage,
 	}
 	payloadBuf, err := payload.ToBytes()
@@ -106,23 +108,22 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 		return nil, err
 	}
 
-	initialTx := &Transaction{
-		txType:  TxTyGenesis,
-		to:      GenesisCoinbase,
-		value:   util.Uint128Zero(),
-		chainID: conf.Meta.ChainId,
-		payload: payloadBuf,
-		receipt: genesisTxReceipt(),
-	}
+	initialTx := new(coreState.Transaction)
+	initialTx.SetTxType(TxTyGenesis)
+	initialTx.SetTo(GenesisCoinbase)
+	initialTx.SetValue(util.Uint128Zero())
+	initialTx.SetChainID(conf.Meta.ChainId)
+	initialTx.SetPayload(payloadBuf)
+	initialTx.SetReceipt(genesisTxReceipt())
 
 	txHash, err := initialTx.CalcHash()
 	if err != nil {
 		return nil, err
 	}
-	initialTx.hash = txHash
+	initialTx.SetHash(txHash)
 
 	// Genesis transactions do not consume bandwidth(only put in txState)
-	if err := genesisBlock.state.txState.Put(initialTx); err != nil {
+	if err := genesisBlock.state.PutTx(initialTx); err != nil {
 		return nil, err
 	}
 	genesisBlock.AppendTransaction(initialTx) // append on block header
@@ -156,18 +157,17 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 			return nil, err
 		}
 
-		tx := &Transaction{
-			txType:  TxTyGenesis,
-			to:      addr,
-			value:   acc.Balance,
-			chainID: conf.Meta.ChainId,
-			receipt: genesisTxReceipt(),
-		}
+		tx := new(coreState.Transaction)
+		tx.SetTxType(TxTyGenesis)
+		tx.SetTo(addr)
+		tx.SetValue(acc.Balance)
+		tx.SetChainID(conf.Meta.ChainId)
+		tx.SetReceipt(genesisTxReceipt())
 		txHash, err = tx.CalcHash()
 		if err != nil {
 			return nil, err
 		}
-		tx.hash = txHash
+		tx.SetHash(txHash)
 
 		// Genesis transactions do not consume bandwidth(only put in txState)
 		if err := genesisBlock.state.txState.Put(tx); err != nil {
@@ -179,17 +179,21 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, txMap TxFactory,
 	genesisBlock.state.supply = supply
 
 	for _, pbTx := range conf.Transactions {
-		tx := new(Transaction)
+		tx := new(coreState.Transaction)
 		if err := tx.FromProto(pbTx); err != nil {
 			return nil, err
 		}
-		receipt, err := genesisBlock.ExecuteTransaction(tx, txMap)
+		exeTx, err := transaction.NewExecutableTx(tx)
+		if err != nil {
+			return nil, err
+		}
+		receipt, err := genesisBlock.ExecuteTransaction(exeTx)
 		if err != nil {
 			return nil, err
 		}
 		tx.SetReceipt(receipt)
 
-		if err = genesisBlock.AcceptTransaction(tx); err != nil {
+		if err = genesisBlock.State().AcceptTransaction(tx); err != nil {
 			return nil, err
 		}
 		genesisBlock.AppendTransaction(tx) // append on block header
@@ -227,7 +231,7 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		return false
 	}
 
-	accounts, err := block.State().accState.accounts()
+	accounts, err := block.State().accState.Accounts()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

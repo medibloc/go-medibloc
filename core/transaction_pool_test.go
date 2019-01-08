@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/core"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/event"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
@@ -33,11 +35,11 @@ func TestTransactionGetDel(t *testing.T) {
 	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
 
 	pool := core.NewTransactionPool(128)
-	pool.SetEventEmitter(core.NewEventEmitter(128))
+	pool.SetEventEmitter(event.NewEventEmitter(128))
 
-	tp1, err := core.NewTransactionInPool(tx1, blockutil.DefaultTxMap)
+	tp1, err := core.NewTransactionContext(tx1)
 	require.NoError(t, err)
-	tp2, err := core.NewTransactionInPool(tx2, blockutil.DefaultTxMap)
+	tp2, err := core.NewTransactionContext(tx2)
 	require.NoError(t, err)
 
 	pool.Push(tp1)
@@ -72,16 +74,16 @@ func TestTransactionPoolEvict(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 
 	tb := bb.Tx()
-	var txs []*core.Transaction
+	var txs []*coreState.Transaction
 	for i := 0; i < nTransaction; i++ {
-		tx := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(uint64(i + 1)).SignPair(from).Build()
+		tx := tb.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(uint64(i + 1)).SignPair(from).Build()
 		txs = append(txs, tx)
 	}
 
 	pool := core.NewTransactionPool(poolSize)
-	pool.SetEventEmitter(core.NewEventEmitter(128))
+	pool.SetEventEmitter(event.NewEventEmitter(128))
 	for _, tx := range txs {
-		tp, err := core.NewTransactionInPool(tx, blockutil.DefaultTxMap)
+		tp, err := core.NewTransactionContext(tx)
 		require.NoError(t, err)
 		pool.Push(tp)
 	}
@@ -108,19 +110,19 @@ func TestInfiniteLoop(t *testing.T) {
 	from2 := testutil.NewAddrKeyPair(t)
 	to := testutil.NewAddrKeyPair(t)
 
-	from1Nonce2 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
+	from1Nonce2 := tb.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
 		SignPair(from1).Build()
-	from2Nonce1 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).
+	from2Nonce1 := tb.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).
 		SignPair(from2).Build()
-	from2Nonce2 := tb.Type(core.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
+	from2Nonce2 := tb.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
 		SignPair(from2).Build()
 
-	tmp1, err := core.NewTransactionInPool(from1Nonce2, blockutil.DefaultTxMap)
+	tmp1, err := core.NewTransactionContext(from1Nonce2)
 	require.NoError(t, err)
-	tmp2, err := core.NewTransactionInPool(from2Nonce1, blockutil.DefaultTxMap)
+	tmp2, err := core.NewTransactionContext(from2Nonce1)
 	require.NoError(t, err)
 	tmp2.SetIncomeTimestamp(tmp1.IncomeTimestamp() + 1000)
-	tmp3, err := core.NewTransactionInPool(from2Nonce2, blockutil.DefaultTxMap)
+	tmp3, err := core.NewTransactionContext(from2Nonce2)
 	require.NoError(t, err)
 	tmp3.SetIncomeTimestamp(tmp2.IncomeTimestamp() + 1000)
 

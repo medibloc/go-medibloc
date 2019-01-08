@@ -21,6 +21,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
@@ -46,7 +48,6 @@ type BlockManager struct {
 	tm        *TransactionManager
 	ns        net.Service
 	consensus Consensus
-	txMap     TxFactory
 
 	syncService          SyncService
 	syncActivationHeight uint64
@@ -70,16 +71,6 @@ type BlockManager struct {
 type blockResult struct {
 	block   *BlockData
 	isValid bool
-}
-
-//TxMap returns txMap
-func (bm *BlockManager) TxMap() TxFactory {
-	return bm.txMap
-}
-
-//SetTxMap inject txMap
-func (bm *BlockManager) SetTxMap(txMap TxFactory) {
-	bm.txMap = txMap
 }
 
 // NewBlockManager returns BlockManager.
@@ -116,7 +107,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 }
 
 // InjectEmitter inject emitter generated from medlet to block manager
-func (bm *BlockManager) InjectEmitter(emitter *EventEmitter) {
+func (bm *BlockManager) InjectEmitter(emitter *event.Emitter) {
 	bm.bc.SetEventEmitter(emitter)
 }
 
@@ -131,11 +122,10 @@ func (bm *BlockManager) InjectSyncService(syncService SyncService) {
 }
 
 // Setup sets up BlockManager.
-func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus, txMap TxFactory) error {
+func (bm *BlockManager) Setup(genesis *corepb.Genesis, stor storage.Storage, ns net.Service, consensus Consensus) error {
 	bm.consensus = consensus
-	bm.txMap = txMap
 
-	err := bm.bc.Setup(genesis, consensus, txMap, stor)
+	err := bm.bc.Setup(genesis, consensus, stor)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -221,7 +211,7 @@ func (bm *BlockManager) processTask(newData *BlockData) {
 		return
 	}
 
-	child, err := newData.ExecuteOnParentBlock(parent, bm.consensus, bm.txMap)
+	child, err := newData.ExecuteOnParentBlock(parent, bm.consensus)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":    err,
@@ -412,7 +402,7 @@ func (bm *BlockManager) PushCreatedBlock(b *Block) error {
 // PushBlockDataSync pushes block to distributor and wait for execution
 // Warning! - Use this method only for test for time efficiency.
 func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration) error {
-	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
+	eventSubscriber, err := event.NewSubscriber(1024, []string{event.TopicAcceptedBlock, event.TopicInvalidBlock})
 	if err != nil {
 		return err
 	}
@@ -432,7 +422,7 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 		select {
 		case e := <-eCh:
 			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {
-				if e.Topic == TopicInvalidBlock {
+				if e.Topic == event.TopicInvalidBlock {
 					return ErrInvalidBlock
 				}
 				return nil
@@ -496,7 +486,7 @@ func (bm *BlockManager) pushToDistributor(bd *BlockData) {
 
 func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 	if bm.bc.chainID != bd.ChainID() {
-		return ErrInvalidChainID
+		return ErrInvalidBlockChainID
 	}
 
 	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
@@ -539,7 +529,7 @@ func verifyBlockHeight(bd *BlockData, parent *Block) error {
 
 func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []*Block) error {
 	addrNonce := make(map[common.Address]uint64)
-	exclusiveFilter := make(map[*Transaction]bool)
+	exclusiveFilter := make(map[*coreState.Transaction]bool)
 
 	for _, newBlock := range newBlocks {
 		for _, tx := range newBlock.Transactions() {
@@ -554,7 +544,7 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 	}
 
 	// revert block
-	pushTxs := make([]*Transaction, 0)
+	pushTxs := make([]*coreState.Transaction, 0)
 	for _, block := range revertBlock {
 		for _, tx := range block.Transactions() {
 			if _, ok := exclusiveFilter[tx]; !ok {
@@ -562,7 +552,7 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 			}
 		}
 		if bm.bc.eventEmitter != nil {
-			block.EmitBlockEvent(bm.bc.eventEmitter, TopicRevertBlock)
+			block.EmitBlockEvent(bm.bc.eventEmitter, event.TopicRevertBlock)
 		}
 		logging.Console().Warn("A block is reverted.")
 	}
@@ -581,7 +571,7 @@ func (bm *BlockManager) alarmExecutionResult(bd *BlockData, error error) {
 	} else {
 		result.isValid = false
 		bm.finishWorkCh <- result
-		bd.EmitBlockEvent(bm.bc.eventEmitter, TopicInvalidBlock)
+		bd.EmitBlockEvent(bm.bc.eventEmitter, event.TopicInvalidBlock)
 	}
 }
 

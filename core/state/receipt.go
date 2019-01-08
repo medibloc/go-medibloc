@@ -13,12 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package core
+package coreState
 
 import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -75,6 +76,10 @@ func (r *Receipt) NetUsage() uint64 {
 //SetNetUsage sets net usage
 func (r *Receipt) SetNetUsage(netUsage uint64) {
 	r.netUsage = netUsage
+}
+
+func (r *Receipt) Bandwidth() *common.Bandwidth {
+	return common.NewBandwidth(r.CPUUsage(), r.NetUsage())
 }
 
 //Points returns consumed points by transaction

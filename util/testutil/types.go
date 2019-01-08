@@ -17,6 +17,8 @@ package testutil
 
 import "errors"
 
+const TestAliasName = "mediblocmainnet"
+
 var (
 	//ChainID is chain id for test configuration.
 	ChainID uint32 = 1

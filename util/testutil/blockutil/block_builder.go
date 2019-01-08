@@ -24,6 +24,8 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -185,6 +187,7 @@ func (bb *BlockBuilder) Coinbase(addr common.Address) *BlockBuilder {
 func (bb *BlockBuilder) Timestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
 	n.B.SetTimestamp(ts)
+	n.B.State().SetTimestamp(ts)
 	return n
 }
 
@@ -261,7 +264,7 @@ func (bb *BlockBuilder) FindProposer() *testutil.AddrKeyPair {
 }
 
 //AddTx add transaction
-func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
+func (bb *BlockBuilder) AddTx(tx *coreState.Transaction) *BlockBuilder {
 	n := bb.copy()
 	txs := n.B.Transactions()
 	txs = append(txs, tx)
@@ -270,13 +273,15 @@ func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 }
 
 //ExecuteTx execute transaction
-func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
+func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	exeTx, err := transaction.NewExecutableTx(tx)
+	require.NoError(n.t, err)
+	receipt, err := n.B.ExecuteTransaction(exeTx)
 	require.NoError(n.t, err)
 	tx.SetReceipt(receipt)
-	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
 	n.B.AppendTransaction(tx)
 	require.NoError(n.t, n.B.Commit())
 
@@ -284,10 +289,16 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 }
 
 //ExecuteTxErr expect error occurred on executing
-func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
+func (bb *BlockBuilder) ExecuteTxErr(tx *coreState.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	receipt, err := n.B.ExecuteTransaction(tx, DefaultTxMap)
+	exeTx, err := transaction.NewExecutableTx(tx)
+	if err != nil {
+		require.Equal(n.t, expected, err)
+		require.NoError(n.t, n.B.RollBack())
+		return n
+	}
+	receipt, err := n.B.ExecuteTransaction(exeTx)
 	require.Equal(n.t, expected, err)
 	require.NoError(n.t, n.B.RollBack())
 	if receipt == nil {
@@ -295,7 +306,7 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 	}
 	require.NoError(n.t, n.B.BeginBatch())
 	tx.SetReceipt(receipt)
-	require.NoError(n.t, n.B.AcceptTransaction(tx))
+	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
 	n.B.AppendTransaction(tx)
 	require.NoError(n.t, n.B.Commit())
 	return n
@@ -306,7 +317,7 @@ func (bb *BlockBuilder) PayReward() *BlockBuilder {
 	n := bb.copy()
 
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.PayReward(n.B.Coinbase(), n.B.Supply()))
+	require.NoError(n.t, n.B.State().PayReward(n.B.Coinbase(), n.B.Supply()))
 	require.NoError(n.t, n.B.Commit())
 
 	return n
@@ -391,7 +402,7 @@ func (bb *BlockBuilder) UpdateDynastyState(parent *core.Block) *BlockBuilder {
 	n.proposer = mintProposer
 
 	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.SetMintDynastyState(parent, d))
+	require.NoError(n.t, n.B.State().SetMintDynastyState(parent.State(), d))
 	require.NoError(n.t, n.B.Commit())
 
 	return n

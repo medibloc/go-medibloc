@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-package core
+package coreState
 
 import (
 	"github.com/gogo/protobuf/proto"
@@ -27,7 +27,6 @@ import (
 //TransactionState is a structure for save transaction
 type TransactionState struct {
 	*trie.Batch
-	stor storage.Storage
 }
 
 //NewTransactionState returns transaction state
@@ -38,7 +37,6 @@ func NewTransactionState(rootHash []byte, stor storage.Storage) (*TransactionSta
 	}
 	return &TransactionState{
 		Batch: trieBatch,
-		stor:  stor,
 	}, nil
 }
 
@@ -50,12 +48,11 @@ func (ts *TransactionState) Clone() (*TransactionState, error) {
 	}
 	return &TransactionState{
 		Batch: newBatch,
-		stor:  ts.stor,
 	}, nil
 }
 
-//Get returns transaction from transaction state
-func (ts *TransactionState) Get(hash []byte) (*Transaction, error) {
+//GetTx returns transaction from transaction state
+func (ts *TransactionState) GetTx(hash []byte) (*Transaction, error) {
 	txBytes, err := ts.Batch.Get(hash)
 	if err != nil {
 		return nil, err
@@ -90,5 +87,5 @@ func (ts *TransactionState) Put(tx *Transaction) error {
 		}).Error("Failed to marshal proto.")
 		return err
 	}
-	return ts.Batch.Put(tx.hash, txBytes)
+	return ts.Batch.Put(tx.Hash(), txBytes)
 }

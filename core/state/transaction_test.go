@@ -13,17 +13,17 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package core_test
+package coreState_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/medibloc/go-medibloc/common"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -33,14 +33,13 @@ import (
 
 func TestSend(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-
 	from := bb.TokenDist[testutil.DynastySize]
 	to := testutil.NewAddrKeyPair(t)
 
 	bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(core.ErrBalanceNotEnough).
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
+		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(transaction.ErrBalanceNotEnough).
+		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
 		Balance(from.Addr, 399989990).
@@ -53,18 +52,18 @@ func TestAddRecord(t *testing.T) {
 
 	recordHash, err := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	require.NoError(t, err)
-	payload := &core.AddRecordPayload{RecordHash: recordHash}
+	payload := &transaction.AddRecordPayload{RecordHash: recordHash}
 	owner := bb.TokenDist[0]
 
 	block := bb.
 		Tx().StakeTx(owner, 10000).Execute().
-		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(owner).Execute().
+		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(owner).Execute().
 		Build()
 
 	acc, err := block.State().GetAccount(owner.Addr)
 	assert.NoError(t, err)
 
-	recordBytes, err := acc.GetData(core.RecordsPrefix, recordHash)
+	recordBytes, err := acc.GetData(coreState.RecordsPrefix, recordHash)
 	assert.NoError(t, err)
 
 	pbRecord := new(corepb.Record)
@@ -80,14 +79,14 @@ func TestStakingAndUnstaking(t *testing.T) {
 	unstakingAmount := 301.0
 
 	bb = bb.
-		Tx().Type(core.TxOpStake).Value(stakingAmount).SignPair(from).Execute()
+		Tx().Type(coreState.TxOpStake).Value(stakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-stakingAmount).
 		Staking(from.Addr, stakingAmount)
 
 	bb = bb.
-		Tx().Type(core.TxOpUnstake).Value(unstakingAmount).SignPair(from).Execute()
+		Tx().Type(coreState.TxOpUnstake).Value(unstakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-stakingAmount).
@@ -99,11 +98,12 @@ func TestStakingAndUnstaking(t *testing.T) {
 	t.Logf("ts:%v, balance: %v", bb.B.Timestamp(), acc.Balance)
 
 	recordHash, _ := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
-	payload := &core.AddRecordPayload{
+	payload := &transaction.AddRecordPayload{
 		RecordHash: recordHash,
 	}
-	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(core.UnstakingWaitDuration/time.Second) + 1).
-		Tx().Type(core.TxOpAddRecord).Payload(payload).SignPair(from).Execute()
+
+	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(coreState.UnstakingWaitDuration/time.Second) + 1).
+		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(from).Execute()
 	bb.Expect().
 		Balance(from.Addr, 400000000-stakingAmount+unstakingAmount).
 		Unstaking(from.Addr, 0)
@@ -121,14 +121,14 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add certification Test
-	addPayload := &core.AddCertificationPayload{
+	addPayload := &transaction.AddCertificationPayload{
 		IssueTime:       issueTime,
 		ExpirationTime:  expirationTime,
 		CertificateHash: hash,
 	}
 
 	bb = bb.Stake().
-		Tx().Type(core.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
+		Tx().Type(coreState.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
 
 	block := bb.PayReward().Flush().Seal().Build()
 
@@ -137,9 +137,9 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	certifiedAcc, err := block.State().GetAccount(certified.Addr)
 	require.NoError(t, err)
 
-	certBytes0, err := issuerAcc.GetData(core.CertIssuedPrefix, hash)
+	certBytes0, err := issuerAcc.GetData(coreState.CertIssuedPrefix, hash)
 	assert.NoError(t, err)
-	certBytes1, err := certifiedAcc.GetData(core.CertReceivedPrefix, hash)
+	certBytes1, err := certifiedAcc.GetData(coreState.CertReceivedPrefix, hash)
 	assert.NoError(t, err)
 	require.True(t, byteutils.Equal(certBytes0, certBytes1))
 
@@ -157,15 +157,15 @@ func TestAddAndRevokeCertification(t *testing.T) {
 
 	// Revoke certification Test
 	revokeTime := time.Now().Unix() + int64(50000)
-	revokePayload := &core.RevokeCertificationPayload{CertificateHash: hash}
+	revokePayload := &transaction.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb.ChildWithTimestamp(expirationTime + int64(1)).
-		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).ExecuteErr(core.ErrCertAlreadyExpired)
+		Tx().Type(coreState.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).ExecuteErr(transaction.ErrCertAlreadyExpired)
 
 	bb = bb.ChildWithTimestamp(revokeTime).
-		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).Execute().
-		Tx().Type(core.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).
-		ExecuteErr(core.ErrCertAlreadyRevoked)
+		Tx().Type(coreState.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).Execute().
+		Tx().Type(coreState.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).
+		ExecuteErr(transaction.ErrCertAlreadyRevoked)
 	block = bb.Build()
 
 	issuerAcc, err = block.State().GetAccount(issuer.Addr)
@@ -173,9 +173,9 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	certifiedAcc, err = block.State().GetAccount(certified.Addr)
 	require.NoError(t, err)
 
-	certBytes0, err = issuerAcc.GetData(core.CertIssuedPrefix, hash)
+	certBytes0, err = issuerAcc.GetData(coreState.CertIssuedPrefix, hash)
 	assert.NoError(t, err)
-	certBytes1, err = certifiedAcc.GetData(core.CertReceivedPrefix, hash)
+	certBytes1, err = certifiedAcc.GetData(coreState.CertReceivedPrefix, hash)
 	assert.NoError(t, err)
 	require.True(t, byteutils.Equal(certBytes0, certBytes1))
 
@@ -196,9 +196,9 @@ func TestPayerSigner(t *testing.T) {
 	to := testutil.NewAddrKeyPair(t)
 	bb = bb.
 		Tx().StakeTx(payer, 10000).Execute().
-		Tx().Type(core.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrPointNotEnough).
-		Tx().Type(core.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
+		Tx().Type(coreState.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
+		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(coreState.ErrPointNotEnough).
+		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
 	bb.
 		Expect().
 		Balance(to.Addr, 300).
@@ -219,36 +219,34 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	from := bb.TokenDist[testutil.DynastySize]
 	const (
 		collateralAmount = 1000000
-		testAliasName    = "testalias"
 	)
 
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(core.TxOpRegisterAlias).
+		Tx().Type(coreState.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
-		Payload(&core.RegisterAliasPayload{AliasName: testAliasName}).
+		Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).
 		Execute()
 
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(core.TxOpRegisterAlias).
+		Tx().Type(coreState.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
-		Payload(&core.RegisterAliasPayload{AliasName: testAliasName}).
-		ExecuteErr(core.ErrAlreadyHaveAlias)
+		Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).
+		ExecuteErr(transaction.ErrAliasAlreadyHave)
 		//Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-collateralAmount-20000)
-	acc, err := bb.B.State().AccState().GetAliasAccount(testAliasName)
+	acc, err := bb.B.State().GetAccountByAlias(testutil.TestAliasName)
 	if err != nil {
 		t.Log(err)
 	}
-	t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
 
-	acc2, err := bb.B.State().AccState().GetAccount(from.Addr)
-	aliasBytes, err := acc2.GetData(core.AliasPrefix, []byte("alias"))
+	acc2, err := bb.B.State().GetAccount(from.Addr)
+	aliasBytes, err := acc2.GetData("", []byte("alias"))
 	pbAlias := new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
@@ -257,27 +255,27 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	t.Log(pbAlias.AliasName)
 
 	bb = bb.
-		Tx().Type(core.TxOpDeregisterAlias).
+		Tx().Type(coreState.TxOpDeregisterAlias).
 		SignPair(from).
 		Execute()
 
 	bb = bb.
-		Tx().Type(core.TxOpDeregisterAlias).
+		Tx().Type(coreState.TxOpDeregisterAlias).
 		SignPair(from).
-		ExecuteErr(core.ErrAliasNotExist)
+		ExecuteErr(transaction.ErrAliasNotExist)
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-20000)
 
-	acc, err = bb.B.State().AccState().GetAliasAccount(testAliasName)
+	acc, err = bb.B.State().GetAccountByAlias(testutil.TestAliasName)
 	//require.NoError(t, err)
 	if err != nil {
 		t.Log(err)
 	} else {
-		t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc.Account)
+		t.Logf("ts:%v, Account: %v", bb.B.Timestamp(), acc)
 	}
-	acc2, err = bb.B.State().AccState().GetAccount(from.Addr)
-	aliasBytes, err = acc2.GetData(core.AliasPrefix, []byte(common.AliasKey))
+	acc2, err = bb.B.State().GetAccount(from.Addr)
+	aliasBytes, err = acc2.GetData("", []byte(coreState.AliasKey))
 	pbAlias = new(corepb.Alias)
 	err = proto.Unmarshal(aliasBytes, pbAlias)
 	if err != nil {
@@ -297,27 +295,24 @@ func TestRegisterAliasTable(t *testing.T) {
 		err  error
 	}
 	testNames := []*aliasErrSet{
-		{"", common.ErrAliasEmptyString},
-		{"testAlias", common.ErrAliasInvalidChar},
-		{"Testalias", common.ErrAliasInvalidChar},
-		{"3testalias", common.ErrAliasFirstLetter},
-		{" testalias", common.ErrAliasInvalidChar},
-		{"testalias0123", common.ErrAliasLengthLimit},
-		{"testaliastestalias", common.ErrAliasLengthLimit},
-		{"testalias!", common.ErrAliasInvalidChar},
-		{"test_alias", common.ErrAliasInvalidChar},
-		{"test	as", common.ErrAliasInvalidChar},
-		{"메디블록", common.ErrAliasInvalidChar},
-		{"!@#%%ㅁㄴ", common.ErrAliasInvalidChar},
-		{"a!@#%123", common.ErrAliasInvalidChar},
+		{"", transaction.ErrAliasLengthUnderMinimum},
+		{"accountAlias", transaction.ErrAliasInvalidChar},
+		{"Testalias !@", transaction.ErrAliasInvalidChar},
+		{"3accountalias", transaction.ErrAliasFirstLetter},
+		{" accountalias", transaction.ErrAliasInvalidChar},
+		{"accountalias01234", transaction.ErrAliasLengthExceedMaximum},
+		{"accountalias!", transaction.ErrAliasInvalidChar},
+		{"account_alias", transaction.ErrAliasInvalidChar},
+		{"test	     as", transaction.ErrAliasInvalidChar},
+		{"test메디블록", transaction.ErrAliasInvalidChar},
 	}
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute()
 	for _, es := range testNames {
-		bb.Tx().Type(core.TxOpRegisterAlias).
+		bb.Tx().Type(coreState.TxOpRegisterAlias).
 			Value(collateralAmount).
 			SignPair(from).
-			Payload(&core.RegisterAliasPayload{AliasName: es.name}).
+			Payload(&transaction.RegisterAliasPayload{AliasName: es.name}).
 			ExecuteErr(es.err)
 	}
 }

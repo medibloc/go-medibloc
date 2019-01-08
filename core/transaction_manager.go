@@ -23,9 +23,11 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -50,7 +52,7 @@ type TransactionManager struct {
 	futurePool  *TransactionPool
 
 	bwInfoMu      sync.Mutex
-	bandwidthInfo map[common.Address]*Bandwidth // how much bandwidth used by transactions payed by payer in pending pool
+	bandwidthInfo map[common.Address]*common.Bandwidth // how much bandwidth used by transactions payed by payer in pending pool
 }
 
 // NewTransactionManager create a new TransactionManager.
@@ -61,7 +63,7 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 		quitCh:            make(chan int),
 		pendingPool:       NewTransactionPool(-1),
 		futurePool:        NewTransactionPool(int(cfg.Chain.TransactionPoolSize)),
-		bandwidthInfo:     make(map[common.Address]*Bandwidth),
+		bandwidthInfo:     make(map[common.Address]*common.Bandwidth),
 		ns:                nil,
 	}
 }
@@ -76,7 +78,7 @@ func (tm *TransactionManager) Setup(bm *BlockManager, ns net.Service) {
 }
 
 // InjectEmitter inject emitter generated from medlet to transaction manager
-func (tm *TransactionManager) InjectEmitter(emitter *EventEmitter) {
+func (tm *TransactionManager) InjectEmitter(emitter *event.Emitter) {
 	tm.pendingPool.SetEventEmitter(emitter)
 }
 
@@ -101,7 +103,7 @@ func (tm *TransactionManager) registerInNetwork() {
 }
 
 //PushAndBroadcast push and broad all transactions that moved from future to pending pool
-func (tm *TransactionManager) PushAndBroadcast(transactions ...*Transaction) (failed map[string]error) {
+func (tm *TransactionManager) PushAndBroadcast(transactions ...*coreState.Transaction) (failed map[string]error) {
 	failed = make(map[string]error)
 	addrs, _, dropped := tm.pushToFuturePool(transactions...)
 	for k, v := range dropped {
@@ -132,7 +134,7 @@ func (tm *TransactionManager) PushAndBroadcast(transactions ...*Transaction) (fa
 }
 
 // PushAndExclusiveBroadcast pushes transactions to transaction manager and broadcast only previously exist in future pool
-func (tm *TransactionManager) PushAndExclusiveBroadcast(transactions ...*Transaction) (failed map[string]error) {
+func (tm *TransactionManager) PushAndExclusiveBroadcast(transactions ...*coreState.Transaction) (failed map[string]error) {
 	failed = make(map[string]error)
 	addrs, exclusiveFilter, dropped := tm.pushToFuturePool(transactions...)
 	for k, v := range dropped {
@@ -165,13 +167,13 @@ func (tm *TransactionManager) PushAndExclusiveBroadcast(transactions ...*Transac
 	return failed
 }
 
-func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (addrs []common.Address, future map[string]bool, dropped map[string]error) {
+func (tm *TransactionManager) pushToFuturePool(transactions ...*coreState.Transaction) (addrs []common.Address, future map[string]bool, dropped map[string]error) {
 	future = make(map[string]bool)
 	dropped = make(map[string]error)
 	addrMap := make(map[common.Address]int)
 
 	for _, transaction := range transactions {
-		if tm.pendingPool.Get(transaction.hash) != nil || tm.futurePool.Get(transaction.hash) != nil {
+		if tm.pendingPool.Get(transaction.Hash()) != nil || tm.futurePool.Get(transaction.Hash()) != nil {
 			dropped[transaction.HexHash()] = ErrDuplicatedTransaction
 			continue
 		}
@@ -185,7 +187,7 @@ func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (ad
 			continue
 		}
 
-		tp, err := NewTransactionInPool(transaction, tm.bm.txMap)
+		tp, err := NewTransactionContext(transaction)
 		if err != nil {
 			dropped[transaction.HexHash()] = err
 			continue
@@ -194,7 +196,7 @@ func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (ad
 		// add to future pool
 		tm.futurePool.Push(tp)
 		tm.futurePool.Evict()
-		addrMap[transaction.from]++
+		addrMap[transaction.From()]++
 		future[transaction.HexHash()] = true
 	}
 
@@ -205,8 +207,8 @@ func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (ad
 	return addrs, future, dropped
 }
 
-func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address) (pended []*Transaction, dropped map[string]error) {
-	pended = make([]*Transaction, 0)
+func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address) (pended []*coreState.Transaction, dropped map[string]error) {
+	pended = make([]*coreState.Transaction, 0)
 	dropped = make(map[string]error)
 
 	for _, addr := range addrs {
@@ -281,7 +283,7 @@ func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address
 	return pended, dropped
 }
 
-func (tm *TransactionManager) addToPendingPool(bs *BlockState, tx *TransactionInPool) error {
+func (tm *TransactionManager) addToPendingPool(bs *BlockState, tx *TransactionContext) error {
 	// append case (first item pending)
 	tm.futurePool.Del(tx.Hash())
 	if err := tm.addBandwidthInfo(bs, tx); err != nil {
@@ -291,7 +293,7 @@ func (tm *TransactionManager) addToPendingPool(bs *BlockState, tx *TransactionIn
 	return nil
 }
 
-func (tm *TransactionManager) replaceBandwidthInfo(bs *BlockState, new, old *TransactionInPool) error {
+func (tm *TransactionManager) replaceBandwidthInfo(bs *BlockState, new, old *TransactionContext) error {
 	if new == nil || old == nil {
 		return ErrNilArgument
 	}
@@ -299,34 +301,33 @@ func (tm *TransactionManager) replaceBandwidthInfo(bs *BlockState, new, old *Tra
 	tm.bwInfoMu.Lock()
 	defer tm.bwInfoMu.Unlock()
 
-	newBandwidthInfo, ok := tm.bandwidthInfo[new.payer]
-	if !ok {
-		newBandwidthInfo = NewBandwidth(0, 0)
+	existing := tm.bandwidthInfo[new.Payer()].Clone()
+	if new.Payer().Equals(old.Payer()) {
+		existing.Sub(old.Bandwidth())
 	}
-	if new.payer.Equals(old.payer) {
-		newBandwidthInfo.Sub(old.bandwidth)
-	}
-	newBandwidthInfo.Add(new.bandwidth)
-	points, err := newBandwidthInfo.CalcPoints(bs.Price())
-	if err != nil {
-		return err
-	}
-	if err := tm.verifyPayerPoints(bs, new.payer, points, new.Transaction); err != nil {
+
+	if err := tm.verifyPayerPoints(bs, new, existing); err != nil {
 		return err
 	}
 
-	tm.bandwidthInfo[old.payer].Sub(old.bandwidth)
-	if tm.bandwidthInfo[old.payer].IsZero() {
-		delete(tm.bandwidthInfo, old.payer)
+	_, ok := tm.bandwidthInfo[new.Payer()]
+	if !ok {
+		tm.bandwidthInfo[new.Payer()] = common.NewBandwidth(0, 0)
 	}
-	if _, ok := tm.bandwidthInfo[new.payer]; !ok {
-		tm.bandwidthInfo[new.payer] = NewBandwidth(0, 0)
+	tm.bandwidthInfo[new.Payer()].Add(new.Bandwidth())
+
+	tm.bandwidthInfo[old.Payer()].Sub(old.Bandwidth())
+	if tm.bandwidthInfo[old.Payer()].IsZero() {
+		delete(tm.bandwidthInfo, old.Payer())
 	}
-	tm.bandwidthInfo[new.payer].Add(new.bandwidth)
+	if _, ok := tm.bandwidthInfo[new.Payer()]; !ok {
+		tm.bandwidthInfo[new.Payer()] = common.NewBandwidth(0, 0)
+	}
+	tm.bandwidthInfo[new.Payer()].Add(new.Bandwidth())
 	return nil
 }
 
-func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionInPool) error {
+func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionContext) error {
 	if new == nil {
 		return ErrNilArgument
 	}
@@ -334,51 +335,43 @@ func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionI
 	tm.bwInfoMu.Lock()
 	defer tm.bwInfoMu.Unlock()
 
-	newBandwidthInfo, ok := tm.bandwidthInfo[new.payer]
+	existing, ok := tm.bandwidthInfo[new.Payer()]
 	if !ok {
-		newBandwidthInfo = NewBandwidth(0, 0)
+		existing = common.NewBandwidth(0, 0)
 	}
-
-	newBandwidthInfo.Add(new.bandwidth)
-	points, err := newBandwidthInfo.CalcPoints(bs.Price())
-	if err != nil {
-		return err
-	}
-	if err := tm.verifyPayerPoints(bs, new.payer, points, new.Transaction); err != nil {
+	if err := tm.verifyPayerPoints(bs, new, existing); err != nil {
 		return err
 	}
 
-	if _, ok := tm.bandwidthInfo[new.payer]; !ok {
-		tm.bandwidthInfo[new.payer] = NewBandwidth(0, 0)
+	if _, ok := tm.bandwidthInfo[new.Payer()]; !ok {
+		tm.bandwidthInfo[new.Payer()] = common.NewBandwidth(0, 0)
 	}
-	tm.bandwidthInfo[new.payer].Add(new.bandwidth)
+	tm.bandwidthInfo[new.Payer()].Add(new.Bandwidth())
 	return nil
 }
 
-func (tm *TransactionManager) verifyPayerPoints(bs *BlockState, payer common.Address, points *util.Uint128, transaction *Transaction) error {
-	payerAcc, err := bs.GetAccount(payer)
+func (tm *TransactionManager) verifyPayerPoints(bs *BlockState, transaction *TransactionContext, existing *common.Bandwidth) error {
+	payerAcc, err := bs.GetAccount(transaction.Payer())
 	if err != nil {
 		return err
 	}
-	if err := payerAcc.UpdatePoints(time.Now().Unix()); err != nil {
-		return err
-	}
-	if err := payerAcc.checkAccountPoints(transaction, points); err != nil {
+
+	if err := transaction.CheckAccountPoints(payerAcc, bs.Price(), existing); err != nil {
 		return err
 	}
 	return nil
 }
 
 // Pop pop transaction from TransactionManager.
-func (tm *TransactionManager) Pop() *Transaction {
+func (tm *TransactionManager) Pop() *transaction.ExecutableTx {
 	tx := tm.pendingPool.Pop()
 	if tx == nil {
 		return nil
 	}
 	tm.bwInfoMu.Lock()
-	tm.bandwidthInfo[tx.payer].Sub(tx.bandwidth)
-	if tm.bandwidthInfo[tx.payer].IsZero() {
-		delete(tm.bandwidthInfo, tx.payer)
+	tm.bandwidthInfo[tx.Payer()].Sub(tx.Bandwidth())
+	if tm.bandwidthInfo[tx.Payer()].IsZero() {
+		delete(tm.bandwidthInfo, tx.Payer())
 	}
 	tm.bwInfoMu.Unlock()
 
@@ -392,11 +385,11 @@ func (tm *TransactionManager) Pop() *Transaction {
 			}).Debug("failed to broadcast transaction")
 		}
 	}
-	return tx.Transaction
+	return tx.ExecutableTx
 }
 
 // Get transaction from transaction pool.
-func (tm *TransactionManager) Get(hash []byte) *Transaction {
+func (tm *TransactionManager) Get(hash []byte) *coreState.Transaction {
 	v := tm.pendingPool.Get(hash)
 	if v != nil {
 		return v.Transaction
@@ -412,23 +405,23 @@ func (tm *TransactionManager) Get(hash []byte) *Transaction {
 func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint64) {
 	for {
 		tx := tm.pendingPool.PeekFirstByAddress(addr)
-		if tx == nil || nonce < tx.nonce {
+		if tx == nil || nonce < tx.Nonce() {
 			break
 		}
 		tm.bwInfoMu.Lock()
-		tm.bandwidthInfo[tx.payer].Sub(tx.bandwidth)
-		if tm.bandwidthInfo[tx.payer].IsZero() {
-			delete(tm.bandwidthInfo, tx.payer)
+		tm.bandwidthInfo[tx.Payer()].Sub(tx.Bandwidth())
+		if tm.bandwidthInfo[tx.Payer()].IsZero() {
+			delete(tm.bandwidthInfo, tx.Payer())
 		}
 		tm.bwInfoMu.Unlock()
-		tm.pendingPool.Del(tx.hash)
+		tm.pendingPool.Del(tx.Hash())
 	}
 	for {
 		tx := tm.futurePool.PeekFirstByAddress(addr)
-		if tx == nil || nonce < tx.nonce {
+		if tx == nil || nonce < tx.Nonce() {
 			break
 		}
-		tm.futurePool.Del(tx.hash)
+		tm.futurePool.Del(tx.Hash())
 	}
 	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), addr)
 	for _, t := range success {
@@ -443,14 +436,14 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 }
 
 // GetAll returns all transactions from transaction pool
-func (tm *TransactionManager) GetAll() []*Transaction {
+func (tm *TransactionManager) GetAll() []*coreState.Transaction {
 	pending := tm.pendingPool.GetAll()
 	future := tm.futurePool.GetAll()
 	return append(pending, future...)
 }
 
 // Broadcast broadcasts transaction to network.
-func (tm *TransactionManager) Broadcast(tx *Transaction) error {
+func (tm *TransactionManager) Broadcast(tx *coreState.Transaction) error {
 	b, err := tx.ToBytes()
 	if err != nil {
 		return err
@@ -476,7 +469,7 @@ func (tm *TransactionManager) loop() {
 	}
 }
 
-func txFromNetMsg(msg net.Message) (*Transaction, error) {
+func txFromNetMsg(msg net.Message) (*coreState.Transaction, error) {
 	if msg.MessageType() != MessageTypeNewTx {
 		logging.WithFields(logrus.Fields{
 			"type": msg.MessageType(),
@@ -485,7 +478,7 @@ func txFromNetMsg(msg net.Message) (*Transaction, error) {
 		return nil, errors.New("invalid message type")
 	}
 
-	tx := new(Transaction)
+	tx := new(coreState.Transaction)
 	pbTx := new(corepb.Transaction)
 	if err := proto.Unmarshal(msg.Data(), pbTx); err != nil {
 		logging.WithFields(logrus.Fields{

@@ -19,6 +19,7 @@ import (
 	"sync"
 
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -56,7 +57,7 @@ type BlockChain struct {
 
 	storage storage.Storage
 
-	eventEmitter *EventEmitter
+	eventEmitter *event.Emitter
 }
 
 // NewBlockChain return new BlockChain instance
@@ -88,12 +89,12 @@ func NewBlockChain(cfg *medletpb.Config) (*BlockChain, error) {
 }
 
 // SetEventEmitter set emitter to blockchian
-func (bc *BlockChain) SetEventEmitter(emitter *EventEmitter) {
+func (bc *BlockChain) SetEventEmitter(emitter *event.Emitter) {
 	bc.eventEmitter = emitter
 }
 
 // Setup sets up BlockChain.
-func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap TxFactory, stor storage.Storage) error {
+func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor storage.Storage) error {
 	bc.genesis = genesis
 	bc.storage = stor
 	bc.consensus = consensus
@@ -107,7 +108,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, txMap 
 		return err
 	}
 	if genesisBlock == nil || err == storage.ErrKeyNotFound {
-		err = bc.initGenesisToStorage(txMap)
+		err = bc.initGenesisToStorage()
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
@@ -254,7 +255,7 @@ func (bc *BlockChain) PutVerifiedNewBlock(parent, child *Block) error {
 
 	if bc.eventEmitter != nil {
 		child.EmitTxExecutionEvent(bc.eventEmitter)
-		child.EmitBlockEvent(bc.eventEmitter, TopicAcceptedBlock)
+		child.EmitBlockEvent(bc.eventEmitter, event.TopicAcceptedBlock)
 	}
 
 	return nil
@@ -267,12 +268,12 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	bc.mu.RUnlock()
 	if prevLIB.height > newLIB.height || byteutils.Equal(prevLIB.hash, newLIB.hash) {
 		if bc.eventEmitter != nil {
-			event := &Event{
-				Topic: TopicLibBlock,
+			ev := &event.Event{
+				Topic: event.TopicLibBlock,
 				Data:  byteutils.Bytes2Hex(prevLIB.Hash()),
 				Type:  "",
 			}
-			bc.eventEmitter.Trigger(event)
+			bc.eventEmitter.Trigger(ev)
 		}
 		return nil
 	}
@@ -291,7 +292,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
-		newLIB.EmitBlockEvent(bc.eventEmitter, TopicLibBlock)
+		newLIB.EmitBlockEvent(bc.eventEmitter, event.TopicLibBlock)
 	}
 
 	for _, tail := range bc.TailBlocks() {
@@ -357,7 +358,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	bc.mu.Unlock()
 
 	if bc.eventEmitter != nil {
-		newTail.EmitBlockEvent(bc.eventEmitter, TopicNewTailBlock)
+		newTail.EmitBlockEvent(bc.eventEmitter, event.TopicNewTailBlock)
 	}
 
 	return blocks, newBlocks, nil
@@ -470,8 +471,8 @@ func (bc *BlockChain) buildIndexByBlockHeight(from *Block, to *Block) ([]*Block,
 	return blocks, nil
 }
 
-func (bc *BlockChain) initGenesisToStorage(txMap TxFactory) error {
-	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.consensus, txMap, bc.storage)
+func (bc *BlockChain) initGenesisToStorage() error {
+	genesisBlock, err := NewGenesisBlock(bc.genesis, bc.consensus, bc.storage)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,

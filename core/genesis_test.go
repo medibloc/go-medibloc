@@ -22,6 +22,7 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -43,7 +44,7 @@ func TestNewGenesisBlock(t *testing.T) {
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
 	initialMessage := "Genesis block of MediBloc"
-	defaultPayload := &core.DefaultPayload{
+	defaultPayload := &transaction.DefaultPayload{
 		Message: initialMessage,
 	}
 	payloadBuf, err := defaultPayload.ToBytes()
@@ -68,7 +69,7 @@ func TestNewGenesisBlock(t *testing.T) {
 		assert.True(t, inDynasty)
 	}
 
-	accState := genesisBlock.State().AccState()
+	accState := genesisBlock.State()
 	for _, holder := range dist[:21] {
 		addr := holder.Addr
 		acc, err := accState.GetAccount(addr)
@@ -90,7 +91,7 @@ func TestCheckGenesisBlock(t *testing.T) {
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
 	consensus := dpos.New(testutil.DynastySize)
-	genesis, err := core.NewGenesisBlock(conf, consensus, blockutil.DefaultTxMap, stor)
+	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 
 	ok := core.CheckGenesisConf(genesis, conf)
