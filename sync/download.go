@@ -22,10 +22,10 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/net"
-	syncpb "github.com/medibloc/go-medibloc/sync/pb"
+	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -55,13 +55,16 @@ func (s *Service) Download(bd *core.BlockData) error {
 }
 
 func (s *Service) download() {
+	downloadCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var err error
 	s.baseBlock, err = s.findBaseBlock()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warning("Sync: failed to find base block")
-	} else if err := s.stepUpRequest(); err != nil {
+	} else if err := s.stepUpRequest(downloadCtx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Warning("Sync: failed to step-up download")
@@ -124,7 +127,9 @@ func (s *Service) findBaseBlock() (*core.BlockData, error) {
 			for i := 0; i < len(peers); i++ {
 				select {
 				case <-s.ctx.Done():
+					break
 				case <-timeout.C:
+					break
 				case msg := <-responseCh:
 					bd, err := s.handleFindBaseResponse(msg)
 					if err != nil {
@@ -212,7 +217,7 @@ func (s *Service) handleFindBaseResponse(msg net.Message) (*core.BlockData, erro
 	return b.BlockData, nil
 }
 
-func (s *Service) stepUpRequest() error {
+func (s *Service) stepUpRequest(ctx context.Context) error {
 	height := s.baseBlock.Height()
 	ticker := time.NewTicker(50 * time.Millisecond)
 	for {
@@ -233,12 +238,12 @@ func (s *Service) stepUpRequest() error {
 			if height > s.targetHeight {
 				return nil
 			}
-			go s.downloadBlockByHeight(height)
+			go s.downloadBlockByHeight(ctx, height)
 		}
 	}
 }
 
-func (s *Service) downloadBlockByHeight(height uint64) {
+func (s *Service) downloadBlockByHeight(ctx context.Context, height uint64) {
 	query, err := s.newBlockByHeightRequest(height)
 	if err != nil {
 		s.downloadErrCh <- err
@@ -258,6 +263,8 @@ func (s *Service) downloadBlockByHeight(height uint64) {
 		select {
 		case <-s.ctx.Done():
 			s.downloadErrCh <- ErrContextDone
+		case <-ctx.Done():
+			s.downloadErrCh <- ErrContextDone
 		default:
 		}
 
@@ -275,6 +282,7 @@ func (s *Service) downloadBlockByHeight(height uint64) {
 		for i := 0; i < len(peers); i++ {
 			select {
 			case <-s.ctx.Done():
+			case <-ctx.Done():
 			case <-timeout.C:
 			case msg := <-responseCh:
 				if err := s.handleBlockByHeightResponse(msg); err != nil {

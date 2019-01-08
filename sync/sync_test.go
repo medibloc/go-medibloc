@@ -380,7 +380,7 @@ func TestForAutoActivation2(t *testing.T) {
 
 	startTime := time.Now()
 	for {
-		require.True(t, time.Now().Sub(startTime) < time.Duration(10)*time.Second, "Timeout: Failed to activate sync automatically")
+		require.True(t, time.Now().Sub(startTime) < time.Duration(20)*time.Second, "Timeout: Failed to activate sync automatically")
 		if forkedNode.Med.SyncService().IsDownloadActivated() {
 			t.Logf("Timespend for auto activate: %v", time.Now().Sub(startTime))
 			t.Log("Success to activate sync automatically")

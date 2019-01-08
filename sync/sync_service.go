@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/core"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/logging"
 )
@@ -36,6 +36,9 @@ type Service struct {
 
 	mu          sync.Mutex
 	downloading bool
+
+	downloadCtx      context.Context
+	downloadCancel   context.CancelFunc
 
 	targetHeight     uint64
 	targetHash       []byte
