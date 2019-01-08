@@ -337,15 +337,17 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 	}, nil
 }
 
+// TODO Need GETALL(?)
 // GetPendingTransactions sends all transactions in the transaction pool
 func (s *APIService) GetPendingTransactions(ctx context.Context,
 	req *rpcpb.NonParamRequest) (*rpcpb.Transactions, error) {
-	txs := s.tm.GetAll()
-	rpcTxs := coreTxs2rpcTxs(txs, false)
-
-	return &rpcpb.Transactions{
-		Transactions: rpcTxs,
-	}, nil
+	// txs := s.tm.GetAll()
+	// rpcTxs := coreTxs2rpcTxs(txs, false)
+	//
+	// return &rpcpb.Transactions{
+	// 	Transactions: rpcTxs,
+	// }, nil
+	return nil, nil
 }
 
 // GetTransaction returns transaction
@@ -518,8 +520,8 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	failed := s.tm.PushAndBroadcast(tx)
-	if err, ok := failed[tx.HexHash()]; ok {
+	err = s.tm.PushAndBroadcast(tx)
+	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	return &rpcpb.TransactionHash{

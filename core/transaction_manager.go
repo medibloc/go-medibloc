@@ -22,35 +22,33 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
 
 // Parameters for transaction manager
 var (
-	MaxPending                        = 64
 	AllowReplacePendingDuration       = 10 * time.Minute
 	defaultTransactionMessageChanSize = 128
 )
 
 // TransactionManager manages transactions' pool and network service.
 type TransactionManager struct {
+	mu sync.RWMutex
+
 	chainID uint32
 
 	receivedMessageCh chan net.Message
 	quitCh            chan int
-	bm                *BlockManager
+	canon             Canonical
 	ns                net.Service
 
-	pendingPool *TransactionPool
-	futurePool  *TransactionPool
-
-	bwInfoMu      sync.Mutex
-	bandwidthInfo map[common.Address]*Bandwidth // how much bandwidth used by transactions payed by payer in pending pool
+	pendingPool *AccountPendingPool
+	futurePool  *FutureTransactionPool
 }
 
 // NewTransactionManager create a new TransactionManager.
@@ -59,17 +57,15 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 		chainID:           cfg.Global.ChainId,
 		receivedMessageCh: make(chan net.Message, defaultTransactionMessageChanSize),
 		quitCh:            make(chan int),
-		pendingPool:       NewTransactionPool(-1),
-		futurePool:        NewTransactionPool(int(cfg.Chain.TransactionPoolSize)),
-		bandwidthInfo:     make(map[common.Address]*Bandwidth),
-		ns:                nil,
+		pendingPool:       NewAccountPendingPool(),
+		futurePool:        NewFutureTransactionPool(int(cfg.Chain.TransactionPoolSize)),
 	}
 }
 
 // Setup sets up TransactionManager.
-func (tm *TransactionManager) Setup(bm *BlockManager, ns net.Service) {
+func (tm *TransactionManager) Setup(canon Canonical, ns net.Service) {
+	tm.canon = canon
 	if ns != nil {
-		tm.bm = bm
 		tm.ns = ns
 		tm.registerInNetwork()
 	}
@@ -77,14 +73,15 @@ func (tm *TransactionManager) Setup(bm *BlockManager, ns net.Service) {
 
 // InjectEmitter inject emitter generated from medlet to transaction manager
 func (tm *TransactionManager) InjectEmitter(emitter *EventEmitter) {
-	tm.pendingPool.SetEventEmitter(emitter)
+	// TODO Event Emitter
+	// tm.pendingPool.SetEventEmitter(emitter)
 }
 
 // Start starts TransactionManager.
 func (tm *TransactionManager) Start() {
 	logging.Console().WithFields(logrus.Fields{
-		"MaxPending":     MaxPending,
-		"futurePoolSize": tm.futurePool.size,
+		"MaxPendingByAccount": MaxPendingByAccount,
+		"FuturePoolSize":      tm.futurePool.size,
 	}).Info("Starting TransactionManager...")
 
 	go tm.loop()
@@ -100,354 +97,167 @@ func (tm *TransactionManager) registerInNetwork() {
 	tm.ns.Register(net.NewSubscriber(tm, tm.receivedMessageCh, true, MessageTypeNewTx, net.MessageWeightNewTx))
 }
 
-//PushAndBroadcast push and broad all transactions that moved from future to pending pool
-func (tm *TransactionManager) PushAndBroadcast(transactions ...*Transaction) (failed map[string]error) {
-	failed = make(map[string]error)
-	addrs, _, dropped := tm.pushToFuturePool(transactions...)
-	for k, v := range dropped {
-		failed[k] = v
-	}
-	pended, dropped := tm.transitTxs(tm.bm.bc.MainTailBlock().State(), addrs...)
-	for k, v := range dropped {
-		failed[k] = v
-	}
-
-	for _, transaction := range pended {
-		err := tm.Broadcast(transaction)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"transaction": transaction,
-				"err":         err,
-			}).Debug("failed to broadcast transaction")
-		}
-	}
-
-	for hash, err := range failed {
+func (tm *TransactionManager) Push(tx *Transaction) error {
+	txc, err := NewTxContext(tx)
+	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"txHash": hash,
-			"err":    err,
-		}).Debug("dropped during tx transition")
+			"tx":  tx,
+			"err": err,
+		}).Debug("Failed to new transaction context.")
+		return err
 	}
-	return failed
+	return tm.push(txc)
 }
 
-// PushAndExclusiveBroadcast pushes transactions to transaction manager and broadcast only previously exist in future pool
-func (tm *TransactionManager) PushAndExclusiveBroadcast(transactions ...*Transaction) (failed map[string]error) {
-	failed = make(map[string]error)
-	addrs, exclusiveFilter, dropped := tm.pushToFuturePool(transactions...)
-	for k, v := range dropped {
-		failed[k] = v
-	}
-	pended, dropped := tm.transitTxs(tm.bm.bc.MainTailBlock().State(), addrs...)
-	for k, v := range dropped {
-		failed[k] = v
-	}
-
-	for _, transaction := range pended {
-		if _, ok := exclusiveFilter[transaction.HexHash()]; ok {
-			continue
-		}
-		err := tm.Broadcast(transaction)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"transaction": transaction,
-				"err":         err,
-			}).Debug("failed to broadcast transaction")
-		}
-	}
-
-	for hash, err := range failed {
+func (tm *TransactionManager) PushAndBroadcast(tx *Transaction) error {
+	txc, err := NewTxContextWithBroadcast(tx)
+	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
-			"txHash": hash,
-			"err":    err,
-		}).Debug("dropped during tx transition ")
-	}
-	return failed
-}
-
-func (tm *TransactionManager) pushToFuturePool(transactions ...*Transaction) (addrs []common.Address, future map[string]bool, dropped map[string]error) {
-	future = make(map[string]bool)
-	dropped = make(map[string]error)
-	addrMap := make(map[common.Address]int)
-
-	for _, transaction := range transactions {
-		if tm.pendingPool.Get(transaction.hash) != nil || tm.futurePool.Get(transaction.hash) != nil {
-			dropped[transaction.HexHash()] = ErrDuplicatedTransaction
-			continue
-		}
-		tm.bm.bc.eventEmitter.Register()
-		if err := transaction.VerifyIntegrity(tm.chainID); err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"transaction": transaction,
-				"err":         err,
-			}).Debug("Failed to verify transaction.")
-			dropped[transaction.HexHash()] = err
-			continue
-		}
-
-		tp, err := NewTransactionInPool(transaction, tm.bm.txMap)
-		if err != nil {
-			dropped[transaction.HexHash()] = err
-			continue
-		}
-
-		// add to future pool
-		tm.futurePool.Push(tp)
-		tm.futurePool.Evict()
-		addrMap[transaction.from]++
-		future[transaction.HexHash()] = true
-	}
-
-	addrs = make([]common.Address, 0, len(addrMap))
-	for addr := range addrMap {
-		addrs = append(addrs, addr)
-	}
-	return addrs, future, dropped
-}
-
-func (tm *TransactionManager) transitTxs(bs *BlockState, addrs ...common.Address) (pended []*Transaction, dropped map[string]error) {
-	pended = make([]*Transaction, 0)
-	dropped = make(map[string]error)
-
-	for _, addr := range addrs {
-		for {
-			firstInFuture := tm.futurePool.PeekFirstByAddress(addr)
-			if firstInFuture == nil {
-				break // no tx in acc
-			}
-			acc, err := bs.GetAccount(addr)
-			if err != nil {
-				tm.futurePool.Del(firstInFuture.Hash())
-				dropped[firstInFuture.HexHash()] = err
-				continue
-			}
-			if firstInFuture.Nonce() <= acc.Nonce {
-				tm.futurePool.Del(firstInFuture.Hash())
-				dropped[firstInFuture.HexHash()] = ErrSmallTransactionNonce
-				continue
-			}
-
-			lastInPending := tm.pendingPool.PeekLastByAddress(addr)
-			if lastInPending == nil { // pending is empty
-				if acc.Nonce+1 != firstInFuture.Nonce() {
-					break // nonce gap exist
-				}
-				if err := tm.addToPendingPool(bs, firstInFuture); err != nil {
-					dropped[firstInFuture.HexHash()] = err
-					continue
-				}
-				pended = append(pended, firstInFuture.Transaction)
-				continue
-			}
-			if lastInPending.Nonce()+1 < firstInFuture.Nonce() {
-				break // transaction nonce gap exist
-			}
-			if firstInFuture.Nonce() <= lastInPending.Nonce() {
-				tm.futurePool.Del(firstInFuture.Hash())
-				old := tm.pendingPool.GetByAddressAndNonce(addr, firstInFuture.Nonce())
-				if old == nil {
-					// append case
-					if err := tm.addToPendingPool(bs, firstInFuture); err != nil {
-						dropped[firstInFuture.HexHash()] = err
-						continue
-					}
-					pended = append(pended, firstInFuture.Transaction)
-					continue
-				}
-				if time.Now().Sub(time.Unix(0, old.incomeTimestamp)) < AllowReplacePendingDuration {
-					dropped[firstInFuture.HexHash()] = ErrFailedToReplacePendingTx
-					continue
-				}
-				// replace case
-				if err := tm.replaceBandwidthInfo(bs, firstInFuture, old); err != nil {
-					dropped[firstInFuture.HexHash()] = err
-					continue
-				}
-				tm.pendingPool.Push(firstInFuture)
-				pended = append(pended, firstInFuture.Transaction)
-				continue
-			}
-			if MaxPending <= tm.pendingPool.LenByAddress(addr) {
-				break // pending bucket is full
-			}
-			// append case
-			if err := tm.addToPendingPool(bs, firstInFuture); err != nil {
-				dropped[firstInFuture.HexHash()] = err
-				continue
-			}
-			pended = append(pended, firstInFuture.Transaction)
-		}
-	}
-	return pended, dropped
-}
-
-func (tm *TransactionManager) addToPendingPool(bs *BlockState, tx *TransactionInPool) error {
-	// append case (first item pending)
-	tm.futurePool.Del(tx.Hash())
-	if err := tm.addBandwidthInfo(bs, tx); err != nil {
+			"tx":  tx,
+			"err": err,
+		}).Debug("Failed to new transaction context.")
 		return err
 	}
-	tm.pendingPool.Push(tx)
-	return nil
+	return tm.push(txc)
 }
 
-func (tm *TransactionManager) replaceBandwidthInfo(bs *BlockState, new, old *TransactionInPool) error {
-	if new == nil || old == nil {
-		return ErrNilArgument
-	}
-
-	tm.bwInfoMu.Lock()
-	defer tm.bwInfoMu.Unlock()
-
-	newBandwidthInfo, ok := tm.bandwidthInfo[new.payer]
-	if !ok {
-		newBandwidthInfo = NewBandwidth(0, 0)
-	}
-	if new.payer.Equals(old.payer) {
-		newBandwidthInfo.Sub(old.bandwidth)
-	}
-	newBandwidthInfo.Add(new.bandwidth)
-	points, err := newBandwidthInfo.CalcPoints(bs.Price())
+func (tm *TransactionManager) push(txc *TxContext) error {
+	err := txc.VerifyIntegrity(tm.chainID)
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Debug("Failed to verify transaction.")
 		return err
 	}
-	if err := tm.verifyPayerPoints(bs, new.payer, points, new.Transaction); err != nil {
-		return err
-	}
 
-	tm.bandwidthInfo[old.payer].Sub(old.bandwidth)
-	if tm.bandwidthInfo[old.payer].IsZero() {
-		delete(tm.bandwidthInfo, old.payer)
-	}
-	if _, ok := tm.bandwidthInfo[new.payer]; !ok {
-		tm.bandwidthInfo[new.payer] = NewBandwidth(0, 0)
-	}
-	tm.bandwidthInfo[new.payer].Add(new.bandwidth)
-	return nil
-}
-
-func (tm *TransactionManager) addBandwidthInfo(bs *BlockState, new *TransactionInPool) error {
-	if new == nil {
-		return ErrNilArgument
-	}
-
-	tm.bwInfoMu.Lock()
-	defer tm.bwInfoMu.Unlock()
-
-	newBandwidthInfo, ok := tm.bandwidthInfo[new.payer]
-	if !ok {
-		newBandwidthInfo = NewBandwidth(0, 0)
-	}
-
-	newBandwidthInfo.Add(new.bandwidth)
-	points, err := newBandwidthInfo.CalcPoints(bs.Price())
+	bs := tm.canon.TailBlock().State()
+	price := bs.Price()
+	from := txc.From()
+	acc, err  := bs.GetAccount(from)
 	if err != nil {
-		return err
-	}
-	if err := tm.verifyPayerPoints(bs, new.payer, points, new.Transaction); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get account.")
 		return err
 	}
 
-	if _, ok := tm.bandwidthInfo[new.payer]; !ok {
-		tm.bandwidthInfo[new.payer] = NewBandwidth(0, 0)
-	}
-	tm.bandwidthInfo[new.payer].Add(new.bandwidth)
-	return nil
-}
-
-func (tm *TransactionManager) verifyPayerPoints(bs *BlockState, payer common.Address, points *util.Uint128, transaction *Transaction) error {
-	payerAcc, err := bs.GetAccount(payer)
-	if err != nil {
-		return err
-	}
-	if err := payerAcc.UpdatePoints(time.Now().Unix()); err != nil {
-		return err
-	}
-	if err := payerAcc.checkAccountPoints(transaction, points); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Pop pop transaction from TransactionManager.
-func (tm *TransactionManager) Pop() *Transaction {
-	tx := tm.pendingPool.Pop()
-	if tx == nil {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	nonceUpperLimit := tm.pendingPool.NonceUpperLimit(acc)
+	if txc.Nonce() > nonceUpperLimit {
+		// TODO emit event
+		evicted := tm.futurePool.Set(txc)
+		if byteutils.Equal(evicted.Hash(), txc.Hash()) {
+			//TODO Err Type
+			return errors.New("transaction pool is full")
+		}
 		return nil
 	}
-	tm.bwInfoMu.Lock()
-	tm.bandwidthInfo[tx.payer].Sub(tx.bandwidth)
-	if tm.bandwidthInfo[tx.payer].IsZero() {
-		delete(tm.bandwidthInfo, tx.payer)
-	}
-	tm.bwInfoMu.Unlock()
 
-	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), tx.From())
-	for _, t := range success {
-		err := tm.Broadcast(t)
+	err = tm.pendingPool.PushOrReplace(txc, acc, bs.Price())
+	if err != nil {
+		return err
+	}
+	if txc.broadcast {
+		tm.Broadcast(txc.Transaction)
+	}
+
+	// TODO Refactor extract method(transitTx)
+	for {
+		nonceUpperLimit = tm.pendingPool.NonceUpperLimit(acc)
+		txc = tm.futurePool.PopWithNonceUpperLimit(from, nonceUpperLimit)
+		if txc == nil {
+			break
+		}
+		err = tm.pendingPool.PushOrReplace(txc, acc, price)
 		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"transaction": t,
-				"err":         err,
-			}).Debug("failed to broadcast transaction")
+			break
+		}
+		if txc.broadcast {
+			tm.Broadcast(txc.Transaction)
 		}
 	}
-	return tx.Transaction
+
+	return nil
+}
+
+func (tm *TransactionManager) ResetTransactionSelector() {
+	tm.pendingPool.ResetSelector()
+}
+
+func (tm *TransactionManager) Next() *Transaction {
+	tx := tm.pendingPool.Next()
+	if tx != nil {
+		return nil
+	}
+	return tx
+}
+
+func (tm *TransactionManager) SetRequiredNonce(addr common.Address, nonce uint64) {
+	tm.pendingPool.SetRequiredNonce(addr, nonce)
 }
 
 // Get transaction from transaction pool.
 func (tm *TransactionManager) Get(hash []byte) *Transaction {
-	v := tm.pendingPool.Get(hash)
-	if v != nil {
-		return v.Transaction
+	tm.mu.RLock()
+	defer tm.mu.RUnlock()
+
+	tx := tm.pendingPool.Get(hash)
+	if tx != nil {
+		return tx
 	}
-	v = tm.futurePool.Get(hash)
-	if v != nil {
-		return v.Transaction
+	txc := tm.futurePool.Get(hash)
+	if txc == nil {
+
+	}
+	return txc.Transaction
+}
+
+// TODO Refactoring (addr, nonce) => Account
+//DelByAddressNonce del transaction specific addr-nonce transaction
+func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint64) error {
+	tm.mu.Lock()
+	tm.pendingPool.Prune(addr, nonce)
+	tm.futurePool.Prune(addr, nonce, nil)
+	tm.mu.Unlock()
+
+	bs := tm.canon.TailBlock().State()
+	price := bs.Price()
+	from := addr
+	acc, err  := bs.GetAccount(addr)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to get account.")
+		return err
+	}
+
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	for {
+		nonceUpperLimit := tm.pendingPool.NonceUpperLimit(acc)
+		txc := tm.futurePool.PopWithNonceUpperLimit(from, nonceUpperLimit)
+		if txc == nil {
+			break
+		}
+		err = tm.pendingPool.PushOrReplace(txc, acc, price)
+		if err != nil {
+			break
+		}
+		if txc.broadcast {
+			tm.Broadcast(txc.Transaction)
+		}
 	}
 	return nil
 }
 
-//DelByAddressNonce del transaction specific addr-nonce transaction
-func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint64) {
-	for {
-		tx := tm.pendingPool.PeekFirstByAddress(addr)
-		if tx == nil || nonce < tx.nonce {
-			break
-		}
-		tm.bwInfoMu.Lock()
-		tm.bandwidthInfo[tx.payer].Sub(tx.bandwidth)
-		if tm.bandwidthInfo[tx.payer].IsZero() {
-			delete(tm.bandwidthInfo, tx.payer)
-		}
-		tm.bwInfoMu.Unlock()
-		tm.pendingPool.Del(tx.hash)
-	}
-	for {
-		tx := tm.futurePool.PeekFirstByAddress(addr)
-		if tx == nil || nonce < tx.nonce {
-			break
-		}
-		tm.futurePool.Del(tx.hash)
-	}
-	success, _ := tm.transitTxs(tm.bm.bc.mainTailBlock.State(), addr)
-	for _, t := range success {
-		err := tm.Broadcast(t)
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"transaction": t,
-				"err":         err,
-			}).Debug("failed to broadcast transaction")
-		}
-	}
-}
-
-// GetAll returns all transactions from transaction pool
-func (tm *TransactionManager) GetAll() []*Transaction {
-	pending := tm.pendingPool.GetAll()
-	future := tm.futurePool.GetAll()
-	return append(pending, future...)
-}
+// TODO Need GETALL(?)
+// // GetAll returns all transactions from transaction pool
+// func (tm *TransactionManager) GetAll() []*Transaction {
+// 	pending := tm.pendingPool.GetAll()
+// 	future := tm.futurePool.GetAll()
+// 	return append(pending, future...)
+// }
 
 // Broadcast broadcasts transaction to network.
 func (tm *TransactionManager) Broadcast(tx *Transaction) error {

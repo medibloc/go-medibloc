@@ -542,11 +542,10 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 	}
 
 	// revert block
-	pushTxs := make([]*Transaction, 0)
 	for _, block := range revertBlock {
 		for _, tx := range block.Transactions() {
 			if _, ok := exclusiveFilter[tx]; !ok {
-				pushTxs = append(pushTxs, tx)
+				bm.tm.Push(tx)
 			}
 		}
 		if bm.bc.eventEmitter != nil {
@@ -554,7 +553,6 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 		}
 		logging.Console().Warn("A block is reverted.")
 	}
-	bm.tm.PushAndExclusiveBroadcast(pushTxs...)
 	return nil
 }
 
