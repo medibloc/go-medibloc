@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/roundrobin"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -30,7 +31,7 @@ type AccountPendingPool struct {
 	pending map[common.Address]*AccountPending
 	payer   map[common.Address]*AccountPayer
 
-	selector   *roundRobin
+	selector   *roundrobin.RoundRobin
 	nonceCache map[common.Address]uint64
 }
 
@@ -40,7 +41,7 @@ func NewAccountPendingPool() *AccountPendingPool {
 		all:        make(map[string]*TxContext),
 		pending:    make(map[common.Address]*AccountPending),
 		payer:      make(map[common.Address]*AccountPayer),
-		selector:   newRoundRobin(),
+		selector:   roundrobin.New(),
 		nonceCache: make(map[common.Address]uint64),
 	}
 }

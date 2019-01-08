@@ -1,37 +1,37 @@
-package core
+package roundrobin
 
 import (
 	"container/list"
 	"sync"
 )
 
-type rrItem struct {
+type item struct {
 	key string
 	include bool
 }
 
-type roundRobin struct {
+type RoundRobin struct {
 	sync.Mutex
 	incl *list.List
 	excl *list.List
 	lookup map[string]*list.Element
 }
 
-func newRoundRobin() *roundRobin {
-	return &roundRobin{
+func New() *RoundRobin {
+	return &RoundRobin{
 		incl: list.New(),
 		excl: list.New(),
 		lookup: make(map[string]*list.Element),
 	}
 }
 
-func (rr *roundRobin) HasNext() bool {
+func (rr *RoundRobin) HasNext() bool {
 	rr.Lock()
 	defer rr.Unlock()
 	return rr.incl.Len() != 0
 }
 
-func (rr *roundRobin) Next() string {
+func (rr *RoundRobin) Next() string {
 	rr.Lock()
 	defer rr.Unlock()
 	e := rr.incl.Front()
@@ -39,16 +39,16 @@ func (rr *roundRobin) Next() string {
 		return ""
 	}
 	rr.incl.MoveToBack(e)
-	return e.Value.(*rrItem).key
+	return e.Value.(*item).key
 }
 
-func (rr *roundRobin) Include(key string) {
+func (rr *RoundRobin) Include(key string) {
 	rr.Lock()
 	defer rr.Unlock()
 
 	e, exist := rr.lookup[key]
 	if !exist {
-		e = rr.incl.PushBack(&rrItem{
+		e = rr.incl.PushBack(&item{
 			key: key,
 			include: true,
 		})
@@ -56,20 +56,20 @@ func (rr *roundRobin) Include(key string) {
 		return
 	}
 
-	if e.Value.(*rrItem).include {
+	if e.Value.(*item).include {
 		return
 	}
 
 	rr.swap(key)
 }
 
-func (rr *roundRobin) Exclude(key string) {
+func (rr *RoundRobin) Exclude(key string) {
 	rr.Lock()
 	defer rr.Unlock()
 
 	e, exist := rr.lookup[key]
 	if !exist {
-		e = rr.excl.PushBack(&rrItem{
+		e = rr.excl.PushBack(&item{
 			key: key,
 			include: false,
 		})
@@ -77,14 +77,14 @@ func (rr *roundRobin) Exclude(key string) {
 		return
 	}
 
-	if !e.Value.(*rrItem).include {
+	if !e.Value.(*item).include {
 		return
 	}
 
 	rr.swap(key)
 }
 
-func (rr *roundRobin) Remove(key string) {
+func (rr *RoundRobin) Remove(key string) {
 	rr.Lock()
 	defer rr.Unlock()
 
@@ -93,7 +93,7 @@ func (rr *roundRobin) Remove(key string) {
 		return
 	}
 
-	v := e.Value.(*rrItem)
+	v := e.Value.(*item)
 	if v.include {
 		rr.incl.Remove(e)
 	} else {
@@ -104,7 +104,7 @@ func (rr *roundRobin) Remove(key string) {
 	return
 }
 
-func (rr *roundRobin) Reset() {
+func (rr *RoundRobin) Reset() {
 	rr.Lock()
 	defer rr.Unlock()
 
@@ -112,13 +112,13 @@ func (rr *roundRobin) Reset() {
 	rr.excl = list.New()
 }
 
-func (rr *roundRobin) swap(key string) {
+func (rr *RoundRobin) swap(key string) {
 	e, exist := rr.lookup[key]
 	if !exist {
 		return
 	}
 
-	v := e.Value.(*rrItem)
+	v := e.Value.(*item)
 	from := rr.incl
 	to := rr.excl
 	if !v.include {
