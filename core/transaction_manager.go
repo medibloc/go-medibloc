@@ -22,8 +22,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/core/pb"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -133,7 +133,7 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 	bs := tm.canon.TailBlock().State()
 	price := bs.Price()
 	from := txc.From()
-	acc, err  := bs.GetAccount(from)
+	acc, err := bs.GetAccount(from)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -224,7 +224,7 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 	bs := tm.canon.TailBlock().State()
 	price := bs.Price()
 	from := addr
-	acc, err  := bs.GetAccount(addr)
+	acc, err := bs.GetAccount(addr)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

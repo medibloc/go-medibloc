@@ -6,21 +6,21 @@ import (
 )
 
 type item struct {
-	key string
+	key     string
 	include bool
 }
 
 type RoundRobin struct {
 	sync.Mutex
-	incl *list.List
-	excl *list.List
+	incl   *list.List
+	excl   *list.List
 	lookup map[string]*list.Element
 }
 
 func New() *RoundRobin {
 	return &RoundRobin{
-		incl: list.New(),
-		excl: list.New(),
+		incl:   list.New(),
+		excl:   list.New(),
 		lookup: make(map[string]*list.Element),
 	}
 }
@@ -49,7 +49,7 @@ func (rr *RoundRobin) Include(key string) {
 	e, exist := rr.lookup[key]
 	if !exist {
 		e = rr.incl.PushBack(&item{
-			key: key,
+			key:     key,
 			include: true,
 		})
 		rr.lookup[key] = e
@@ -70,7 +70,7 @@ func (rr *RoundRobin) Exclude(key string) {
 	e, exist := rr.lookup[key]
 	if !exist {
 		e = rr.excl.PushBack(&item{
-			key: key,
+			key:     key,
 			include: false,
 		})
 		rr.lookup[key] = e
@@ -132,4 +132,3 @@ func (rr *RoundRobin) swap(key string) {
 	e2 := to.PushBack(v)
 	rr.lookup[key] = e2
 }
-

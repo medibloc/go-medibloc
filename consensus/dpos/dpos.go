@@ -450,11 +450,11 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			return nil, err
 		}
 
-		if acc.Nonce + 1 != transaction.Nonce() {
-			d.tm.SetRequiredNonce(transaction.From(), acc.Nonce + 1)
+		if acc.Nonce+1 != transaction.Nonce() {
+			d.tm.SetRequiredNonce(transaction.From(), acc.Nonce+1)
 			continue
 		}
-		d.tm.SetRequiredNonce(transaction.From(), acc.Nonce + 2)
+		d.tm.SetRequiredNonce(transaction.From(), acc.Nonce+2)
 
 		if err := block.BeginBatch(); err != nil {
 			return nil, err

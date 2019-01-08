@@ -32,4 +32,3 @@ func newTxContext(tx *Transaction, broadcast bool) (*TxContext, error) {
 		broadcast:   broadcast,
 	}, nil
 }
-

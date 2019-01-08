@@ -12,17 +12,17 @@ import (
 type FutureTransactionPool struct {
 	mu sync.RWMutex
 
-	size int
+	size    int
 	buckets *hashheap.HashedHeap
-	all map[string]*TxContext
+	all     map[string]*TxContext
 }
 
 // NewFutureTransactionPool returns FutureTransactionPool.
 func NewFutureTransactionPool(size int) *FutureTransactionPool {
 	return &FutureTransactionPool{
-		size: size,
+		size:    size,
 		buckets: hashheap.New(),
-		all: make(map[string]*TxContext),
+		all:     make(map[string]*TxContext),
 	}
 }
 
@@ -118,7 +118,7 @@ func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit ui
 	}
 }
 
-func (pool *FutureTransactionPool) exist(tx *TxContext) bool  {
+func (pool *FutureTransactionPool) exist(tx *TxContext) bool {
 	_, exist := pool.all[byteutils.Bytes2Hex(tx.Hash())]
 	return exist
 }
@@ -241,4 +241,3 @@ func (tx *minNonce) Less(o interface{}) bool { return tx.nonce < o.(*minNonce).n
 type maxNonce struct{ *TxContext }
 
 func (tx *maxNonce) Less(o interface{}) bool { return tx.nonce > o.(*maxNonce).nonce }
-
