@@ -45,7 +45,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	bb = bb.ChildNextDynasty().
 		Tx().Type(coreState.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
-		Tx().Type(coreState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(newCandidate).Execute().
+		Tx().Type(coreState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "newblockproducer"}).SignPair(newCandidate).Execute().
 		Tx().Type(dposState.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
 	acc, err := bb.Build().State().GetAccount(newCandidate.Addr)
@@ -53,7 +53,7 @@ func TestChangeDynasty(t *testing.T) {
 	cId := acc.CandidateID
 	require.NotNil(t, cId)
 
-	_, err = bb.Build().State().DposState().CandidateState().Get(cId)
+	_, err = bb.Build().State().DposState().GetCandidate(cId)
 	require.NoError(t, err)
 
 	votePayload := new(transaction.VotePayload)
@@ -97,7 +97,7 @@ func TestChangeDynasty(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, acc.CandidateID)
 
-	_, err = seed.Tail().State().DposState().CandidateState().Get(cId)
+	_, err = seed.Tail().State().DposState().GetCandidate(cId)
 	require.Error(t, trie.ErrNotFound)
 
 	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)

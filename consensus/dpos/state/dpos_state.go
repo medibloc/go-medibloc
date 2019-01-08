@@ -190,7 +190,7 @@ func (s *State) RootBytes() ([]byte, error) {
 
 //SortByVotePower returns Descending ordered candidate slice
 func (s *State) SortByVotePower() ([]common.Address, error) {
-	cs := s.CandidateState()
+	cs := s.candidateState
 	addresses := make([]common.Address, 0)
 	candidates := make([]*Candidate, 0)
 

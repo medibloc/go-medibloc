@@ -55,9 +55,8 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	cId := acc.CandidateID
 	require.NotNil(t, cId)
 
-	cs := block.State().DposState().CandidateState()
-	c := new(dState.Candidate)
-	require.NoError(t, cs.GetData(cId, c))
+	c, err := block.State().DposState().GetCandidate(cId)
+	require.NoError(t, err)
 
 	assert.Equal(t, candidate.Addr.Hex(), c.Addr.Hex())
 	assert.Equal(t, blockutil.FloatToUint128(t, 1000000), c.Collateral)
@@ -69,9 +68,9 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	bb.Expect().Balance(candidate.Addr, 400000000-100000-1000000)
 
 	block = bb.Build()
-	cs = block.State().DposState().CandidateState()
+	_, err = block.State().DposState().GetCandidate(cId)
 
-	require.Equal(t, trie.ErrNotFound, cs.GetData(cId, c))
+	require.Equal(t, trie.ErrNotFound, err)
 }
 
 func TestVote(t *testing.T) {
@@ -101,7 +100,7 @@ func TestVote(t *testing.T) {
 		require.NoError(t, err)
 
 		candidateIDs = append(candidateIDs, acc.CandidateID)
-		_, err = block.State().DposState().CandidateState().Get(acc.CandidateID)
+		_, err = block.State().DposState().GetCandidate(acc.CandidateID)
 		require.NoError(t, err)
 	}
 
@@ -123,13 +122,13 @@ func TestVote(t *testing.T) {
 	}
 
 	for _, v := range candidateIDs[:transaction.VoteMaximum-1] {
-		candidate := new(dState.Candidate)
-		require.NoError(t, block.State().DposState().CandidateState().GetData(v, candidate))
+		candidate, err := block.State().DposState().GetCandidate(v)
+		require.NoError(t, err)
 		assert.Equal(t, blockutil.FloatToUint128(t, 333+100000000), candidate.VotePower)
 	}
 
-	candidate := new(dState.Candidate)
-	require.NoError(t, block.State().DposState().CandidateState().GetData(candidateIDs[transaction.VoteMaximum], candidate))
+	candidate, err := block.State().DposState().GetCandidate(candidateIDs[transaction.VoteMaximum])
+	require.NoError(t, err)
 	assert.Equal(t, blockutil.FloatToUint128(t, 333), candidate.VotePower)
 
 	// Reset vote to nil
@@ -146,13 +145,13 @@ func TestVote(t *testing.T) {
 	}
 
 	for _, v := range candidateIDs[:transaction.VoteMaximum-1] {
-		candidate := new(dState.Candidate)
-		require.NoError(t, block.State().DposState().CandidateState().GetData(v, candidate))
+		candidate, err := block.State().DposState().GetCandidate(v)
+		require.NoError(t, err)
 		assert.Equal(t, blockutil.FloatToUint128(t, 100000000), candidate.VotePower)
 	}
 
-	candidate = new(dState.Candidate)
-	require.NoError(t, block.State().DposState().CandidateState().GetData(candidateIDs[transaction.VoteMaximum], candidate))
+	candidate, err = block.State().DposState().GetCandidate(candidateIDs[transaction.VoteMaximum])
+	require.NoError(t, err)
 	assert.Equal(t, blockutil.FloatToUint128(t, 0), candidate.VotePower)
 
 }
