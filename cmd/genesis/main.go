@@ -7,11 +7,10 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
-	cState "github.com/medibloc/go-medibloc/core/state"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
@@ -86,13 +85,13 @@ func main() {
 		collateral, _ := util.NewUint128FromString(transaction.CandidateCollateralMinimum)
 		aliasCollateral, _ := util.NewUint128FromString(transaction.AliasCollateralMinimum)
 
-		tx := new(cState.Transaction)
+		tx := new(coreState.Transaction)
 
 		tx.SetChainID(chainID)
 		tx.SetValue(util.NewUint128())
 
 		txVest, _ := tx.Clone()
-		txVest.SetTxType(cState.TxOpStake)
+		txVest.SetTxType(coreState.TxOpStake)
 		txVest.SetValue(vesting)
 		txVest.SetNonce(1)
 		txVest.SignThis(key)
@@ -111,7 +110,7 @@ func main() {
 		becomeCandidatePayloadBytes, _ := becomeCandidatePayload.ToBytes()
 
 		txCandidate, _ := tx.Clone()
-		txCandidate.SetTxType(dState.TxOpBecomeCandidate)
+		txCandidate.SetTxType(dposState.TxOpBecomeCandidate)
 		txCandidate.SetValue(collateral)
 		txCandidate.SetNonce(3)
 		txCandidate.SetPayload(becomeCandidatePayloadBytes)
@@ -123,7 +122,7 @@ func main() {
 		votePayloadBytes, _ := votePayload.ToBytes()
 
 		txVote, _ := tx.Clone()
-		txVote.SetTxType(dState.TxOpVote)
+		txVote.SetTxType(dposState.TxOpVote)
 		txVote.SetNonce(4)
 		txVote.SetPayload(votePayloadBytes)
 		txVote.SignThis(key)
