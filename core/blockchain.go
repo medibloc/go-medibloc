@@ -188,6 +188,18 @@ func (bc *BlockChain) BlockByHash(hash []byte) *Block {
 	return block
 }
 
+// BlockHashByHeight returns a block hash of given height.
+func (bc *BlockChain) BlockHashByHeight(height uint64) ([]byte, error) {
+	bc.mu.RLock()
+	if height > bc.mainTailBlock.Height() {
+		bc.mu.RUnlock()
+		return nil, ErrBlockNotExist
+	}
+	bc.mu.RUnlock()
+
+	return bc.loadBlockHashByHeight(height)
+}
+
 // BlockByHeight returns a block of given height.
 func (bc *BlockChain) BlockByHeight(height uint64) (*Block, error) {
 	bc.mu.RLock()
@@ -545,8 +557,12 @@ func (bc *BlockChain) loadBlockByHash(hash []byte) (*Block, error) {
 	return block, nil
 }
 
+func (bc *BlockChain) loadBlockHashByHeight(height uint64) ([]byte, error) {
+	return bc.storage.Get(append([]byte(blockByHeightPrefix), byteutils.FromUint64(height)...))
+}
+
 func (bc *BlockChain) loadBlockByHeight(height uint64) (*Block, error) {
-	hash, err := bc.storage.Get(append([]byte(blockByHeightPrefix), byteutils.FromUint64(height)...))
+	hash, err := bc.loadBlockHashByHeight(height)
 	if err != nil {
 		return nil, err
 	}

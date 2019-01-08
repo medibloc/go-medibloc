@@ -709,3 +709,8 @@ func (d *Dpos) MaximumHeightWithTimestamp(libHeight uint64, libTs, ts int64) uin
 func (d *Dpos) MinimumTimestampWithHeight(libTs int64, libHeight, height uint64) int64 {
 	return int64(libHeight-height)*int64(BlockInterval.Seconds()) + libTs
 }
+
+//MissingBlocks returns number of missing blocks based on lib
+func (d *Dpos) MissingBlocks(lib, bd *core.BlockData) uint64 {
+	return d.MaximumHeightWithTimestamp(lib.Height(), lib.Timestamp(), bd.Timestamp()) - bd.Height()
+}

@@ -4,32 +4,28 @@ import "github.com/medibloc/go-medibloc/core/pb/block.proto";
 
 package syncpb;
 
-// Request HashMeta
-message MetaQuery {
-  // LIB hash
-  bytes Hash = 1;
-  // LIB height
-  uint64 From = 2;
-  uint64 To = 3;
-  uint64 ChunkSize = 4;
+message FindBaseRequest {
+  string id = 1;
+  uint64 target_height = 2;
+  uint64 try_height = 3;
+  int64 timestamp = 4;
 }
 
-// Response RootHashMeta
-message RootHashMeta {
-  uint64 From = 1;
-  uint64 ChunkSize = 2;
-  repeated bytes RootHashes = 3;
+message FindBaseResponse {
+  bool status = 1;
+  bytes target_hash = 2;
+  bytes try_hash = 3;
 }
 
-// Request BlockChunk
-message BlockChunkQuery {
-  uint64 From = 1;
-  uint64 ChunkSize = 2;
+message BlockByHeightRequest {
+  string id = 1;
+  uint64 target_height = 2;
+  uint64 block_height = 3;
+  int64 timestamp = 4;
 }
 
-// Response BlockChunk
-message BlockChunk {
-  uint64 From = 1;
-  repeated corepb.Block Blocks = 3;
+message BlockByHeightResponse {
+  bool status = 1;
+  bytes target_hash = 2;
+  corepb.Block block_data = 3;
 }
-

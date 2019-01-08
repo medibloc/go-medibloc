@@ -204,7 +204,7 @@ func (m *Medlet) Start(ctx context.Context) error {
 
 	m.consensus.Start()
 
-	m.syncService.Start()
+	m.syncService.Start(ctx)
 
 	metricsMedstartGauge.Update(1)
 

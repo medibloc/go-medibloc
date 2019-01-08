@@ -16,32 +16,46 @@
 package sync
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"github.com/medibloc/go-medibloc/core"
 )
 
 // SyncService messages
 const (
-	SyncMetaRequest       = "meta_req"
-	SyncMeta              = "meta"
-	SyncBlockChunkRequest = "chunk_req"
-	SyncBlockChunk        = "chunk"
+	BaseSearch   = "sync_base_req"
+	BlockRequest = "sync_block_req"
 )
 
-// ErrAlreadyDownlaodActivated occurred sync is already activated
-var (
-	ErrAlreadyDownlaodActivated = errors.New("download manager is already activated")
+// Parameters related sync service
+const (
+	SimultaneousRequest        = 1
+	DefaultResponseTimeLimit   = 2 * time.Second
+	DefaultNumberOfRetry       = 5
+	DefaultActiveDownloadLimit = 10
 )
 
 //BlockManager is interface of core.blockmanager.
 type BlockManager interface {
 	Start()
+	BlockHashByHeight(height uint64) ([]byte, error)
 	BlockByHeight(height uint64) (*core.Block, error)
 	BlockByHash(hash []byte) *core.Block
 	LIB() *core.Block
-	ForceLIB(b *core.Block) error
-	TailBlock() *core.Block
-	PushBlockData(block *core.BlockData) error
-	BroadCast(block *core.BlockData) error
+	PushBlockDataSync(bd *core.BlockData, timeLimit time.Duration) error
+	PushBlockDataSync2(ctx context.Context, bd *core.BlockData) error
 }
+
+// Error types
+var (
+	ErrCannotFindQueryID   = errors.New("cannot find query id on subscribe map")
+	ErrContextDone         = errors.New("context is closed")
+	ErrDifferentTargetHash = errors.New("target hash is different")
+	ErrDownloadActivated   = errors.New("download is already activated")
+	ErrFailedToConnect     = errors.New("failed to connect to peer")
+	ErrLimitedRetry        = errors.New("retry is limited")
+	ErrNotFound            = errors.New("not found")
+	ErrWrongHeightBlock    = errors.New("peer send wrong block height")
+)

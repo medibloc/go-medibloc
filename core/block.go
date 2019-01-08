@@ -150,6 +150,11 @@ func (b *BlockHeader) Hash() []byte {
 	return b.hash
 }
 
+//HexHash returns block hex encoded header's hash
+func (b *BlockHeader) HexHash() string {
+	return byteutils.Bytes2Hex(b.hash)
+}
+
 //SetHash set block header's hash
 func (b *BlockHeader) SetHash(hash []byte) {
 	b.hash = hash

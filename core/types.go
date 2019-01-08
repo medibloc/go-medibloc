@@ -137,6 +137,7 @@ type Consensus interface {
 	MakeMintDynasty(ts int64, parentState *BlockState) ([]common.Address, error)
 
 	VerifyHeightAndTimestamp(lib, bd *BlockData) error
+	MissingBlocks(lib, bd *BlockData) uint64
 	ForkChoice(bc *BlockChain) (newTail *Block)
 	VerifyInterval(bd *BlockData, parent *Block) error
 	VerifyProposer(b *Block) error
@@ -146,7 +147,7 @@ type Consensus interface {
 
 //SyncService interface for sync
 type SyncService interface {
-	ActiveDownload(targetHeight uint64) error
+	Download(bd *BlockData) error
 	IsDownloadActivated() bool
 }
 

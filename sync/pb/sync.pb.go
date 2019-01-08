@@ -8,10 +8,10 @@ It is generated from these files:
 	sync.proto
 
 It has these top-level messages:
-	MetaQuery
-	RootHashMeta
-	BlockChunkQuery
-	BlockChunk
+	FindBaseRequest
+	FindBaseResponse
+	BlockByHeightRequest
+	BlockByHeightResponse
 */
 package syncpb
 
@@ -31,157 +31,179 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
-// Request HashMeta
-type MetaQuery struct {
-	// LIB hash
-	Hash []byte `protobuf:"bytes,1,opt,name=Hash,proto3" json:"Hash,omitempty"`
-	// LIB height
-	From      uint64 `protobuf:"varint,2,opt,name=From,proto3" json:"From,omitempty"`
-	To        uint64 `protobuf:"varint,3,opt,name=To,proto3" json:"To,omitempty"`
-	ChunkSize uint64 `protobuf:"varint,4,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
+type FindBaseRequest struct {
+	Id           string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TargetHeight uint64 `protobuf:"varint,2,opt,name=target_height,json=targetHeight,proto3" json:"target_height,omitempty"`
+	TryHeight    uint64 `protobuf:"varint,3,opt,name=try_height,json=tryHeight,proto3" json:"try_height,omitempty"`
+	Timestamp    int64  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 }
 
-func (m *MetaQuery) Reset()                    { *m = MetaQuery{} }
-func (m *MetaQuery) String() string            { return proto.CompactTextString(m) }
-func (*MetaQuery) ProtoMessage()               {}
-func (*MetaQuery) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{0} }
+func (m *FindBaseRequest) Reset()                    { *m = FindBaseRequest{} }
+func (m *FindBaseRequest) String() string            { return proto.CompactTextString(m) }
+func (*FindBaseRequest) ProtoMessage()               {}
+func (*FindBaseRequest) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{0} }
 
-func (m *MetaQuery) GetHash() []byte {
+func (m *FindBaseRequest) GetId() string {
 	if m != nil {
-		return m.Hash
+		return m.Id
+	}
+	return ""
+}
+
+func (m *FindBaseRequest) GetTargetHeight() uint64 {
+	if m != nil {
+		return m.TargetHeight
+	}
+	return 0
+}
+
+func (m *FindBaseRequest) GetTryHeight() uint64 {
+	if m != nil {
+		return m.TryHeight
+	}
+	return 0
+}
+
+func (m *FindBaseRequest) GetTimestamp() int64 {
+	if m != nil {
+		return m.Timestamp
+	}
+	return 0
+}
+
+type FindBaseResponse struct {
+	Status     bool   `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
+	TargetHash []byte `protobuf:"bytes,2,opt,name=target_hash,json=targetHash,proto3" json:"target_hash,omitempty"`
+	TryHash    []byte `protobuf:"bytes,3,opt,name=try_hash,json=tryHash,proto3" json:"try_hash,omitempty"`
+}
+
+func (m *FindBaseResponse) Reset()                    { *m = FindBaseResponse{} }
+func (m *FindBaseResponse) String() string            { return proto.CompactTextString(m) }
+func (*FindBaseResponse) ProtoMessage()               {}
+func (*FindBaseResponse) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{1} }
+
+func (m *FindBaseResponse) GetStatus() bool {
+	if m != nil {
+		return m.Status
+	}
+	return false
+}
+
+func (m *FindBaseResponse) GetTargetHash() []byte {
+	if m != nil {
+		return m.TargetHash
 	}
 	return nil
 }
 
-func (m *MetaQuery) GetFrom() uint64 {
+func (m *FindBaseResponse) GetTryHash() []byte {
 	if m != nil {
-		return m.From
-	}
-	return 0
-}
-
-func (m *MetaQuery) GetTo() uint64 {
-	if m != nil {
-		return m.To
-	}
-	return 0
-}
-
-func (m *MetaQuery) GetChunkSize() uint64 {
-	if m != nil {
-		return m.ChunkSize
-	}
-	return 0
-}
-
-// Response RootHashMeta
-type RootHashMeta struct {
-	From       uint64   `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
-	ChunkSize  uint64   `protobuf:"varint,2,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
-	RootHashes [][]byte `protobuf:"bytes,3,rep,name=RootHashes" json:"RootHashes,omitempty"`
-}
-
-func (m *RootHashMeta) Reset()                    { *m = RootHashMeta{} }
-func (m *RootHashMeta) String() string            { return proto.CompactTextString(m) }
-func (*RootHashMeta) ProtoMessage()               {}
-func (*RootHashMeta) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{1} }
-
-func (m *RootHashMeta) GetFrom() uint64 {
-	if m != nil {
-		return m.From
-	}
-	return 0
-}
-
-func (m *RootHashMeta) GetChunkSize() uint64 {
-	if m != nil {
-		return m.ChunkSize
-	}
-	return 0
-}
-
-func (m *RootHashMeta) GetRootHashes() [][]byte {
-	if m != nil {
-		return m.RootHashes
+		return m.TryHash
 	}
 	return nil
 }
 
-// Request BlockChunk
-type BlockChunkQuery struct {
-	From      uint64 `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
-	ChunkSize uint64 `protobuf:"varint,2,opt,name=ChunkSize,proto3" json:"ChunkSize,omitempty"`
+type BlockByHeightRequest struct {
+	Id           string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TargetHeight uint64 `protobuf:"varint,2,opt,name=target_height,json=targetHeight,proto3" json:"target_height,omitempty"`
+	BlockHeight  uint64 `protobuf:"varint,3,opt,name=block_height,json=blockHeight,proto3" json:"block_height,omitempty"`
+	Timestamp    int64  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 }
 
-func (m *BlockChunkQuery) Reset()                    { *m = BlockChunkQuery{} }
-func (m *BlockChunkQuery) String() string            { return proto.CompactTextString(m) }
-func (*BlockChunkQuery) ProtoMessage()               {}
-func (*BlockChunkQuery) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{2} }
+func (m *BlockByHeightRequest) Reset()                    { *m = BlockByHeightRequest{} }
+func (m *BlockByHeightRequest) String() string            { return proto.CompactTextString(m) }
+func (*BlockByHeightRequest) ProtoMessage()               {}
+func (*BlockByHeightRequest) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{2} }
 
-func (m *BlockChunkQuery) GetFrom() uint64 {
+func (m *BlockByHeightRequest) GetId() string {
 	if m != nil {
-		return m.From
+		return m.Id
+	}
+	return ""
+}
+
+func (m *BlockByHeightRequest) GetTargetHeight() uint64 {
+	if m != nil {
+		return m.TargetHeight
 	}
 	return 0
 }
 
-func (m *BlockChunkQuery) GetChunkSize() uint64 {
+func (m *BlockByHeightRequest) GetBlockHeight() uint64 {
 	if m != nil {
-		return m.ChunkSize
+		return m.BlockHeight
 	}
 	return 0
 }
 
-// Response BlockChunk
-type BlockChunk struct {
-	From   uint64          `protobuf:"varint,1,opt,name=From,proto3" json:"From,omitempty"`
-	Blocks []*corepb.Block `protobuf:"bytes,3,rep,name=Blocks" json:"Blocks,omitempty"`
-}
-
-func (m *BlockChunk) Reset()                    { *m = BlockChunk{} }
-func (m *BlockChunk) String() string            { return proto.CompactTextString(m) }
-func (*BlockChunk) ProtoMessage()               {}
-func (*BlockChunk) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{3} }
-
-func (m *BlockChunk) GetFrom() uint64 {
+func (m *BlockByHeightRequest) GetTimestamp() int64 {
 	if m != nil {
-		return m.From
+		return m.Timestamp
 	}
 	return 0
 }
 
-func (m *BlockChunk) GetBlocks() []*corepb.Block {
+type BlockByHeightResponse struct {
+	Status     bool          `protobuf:"varint,1,opt,name=status,proto3" json:"status,omitempty"`
+	TargetHash []byte        `protobuf:"bytes,2,opt,name=target_hash,json=targetHash,proto3" json:"target_hash,omitempty"`
+	BlockData  *corepb.Block `protobuf:"bytes,3,opt,name=block_data,json=blockData" json:"block_data,omitempty"`
+}
+
+func (m *BlockByHeightResponse) Reset()                    { *m = BlockByHeightResponse{} }
+func (m *BlockByHeightResponse) String() string            { return proto.CompactTextString(m) }
+func (*BlockByHeightResponse) ProtoMessage()               {}
+func (*BlockByHeightResponse) Descriptor() ([]byte, []int) { return fileDescriptorSync, []int{3} }
+
+func (m *BlockByHeightResponse) GetStatus() bool {
 	if m != nil {
-		return m.Blocks
+		return m.Status
+	}
+	return false
+}
+
+func (m *BlockByHeightResponse) GetTargetHash() []byte {
+	if m != nil {
+		return m.TargetHash
+	}
+	return nil
+}
+
+func (m *BlockByHeightResponse) GetBlockData() *corepb.Block {
+	if m != nil {
+		return m.BlockData
 	}
 	return nil
 }
 
 func init() {
-	proto.RegisterType((*MetaQuery)(nil), "syncpb.MetaQuery")
-	proto.RegisterType((*RootHashMeta)(nil), "syncpb.RootHashMeta")
-	proto.RegisterType((*BlockChunkQuery)(nil), "syncpb.BlockChunkQuery")
-	proto.RegisterType((*BlockChunk)(nil), "syncpb.BlockChunk")
+	proto.RegisterType((*FindBaseRequest)(nil), "syncpb.FindBaseRequest")
+	proto.RegisterType((*FindBaseResponse)(nil), "syncpb.FindBaseResponse")
+	proto.RegisterType((*BlockByHeightRequest)(nil), "syncpb.BlockByHeightRequest")
+	proto.RegisterType((*BlockByHeightResponse)(nil), "syncpb.BlockByHeightResponse")
 }
 
 func init() { proto.RegisterFile("sync.proto", fileDescriptorSync) }
 
 var fileDescriptorSync = []byte{
-	// 245 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x90, 0xcf, 0x4a, 0xc4, 0x30,
-	0x10, 0x87, 0xe9, 0x1f, 0x0a, 0x3b, 0x56, 0x85, 0x9c, 0x82, 0x88, 0x94, 0x82, 0xd0, 0x8b, 0x0d,
-	0xb8, 0x6f, 0xe0, 0x82, 0x7a, 0xf1, 0x60, 0xdc, 0x07, 0xb0, 0x89, 0x61, 0x5b, 0xd6, 0xee, 0x84,
-	0x34, 0x3d, 0xac, 0x4f, 0x2f, 0x99, 0xd5, 0x6e, 0x15, 0x2f, 0xde, 0x7e, 0xf9, 0x92, 0xf9, 0x26,
-	0x33, 0x00, 0xc3, 0x7e, 0xa7, 0x6b, 0xeb, 0xd0, 0x23, 0xcb, 0x42, 0xb6, 0xea, 0x62, 0xb9, 0xe9,
-	0x7c, 0x3b, 0xaa, 0x5a, 0x63, 0x2f, 0x7a, 0xf3, 0xd6, 0xa9, 0x77, 0xd4, 0x62, 0x83, 0x37, 0x53,
-	0xd6, 0xe8, 0x8c, 0xb0, 0x4a, 0x84, 0xc3, 0xf6, 0x50, 0x5c, 0x36, 0xb0, 0x78, 0x32, 0xbe, 0x79,
-	0x1e, 0x8d, 0xdb, 0x33, 0x06, 0xe9, 0x63, 0x33, 0xb4, 0x3c, 0x2a, 0xa2, 0x2a, 0x97, 0x94, 0x03,
-	0xbb, 0x77, 0xd8, 0xf3, 0xb8, 0x88, 0xaa, 0x54, 0x52, 0x66, 0x67, 0x10, 0xaf, 0x91, 0x27, 0x44,
-	0xe2, 0x35, 0xb2, 0x4b, 0x58, 0xac, 0xda, 0x71, 0xb7, 0x7d, 0xe9, 0x3e, 0x0c, 0x4f, 0x09, 0x1f,
-	0x41, 0xf9, 0x0a, 0xb9, 0x44, 0xf4, 0xc1, 0x16, 0x5a, 0x4d, 0xc6, 0x68, 0x66, 0xfc, 0x61, 0x88,
-	0x7f, 0x19, 0xd8, 0x15, 0xc0, 0xb7, 0xc1, 0x0c, 0x3c, 0x29, 0x92, 0x2a, 0x97, 0x33, 0x52, 0xae,
-	0xe0, 0xfc, 0x2e, 0xcc, 0x44, 0x15, 0xd3, 0x28, 0xff, 0x6b, 0x52, 0x3e, 0x00, 0x1c, 0x25, 0x7f,
-	0xd6, 0x5f, 0x43, 0x46, 0x2f, 0x0e, 0x5f, 0x38, 0xb9, 0x3d, 0xad, 0xc3, 0x46, 0xad, 0xaa, 0x89,
-	0xca, 0xaf, 0x4b, 0x95, 0xd1, 0x66, 0x97, 0x9f, 0x01, 0x00, 0x00, 0xff, 0xff, 0xe4, 0x81, 0x94,
-	0x5c, 0xa4, 0x01, 0x00, 0x00,
+	// 307 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x92, 0xb1, 0x4e, 0xf3, 0x30,
+	0x14, 0x85, 0xe5, 0xb6, 0xea, 0xdf, 0xdc, 0xb6, 0x3f, 0xc8, 0x02, 0x54, 0x10, 0x88, 0x52, 0x96,
+	0x0e, 0x90, 0x48, 0xf4, 0x0d, 0x2a, 0x84, 0x98, 0xfd, 0x02, 0xc8, 0x4e, 0x4c, 0x6c, 0x41, 0x6a,
+	0x13, 0xdf, 0x0e, 0x5d, 0x58, 0x58, 0x79, 0x68, 0xe4, 0x9b, 0x94, 0x0a, 0x26, 0xa4, 0x6e, 0xf7,
+	0x9e, 0x73, 0xa2, 0x7c, 0xc7, 0x36, 0x40, 0xd8, 0xac, 0xf2, 0xd4, 0xd7, 0x0e, 0x1d, 0xef, 0xc7,
+	0xd9, 0xab, 0xb3, 0x45, 0x69, 0xd1, 0xac, 0x55, 0x9a, 0xbb, 0x2a, 0xab, 0x74, 0x61, 0xd5, 0xab,
+	0xcb, 0xb3, 0xd2, 0xdd, 0x7e, 0xcf, 0xb9, 0xab, 0x75, 0xe6, 0x55, 0x16, 0x97, 0x97, 0xe6, 0xe3,
+	0xd9, 0x07, 0x83, 0x83, 0x07, 0xbb, 0x2a, 0x96, 0x32, 0x68, 0xa1, 0xdf, 0xd6, 0x3a, 0x20, 0xff,
+	0x0f, 0x1d, 0x5b, 0x4c, 0xd8, 0x94, 0xcd, 0x13, 0xd1, 0xb1, 0x05, 0xbf, 0x86, 0x31, 0xca, 0xba,
+	0xd4, 0xf8, 0x64, 0xb4, 0x2d, 0x0d, 0x4e, 0x3a, 0x53, 0x36, 0xef, 0x89, 0x51, 0x23, 0x3e, 0x92,
+	0xc6, 0x2f, 0x00, 0xb0, 0xde, 0x6c, 0x13, 0x5d, 0x4a, 0x24, 0x58, 0x6f, 0x5a, 0xfb, 0x1c, 0x12,
+	0xb4, 0x95, 0x0e, 0x28, 0x2b, 0x3f, 0xe9, 0x4d, 0xd9, 0xbc, 0x2b, 0x76, 0xc2, 0xec, 0x19, 0x0e,
+	0x77, 0x10, 0xc1, 0xbb, 0x55, 0xd0, 0xfc, 0x04, 0xfa, 0x01, 0x25, 0xae, 0x03, 0x91, 0x0c, 0x44,
+	0xbb, 0xf1, 0x4b, 0x18, 0x6e, 0x69, 0x64, 0x30, 0xc4, 0x32, 0x12, 0xd0, 0xb2, 0xc8, 0x60, 0xf8,
+	0x29, 0x0c, 0x88, 0x24, 0xba, 0x5d, 0x72, 0xff, 0x45, 0x0e, 0x19, 0xcc, 0xec, 0x93, 0xc1, 0xd1,
+	0x32, 0xb6, 0x5f, 0xb6, 0x5c, 0x7b, 0x55, 0xbe, 0x82, 0x11, 0x1d, 0xe5, 0xcf, 0xd2, 0x43, 0xd2,
+	0xfe, 0x54, 0xfb, 0x1d, 0x8e, 0x7f, 0xd1, 0xec, 0xdb, 0xfd, 0x06, 0xa0, 0x41, 0x2a, 0x24, 0x4a,
+	0x02, 0x1a, 0xde, 0x8d, 0xd3, 0x78, 0xf1, 0x5e, 0xa5, 0xf4, 0x2f, 0x91, 0x50, 0xe0, 0x5e, 0xa2,
+	0x54, 0x7d, 0x7a, 0x03, 0x8b, 0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x8e, 0x2f, 0x19, 0xe9, 0x4e,
+	0x02, 0x00, 0x00,
 }

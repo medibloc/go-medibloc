@@ -16,6 +16,7 @@
 package core
 
 import (
+	"context"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -28,6 +29,7 @@ import (
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -55,6 +57,7 @@ type BlockManager struct {
 	receiveBlockMessageCh chan net.Message
 	requestBlockMessageCh chan net.Message
 	quitCh                chan int
+	loopFinishedCh        chan bool
 
 	// workManager
 	finishWorkCh   chan *blockResult
@@ -98,6 +101,7 @@ func NewBlockManager(cfg *medletpb.Config) (*BlockManager, error) {
 		finishWorkCh:          make(chan *blockResult, finishWorkChannelSize),
 		newBlockCh:            make(chan *BlockData, newBlockChannelSize),
 		quitCh:                make(chan int),
+		loopFinishedCh:        make(chan bool),
 		closeWorkersCh:        make(chan bool),
 		workFinishedCh:        make(chan bool),
 		trigCh:                make(chan bool, 1),
@@ -157,6 +161,7 @@ func (bm *BlockManager) Stop() {
 	close(bm.finishChainManagerCh)
 	<-bm.cmFinishedCh
 	close(bm.quitCh)
+	<-bm.loopFinishedCh
 }
 
 func (bm *BlockManager) processTask(newData *BlockData) {
@@ -349,6 +354,11 @@ func (bm *BlockManager) ChainID() uint32 {
 	return bm.bc.ChainID()
 }
 
+//BlockHashByHeight returns the hash of the block contaied in the chain by height.
+func (bm *BlockManager) BlockHashByHeight(height uint64) ([]byte, error) {
+	return bm.bc.BlockHashByHeight(height)
+}
+
 // BlockByHeight returns the block contained in the chain by height.
 func (bm *BlockManager) BlockByHeight(height uint64) (*Block, error) {
 	return bm.bc.BlockByHeight(height)
@@ -433,6 +443,47 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 	}
 }
 
+// PushBlockDataSync2 pushes block to distributor and wait for execution
+// Warning! - Use this method only for test for time efficiency.
+func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) error {
+	eventSubscriber, err := NewEventSubscriber(1024, []string{TopicAcceptedBlock, TopicInvalidBlock})
+	if err != nil {
+		return err
+	}
+
+	bm.bc.eventEmitter.Register(eventSubscriber)
+	defer bm.bc.eventEmitter.Deregister(eventSubscriber)
+
+	eCh := eventSubscriber.EventChan()
+	err = bm.push(bd)
+	if err != nil && err != ErrDuplicatedBlock {
+		return err
+	}
+	if err == ErrDuplicatedBlock {
+		if err := bd.VerifyIntegrity(); err != nil {
+			return err
+		}
+	}
+
+	if b := bm.BlockByHash(bd.Hash()); b != nil {
+		return nil
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.New("context is done")
+		case e := <-eCh:
+			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {
+				if e.Topic == TopicInvalidBlock {
+					return ErrInvalidBlock
+				}
+				return nil
+			}
+		}
+	}
+}
+
 func (bm *BlockManager) directPush(b *Block) error {
 	// Parent block doesn't exist in blockchain.
 	parentOnChain := bm.bc.BlockByHash(b.ParentHash())
@@ -458,6 +509,13 @@ func (bm *BlockManager) directPush(b *Block) error {
 }
 
 func (bm *BlockManager) push(bd *BlockData) error {
+	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
+		logging.WithFields(logrus.Fields{
+			"blockData": bd,
+		}).Debug("Found duplicated blockData.")
+		return ErrDuplicatedBlock
+	}
+
 	if err := bm.verifyBlockData(bd); err != nil {
 		return err
 	}
@@ -487,13 +545,6 @@ func (bm *BlockManager) pushToDistributor(bd *BlockData) {
 func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 	if bm.bc.chainID != bd.ChainID() {
 		return ErrInvalidBlockChainID
-	}
-
-	if bm.bp.Has(bd) || bm.bc.BlockByHash(bd.Hash()) != nil {
-		logging.WithFields(logrus.Fields{
-			"blockData": bd,
-		}).Debug("Found duplicated blockData.")
-		return ErrDuplicatedBlock
 	}
 
 	if err := bm.consensus.VerifyHeightAndTimestamp(bm.bc.LIB().BlockData, bd); err != nil {
@@ -622,6 +673,7 @@ func (bm *BlockManager) loop() {
 	for {
 		select {
 		case <-bm.quitCh:
+			close(bm.loopFinishedCh)
 			return
 		case msg := <-bm.receiveBlockMessageCh:
 			bm.handleReceiveBlock(msg)
@@ -698,11 +750,15 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 		return true
 	}
 
-	if bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight {
+	myMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bm.TailBlock().BlockData)
+	newMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bd)
+
+	if !(myMissingBlocks > newMissingBlocks && bm.bc.MainTailBlock().Height() < bd.height) &&
+		(bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight) {
 		return false
 	}
 
-	if err := bm.syncService.ActiveDownload(bd.Height()); err != nil {
+	if err := bm.syncService.Download(bd); err != nil {
 		logging.WithFields(logrus.Fields{
 			"newBlockHeight":       bd.Height(),
 			"mainTailBlockHeight":  bm.bc.MainTailBlock().Height(),

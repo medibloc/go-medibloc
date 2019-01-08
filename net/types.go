@@ -75,12 +75,6 @@ type Message interface {
 	Hash() string
 }
 
-// Serializable model
-type Serializable interface {
-	ToProto() (proto.Message, error)
-	FromProto(proto.Message) error
-}
-
 // PeerFilterAlgorithm is the algorithm used to filter peers
 type PeerFilterAlgorithm interface {
 	Filter([]peer.ID) []peer.ID
@@ -101,6 +95,8 @@ type Service interface {
 	SendMessageToPeers(msgType string, data []byte, priority int, filter PeerFilterAlgorithm) []string
 	Broadcast(msgType string, data []byte, priority int)
 	ClosePeer(peerID string, reason error)
+	SendPbMessageToPeer(msgType string, pb proto.Message, priority int, peerID string)
+	SendPbMessageToPeers(msgType string, pb proto.Message, priority int, filter PeerFilterAlgorithm) []string
 }
 
 // MessageWeight float64

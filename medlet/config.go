@@ -137,16 +137,11 @@ func DefaultConfig() *medletpb.Config {
 			Version: "",
 		},
 		Sync: &medletpb.SyncConfig{
-			SeedingMinChunkSize:        1,
-			SeedingMaxChunkSize:        100,
-			SeedingMaxConcurrentPeers:  5,
-			DownloadChunkSize:          50,
-			DownloadMaxConcurrentTasks: 5,
-			DownloadChunkCacheSize:     10,
-			MinimumPeers:               1,
-			RequestInterval:            1,
-			FinisherTimeout:            5,
-			SyncActivationHeight:       100,
+			ResponseTimeLimit:    2,
+			NumberOfRetries:      5,
+			ActiveDownloadLimit:  10,
+			SyncActivationHeight: 64,
+			SyncActivationLibGap: 64,
 		},
 	}
 }
