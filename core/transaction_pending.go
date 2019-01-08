@@ -13,8 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO move error code
 var (
-	ErrAccountPendingFull = errors.New("account pending full")
 	ErrNonceNotAcceptable = errors.New("nonce not acceptable")
 	// ErrFailedToReplacePendingTx
 )
@@ -27,9 +27,9 @@ const (
 type AccountPendingPool struct {
 	mu sync.Mutex
 
-	all     map[string]*TxContext
-	pending map[common.Address]*AccountPending
-	payer   map[common.Address]*AccountPayer
+	all   map[string]*TxContext
+	from  map[common.Address]*AccountFrom
+	payer map[common.Address]*AccountPayer
 
 	selector   *roundrobin.RoundRobin
 	nonceCache map[common.Address]uint64
@@ -39,7 +39,7 @@ type AccountPendingPool struct {
 func NewAccountPendingPool() *AccountPendingPool {
 	return &AccountPendingPool{
 		all:        make(map[string]*TxContext),
-		pending:    make(map[common.Address]*AccountPending),
+		from:       make(map[common.Address]*AccountFrom),
 		payer:      make(map[common.Address]*AccountPayer),
 		selector:   roundrobin.New(),
 		nonceCache: make(map[common.Address]uint64),
@@ -51,108 +51,83 @@ func (pool *AccountPendingPool) PushOrReplace(tx *TxContext, acc *Account, price
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	pending, exist := pool.pending[tx.From()]
-	if exist && pending.isDuplicateNonce(tx.Nonce()) {
+	accFrom, exist := pool.from[tx.From()]
+	if exist && accFrom.isDuplicateNonce(tx.Nonce()) {
 		return pool.replace(tx, acc, price)
 	}
 	return pool.push(tx, acc, price)
 }
 
 func (pool *AccountPendingPool) push(tx *TxContext, acc *Account, price Price) error {
-	pool.initAccountIfNotExist(tx)
-	defer pool.deleteAccountIfEmpty(tx)
-
-	// TODO delete
-	// if pending.size() >= MaxPendingByAccount {
-	// 	return ErrAccountPendingFull
-	// }
-
-	pending := pool.pending[tx.From()]
-	if !pending.isAcceptableNonce(tx.Nonce(), acc.Nonce) {
+	accFrom, exist := pool.from[tx.From()]
+	if !exist {
+		accFrom = newAccountFrom(tx.From())
+	}
+	if !accFrom.isAcceptableNonce(tx.Nonce(), acc.Nonce) {
 		return ErrNonceNotAcceptable
 	}
 
-	payer := pool.payer[tx.Payer()]
-	if err := payer.checkPointAvailable(tx, acc, price); err != nil {
+	accPayer, exist := pool.payer[tx.Payer()]
+	if !exist {
+		accPayer = newAccountPayer(tx.Payer())
+	}
+	if err := accPayer.checkPointAvailable(tx, acc, price); err != nil {
 		return err
 	}
 
-	pending.add(tx)
-	payer.addOrReplace(tx)
+	accFrom.set(tx)
+	accPayer.set(tx)
+
 	pool.all[tx.HexHash()] = tx
+	pool.from[tx.From()] = accFrom
+	pool.payer[tx.Payer()] = accPayer
 
 	pool.selector.Include(tx.From().Hex())
 	return nil
 }
 
 func (pool *AccountPendingPool) replace(tx *TxContext, acc *Account, price Price) error {
-	pool.initAccountIfNotExist(tx)
-	defer pool.deleteAccountIfEmpty(tx)
-
-	pending := pool.pending[tx.From()]
-	if !pending.isDuplicateNonce(tx.Nonce()) {
+	accFrom, exist := pool.from[tx.From()]
+	if !exist {
+		accFrom = newAccountFrom(tx.From())
+	}
+	if !accFrom.isDuplicateNonce(tx.Nonce()) {
 		return ErrFailedToReplacePendingTx
 	}
-	if !pending.isReplaceDurationElapsed(tx.Nonce()) {
+	if !accFrom.isReplaceDurationElapsed(tx.Nonce()) {
 		return ErrFailedToReplacePendingTx
 	}
 
-	payer := pool.payer[tx.Payer()]
-	if err := payer.checkPointAvailable(tx, acc, price); err != nil {
+	accPayer, exist := pool.payer[tx.Payer()]
+	if !exist {
+		accPayer = newAccountPayer(tx.Payer())
+	}
+	if err := accPayer.checkPointAvailable(tx, acc, price); err != nil {
 		return err
 	}
 
-	oldTx := pending.replace(tx)
-	payer.addOrReplace(tx)
-
-	// TODO comment
-	if oldTx.Payer().Equals(tx.Payer()) {
-		return nil
-	}
-
+	oldTx := accFrom.remove(tx.Nonce())
 	oldPayer := pool.payer[oldTx.Payer()]
 	oldPayer.remove(oldTx)
 	if oldPayer.size() == 0 {
 		delete(pool.payer, oldTx.Payer())
 	}
-
 	delete(pool.all, oldTx.HexHash())
+
+	accFrom.set(tx)
+	accPayer.set(tx)
+
 	pool.all[tx.HexHash()] = tx
+	pool.from[tx.From()] = accFrom
+	pool.payer[tx.Payer()] = accPayer
 
 	return nil
 }
 
-// TODO Refactoring
-func (pool *AccountPendingPool) initAccountIfNotExist(tx *TxContext) {
-	_, exist := pool.pending[tx.From()]
-	if !exist {
-		pending := newAccountPending(tx.From())
-		pool.pending[tx.From()] = pending
-	}
-
-	_, exist = pool.payer[tx.Payer()]
-	if !exist {
-		payer := newAccountPayer(tx.Payer())
-		pool.payer[tx.Payer()] = payer
-	}
-
-}
-
-func (pool *AccountPendingPool) deleteAccountIfEmpty(tx *TxContext) {
-	pending, exist := pool.pending[tx.From()]
-	if exist && pending.size() == 0 {
-		delete(pool.pending, tx.From())
-		pool.selector.Remove(tx.From().Hex())
-	}
-
-	payer, exist := pool.payer[tx.Payer()]
-	if exist && payer.size() == 0 {
-		delete(pool.payer, tx.Payer())
-	}
-}
-
 // Get gets a transaction.
 func (pool *AccountPendingPool) Get(hash []byte) *Transaction {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
 	txc, exist := pool.all[byteutils.Bytes2Hex(hash)]
 	if !exist {
 		return nil
@@ -160,56 +135,34 @@ func (pool *AccountPendingPool) Get(hash []byte) *Transaction {
 	return txc.Transaction
 }
 
-// Remove removes a transaction.
-func (pool *AccountPendingPool) Remove(tx *TxContext) error {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-
-	pending, exist := pool.pending[tx.From()]
-	if !exist {
-		return ErrNotFound
-	}
-	pending.remove(tx)
-	if pending.size() == 0 {
-		delete(pool.pending, tx.From())
-		pool.selector.Remove(tx.From().Hex())
-	}
-
-	delete(pool.all, tx.HexHash())
-
-	payer, exist := pool.payer[tx.Payer()]
-	if !exist {
-		return ErrNotFound
-	}
-	payer.remove(tx)
-	if payer.size() == 0 {
-		delete(pool.payer, tx.Payer())
-	}
-	return nil
-}
-
+// TODO double check nonceLowerLimit
 // Prune prunes transactions by account's current nonce.
 func (pool *AccountPendingPool) Prune(addr common.Address, nonceLowerLimit uint64) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	pending, exist := pool.pending[addr]
+	accFrom, exist := pool.from[addr]
 	if !exist {
 		return
 	}
 
-	removed := pending.prune(nonceLowerLimit)
-	if pending.size() == 0 {
-		delete(pool.pending, addr)
-		pool.selector.Remove(addr.Hex())
-	}
-	for _, tx := range removed {
-		delete(pool.all, tx.HexHash())
-		payer := pool.payer[tx.Payer()]
-		payer.remove(tx)
-		if payer.size() == 0 {
+	for {
+		tx := accFrom.peekFirst()
+		if tx == nil {
+			break
+		}
+		accFrom.remove(tx.Nonce())
+		accPayer := pool.payer[tx.Payer()]
+		accPayer.remove(tx)
+		if accPayer.size() == 0 {
 			delete(pool.payer, tx.Payer())
 		}
+		delete(pool.all, tx.HexHash())
+	}
+
+	if accFrom.size() == 0 {
+		delete(pool.from, addr)
+		pool.selector.Remove(addr.Hex())
 	}
 }
 
@@ -217,14 +170,14 @@ func (pool *AccountPendingPool) NonceUpperLimit(acc *Account) uint64 {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	pending, exist := pool.pending[acc.Address]
+	accFrom, exist := pool.from[acc.Address]
 	if !exist {
 		return acc.Nonce + 1
 	}
 
 	upperLimit := acc.Nonce + MaxPendingByAccount
-	if pending.maxNonce+1 < upperLimit {
-		upperLimit = pending.maxNonce + 1
+	if accFrom.maxNonce+1 < upperLimit {
+		upperLimit = accFrom.maxNonce + 1
 	}
 
 	return upperLimit
@@ -244,16 +197,19 @@ func (pool *AccountPendingPool) Next() *Transaction {
 			return nil
 		}
 
-		pending := pool.pending[addr]
+		accFrom := pool.from[addr]
 
 		requiredNonce, exist := pool.nonceCache[addr]
 		if !exist {
-			tx := pending.nonceToTx[pending.minNonce]
+			tx := accFrom.peekFirst()
+			if tx == nil {
+				return nil
+			}
 			return tx.Transaction
 		}
 
-		tx, exist := pending.nonceToTx[requiredNonce]
-		if !exist {
+		tx := accFrom.get(requiredNonce)
+		if tx == nil {
 			pool.selector.Exclude(addrStr)
 			continue
 		}
@@ -277,137 +233,125 @@ func (pool *AccountPendingPool) ResetSelector() {
 	pool.selector.Reset()
 }
 
-// AccountPending manages account's pending transactions.
-type AccountPending struct {
+// AccountFrom manages account's pending transactions.
+type AccountFrom struct {
 	addr      common.Address
 	minNonce  uint64
 	maxNonce  uint64
 	nonceToTx map[uint64]*TxContext
-	hashToTx  map[string]*TxContext
 }
 
-func newAccountPending(addr common.Address) *AccountPending {
-	return &AccountPending{
+func newAccountFrom(addr common.Address) *AccountFrom {
+	return &AccountFrom{
 		addr:      addr,
 		minNonce:  0,
 		maxNonce:  0,
 		nonceToTx: make(map[uint64]*TxContext),
-		hashToTx:  make(map[string]*TxContext),
 	}
 }
 
-func (pend *AccountPending) size() int {
-	return len(pend.nonceToTx)
+func (af *AccountFrom) size() int {
+	return len(af.nonceToTx)
 }
 
-func (pend *AccountPending) isDuplicateNonce(nonce uint64) bool {
-	_, exist := pend.nonceToTx[nonce]
+func (af *AccountFrom) isDuplicateNonce(nonce uint64) bool {
+	_, exist := af.nonceToTx[nonce]
 	return exist
 }
 
-func (pend *AccountPending) isAcceptableNonce(nonce uint64, accNonce uint64) bool {
-	if pend.size() == 0 {
+func (af *AccountFrom) isAcceptableNonce(nonce uint64, accNonce uint64) bool {
+	if af.size() == 0 {
 		return accNonce+1 == nonce
 	}
 
 	lowerLimit := accNonce
 	upperLimit := accNonce + MaxPendingByAccount
-	if pend.maxNonce+1 < upperLimit {
-		upperLimit = pend.maxNonce + 1
+	if af.maxNonce+1 < upperLimit {
+		upperLimit = af.maxNonce + 1
 	}
 	return lowerLimit < nonce && nonce <= upperLimit
 }
 
-func (pend *AccountPending) isReplaceDurationElapsed(nonce uint64) bool {
-	old, exist := pend.nonceToTx[nonce]
+func (af *AccountFrom) isReplaceDurationElapsed(nonce uint64) bool {
+	old, exist := af.nonceToTx[nonce]
 	if !exist {
 		return false
 	}
 	return old.incomeTime.Add(AllowReplacePendingDuration).Before(time.Now())
 }
 
-func (pend *AccountPending) add(tx *TxContext) {
-	if pend.size() == 0 {
-		pend.minNonce = tx.Nonce()
-		pend.maxNonce = tx.Nonce()
-	}
-	if pend.minNonce > tx.Nonce() {
-		pend.minNonce = tx.Nonce()
-	}
-	if pend.maxNonce < tx.Nonce() {
-		pend.maxNonce = tx.Nonce()
-	}
-	pend.nonceToTx[tx.Nonce()] = tx
-	pend.hashToTx[tx.HexHash()] = tx
+func (af *AccountFrom) get(nonce uint64) *TxContext {
+	return af.nonceToTx[nonce]
 }
 
-func (pend *AccountPending) replace(tx *TxContext) (existing *TxContext) {
-	old := pend.nonceToTx[tx.Nonce()]
-	delete(pend.hashToTx, old.HexHash())
-
-	pend.nonceToTx[tx.Nonce()] = tx
-	pend.hashToTx[tx.HexHash()] = tx
-
+func (af *AccountFrom) set(tx *TxContext) (evicted *TxContext) {
+	old := af.nonceToTx[tx.Nonce()]
+	if af.size() == 0 {
+		af.minNonce = tx.Nonce()
+		af.maxNonce = tx.Nonce()
+	}
+	if af.minNonce > tx.Nonce() {
+		af.minNonce = tx.Nonce()
+	}
+	if af.maxNonce < tx.Nonce() {
+		af.maxNonce = tx.Nonce()
+	}
+	af.nonceToTx[tx.Nonce()] = tx
 	return old
 }
 
-func (pend *AccountPending) remove(tx *TxContext) {
-	delete(pend.nonceToTx, tx.Nonce())
-	delete(pend.hashToTx, tx.HexHash())
-	if pend.minNonce == tx.Nonce() {
-		pend.minNonce++
-	}
-	if pend.maxNonce == tx.Nonce() {
-		pend.maxNonce--
-	}
-}
-
-func (pend *AccountPending) prune(targetNonce uint64) (removed []*TxContext) {
-	if pend.size() == 0 {
+func (af *AccountFrom) remove(nonce uint64) (removed *TxContext) {
+	old, exist := af.nonceToTx[nonce]
+	if !exist {
 		return nil
 	}
+	delete(af.nonceToTx, nonce)
+	if af.minNonce == nonce {
+		af.minNonce++
+	}
+	if af.maxNonce == nonce {
+		af.maxNonce--
+	}
+	return old
+}
 
-	upperLimit := targetNonce
-	if pend.maxNonce < upperLimit {
-		upperLimit = pend.maxNonce
+func (af *AccountFrom) peekFirst() *TxContext {
+	if af.size() == 0 {
+		return nil
 	}
-	for i := pend.minNonce; i <= upperLimit; i++ {
-		tx, exist := pend.nonceToTx[i]
-		if !exist {
-			continue
+	for i := af.minNonce; i <= af.maxNonce; i++ {
+		tx, exist := af.nonceToTx[i]
+		if exist {
+			return tx
 		}
-		delete(pend.nonceToTx, tx.Nonce())
-		delete(pend.hashToTx, tx.HexHash())
-		pend.minNonce = i + 1
-		removed = append(removed, tx)
 	}
-	return removed
+	return nil
 }
 
 // AccountPayer manages payers bandwidth.
 type AccountPayer struct {
-	addr  common.Address
-	bw    *Bandwidth
-	txMap map[string]*TxContext
+	addr          common.Address
+	bw            *Bandwidth
+	addrNonceToTx map[string]*TxContext
 }
 
 func newAccountPayer(payer common.Address) *AccountPayer {
 	return &AccountPayer{
-		addr:  payer,
-		bw:    NewBandwidth(0, 0),
-		txMap: make(map[string]*TxContext),
+		addr:          payer,
+		bw:            NewBandwidth(0, 0),
+		addrNonceToTx: make(map[string]*TxContext),
 	}
 }
 
-func (payer *AccountPayer) size() int {
-	return len(payer.txMap)
+func (ap *AccountPayer) size() int {
+	return len(ap.addrNonceToTx)
 }
 
-func (payer *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, price Price) error {
-	bw := payer.bw.Clone()
+func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, price Price) error {
+	bw := ap.bw.Clone()
 
 	key := addrNonceKey(tx)
-	old, exist := payer.txMap[key]
+	old, exist := ap.addrNonceToTx[key]
 	if exist {
 		bw.Sub(NewBandwidth(old.exec.Bandwidth()))
 	}
@@ -420,7 +364,7 @@ func (payer *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, pric
 		return err
 	}
 
-	// TODO Refactoring
+	// TODO Refactor when merging
 	err = acc.UpdatePoints(time.Now().Unix())
 	if err != nil {
 		return err
@@ -432,27 +376,27 @@ func (payer *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, pric
 	return nil
 }
 
-func addrNonceKey(tx *TxContext) string {
-	return fmt.Sprintf("%s-%d", tx.From().Hex(), tx.Nonce())
-}
-
-func (payer *AccountPayer) addOrReplace(tx *TxContext) (existing *TxContext) {
+func (ap *AccountPayer) set(tx *TxContext) (evicted *TxContext) {
 	key := addrNonceKey(tx)
-	old, exist := payer.txMap[key]
+	old, exist := ap.addrNonceToTx[key]
 	if exist {
-		payer.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
+		ap.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
 	}
-	payer.bw.Add(NewBandwidth(tx.exec.Bandwidth()))
-	payer.txMap[key] = tx
+	ap.bw.Add(NewBandwidth(tx.exec.Bandwidth()))
+	ap.addrNonceToTx[key] = tx
 	return old
 }
 
-func (payer *AccountPayer) remove(tx *TxContext) {
+func (ap *AccountPayer) remove(tx *TxContext) {
 	key := addrNonceKey(tx)
-	old, exist := payer.txMap[key]
+	old, exist := ap.addrNonceToTx[key]
 	if !exist {
 		return
 	}
-	payer.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
-	delete(payer.txMap, key)
+	ap.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
+	delete(ap.addrNonceToTx, key)
+}
+
+func addrNonceKey(tx *TxContext) string {
+	return fmt.Sprintf("%s-%d", tx.From().Hex(), tx.Nonce())
 }

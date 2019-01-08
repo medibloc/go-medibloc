@@ -41,7 +41,7 @@ func (pool *FutureTransactionPool) Set(tx *TxContext) (evicted *TxContext) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	if pool.exist(tx) {
+	if pool.exist(tx.Hash()) {
 		return nil
 	}
 	pool.all[byteutils.Bytes2Hex(tx.Hash())] = tx
@@ -56,25 +56,6 @@ func (pool *FutureTransactionPool) Set(tx *TxContext) (evicted *TxContext) {
 		return evicted
 	}
 	return nil
-}
-
-// TODO change input parameter to hash
-func (pool *FutureTransactionPool) Del(tx *TxContext) (deleted *TxContext) {
-	pool.mu.Lock()
-	defer pool.mu.Unlock()
-
-	if !pool.exist(tx) {
-		return nil
-	}
-
-	return pool.del(tx)
-}
-
-func (pool *FutureTransactionPool) Exist(tx *TxContext) bool {
-	pool.mu.RLock()
-	defer pool.mu.RUnlock()
-
-	return pool.exist(tx)
 }
 
 func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, nonceUpperLimit uint64) *TxContext {
@@ -92,7 +73,7 @@ func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, n
 	if tx == nil || tx.Nonce() > nonceUpperLimit {
 		return nil
 	}
-	return pool.del(tx)
+	return pool.del(tx.Hash())
 }
 
 func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit uint64, deleteCallback func(tx *TxContext)) {
@@ -111,15 +92,15 @@ func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit ui
 		if tx == nil || tx.Nonce() >= nonceLowerLimit {
 			break
 		}
-		pool.del(tx)
+		pool.del(tx.Hash())
 		if deleteCallback != nil {
 			deleteCallback(tx)
 		}
 	}
 }
 
-func (pool *FutureTransactionPool) exist(tx *TxContext) bool {
-	_, exist := pool.all[byteutils.Bytes2Hex(tx.Hash())]
+func (pool *FutureTransactionPool) exist(hash []byte) bool {
+	_, exist := pool.all[byteutils.Bytes2Hex(hash)]
 	return exist
 }
 
@@ -151,14 +132,15 @@ func (pool *FutureTransactionPool) evict() (evicted *TxContext) {
 	if tx == nil {
 		return nil
 	}
-	return pool.del(tx)
+	return pool.del(tx.Hash())
 }
 
-func (pool *FutureTransactionPool) del(tx *TxContext) (deleted *TxContext) {
-	if !pool.exist(tx) {
+func (pool *FutureTransactionPool) del(hash []byte) (deleted *TxContext) {
+	tx, exist := pool.all[byteutils.Bytes2Hex(hash)]
+	if !exist {
 		return nil
 	}
-	delete(pool.all, byteutils.Bytes2Hex(tx.Hash()))
+	delete(pool.all, byteutils.Bytes2Hex(hash))
 
 	from := tx.From().Hex()
 
@@ -193,10 +175,6 @@ func (b *bucket) Less(o interface{}) bool {
 
 func (b *bucket) isEmpty() bool {
 	return b.minTxs.Len() == 0
-}
-
-func (b *bucket) exist(nonce uint64) bool {
-	return b.minTxs.Get(string(nonce)) != nil
 }
 
 func (b *bucket) set(tx *TxContext) (evicted *TxContext) {
