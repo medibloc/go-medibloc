@@ -20,6 +20,7 @@ var (
 )
 
 const (
+	// MaxPendingByAccount is the max number of pending transactions per account
 	MaxPendingByAccount = 64
 )
 
@@ -135,8 +136,8 @@ func (pool *PendingTransactionPool) Get(hash []byte) *Transaction {
 	return txc.Transaction
 }
 
-// TODO double check nonceLowerLimit
 // Prune prunes transactions by account's current nonce.
+// TODO double check nonceLowerLimit
 func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit uint64) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -166,6 +167,7 @@ func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit u
 	}
 }
 
+// NonceUpperLimit returns the maximum nonce of transactions that can be accepted in the pool.
 func (pool *PendingTransactionPool) NonceUpperLimit(acc *Account) uint64 {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -183,6 +185,7 @@ func (pool *PendingTransactionPool) NonceUpperLimit(acc *Account) uint64 {
 	return upperLimit
 }
 
+// Next returns a transaction to process in round-robin order
 func (pool *PendingTransactionPool) Next() *Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -218,6 +221,7 @@ func (pool *PendingTransactionPool) Next() *Transaction {
 	return nil
 }
 
+// SetRequiredNonce sets the transaction's nonce for the next execution by address.
 func (pool *PendingTransactionPool) SetRequiredNonce(addr common.Address, nonce uint64) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -225,6 +229,7 @@ func (pool *PendingTransactionPool) SetRequiredNonce(addr common.Address, nonce 
 	pool.nonceCache[addr] = nonce
 }
 
+// ResetSelector resets transaction selector.
 func (pool *PendingTransactionPool) ResetSelector() {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()

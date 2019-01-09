@@ -337,8 +337,8 @@ func (s *APIService) GetMedState(ctx context.Context, req *rpcpb.NonParamRequest
 	}, nil
 }
 
-// TODO Need GETALL(?)
 // GetPendingTransactions sends all transactions in the transaction pool
+// TODO Need GETALL(?)
 func (s *APIService) GetPendingTransactions(ctx context.Context,
 	req *rpcpb.NonParamRequest) (*rpcpb.Transactions, error) {
 	// txs := s.tm.GetAll()

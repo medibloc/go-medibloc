@@ -2,9 +2,9 @@ package core
 
 var txFactory TxFactory
 
-// Inject injects TxFactory dependencies.
-func InjectTxFactory(txFactoryj TxFactory) {
-	txFactory = txFactory
+// InjectTxFactory injects TxFactory dependencies.
+func InjectTxFactory(factory TxFactory) {
+	txFactory = factory
 }
 
 // TxConv returns executable tx.
@@ -17,8 +17,10 @@ type TxFactory interface {
 	Executable(tx *Transaction) (ExecutableTx, error)
 }
 
+// MapTxFactory is a map for transaction to executable tx.
 type MapTxFactory map[string]func(tx *Transaction) (ExecutableTx, error)
 
+// Executable converts transaction to executable tx.
 func (m MapTxFactory) Executable(tx *Transaction) (ExecutableTx, error) {
 	constructor, ok := m[tx.TxType()]
 	if !ok {

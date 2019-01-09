@@ -40,7 +40,7 @@ func init() {
 	core.InjectTxFactory(DefaultTxFactory)
 }
 
-// DefaultTxMap is default map of transactions.
+// DefaultTxFactory is default map of transactions.
 var DefaultTxFactory = core.MapTxFactory{
 	core.TxOpTransfer:            core.NewTransferTx,
 	core.TxOpAddRecord:           core.NewAddRecordTx,
