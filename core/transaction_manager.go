@@ -47,7 +47,7 @@ type TransactionManager struct {
 	canon             Canonical
 	ns                net.Service
 
-	pendingPool *AccountPendingPool
+	pendingPool *PendingTransactionPool
 	futurePool  *FutureTransactionPool
 }
 
@@ -57,7 +57,7 @@ func NewTransactionManager(cfg *medletpb.Config) *TransactionManager {
 		chainID:           cfg.Global.ChainId,
 		receivedMessageCh: make(chan net.Message, defaultTransactionMessageChanSize),
 		quitCh:            make(chan int),
-		pendingPool:       NewAccountPendingPool(),
+		pendingPool:       NewPendingTransactionPool(),
 		futurePool:        NewFutureTransactionPool(int(cfg.Chain.TransactionPoolSize)),
 	}
 }

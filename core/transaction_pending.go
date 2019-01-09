@@ -23,8 +23,8 @@ const (
 	MaxPendingByAccount = 64
 )
 
-// AccountPendingPool struct manages pending transactions by account.
-type AccountPendingPool struct {
+// PendingTransactionPool struct manages pending transactions by account.
+type PendingTransactionPool struct {
 	mu sync.Mutex
 
 	all   map[string]*TxContext
@@ -35,9 +35,9 @@ type AccountPendingPool struct {
 	nonceCache map[common.Address]uint64
 }
 
-// NewAccountPendingPool creates AccountPendingPool.
-func NewAccountPendingPool() *AccountPendingPool {
-	return &AccountPendingPool{
+// NewPendingTransactionPool creates PendingTransactionPool.
+func NewPendingTransactionPool() *PendingTransactionPool {
+	return &PendingTransactionPool{
 		all:        make(map[string]*TxContext),
 		from:       make(map[common.Address]*AccountFrom),
 		payer:      make(map[common.Address]*AccountPayer),
@@ -47,7 +47,7 @@ func NewAccountPendingPool() *AccountPendingPool {
 }
 
 // PushOrReplace pushes or replaces a transaction.
-func (pool *AccountPendingPool) PushOrReplace(tx *TxContext, acc *Account, price Price) error {
+func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *Account, price Price) error {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -58,7 +58,7 @@ func (pool *AccountPendingPool) PushOrReplace(tx *TxContext, acc *Account, price
 	return pool.push(tx, acc, price)
 }
 
-func (pool *AccountPendingPool) push(tx *TxContext, acc *Account, price Price) error {
+func (pool *PendingTransactionPool) push(tx *TxContext, acc *Account, price Price) error {
 	accFrom, exist := pool.from[tx.From()]
 	if !exist {
 		accFrom = newAccountFrom(tx.From())
@@ -86,7 +86,7 @@ func (pool *AccountPendingPool) push(tx *TxContext, acc *Account, price Price) e
 	return nil
 }
 
-func (pool *AccountPendingPool) replace(tx *TxContext, acc *Account, price Price) error {
+func (pool *PendingTransactionPool) replace(tx *TxContext, acc *Account, price Price) error {
 	accFrom, exist := pool.from[tx.From()]
 	if !exist {
 		accFrom = newAccountFrom(tx.From())
@@ -125,7 +125,7 @@ func (pool *AccountPendingPool) replace(tx *TxContext, acc *Account, price Price
 }
 
 // Get gets a transaction.
-func (pool *AccountPendingPool) Get(hash []byte) *Transaction {
+func (pool *PendingTransactionPool) Get(hash []byte) *Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 	txc, exist := pool.all[byteutils.Bytes2Hex(hash)]
@@ -137,7 +137,7 @@ func (pool *AccountPendingPool) Get(hash []byte) *Transaction {
 
 // TODO double check nonceLowerLimit
 // Prune prunes transactions by account's current nonce.
-func (pool *AccountPendingPool) Prune(addr common.Address, nonceLowerLimit uint64) {
+func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit uint64) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -166,7 +166,7 @@ func (pool *AccountPendingPool) Prune(addr common.Address, nonceLowerLimit uint6
 	}
 }
 
-func (pool *AccountPendingPool) NonceUpperLimit(acc *Account) uint64 {
+func (pool *PendingTransactionPool) NonceUpperLimit(acc *Account) uint64 {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -183,7 +183,7 @@ func (pool *AccountPendingPool) NonceUpperLimit(acc *Account) uint64 {
 	return upperLimit
 }
 
-func (pool *AccountPendingPool) Next() *Transaction {
+func (pool *PendingTransactionPool) Next() *Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -218,14 +218,14 @@ func (pool *AccountPendingPool) Next() *Transaction {
 	return nil
 }
 
-func (pool *AccountPendingPool) SetRequiredNonce(addr common.Address, nonce uint64) {
+func (pool *PendingTransactionPool) SetRequiredNonce(addr common.Address, nonce uint64) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
 	pool.nonceCache[addr] = nonce
 }
 
-func (pool *AccountPendingPool) ResetSelector() {
+func (pool *PendingTransactionPool) ResetSelector() {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
