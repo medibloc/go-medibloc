@@ -97,6 +97,7 @@ func (tm *TransactionManager) registerInNetwork() {
 	tm.ns.Register(net.NewSubscriber(tm, tm.receivedMessageCh, true, MessageTypeNewTx, net.MessageWeightNewTx))
 }
 
+// Push pushes a transaction.
 func (tm *TransactionManager) Push(tx *Transaction) error {
 	txc, err := NewTxContext(tx)
 	if err != nil {
@@ -109,6 +110,7 @@ func (tm *TransactionManager) Push(tx *Transaction) error {
 	return tm.push(txc)
 }
 
+// PushAndBroadcast pushes a transaction and broadcast when transaction transits to pending pool.
 func (tm *TransactionManager) PushAndBroadcast(tx *Transaction) error {
 	txc, err := NewTxContextWithBroadcast(tx)
 	if err != nil {
@@ -181,10 +183,12 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 	return nil
 }
 
+// ResetTransactionSelector resets transaction selector.
 func (tm *TransactionManager) ResetTransactionSelector() {
 	tm.pendingPool.ResetSelector()
 }
 
+// Next returns next transaction from transaction selector.
 func (tm *TransactionManager) Next() *Transaction {
 	tx := tm.pendingPool.Next()
 	if tx != nil {
@@ -193,6 +197,7 @@ func (tm *TransactionManager) Next() *Transaction {
 	return tx
 }
 
+// SetRequiredNonce sets required nonce for given address to transaction selector.
 func (tm *TransactionManager) SetRequiredNonce(addr common.Address, nonce uint64) {
 	tm.pendingPool.SetRequiredNonce(addr, nonce)
 }
@@ -213,8 +218,8 @@ func (tm *TransactionManager) Get(hash []byte) *Transaction {
 	return txc.Transaction
 }
 
+// DelByAddressNonce del transaction specific addr-nonce transaction
 // TODO Refactoring (addr, nonce) => Account
-//DelByAddressNonce del transaction specific addr-nonce transaction
 func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint64) error {
 	tm.mu.Lock()
 	tm.pendingPool.Prune(addr, nonce)

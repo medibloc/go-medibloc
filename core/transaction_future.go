@@ -26,6 +26,7 @@ func NewFutureTransactionPool(size int) *FutureTransactionPool {
 	}
 }
 
+// Get returns a transaction by hash.
 func (pool *FutureTransactionPool) Get(hash []byte) *TxContext {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
@@ -37,6 +38,7 @@ func (pool *FutureTransactionPool) Get(hash []byte) *TxContext {
 	return tx
 }
 
+// Set sets a transaction and returns an evicted transaction if there is any.
 func (pool *FutureTransactionPool) Set(tx *TxContext) (evicted *TxContext) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -58,6 +60,7 @@ func (pool *FutureTransactionPool) Set(tx *TxContext) (evicted *TxContext) {
 	return nil
 }
 
+// PopWithNonceUpperLimit pop a transaction if there is a transaction whose nonce is lower than given limit.
 func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, nonceUpperLimit uint64) *TxContext {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -76,6 +79,7 @@ func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, n
 	return pool.del(tx.Hash())
 }
 
+// Prune prunes pool by given nonce of lower limit.
 func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit uint64, deleteCallback func(tx *TxContext)) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()

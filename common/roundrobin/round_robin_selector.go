@@ -5,11 +5,7 @@ import (
 	"sync"
 )
 
-type item struct {
-	key     string
-	include bool
-}
-
+// RoundRobin manages item in round-robin order.
 type RoundRobin struct {
 	sync.Mutex
 	incl   *list.List
@@ -17,6 +13,7 @@ type RoundRobin struct {
 	lookup map[string]*list.Element
 }
 
+// New creates RoundRobin.
 func New() *RoundRobin {
 	return &RoundRobin{
 		incl:   list.New(),
@@ -25,12 +22,14 @@ func New() *RoundRobin {
 	}
 }
 
+// HasNext returns true if next item exists.
 func (rr *RoundRobin) HasNext() bool {
 	rr.Lock()
 	defer rr.Unlock()
 	return rr.incl.Len() != 0
 }
 
+// Next returns next item in round-robin order.
 func (rr *RoundRobin) Next() string {
 	rr.Lock()
 	defer rr.Unlock()
@@ -42,6 +41,8 @@ func (rr *RoundRobin) Next() string {
 	return e.Value.(*item).key
 }
 
+// Include adds a item in include list or swaps a item from  exclude list.
+// Only items in include list can't be fetched in round-robin order.
 func (rr *RoundRobin) Include(key string) {
 	rr.Lock()
 	defer rr.Unlock()
@@ -63,6 +64,8 @@ func (rr *RoundRobin) Include(key string) {
 	rr.swap(key)
 }
 
+// Exclude adds a item in exclude list or swaps a item from include list.
+// Items in exclude list are excluded and can't be fetched.
 func (rr *RoundRobin) Exclude(key string) {
 	rr.Lock()
 	defer rr.Unlock()
@@ -84,6 +87,7 @@ func (rr *RoundRobin) Exclude(key string) {
 	rr.swap(key)
 }
 
+// Remove removes a item.
 func (rr *RoundRobin) Remove(key string) {
 	rr.Lock()
 	defer rr.Unlock()
@@ -104,6 +108,7 @@ func (rr *RoundRobin) Remove(key string) {
 	return
 }
 
+// Reset appends items in exclude list to include list and resets exclude list.
 func (rr *RoundRobin) Reset() {
 	rr.Lock()
 	defer rr.Unlock()
@@ -131,4 +136,9 @@ func (rr *RoundRobin) swap(key string) {
 	v.include = !v.include
 	e2 := to.PushBack(v)
 	rr.lookup[key] = e2
+}
+
+type item struct {
+	key     string
+	include bool
 }
