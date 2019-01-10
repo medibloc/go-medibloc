@@ -59,3 +59,19 @@ type Price struct {
 	cpuPrice *util.Uint128
 	netPrice *util.Uint128
 }
+
+func (p *Price) CpuPrice() *util.Uint128 {
+	return p.cpuPrice
+}
+
+func (p *Price) SetCpuPrice(cpuPrice *util.Uint128) {
+	p.cpuPrice = cpuPrice
+}
+
+func (p *Price) NetPrice() *util.Uint128 {
+	return p.netPrice
+}
+
+func (p *Price) SetNetPrice(netPrice *util.Uint128) {
+	p.netPrice = netPrice
+}
