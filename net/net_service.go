@@ -17,9 +17,12 @@ package net
 
 import (
 	"context"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/crypto/hash"
+	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -125,4 +128,31 @@ func (ms *MedService) SendPbMessageToPeer(msgType string, pb proto.Message, prio
 func (ms *MedService) SendPbMessageToPeers(msgType string, pb proto.Message, priority int, filter PeerFilterAlgorithm) []string {
 	b, _ := proto.Marshal(pb)
 	return ms.SendMessageToPeers(msgType, b, priority, filter)
+}
+
+//RequestAndResponse set id to query and send to peers
+func (ms *MedService) RequestAndResponse(ctx context.Context, query Query, f MessageCallback, filter PeerFilterAlgorithm) (bool, []error) {
+	idBytes := hash.Sha3256([]byte(query.MessageType()), query.Hash(), byteutils.FromInt64(time.Now().UnixNano()))
+	id := byteutils.Bytes2Hex(idBytes)
+	query.SetID(id)
+
+	responseCh := make(chan Message, 256)
+	ms.Register(NewSubscriber("", responseCh, true, id, MessageWeightZero))
+	defer ms.Deregister(NewSubscriber("", responseCh, true, id, MessageWeightZero))
+
+	peers := ms.SendPbMessageToPeers(query.MessageType(), query.ProtoBuf(), MessagePriorityHigh, filter)
+	errs := make([]error, len(peers))
+	for i := 0; i < len(peers); i++ {
+		select {
+		case <-ctx.Done():
+			errs[i] = ErrContextDone
+			break
+		case msg := <-responseCh:
+			errs[i] = f(query, msg)
+			if errs[i] == nil {
+				return true, errs
+			}
+		}
+	}
+	return false, errs
 }

@@ -64,7 +64,8 @@ const (
 
 // Error types
 var (
-	ErrPeerIsNotConnected = errors.New("peer is not connected")
+	ErrNoPeersToSendMessage = errors.New("filtered peer connection does not existed")
+	ErrContextDone          = errors.New("context is done")
 )
 
 // Message interface for message.
@@ -79,6 +80,17 @@ type Message interface {
 type PeerFilterAlgorithm interface {
 	Filter([]peer.ID) []peer.ID
 }
+
+//Query is interface for send request/response message
+type Query interface {
+	Hash() []byte
+	MessageType() string
+	ProtoBuf() proto.Message
+	SetID(string)
+}
+
+//MessageCallback is a function for handle response message
+type MessageCallback func(q Query, message Message) error
 
 // Service net Service interface
 type Service interface {
@@ -97,6 +109,7 @@ type Service interface {
 	ClosePeer(peerID string, reason error)
 	SendPbMessageToPeer(msgType string, pb proto.Message, priority int, peerID string)
 	SendPbMessageToPeers(msgType string, pb proto.Message, priority int, filter PeerFilterAlgorithm) []string
+	RequestAndResponse(ctx context.Context, query Query, f MessageCallback, filter PeerFilterAlgorithm) (bool, []error)
 }
 
 // MessageWeight float64

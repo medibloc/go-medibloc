@@ -20,10 +20,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/gogo/protobuf/proto"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
+	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
+	syncpb "github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/sirupsen/logrus"
 )
 
 //Service is the service for sync service
@@ -36,16 +39,6 @@ type Service struct {
 
 	mu          sync.Mutex
 	downloading bool
-
-	downloadCtx      context.Context
-	downloadCancel   context.CancelFunc
-
-	targetHeight     uint64
-	targetHash       []byte
-	baseBlock        *core.BlockData
-	subscribeMap     *sync.Map // key: queryID, value: blockHeight
-	numberOfRequests int
-	downloadErrCh    chan error
 
 	responseTimeLimit   time.Duration
 	numberOfRetries     int
@@ -75,13 +68,11 @@ func NewService(cfg *medletpb.SyncConfig) *Service {
 	}
 
 	return &Service{
-		netService:       nil,
-		bm:               nil,
-		messageCh:        make(chan net.Message, 128),
-		mu:               sync.Mutex{},
-		downloading:      false,
-		targetHeight:     0,
-		numberOfRequests: 0,
+		netService:  nil,
+		bm:          nil,
+		messageCh:   make(chan net.Message, 128),
+		mu:          sync.Mutex{},
+		downloading: false,
 
 		responseTimeLimit:   responseTimeLimit,
 		numberOfRetries:     numberOfRetries,
@@ -110,21 +101,14 @@ func (s *Service) stop() {
 	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, BaseSearch, net.MessageWeightZero))
 	s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, BlockRequest, net.MessageWeightZero))
 
-	if s.subscribeMap != nil {
-		s.subscribeMap.Range(func(key, _ interface{}) bool {
-			qID := key.(string)
-			s.netService.Deregister(net.NewSubscriber(s, s.messageCh, false, qID, net.MessageWeightZero))
-			return true
-		})
-	}
-	logging.Console().Info("SyncService is started.")
+	logging.Console().Info("SyncService is stopped.")
 }
 
 func (s *Service) loop() {
+	defer s.stop()
 	for {
 		select {
 		case <-s.ctx.Done():
-			s.stop()
 			return
 		case msg := <-s.messageCh:
 			switch msg.MessageType() {
@@ -135,4 +119,63 @@ func (s *Service) loop() {
 			}
 		}
 	}
+}
+
+func (s *Service) handleFindBaseRequest(msg net.Message) {
+	req := new(syncpb.FindBaseRequest)
+	if err := proto.Unmarshal(msg.Data(), req); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"sender": msg.MessageFrom(),
+			"err":    err,
+		}).Debug("failed to unmarshal msg")
+		return //TODO: blacklist?
+	}
+
+	res := new(syncpb.FindBaseResponse)
+	defer s.netService.SendPbMessageToPeer(req.Id, res, net.MessagePriorityLow, msg.MessageFrom())
+
+	var err error
+	res.TargetHash, err = s.bm.BlockHashByHeight(req.TargetHeight)
+	if err != nil {
+		res.Status = false
+		return
+	}
+	res.TryHash, err = s.bm.BlockHashByHeight(req.TryHeight)
+	if err != nil {
+		res.Status = false
+	}
+	res.Status = true
+}
+
+func (s *Service) handleBlockByHeightRequest(msg net.Message) {
+	req := new(syncpb.BlockByHeightRequest)
+	if err := proto.Unmarshal(msg.Data(), req); err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"sender": msg.MessageFrom(),
+			"err":    err,
+		}).Debug("failed to unmarshal msg")
+		return //TODO: blacklist?
+	}
+
+	res := new(syncpb.BlockByHeightResponse)
+	defer s.netService.SendPbMessageToPeer(req.Id, res, net.MessagePriorityLow, msg.MessageFrom())
+
+	var err error
+	res.TargetHash, err = s.bm.BlockHashByHeight(req.TargetHeight)
+	if err != nil {
+		res.Status = false
+		return
+	}
+	b, err := s.bm.BlockByHeight(req.BlockHeight)
+	if err != nil {
+		res.Status = false
+		return
+	}
+	pb, err := b.ToProto()
+	if err != nil {
+		res.Status = false
+		return
+	}
+	res.BlockData = pb.(*corepb.Block)
+	res.Status = true
 }

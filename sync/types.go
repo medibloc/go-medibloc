@@ -50,8 +50,9 @@ type BlockManager interface {
 
 // Error types
 var (
-	ErrCannotFindQueryID   = errors.New("cannot find query id on subscribe map")
 	ErrContextDone         = errors.New("context is closed")
+	ErrDownloadCtxDone     = errors.New("sync download context is done")
+	ErrTimeout             = errors.New("timeout to wait response")
 	ErrDifferentTargetHash = errors.New("target hash is different")
 	ErrDownloadActivated   = errors.New("download is already activated")
 	ErrFailedToConnect     = errors.New("failed to connect to peer")

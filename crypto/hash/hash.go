@@ -45,12 +45,9 @@ func Sha3256(args ...[]byte) []byte {
 }
 
 //Sha3256Pb returns the SAH#-256 diggest of the data from protobuf type
-func Sha3256Pb(pb proto.Message) ([]byte, error) {
-	b, err := proto.Marshal(pb)
-	if err != nil {
-		return nil, err
-	}
-	return Sha3256(b), err
+func Sha3256Pb(pb proto.Message) []byte {
+	b, _ := proto.Marshal(pb)
+	return Sha3256(b)
 }
 
 // Ripemd160 return the RIPEMD160 digest of the data.
