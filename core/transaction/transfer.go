@@ -3,6 +3,7 @@ package transaction
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
@@ -40,8 +41,10 @@ type TransferTx struct {
 	size    int
 }
 
+var _ core.ExecutableTx = &TransferTx{}
+
 //NewTransferTx returns TransferTx
-func NewTransferTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewTransferTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -60,21 +63,18 @@ func NewTransferTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrInvalidAddress
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &TransferTx{
-			from:    tx.From(),
-			to:      tx.To(),
-			value:   tx.Value(),
-			payload: payload,
-			size:    size,
-		},
+	return &TransferTx{
+		from:    tx.From(),
+		to:      tx.To(),
+		value:   tx.Value(),
+		payload: payload,
+		size:    size,
 	}, nil
 
 }
 
 //Execute TransferTx
-func (tx *TransferTx) Execute(bs blockState) error {
+func (tx *TransferTx) Execute(bs *core.BlockState) error {
 	// subtract balance from sender's account
 	sender, err := bs.GetAccount(tx.from)
 	if err != nil {
@@ -111,4 +111,8 @@ func (tx *TransferTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *TransferTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
+}
+
+func (tx *TransferTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }

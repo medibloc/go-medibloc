@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
@@ -41,8 +42,10 @@ type RegisterAliasTx struct {
 	size       int
 }
 
+var _ core.ExecutableTx = &RegisterAliasTx{}
+
 //NewRegisterAliasTx returns RegisterAliasTx
-func NewRegisterAliasTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewRegisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -61,19 +64,16 @@ func NewRegisterAliasTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, err
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &RegisterAliasTx{
-			addr:       tx.From(),
-			alias:      payload.AliasName,
-			collateral: tx.Value(),
-			size:       size,
-		},
+	return &RegisterAliasTx{
+		addr:       tx.From(),
+		alias:      payload.AliasName,
+		collateral: tx.Value(),
+		size:       size,
 	}, nil
 }
 
 //Execute RegisterAliasTx
-func (tx *RegisterAliasTx) Execute(bs blockState) error {
+func (tx *RegisterAliasTx) Execute(bs *core.BlockState) error {
 	collateralLimit, err := util.NewUint128FromString(AliasCollateralMinimum)
 	if err != nil {
 		return err
@@ -155,14 +155,20 @@ func (tx *RegisterAliasTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
 
+func (tx *RegisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
+}
+
 // DeregisterAliasTx is a structure for deregister alias
 type DeregisterAliasTx struct {
 	addr common.Address
 	size int
 }
 
+var _ core.ExecutableTx = &DeregisterAliasTx{}
+
 //NewDeregisterAliasTx returns RegisterAliasTx
-func NewDeregisterAliasTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewDeregisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -174,17 +180,14 @@ func NewDeregisterAliasTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrInvalidAddress
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &DeregisterAliasTx{
-			addr: tx.From(),
-			size: size,
-		},
+	return &DeregisterAliasTx{
+		addr: tx.From(),
+		size: size,
 	}, nil
 }
 
 //Execute DeregisterAliasTx
-func (tx *DeregisterAliasTx) Execute(bs blockState) error {
+func (tx *DeregisterAliasTx) Execute(bs *core.BlockState) error {
 	acc, err := bs.GetAccount(tx.addr)
 	if err != nil {
 		return err
@@ -246,6 +249,11 @@ func (tx *DeregisterAliasTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *DeregisterAliasTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
+}
+
+// PointModifier returns modifier
+func (tx *DeregisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }
 
 // ValidateAlias checks alias

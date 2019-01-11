@@ -3,6 +3,7 @@ package transaction
 import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
+	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -16,8 +17,10 @@ type StakeTx struct {
 	size   int
 }
 
+var _ core.ExecutableTx = &StakeTx{}
+
 //NewStakeTx returns NewTx
-func NewStakeTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewStakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -32,18 +35,15 @@ func NewStakeTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrInvalidAddress
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &StakeTx{
-			user:   tx.From(),
-			amount: tx.Value(),
-			size:   size,
-		},
+	return &StakeTx{
+		user:   tx.From(),
+		amount: tx.Value(),
+		size:   size,
 	}, nil
 }
 
 //Execute StakeTx
-func (tx *StakeTx) Execute(bs blockState) error {
+func (tx *StakeTx) Execute(bs *core.BlockState) error {
 	user, err := bs.GetAccount(tx.user)
 	if err != nil {
 		return err
@@ -89,6 +89,10 @@ func (tx *StakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
+func (tx *StakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points.Add(tx.amount)
+}
+
 //UnstakeTx is a structure for unstaking med
 type UnstakeTx struct {
 	user   common.Address
@@ -96,8 +100,10 @@ type UnstakeTx struct {
 	size   int
 }
 
+var _ core.ExecutableTx = &UnstakeTx{}
+
 //NewUnstakeTx returns UnstakeTx
-func NewUnstakeTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewUnstakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -109,18 +115,15 @@ func NewUnstakeTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrInvalidAddress
 	}
 
-	return &ExecutableTx{
-		Transaction: nil,
-		Executable: &UnstakeTx{
-			user:   tx.From(),
-			amount: tx.Value(),
-			size:   size,
-		},
+	return &UnstakeTx{
+		user:   tx.From(),
+		amount: tx.Value(),
+		size:   size,
 	}, nil
 }
 
 //Execute UnstakeTx
-func (tx *UnstakeTx) Execute(bs blockState) error {
+func (tx *UnstakeTx) Execute(bs *core.BlockState) error {
 	account, err := bs.GetAccount(tx.user)
 	if err != nil {
 		return err
@@ -175,4 +178,8 @@ func (tx *UnstakeTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
+}
+
+func (tx *UnstakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points.Sub(tx.amount)
 }

@@ -3,8 +3,10 @@ package transaction
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
@@ -47,8 +49,10 @@ type AddCertificationTx struct {
 	size            int
 }
 
+var _ core.ExecutableTx = &AddCertificationTx{}
+
 //NewAddCertificationTx returns AddCertificationTx
-func NewAddCertificationTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewAddCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -67,21 +71,18 @@ func NewAddCertificationTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrCertHashInvalid
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &AddCertificationTx{
-			Issuer:          tx.From(),
-			Certified:       tx.To(),
-			CertificateHash: payload.CertificateHash,
-			IssueTime:       payload.IssueTime,
-			ExpirationTime:  payload.ExpirationTime,
-			size:            size,
-		},
+	return &AddCertificationTx{
+		Issuer:          tx.From(),
+		Certified:       tx.To(),
+		CertificateHash: payload.CertificateHash,
+		IssueTime:       payload.IssueTime,
+		ExpirationTime:  payload.ExpirationTime,
+		size:            size,
 	}, nil
 }
 
 //Execute AddCertificationTx
-func (tx *AddCertificationTx) Execute(bs blockState) error {
+func (tx *AddCertificationTx) Execute(bs *core.BlockState) error {
 	certified, err := bs.GetAccount(tx.Certified)
 	if err != nil {
 		return err
@@ -179,11 +180,8 @@ func (tx *AddCertificationTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
 
-//RevokeCertificationTx is a structure for revoking certification
-type RevokeCertificationTx struct {
-	Revoker         common.Address
-	CertificateHash []byte
-	size            int
+func (tx *AddCertificationTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }
 
 // RevokeCertificationPayload is payload type for RevokeCertificationTx
@@ -209,8 +207,17 @@ func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
+//RevokeCertificationTx is a structure for revoking certification
+type RevokeCertificationTx struct {
+	Revoker         common.Address
+	CertificateHash []byte
+	size            int
+}
+
+var _ core.ExecutableTx = &RevokeCertificationTx{}
+
 //NewRevokeCertificationTx returns RevokeCertificationTx
-func NewRevokeCertificationTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewRevokeCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -229,18 +236,15 @@ func NewRevokeCertificationTx(tx *coreState.Transaction) (*ExecutableTx, error) 
 		return nil, ErrCertHashInvalid
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &RevokeCertificationTx{
-			Revoker:         tx.From(),
-			CertificateHash: payload.CertificateHash,
-			size:            size,
-		},
+	return &RevokeCertificationTx{
+		Revoker:         tx.From(),
+		CertificateHash: payload.CertificateHash,
+		size:            size,
 	}, nil
 }
 
 //Execute RevokeCertificationTx
-func (tx *RevokeCertificationTx) Execute(bs blockState) error {
+func (tx *RevokeCertificationTx) Execute(bs *core.BlockState) error {
 	issuer, err := bs.GetAccount(tx.Revoker)
 	if err != nil {
 		return err
@@ -331,4 +335,8 @@ func (tx *RevokeCertificationTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *RevokeCertificationTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
+}
+
+func (tx *RevokeCertificationTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }

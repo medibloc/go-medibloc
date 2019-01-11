@@ -5,7 +5,9 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/util"
 )
 
 // VotePayload is payload type for VoteTx
@@ -38,8 +40,10 @@ type VoteTx struct {
 	size         int
 }
 
+var _ core.ExecutableTx = &VoteTx{}
+
 //NewVoteTx returns VoteTx
-func NewVoteTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewVoteTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -55,17 +59,15 @@ func NewVoteTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrInvalidAddress
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &VoteTx{
-			voter:        tx.From(),
-			candidateIDs: payload.CandidateIDs,
-			size:         size,
-		}}, nil
+	return &VoteTx{
+		voter:        tx.From(),
+		candidateIDs: payload.CandidateIDs,
+		size:         size,
+	}, nil
 }
 
 //Execute VoteTx
-func (tx *VoteTx) Execute(bs blockState) error {
+func (tx *VoteTx) Execute(bs *core.BlockState) error {
 	if len(tx.candidateIDs) > VoteMaximum {
 		return ErrOverMaxVote
 	}
@@ -171,4 +173,8 @@ func (tx *VoteTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *VoteTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
+}
+
+func (tx *VoteTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }

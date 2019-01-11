@@ -21,6 +21,7 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -57,8 +58,10 @@ type BecomeCandidateTx struct {
 	size          int
 }
 
+var _ core.ExecutableTx = &BecomeCandidateTx{}
+
 //NewBecomeCandidateTx returns BecomeCandidateTx
-func NewBecomeCandidateTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewBecomeCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -71,20 +74,17 @@ func NewBecomeCandidateTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, err
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &BecomeCandidateTx{
-			txHash:        tx.Hash(),
-			candidateAddr: tx.From(),
-			collateral:    tx.Value(),
-			payload:       payload,
-			size:          size,
-		},
+	return &BecomeCandidateTx{
+		txHash:        tx.Hash(),
+		candidateAddr: tx.From(),
+		collateral:    tx.Value(),
+		payload:       payload,
+		size:          size,
 	}, nil
 }
 
 //Execute NewBecomeCandidateTx
-func (tx *BecomeCandidateTx) Execute(bs blockState) error {
+func (tx *BecomeCandidateTx) Execute(bs *core.BlockState) error {
 	acc, err := bs.GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
@@ -141,14 +141,20 @@ func (tx *BecomeCandidateTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
+func (tx *BecomeCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
+}
+
 //QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
 	candidateAddr common.Address
 	size          int
 }
 
+var _ core.ExecutableTx = &QuitCandidateTx{}
+
 //NewQuitCandidateTx returns QuitCandidateTx
-func NewQuitCandidateTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewQuitCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -160,17 +166,14 @@ func NewQuitCandidateTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrInvalidAddress
 	}
 
-	return &ExecutableTx{
-		Transaction: tx,
-		Executable: &QuitCandidateTx{
-			candidateAddr: tx.From(),
-			size:          size,
-		},
+	return &QuitCandidateTx{
+		candidateAddr: tx.From(),
+		size:          size,
 	}, nil
 }
 
 //Execute QuitCandidateTx
-func (tx *QuitCandidateTx) Execute(bs blockState) error {
+func (tx *QuitCandidateTx) Execute(bs *core.BlockState) error {
 	acc, err := bs.GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
@@ -211,4 +214,9 @@ func (tx *QuitCandidateTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *QuitCandidateTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
+}
+
+// PointModifier returns modifier
+func (tx *QuitCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }

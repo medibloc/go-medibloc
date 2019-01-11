@@ -3,8 +3,10 @@ package transaction
 import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
@@ -38,8 +40,10 @@ type AddRecordTx struct {
 	size       int
 }
 
+var _ core.ExecutableTx = &AddRecordTx{}
+
 //NewAddRecordTx returns AddRecordTx
-func NewAddRecordTx(tx *coreState.Transaction) (*ExecutableTx, error) {
+func NewAddRecordTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -58,18 +62,15 @@ func NewAddRecordTx(tx *coreState.Transaction) (*ExecutableTx, error) {
 		return nil, ErrRecordHashInvalid
 	}
 
-	return &ExecutableTx{
-		Transaction: nil,
-		Executable: &AddRecordTx{
-			owner:      tx.From(),
-			recordHash: payload.RecordHash,
-			size:       size,
-		},
+	return &AddRecordTx{
+		owner:      tx.From(),
+		recordHash: payload.RecordHash,
+		size:       size,
 	}, nil
 }
 
 //Execute AddRecordTx
-func (tx *AddRecordTx) Execute(bs blockState) error {
+func (tx *AddRecordTx) Execute(bs *core.BlockState) error {
 	var err error
 	acc, err := bs.GetAccount(tx.owner)
 	if err != nil {
@@ -119,4 +120,8 @@ func (tx *AddRecordTx) Execute(bs blockState) error {
 //Bandwidth returns bandwidth.
 func (tx *AddRecordTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
+}
+
+func (tx *AddRecordTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
+	return points, nil
 }

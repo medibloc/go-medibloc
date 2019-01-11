@@ -156,8 +156,9 @@ type Canonical interface {
 
 // ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
-	Execute(b *Block) error
-	Bandwidth() (cpuUsage uint64, netUsage uint64)
+	Execute(b *BlockState) error
+	Bandwidth() *common.Bandwidth
+	PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error)
 }
 
 // TransactionPayload is an interface of transaction payload.
