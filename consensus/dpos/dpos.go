@@ -36,7 +36,6 @@ import (
 	"github.com/medibloc/go-medibloc/keystore"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
 )
@@ -279,12 +278,11 @@ func (d *Dpos) VerifyProposer(b *core.Block) error {
 
 	proposerIndex := d.calcProposerIndex(b.Timestamp())
 
-	proposer := new(common.Address)
-	ds := b.State().DposState().DynastyState()
-	if err := ds.GetData(byteutils.FromInt32(int32(proposerIndex)), proposer); err != nil {
+	proposer, err := b.State().DposState().GetProposer(proposerIndex)
+	if err != nil {
 		return err
 	}
-	if !signer.Equals(*proposer) {
+	if !signer.Equals(proposer) {
 		logging.Console().WithFields(logrus.Fields{
 			"blockdata":     b.BlockData,
 			"Proposer":      proposer,
@@ -570,15 +568,15 @@ func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64)
 
 //MakeMintDynasty returns dynasty slice for mint block
 func (d *Dpos) MakeMintDynasty(ts int64, parentState *core.BlockState) ([]common.Address, error) {
-	if d.checkTransitionDynasty(parentState.Timestamp(), ts) || parentState.Timestamp() == core.GenesisTimestamp {
-		sortedCandidates, err := parentState.DposState().SortByVotePower()
-		if err != nil {
-			return nil, err
-		}
-		mintDynasty := makeMintDynasty(sortedCandidates, d.dynastySize)
-		return mintDynasty, nil
+	if !d.checkTransitionDynasty(parentState.Timestamp(), ts) && parentState.Timestamp() != core.GenesisTimestamp {
+		return nil, core.ErrSameDynasty
 	}
-	return parentState.DposState().Dynasty()
+	sortedCandidates, err := parentState.DposState().SortByVotePower()
+	if err != nil {
+		return nil, err
+	}
+	mintDynasty := makeMintDynasty(sortedCandidates, d.dynastySize)
+	return mintDynasty, nil
 }
 
 //makeMintDynasty returns new dynasty slice for new block
@@ -605,11 +603,15 @@ func makeMintDynasty(sortedCandidates []common.Address, dynastySize int) []commo
 //FindMintProposer returns proposer for mint block
 func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
 	mintTs := NextMintSlot2(ts)
+	proposerIndex := d.calcProposerIndex(mintTs)
+
 	dynasty, err := d.MakeMintDynasty(mintTs, parent.State())
+	if err == core.ErrSameDynasty {
+		return parent.State().DposState().GetProposer(proposerIndex)
+	}
 	if err != nil {
 		return common.Address{}, err
 	}
-	proposerIndex := d.calcProposerIndex(mintTs)
 	return dynasty[proposerIndex], nil
 }
 

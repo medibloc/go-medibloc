@@ -60,18 +60,6 @@ func TestCloneState(t *testing.T) {
 	assert.Equal(t, dposRoot, newDposRoot)
 }
 
-func TestDynastyState(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-
-	ds := bb.Build().State().DposState()
-
-	for _, v := range bb.Dynasties {
-		in, err := ds.InDynasty(v.Addr)
-		require.NoError(t, err)
-		assert.True(t, in)
-	}
-}
-
 func TestNonceCheck(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 

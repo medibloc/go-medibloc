@@ -71,6 +71,11 @@ type BlockManager struct {
 	cmFinishedCh         chan bool
 }
 
+//Consensus returns consensus
+func (bm *BlockManager) Consensus() Consensus {
+	return bm.consensus
+}
+
 type blockResult struct {
 	block   *BlockData
 	isValid bool
@@ -446,6 +451,7 @@ func (bm *BlockManager) PushBlockDataSync(bd *BlockData, timeLimit time.Duration
 // PushBlockDataSync2 pushes block to distributor and wait for execution
 // Warning! - Use this method only for test for time efficiency.
 func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) error {
+	start := time.Now()
 	eventSubscriber, err := event.NewSubscriber(1024, []string{event.TopicAcceptedBlock, event.TopicInvalidBlock})
 	if err != nil {
 		return err
@@ -472,6 +478,10 @@ func (bm *BlockManager) PushBlockDataSync2(ctx context.Context, bd *BlockData) e
 	for {
 		select {
 		case <-ctx.Done():
+			logging.Console().WithFields(logrus.Fields{
+				"blockData": bd,
+				"duration":  start.Sub(time.Now()),
+			}).Error("failed to push block before context is done")
 			return errors.New("context is done")
 		case e := <-eCh:
 			if e.Data == byteutils.Bytes2Hex(bd.Hash()) {

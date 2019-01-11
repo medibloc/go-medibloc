@@ -300,18 +300,24 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 
 // GetDynasty returns all dynasty accounts
 func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest) (*rpcpb.Dynasty, error) {
-	var addresses []string
-
 	block := s.bm.TailBlock()
-	dynasty, err := block.State().GetDynasty()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to get dynasty.")
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
+	dynastySize := s.bm.Consensus().DynastySize()
+	dynasty := make([]common.Address, dynastySize)
+
+	var err error
+	for i := 0; i < dynastySize; i++ {
+		dynasty[i], err = block.State().DposState().GetProposer(i)
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("failed to get dynasty.")
+			return nil, status.Error(codes.Internal, ErrMsgInternalError)
+		}
 	}
-	for _, addr := range dynasty {
-		addresses = append(addresses, addr.Hex())
+
+	addresses := make([]string, dynastySize)
+	for i, addr := range dynasty {
+		addresses[i] = addr.Hex()
 	}
 	return &rpcpb.Dynasty{
 		Addresses: addresses,

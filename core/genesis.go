@@ -72,6 +72,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	if err != nil {
 		return nil, err
 	}
+	blockState.SetTimestamp(GenesisTimestamp)
+
 	genesisBlock := &Block{
 		BlockData: &BlockData{
 			BlockHeader: &BlockHeader{
@@ -79,7 +81,6 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 				chainID:    conf.Meta.ChainId,
 				coinbase:   GenesisCoinbase,
 				reward:     util.NewUint128FromUint(0),
-				timestamp:  GenesisTimestamp,
 				cpuPrice:   util.NewUint128FromUint(0),
 				cpuUsage:   0,
 				netPrice:   util.NewUint128FromUint(0),

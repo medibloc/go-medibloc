@@ -22,7 +22,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
-	"github.com/medibloc/go-medibloc/sync/pb"
+	syncpb "github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -279,7 +279,7 @@ func (d *download) handleBlockByHeightResponse(q net.Query, msg net.Message) err
 	if req.pb.BlockHeight != bd.Height() {
 		return ErrWrongHeightBlock
 	}
-	ctx, cancel := context.WithTimeout(d.ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(d.ctx, 60*time.Second)
 	defer cancel()
 
 	return d.bm.PushBlockDataSync2(ctx, bd)

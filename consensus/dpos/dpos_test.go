@@ -1,48 +1,41 @@
 package dpos_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
+	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestMakeNewDynasty(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
-	b := bb.Build()
-
-	dynasty, err := b.State().DposState().Dynasty()
-	require.NoError(t, err)
-	t.Log("genesis dynasty", dynasty)
-
-	bb = bb.Child().SignProposer()
-	b = bb.Build()
-
-	dynasty, err = b.State().DposState().Dynasty()
-	require.NoError(t, err)
-	t.Log("new dynasty", dynasty)
-
-}
-
 func TestChangeDynasty(t *testing.T) {
+	const (
+		pushTimeLimit = 10 * time.Second
+	)
+
 	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
+	bm := seed.Med.BlockManager()
+
 	newCandidate := seed.Config.TokenDist[testutil.DynastySize]
 	t.Log("new candidiate:", newCandidate.Addr.Hex())
 
 	bb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
 
+	// Become new candidate
 	bb = bb.ChildNextDynasty().
 		Tx().Type(coreState.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
 		Tx().Type(coreState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "newblockproducer"}).SignPair(newCandidate).Execute().
@@ -56,43 +49,44 @@ func TestChangeDynasty(t *testing.T) {
 	_, err = bb.Build().State().DposState().GetCandidate(cId)
 	require.NoError(t, err)
 
+	// Self vote
 	votePayload := new(transaction.VotePayload)
 	votePayload.CandidateIDs = append(votePayload.CandidateIDs, acc.CandidateID)
 	bb = bb.
 		Tx().Type(dposState.TxOpVote).
 		Payload(votePayload).SignPair(newCandidate).Execute().SignProposer()
-	block := bb.Build().BlockData
-	err = seed.Med.BlockManager().PushBlockData(block)
-	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10*time.Second)
-	require.NoError(t, err)
-	t.Log(seed.Tail().State().DposState().Dynasty())
+	bd := bb.Build().BlockData
 
-	ok, err := seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
-	require.NoError(t, err)
-	assert.False(t, ok)
+	ctx, cancel := context.WithTimeout(context.Background(), pushTimeLimit)
+	defer cancel()
+	require.NoError(t, bm.PushBlockDataSync2(ctx, bd))
+	require.NoError(t, seed.WaitUntilBlockAcceptedOnChain(bd.Hash(), 10*time.Second))
 
+	t.Log(dynasty(t, bm))
+	assert.False(t, inDynasty(t, bm, newCandidate.Addr)) // new candidate are going to be producer in next dynasty
+
+	// wait for next dynasty
 	bb = bb.ChildNextDynasty().SignProposer()
-	block = bb.Build().BlockData
-	err = seed.Med.BlockManager().PushBlockData(block)
-	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10*time.Second)
-	require.NoError(t, err)
-	t.Log(seed.Tail().State().DposState().Dynasty())
+	bd = bb.Build().BlockData
+	ctx, cancel = context.WithTimeout(context.Background(), pushTimeLimit)
+	defer cancel()
+	require.NoError(t, bm.PushBlockDataSync2(ctx, bd))
+	require.NoError(t, seed.WaitUntilBlockAcceptedOnChain(bd.Hash(), 10*time.Second))
 
-	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
-	require.NoError(t, err)
-	assert.True(t, ok)
+	t.Log(dynasty(t, bm))
+	assert.True(t, inDynasty(t, bm, newCandidate.Addr)) // new candidate become producer
 
+	// quit candidate
 	bb = bb.Child().
 		Tx().Type(dposState.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
 		SignProposer()
-	block = bb.Build().BlockData
-	err = seed.Med.BlockManager().PushBlockData(block)
-	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10*time.Second)
-	require.NoError(t, err)
+	bd = bb.Build().BlockData
+	ctx, cancel = context.WithTimeout(context.Background(), pushTimeLimit)
+	defer cancel()
+	require.NoError(t, bm.PushBlockDataSync2(ctx, bd))
+	require.NoError(t, seed.WaitUntilBlockAcceptedOnChain(bd.Hash(), 10*time.Second))
 
+	t.Log(dynasty(t, bm))
 	acc, err = bb.Build().State().GetAccount(newCandidate.Addr)
 	require.NoError(t, err)
 	require.Nil(t, acc.CandidateID)
@@ -100,18 +94,41 @@ func TestChangeDynasty(t *testing.T) {
 	_, err = seed.Tail().State().DposState().GetCandidate(cId)
 	require.Error(t, trie.ErrNotFound)
 
-	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
-	require.NoError(t, err)
-	assert.True(t, ok)
+	assert.True(t, inDynasty(t, bm, newCandidate.Addr)) // still in producer
 
 	bb = bb.ChildNextDynasty().SignProposer()
-	block = bb.Build().BlockData
-	err = seed.Med.BlockManager().PushBlockData(block)
-	require.NoError(t, err)
-	err = seed.WaitUntilBlockAcceptedOnChain(block.Hash(), 10*time.Second)
-	require.NoError(t, err)
+	bd = bb.Build().BlockData
+	ctx, cancel = context.WithTimeout(context.Background(), pushTimeLimit)
+	defer cancel()
+	require.NoError(t, bm.PushBlockDataSync2(ctx, bd))
 
-	ok, err = seed.Tail().State().DposState().InDynasty(newCandidate.Addr)
-	require.NoError(t, err)
-	assert.False(t, ok)
+	require.NoError(t, seed.WaitUntilBlockAcceptedOnChain(bd.Hash(), 10*time.Second))
+	assert.False(t, inDynasty(t, bm, newCandidate.Addr))
+}
+
+func dynasty(t *testing.T, bm *core.BlockManager) []common.Address {
+	block := bm.TailBlock()
+	dynastySize := bm.Consensus().DynastySize()
+	dynasty := make([]common.Address, dynastySize)
+
+	var err error
+	for i := 0; i < dynastySize; i++ {
+		dynasty[i], err = block.State().DposState().GetProposer(i)
+		require.NoError(t, err)
+	}
+	return dynasty
+}
+
+func inDynasty(t *testing.T, bm *core.BlockManager, address common.Address) bool {
+	block := bm.TailBlock()
+	dynastySize := bm.Consensus().DynastySize()
+
+	for i := 0; i < dynastySize; i++ {
+		proposer, err := block.State().DposState().GetProposer(i)
+		require.NoError(t, err)
+		if proposer.Equals(address) {
+			return true
+		}
+	}
+	return false
 }

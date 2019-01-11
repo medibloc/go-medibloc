@@ -22,7 +22,7 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -64,9 +64,16 @@ func TestNewGenesisBlock(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, acc.CandidateID)
 
-		inDynasty, err := child.State().DposState().InDynasty(addr)
-		require.NoError(t, err)
-		assert.True(t, inDynasty)
+		in := false
+		for i := 0; i < dynastySize; i++ {
+			addr, err := child.State().DposState().GetProposer(i)
+			require.NoError(t, err)
+			if addr.Equals(dynasty.Addr) {
+				in = true
+				break
+			}
+		}
+		assert.True(t, in)
 	}
 
 	accState := genesisBlock.State()

@@ -90,12 +90,6 @@ func (bs *BlockState) DposState() *dState.State {
 	return bs.dposState
 }
 
-// GetDynasty returns list of dynasty (only used in grpc)
-func (bs *BlockState) GetDynasty() ([]common.Address, error) { // TODO: deprecate ?
-
-	return bs.DposState().Dynasty()
-}
-
 //Price returns cpu price and net price
 func (bs *BlockState) Price() common.Price {
 	return common.Price{CPUPrice: bs.cpuPrice, NetPrice: bs.netPrice}
@@ -456,6 +450,9 @@ func (bs *BlockState) AcceptTransaction(tx *coreState.Transaction) error {
 //SetMintDynastyState set mint dys
 func (bs *BlockState) SetMintDynastyState(parentState *BlockState, consensus Consensus) error {
 	mintDynasty, err := consensus.MakeMintDynasty(bs.timestamp, parentState)
+	if err == ErrSameDynasty {
+		return nil // dynasty state is not changed
+	}
 	if err != nil {
 		return err
 	}

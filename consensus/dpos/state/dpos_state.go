@@ -82,6 +82,22 @@ func (s *State) CandidateState() *trie.Batch {
 	return s.candidateState
 }
 
+//GetProposer returns proposer address of index
+func (s *State) GetProposer(index int) (common.Address, error) {
+	ds := s.dynastyState
+	b, err := ds.Get(byteutils.FromInt32(int32(index)))
+	if err != nil {
+		return common.Address{}, err
+	}
+	return common.BytesToAddress(b)
+}
+
+//PutProposer sets proposer address to index
+func (s *State) PutProposer(index int, addr common.Address) error {
+	ds := s.dynastyState
+	return ds.Put(byteutils.FromInt32(int32(index)), addr.Bytes())
+}
+
 //DynastyState returns dynasty state
 func (s *State) DynastyState() *trie.Batch {
 	return s.dynastyState
@@ -239,89 +255,11 @@ func (s *State) SortByVotePower() ([]common.Address, error) {
 //SetDynasty set dynastyState by using dynasty slice
 func (s *State) SetDynasty(dynasty []common.Address) error {
 	for i, addr := range dynasty {
-		if err := s.dynastyState.PutData(byteutils.FromInt32(int32(i)), &addr); err != nil {
+		if err := s.PutProposer(i, addr); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-//InDynasty returns true if addr is in dynastyState
-func (s *State) InDynasty(addr common.Address) (bool, error) {
-	ds := s.dynastyState
-	addrBytes := addr.Bytes()
-
-	iter, err := ds.Iterator(nil)
-	if err != nil {
-		return false, err
-	}
-
-	exist, err := iter.Next()
-	if err != nil {
-		return false, err
-	}
-	for exist {
-		if byteutils.Equal(iter.Value(), addrBytes) {
-			return true, nil
-		}
-		exist, err = iter.Next()
-		if err != nil {
-			return false, err
-		}
-	}
-	return false, nil
-}
-
-// Candidates returns slice of addresses in candidates
-func (s *State) Candidates() ([]common.Address, error) {
-	cs := s.candidateState
-
-	candidates := make([]common.Address, 0)
-	iter, err := cs.Iterator(nil)
-	if err != nil {
-		return nil, err
-	}
-	exist, err := iter.Next()
-	if err != nil {
-		return nil, err
-	}
-	for exist {
-		addr, err := common.BytesToAddress(iter.Key())
-		if err != nil {
-			return nil, err
-		}
-		candidates = append(candidates, addr)
-		exist, err = iter.Next()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return candidates, nil
-}
-
-// Dynasty returns slice of addresses in dynasty
-func (s *State) Dynasty() ([]common.Address, error) {
-	ds := s.dynastyState
-
-	dynasty := make([]common.Address, 0)
-	iter, err := ds.Iterator(nil)
-	if err != nil {
-		return nil, err
-	}
-	exist, err := iter.Next()
-	for exist {
-		if err != nil {
-			return nil, err
-		}
-		addr, err := common.BytesToAddress(iter.Value())
-		if err != nil {
-			return nil, err
-		}
-		dynasty = append(dynasty, addr)
-
-		exist, err = iter.Next()
-	}
-	return dynasty, nil
 }
 
 //AddVotePowerToCandidate add vote power to candidate

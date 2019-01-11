@@ -75,7 +75,6 @@ var (
 	ErrNotBatching                     = errors.New("not batching")
 	ErrFailedValidateHeightAndHeight   = errors.New("failed to verify height and timestamp by lib")
 	ErrCannotRemoveBlockOnCanonical    = errors.New("cannot remove block on canonical chain")
-	ErrCannotExecuteOnParentBlock      = errors.New("cannot execute on parent block")
 	ErrDuplicatedBlock                 = errors.New("duplicated block")
 	ErrDuplicatedTransaction           = errors.New("duplicated transaction")
 	ErrGenesisNotMatch                 = errors.New("genesis block does not match")
@@ -119,6 +118,7 @@ var (
 	ErrCannotFindParentBlockOnTheChain = errors.New("cannot find parent block on the chain")
 	ErrForkedBeforeLIB                 = errors.New("block is forked before LIB")
 	ErrInvalidBlock                    = errors.New("invalid block")
+	ErrSameDynasty                     = errors.New("new block is in same dynasty with parent block")
 	ErrTxTypeInvalid                   = errors.New("invalid transaction type")
 )
 
