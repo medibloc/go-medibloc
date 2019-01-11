@@ -867,7 +867,6 @@ func (b *Block) ExecuteTransaction(exeTx *transaction.ExecutableTx) (*coreState.
 
 // VerifyExecution executes txs in block and verify root hashes using block header
 func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
-
 	err := b.BeginBatch()
 	if err != nil {
 		return err

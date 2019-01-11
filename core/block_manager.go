@@ -120,7 +120,7 @@ func (bm *BlockManager) InjectTransactionManager(tm *TransactionManager) {
 	bm.tm = tm
 }
 
-//InjectSyncService inject sync service generated from medlet to block manager
+// InjectSyncService inject sync service generated from medlet to block manager
 func (bm *BlockManager) InjectSyncService(syncService SyncService) {
 	bm.syncService = syncService
 }
@@ -379,7 +379,7 @@ func (bm *BlockManager) LIB() *Block {
 	return bm.bc.LIB()
 }
 
-//ForceLIB set LIB force
+// ForceLIB set LIB force
 func (bm *BlockManager) ForceLIB(b *Block) error {
 	return bm.bc.SetLIB(b)
 }
@@ -595,11 +595,10 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 	}
 
 	// revert block
-	pushTxs := make([]*coreState.Transaction, 0)
 	for _, block := range revertBlock {
 		for _, tx := range block.Transactions() {
 			if _, ok := exclusiveFilter[tx]; !ok {
-				pushTxs = append(pushTxs, tx)
+				bm.tm.Push(tx)
 			}
 		}
 		if bm.bc.eventEmitter != nil {
@@ -607,7 +606,6 @@ func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []
 		}
 		logging.Console().Warn("A block is reverted.")
 	}
-	bm.tm.PushAndExclusiveBroadcast(pushTxs...)
 	return nil
 }
 

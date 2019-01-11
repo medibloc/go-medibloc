@@ -164,3 +164,15 @@ type Transaction interface {
 	Payer() common.Address
 	Receipt() *cState.Receipt
 }
+
+// ExecutableTx interface for execute transaction on state
+type ExecutableTx interface {
+	Execute(b *Block) error
+	Bandwidth() (cpuUsage uint64, netUsage uint64)
+}
+
+// TransactionPayload is an interface of transaction payload.
+type TransactionPayload interface {
+	FromBytes(b []byte) error
+	ToBytes() ([]byte, error)
+}

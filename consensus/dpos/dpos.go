@@ -431,6 +431,8 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		return nil, err
 	}
 
+	d.tm.ResetTransactionSelector()
+
 	// Execute and include transactions until it's deadline
 	for deadline.Sub(time.Now()) > 0 {
 		logging.WithFields(logrus.Fields{
@@ -438,12 +440,27 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}).Debug("Make block is in progress")
 
 		// Get transaction from transaction pool
-		exeTx := d.tm.Pop()
+		exeTx := d.tm.Next()
 		if exeTx == nil {
 			logging.Info("No more transactions in block pool.")
 			time.Sleep(10 * time.Millisecond)
 			continue
 		}
+
+		// TODO Refactor readability
+		acc, err := block.State().GetAccount(transaction.From())
+		if err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to get account.")
+			return nil, err
+		}
+
+		if acc.Nonce+1 != transaction.Nonce() {
+			d.tm.SetRequiredNonce(transaction.From(), acc.Nonce+1)
+			continue
+		}
+		d.tm.SetRequiredNonce(transaction.From(), acc.Nonce+2)
 
 		if err := block.BeginBatch(); err != nil {
 			return nil, err
@@ -458,8 +475,8 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				}).Error("Failed to rollback new block.")
 				return nil, err
 			}
+			// TODO Refactor processing retryable txs.
 			if isRetryable(err) {
-				d.tm.PushAndExclusiveBroadcast(exeTx.Transaction)
 				continue
 			}
 			if receipt == nil {

@@ -37,6 +37,26 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	core.InjectTxFactory(DefaultTxFactory)
+}
+
+// DefaultTxFactory is default map of transactions.
+var DefaultTxFactory = core.MapTxFactory{
+	core.TxOpTransfer:            core.NewTransferTx,
+	core.TxOpAddRecord:           core.NewAddRecordTx,
+	core.TxOpStake:               core.NewStakeTx,
+	core.TxOpUnstake:             core.NewUnstakeTx,
+	core.TxOpAddCertification:    core.NewAddCertificationTx,
+	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
+	core.TxOpRegisterAlias:       core.NewRegisterAliasTx,
+	core.TxOpDeregisterAlias:     core.NewDeregisterAliasTx,
+
+	dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
+	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
+	dpos.TxOpVote:            dpos.NewVoteTx,
+}
+
 var (
 	metricsMedstartGauge = metrics.GetOrRegisterGauge("med.start", nil)
 )

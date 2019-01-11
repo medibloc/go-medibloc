@@ -54,7 +54,7 @@ func Points(t *testing.T, tx *coreState.Transaction, b *core.Block) *util.Uint12
 	return points
 }
 
-//FloatToUint128 covert float to uint128 (precision is only 1e-03)
+// FloatToUint128 covert float to uint128 (precision is only 1e-03)
 func FloatToUint128(t *testing.T, med float64) *util.Uint128 {
 	value, err := unitMed.MulWithRat(big.NewRat(int64(med*1000), 1000))
 	require.NoError(t, err)
