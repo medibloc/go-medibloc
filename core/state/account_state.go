@@ -75,7 +75,11 @@ func (as *AccountState) GetAccount(addr common.Address, timestamp int64) (*Accou
 		return nil, err
 	}
 
-	if err := acc.UpdatePoints(timestamp); err != nil {
+	if err := acc.updatePoints(timestamp); err != nil {
+		return nil, err
+	}
+
+	if err := acc.updateUnstaking(timestamp); err != nil {
 		return nil, err
 	}
 

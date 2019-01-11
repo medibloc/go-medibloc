@@ -372,22 +372,6 @@ func (bs *BlockState) checkBandwidthLimit(bandwidth *common.Bandwidth) error {
 	return nil
 }
 
-func (bs *BlockState) updateUnstaking(addr common.Address) error {
-	acc, err := bs.GetAccount(addr)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to get account.")
-		return err
-	}
-
-	if err := acc.UpdateUnstaking(bs.timestamp); err != nil {
-		return err
-	}
-
-	return bs.PutAccount(acc)
-}
-
 //PayReward add reward to coinbase and update reward and supply
 func (bs *BlockState) PayReward(coinbase common.Address, parentSupply *util.Uint128) error {
 	reward, err := calcMintReward(parentSupply)

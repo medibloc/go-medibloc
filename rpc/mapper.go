@@ -23,17 +23,9 @@ import (
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func coreAccount2rpcAccount(account *coreState.Account, curTs int64, address string) (*rpcpb.Account, error) {
-	if err := account.UpdatePoints(curTs); err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateBandwidth)
-	}
-	if err := account.UpdateUnstaking(curTs); err != nil {
-		return nil, status.Error(codes.Internal, ErrMsgFailedToUpdateUnstaking)
-	}
 	aliasBytes, err := account.GetData("", []byte(coreState.AliasKey))
 	if err != nil && err != core.ErrNotFound {
 		return nil, err

@@ -831,21 +831,6 @@ func (b *Block) ExecuteTransaction(exeTx *transaction.ExecutableTx) (*coreState.
 	// Part 2 : Execute transaction and affect state trie(store)
 	// Even if transaction fails, still consume account's bandwidth
 
-	// Update payer's bandwidth and transaction.from's unstaking status before execute transaction
-	//if err := bs.PutAccount(payer); err != nil {
-	//	logging.Console().WithFields(logrus.Fields{
-	//		"err": err,
-	//	}).Warn("Failed to regenerate bandwidth.")
-	//	return nil, err
-	//}
-	err = bs.updateUnstaking(exeTx.From())
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Warn("Failed to update staking.")
-		return nil, err
-	}
-
 	receipt := new(coreState.Receipt)
 	receipt.SetExecuted(false)
 	receipt.SetTimestamp(bs.timestamp)

@@ -188,7 +188,7 @@ func (acc *Account) PutData(prefix string, key []byte, value []byte) error {
 }
 
 // UpdatePoints update points
-func (acc *Account) UpdatePoints(timestamp int64) error {
+func (acc *Account) updatePoints(timestamp int64) error {
 	if acc.LastPointsTs == timestamp {
 		return nil
 	}
@@ -204,8 +204,8 @@ func (acc *Account) UpdatePoints(timestamp int64) error {
 	return nil
 }
 
-// UpdateUnstaking update unstaking and balance
-func (acc *Account) UpdateUnstaking(timestamp int64) error {
+// updateUnstaking update unstaking and balance
+func (acc *Account) updateUnstaking(timestamp int64) error {
 	var err error
 	// Unstaking action does not exist
 	if acc.LastUnstakingTs == 0 {
