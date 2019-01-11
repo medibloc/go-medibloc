@@ -22,7 +22,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
-	syncpb "github.com/medibloc/go-medibloc/sync/pb"
+	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -140,10 +140,12 @@ func (d *download) findBaseBlock() error {
 				ctx, cancel := context.WithTimeout(d.ctx, ss.responseTimeLimit)
 				defer cancel()
 				ok, errs := d.service.netService.RequestAndResponse(ctx, query, d.handleFindBaseResponse, rf)
-				for err := range errs {
-					logging.Console().WithFields(logrus.Fields{
-						"err": err,
-					}).Warning("error occurred during find base block request")
+				for _, err := range errs {
+					if err != nil {
+						logging.Console().WithFields(logrus.Fields{
+							"err": err,
+						}).Warning("error occurred during find base block request")
+					}
 				}
 				return ok
 			}()
@@ -233,10 +235,13 @@ func (d *download) downloadBlockByHeight(ctx context.Context, errCh chan<- error
 			ctx, cancel := context.WithTimeout(ctx, ss.responseTimeLimit)
 			defer cancel()
 			ok, errs := d.service.netService.RequestAndResponse(ctx, query, d.handleBlockByHeightResponse, rf)
-			for err := range errs {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Warning("error occurred during find base block request")
+			for _, err := range errs {
+				if err != nil {
+					logging.Console().WithFields(logrus.Fields{
+						"height": height,
+						"err":    err,
+					}).Warning("error occurred during download Block by Height request")
+				}
 			}
 			return ok
 		}()
