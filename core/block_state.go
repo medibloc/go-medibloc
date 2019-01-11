@@ -326,7 +326,7 @@ func (bs *BlockState) SubVotePowerToCandidate(candidateID []byte, amount *util.U
 }
 
 // checkNonce compare given transaction's nonce with expected account's nonce
-func (bs *BlockState) checkNonce(tx Transaction) error {
+func (bs *BlockState) checkNonce(tx *coreState.Transaction) error {
 	fromAcc, err := bs.GetAccount(tx.From())
 	if err != nil {
 		return err

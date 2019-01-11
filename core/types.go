@@ -21,7 +21,6 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
-	cState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -151,18 +150,8 @@ type SyncService interface {
 	IsDownloadActivated() bool
 }
 
-//Transaction is an interface for transaction
-type Transaction interface {
-	Hash() []byte
-	TxType() string
-	Value() *util.Uint128
-	From() common.Address
-	To() common.Address
-	Nonce() uint64
-	ChainID() uint32
-	Payload() []byte
-	Payer() common.Address
-	Receipt() *cState.Receipt
+type Canonical interface {
+	TailBlock() *Block
 }
 
 // ExecutableTx interface for execute transaction on state

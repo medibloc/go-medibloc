@@ -23,6 +23,8 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -72,7 +74,7 @@ func (tm *TransactionManager) Setup(canon Canonical, ns net.Service) {
 }
 
 // InjectEmitter inject emitter generated from medlet to transaction manager
-func (tm *TransactionManager) InjectEmitter(emitter *EventEmitter) {
+func (tm *TransactionManager) InjectEmitter(emitter *event.Emitter) {
 	// TODO Event Emitter
 	// tm.pendingPool.SetEventEmitter(emitter)
 }
@@ -98,7 +100,7 @@ func (tm *TransactionManager) registerInNetwork() {
 }
 
 // Push pushes a transaction.
-func (tm *TransactionManager) Push(tx *Transaction) error {
+func (tm *TransactionManager) Push(tx *corestate.Transaction) error {
 	txc, err := NewTxContext(tx)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -111,7 +113,7 @@ func (tm *TransactionManager) Push(tx *Transaction) error {
 }
 
 // PushAndBroadcast pushes a transaction and broadcast when transaction transits to pending pool.
-func (tm *TransactionManager) PushAndBroadcast(tx *Transaction) error {
+func (tm *TransactionManager) PushAndBroadcast(tx *corestate.Transaction) error {
 	txc, err := NewTxContextWithBroadcast(tx)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -189,7 +191,7 @@ func (tm *TransactionManager) ResetTransactionSelector() {
 }
 
 // Next returns next transaction from transaction selector.
-func (tm *TransactionManager) Next() *Transaction {
+func (tm *TransactionManager) Next() *corestate.Transaction {
 	tx := tm.pendingPool.Next()
 	if tx != nil {
 		return nil
@@ -203,7 +205,7 @@ func (tm *TransactionManager) SetRequiredNonce(addr common.Address, nonce uint64
 }
 
 // Get transaction from transaction pool.
-func (tm *TransactionManager) Get(hash []byte) *Transaction {
+func (tm *TransactionManager) Get(hash []byte) *corestate.Transaction {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
 
@@ -265,7 +267,7 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 // }
 
 // Broadcast broadcasts transaction to network.
-func (tm *TransactionManager) Broadcast(tx *Transaction) error {
+func (tm *TransactionManager) Broadcast(tx *corestate.Transaction) error {
 	b, err := tx.ToBytes()
 	if err != nil {
 		return err
@@ -291,7 +293,7 @@ func (tm *TransactionManager) loop() {
 	}
 }
 
-func txFromNetMsg(msg net.Message) (*Transaction, error) {
+func txFromNetMsg(msg net.Message) (*corestate.Transaction, error) {
 	if msg.MessageType() != MessageTypeNewTx {
 		logging.WithFields(logrus.Fields{
 			"type": msg.MessageType(),
@@ -300,7 +302,7 @@ func txFromNetMsg(msg net.Message) (*Transaction, error) {
 		return nil, errors.New("invalid message type")
 	}
 
-	tx := new(Transaction)
+	tx := new(corestate.Transaction)
 	pbTx := new(corepb.Transaction)
 	if err := proto.Unmarshal(msg.Data(), pbTx); err != nil {
 		logging.WithFields(logrus.Fields{

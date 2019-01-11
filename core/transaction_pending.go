@@ -8,6 +8,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/roundrobin"
+	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -48,7 +49,7 @@ func NewPendingTransactionPool() *PendingTransactionPool {
 }
 
 // PushOrReplace pushes or replaces a transaction.
-func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *Account, price Price) error {
+func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *corestate.Account, price common.Price) error {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -59,7 +60,7 @@ func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *Account, p
 	return pool.push(tx, acc, price)
 }
 
-func (pool *PendingTransactionPool) push(tx *TxContext, acc *Account, price Price) error {
+func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, price common.Price) error {
 	accFrom, exist := pool.from[tx.From()]
 	if !exist {
 		accFrom = newAccountFrom(tx.From())
@@ -87,7 +88,7 @@ func (pool *PendingTransactionPool) push(tx *TxContext, acc *Account, price Pric
 	return nil
 }
 
-func (pool *PendingTransactionPool) replace(tx *TxContext, acc *Account, price Price) error {
+func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Account, price common.Price) error {
 	accFrom, exist := pool.from[tx.From()]
 	if !exist {
 		accFrom = newAccountFrom(tx.From())
@@ -126,7 +127,7 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, acc *Account, price P
 }
 
 // Get gets a transaction.
-func (pool *PendingTransactionPool) Get(hash []byte) *Transaction {
+func (pool *PendingTransactionPool) Get(hash []byte) *corestate.Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 	txc, exist := pool.all[byteutils.Bytes2Hex(hash)]
@@ -168,7 +169,7 @@ func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit u
 }
 
 // NonceUpperLimit returns the maximum nonce of transactions that can be accepted in the pool.
-func (pool *PendingTransactionPool) NonceUpperLimit(acc *Account) uint64 {
+func (pool *PendingTransactionPool) NonceUpperLimit(acc *corestate.Account) uint64 {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -186,7 +187,7 @@ func (pool *PendingTransactionPool) NonceUpperLimit(acc *Account) uint64 {
 }
 
 // Next returns a transaction to process in round-robin order
-func (pool *PendingTransactionPool) Next() *Transaction {
+func (pool *PendingTransactionPool) Next() *corestate.Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -336,14 +337,14 @@ func (af *AccountFrom) peekFirst() *TxContext {
 // AccountPayer manages payers bandwidth.
 type AccountPayer struct {
 	addr          common.Address
-	bw            *Bandwidth
+	bw            *common.Bandwidth
 	addrNonceToTx map[string]*TxContext
 }
 
 func newAccountPayer(payer common.Address) *AccountPayer {
 	return &AccountPayer{
 		addr:          payer,
-		bw:            NewBandwidth(0, 0),
+		bw:            common.NewBandwidth(0, 0),
 		addrNonceToTx: make(map[string]*TxContext),
 	}
 }
@@ -352,15 +353,15 @@ func (ap *AccountPayer) size() int {
 	return len(ap.addrNonceToTx)
 }
 
-func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, price Price) error {
+func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Account, price common.Price) error {
 	bw := ap.bw.Clone()
 
 	key := addrNonceKey(tx)
 	old, exist := ap.addrNonceToTx[key]
 	if exist {
-		bw.Sub(NewBandwidth(old.exec.Bandwidth()))
+		bw.Sub(old.exec.Bandwidth())
 	}
-	bw.Add(NewBandwidth(tx.exec.Bandwidth()))
+	bw.Add(tx.exec.Bandwidth())
 	points, err := bw.CalcPoints(price)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -369,13 +370,13 @@ func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *Account, price P
 		return err
 	}
 
-	// TODO Refactor when merging
-	err = acc.UpdatePoints(time.Now().Unix())
+	avail := acc.Points
+	modified, err := tx.exec.PointModifier(avail)
 	if err != nil {
 		return err
 	}
-	if err := acc.checkAccountPoints(tx.Transaction, points); err != nil {
-		return err
+	if modified.Cmp(points) < 0 {
+		return corestate.ErrPointNotEnough
 	}
 
 	return nil
@@ -385,9 +386,9 @@ func (ap *AccountPayer) set(tx *TxContext) (evicted *TxContext) {
 	key := addrNonceKey(tx)
 	old, exist := ap.addrNonceToTx[key]
 	if exist {
-		ap.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
+		ap.bw.Sub(old.exec.Bandwidth())
 	}
-	ap.bw.Add(NewBandwidth(tx.exec.Bandwidth()))
+	ap.bw.Add(tx.exec.Bandwidth())
 	ap.addrNonceToTx[key] = tx
 	return old
 }
@@ -398,7 +399,7 @@ func (ap *AccountPayer) remove(tx *TxContext) {
 	if !exist {
 		return
 	}
-	ap.bw.Sub(NewBandwidth(old.exec.Bandwidth()))
+	ap.bw.Sub(old.exec.Bandwidth())
 	delete(ap.addrNonceToTx, key)
 }
 
