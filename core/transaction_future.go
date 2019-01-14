@@ -218,8 +218,8 @@ func (b *bucket) del(nonce uint64) (deleted *TxContext) {
 // minNonce assigns a sequence by nonce to the transaction.
 type minNonce struct{ *TxContext }
 
-func (tx *minNonce) Less(o interface{}) bool { return tx.nonce < o.(*minNonce).nonce }
+func (tx *minNonce) Less(o interface{}) bool { return tx.Nonce() < o.(*minNonce).Nonce() }
 
 type maxNonce struct{ *TxContext }
 
-func (tx *maxNonce) Less(o interface{}) bool { return tx.nonce > o.(*maxNonce).nonce }
+func (tx *maxNonce) Less(o interface{}) bool { return tx.Nonce() > o.(*maxNonce).Nonce() }
