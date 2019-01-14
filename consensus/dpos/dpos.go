@@ -440,15 +440,15 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}).Debug("Make block is in progress")
 
 		// Get transaction from transaction pool
-		exeTx := d.tm.Next()
-		if exeTx == nil {
+		tx := d.tm.Next()
+		if tx == nil {
 			logging.Info("No more transactions in block pool.")
 			time.Sleep(10 * time.Millisecond)
 			continue
 		}
 
 		// TODO Refactor readability
-		acc, err := block.State().GetAccount(transaction.From())
+		acc, err := block.State().GetAccount(tx.From())
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
@@ -456,18 +456,18 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			return nil, err
 		}
 
-		if acc.Nonce+1 != transaction.Nonce() {
-			d.tm.SetRequiredNonce(transaction.From(), acc.Nonce+1)
+		if acc.Nonce+1 != tx.Nonce() {
+			d.tm.SetRequiredNonce(tx.From(), acc.Nonce+1)
 			continue
 		}
-		d.tm.SetRequiredNonce(transaction.From(), acc.Nonce+2)
+		d.tm.SetRequiredNonce(tx.From(), acc.Nonce+2)
 
 		if err := block.BeginBatch(); err != nil {
 			return nil, err
 		}
 
 		// Execute transaction and change states
-		receipt, err := block.ExecuteTransaction(exeTx)
+		receipt, err := block.ExecuteTransaction(tx)
 		if err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
@@ -481,10 +481,10 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			}
 			if receipt == nil {
 				logging.Console().WithFields(logrus.Fields{
-					"transaction": exeTx.Hash,
+					"transaction": tx.Hash(),
 					"err":         err,
 				}).Info("failed to execute transaction")
-				exeTx.TriggerEvent(d.eventEmitter, event.TypeAccountTransactionDeleted)
+				tx.TriggerEvent(d.eventEmitter, event.TypeAccountTransactionDeleted)
 				continue
 			}
 			if err := block.BeginBatch(); err != nil {
@@ -493,7 +493,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 				}).Error("Failed to begin batch.")
 				return nil, err
 			}
-			if err := includeTransaction(block, exeTx.Transaction, receipt); err != nil {
+			if err := includeTransaction(block, tx, receipt); err != nil {
 				if err := block.RollBack(); err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -511,7 +511,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			continue
 		}
 
-		if err := includeTransaction(block, exeTx.Transaction, receipt); err != nil {
+		if err := includeTransaction(block, tx, receipt); err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
 					"err": err,

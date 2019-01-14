@@ -3,7 +3,6 @@ package transaction
 import (
 	"errors"
 
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -56,40 +55,14 @@ const (
 	AliasCollateralMinimum = "1000000000000000000"
 )
 
-//constants related to dpos
+// constants related to dpos
 const (
 	CandidateCollateralMinimum = "1000000000000000000"
 	VoteMaximum                = 15
 )
 
-type blockState interface {
-	Timestamp() int64
-	GetAccount(address common.Address) (*coreState.Account, error)
-	PutAccount(acc *coreState.Account) error
-	GetAccountByAlias(alias string) (*coreState.Account, error)
-	PutAccountAlias(alias string, addr common.Address) error
-	DelAccountAlias(alias string, addr common.Address) error
-	DposState() *dposState.State
-}
-
-//Executable interface for execute transaction on state
-type Executable interface {
-	Execute(bs blockState) error
-	Bandwidth() *common.Bandwidth
-}
-
-//TxFactory is a map for tx.TxType() to NewTxFunc
-type TxFactory map[string]func(transaction *coreState.Transaction) (*ExecutableTx, error)
-
-// Payload is an interface of transaction payload.
-type Payload interface {
-	FromBytes(b []byte) error
-	ToBytes() ([]byte, error)
-}
-
 // Errors related to execute transaction
 var (
-	ErrTxTypeInvalid            = errors.New("invalid transaction type")
 	ErrTooLargePayload          = errors.New("too large payload")
 	ErrVoidTransaction          = errors.New("nothing to do with transaction")
 	ErrInvalidAddress           = errors.New("invalid address")
@@ -126,3 +99,24 @@ var (
 	ErrNotCandidate                 = errors.New("account is not a candidate")
 	ErrNotEnoughCandidateCollateral = errors.New("candidate collateral is not enough")
 )
+
+// Payload is an interface of transaction payload.
+type Payload interface {
+	FromBytes(b []byte) error
+	ToBytes() ([]byte, error)
+}
+
+// BytesToTransactionPayload convert byte slice to Payload
+func BytesToTransactionPayload(bytes []byte, payload Payload) error {
+	if err := payload.FromBytes(bytes); err != nil {
+		return ErrFailedToUnmarshalPayload
+	}
+	b, err := payload.ToBytes()
+	if err != nil {
+		return ErrFailedToMarshalPayload
+	}
+	if !byteutils.Equal(bytes, b) {
+		return ErrCheckPayloadIntegrity
+	}
+	return nil
+}

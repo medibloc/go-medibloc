@@ -119,6 +119,7 @@ var (
 	ErrCannotFindParentBlockOnTheChain = errors.New("cannot find parent block on the chain")
 	ErrForkedBeforeLIB                 = errors.New("block is forked before LIB")
 	ErrInvalidBlock                    = errors.New("invalid block")
+	ErrTxTypeInvalid                   = errors.New("invalid transaction type")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -159,10 +160,4 @@ type ExecutableTx interface {
 	Execute(b *BlockState) error
 	Bandwidth() *common.Bandwidth
 	PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error)
-}
-
-// TransactionPayload is an interface of transaction payload.
-type TransactionPayload interface {
-	FromBytes(b []byte) error
-	ToBytes() ([]byte, error)
 }

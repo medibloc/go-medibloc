@@ -23,7 +23,6 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -791,7 +790,7 @@ func HashBlockData(bd *BlockData) ([]byte, error) {
 }
 
 // ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(exeTx *transaction.ExecutableTx) (*coreState.Receipt, error) {
+func (b *Block) ExecuteTransaction(tx *coreState.Transaction) (*coreState.Receipt, error) {
 	// Executing process consists of two major parts
 	// Part 1 : Verify transaction and not affect state trie
 	// Part 2 : Execute transaction and affect state trie(store)
@@ -801,7 +800,12 @@ func (b *Block) ExecuteTransaction(exeTx *transaction.ExecutableTx) (*coreState.
 	bs := b.State()
 
 	// STEP 1. Check nonce
-	if err := bs.checkNonce(exeTx); err != nil {
+	if err := bs.checkNonce(tx); err != nil {
+		return nil, err
+	}
+
+	exeTx, err := TxConv(tx)
+	if err != nil {
 		return nil, err
 	}
 
@@ -814,18 +818,23 @@ func (b *Block) ExecuteTransaction(exeTx *transaction.ExecutableTx) (*coreState.
 	}
 
 	// STEP 5. Check payer's bandwidth
-	payer, err := bs.GetAccount(exeTx.Payer())
+	payer, err := bs.GetAccount(tx.Payer())
 	if err != nil {
 		return nil, err
 	}
 
-	points, err := exeTx.CalcPoints(bs.Price())
+	points, err := bw.CalcPoints(bs.Price())
 	if err != nil {
 		return nil, err
 	}
 
-	if err := exeTx.CheckAccountPoints(payer, bs.Price(), nil); err != nil {
+	avail := payer.Points
+	modified, err := exeTx.PointModifier(avail)
+	if err != nil {
 		return nil, err
+	}
+	if modified.Cmp(points) < 0 {
+		return nil, coreState.ErrPointNotEnough
 	}
 
 	// Part 2 : Execute transaction and affect state trie(store)
@@ -930,12 +939,7 @@ func (b *Block) Execute(tx *coreState.Transaction) error {
 		return err
 	}
 
-	exeTx, err := transaction.NewExecutableTx(tx)
-	if err != nil {
-		return err
-	}
-
-	receipt, err := b.ExecuteTransaction(exeTx)
+	receipt, err := b.ExecuteTransaction(tx)
 	if receipt == nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,

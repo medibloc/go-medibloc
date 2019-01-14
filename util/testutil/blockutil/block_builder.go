@@ -25,7 +25,6 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -276,9 +275,7 @@ func (bb *BlockBuilder) AddTx(tx *coreState.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	exeTx, err := transaction.NewExecutableTx(tx)
-	require.NoError(n.t, err)
-	receipt, err := n.B.ExecuteTransaction(exeTx)
+	receipt, err := n.B.ExecuteTransaction(tx)
 	require.NoError(n.t, err)
 	tx.SetReceipt(receipt)
 	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
@@ -292,13 +289,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
 func (bb *BlockBuilder) ExecuteTxErr(tx *coreState.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.BeginBatch())
-	exeTx, err := transaction.NewExecutableTx(tx)
-	if err != nil {
-		require.Equal(n.t, expected, err)
-		require.NoError(n.t, n.B.RollBack())
-		return n
-	}
-	receipt, err := n.B.ExecuteTransaction(exeTx)
+	receipt, err := n.B.ExecuteTransaction(tx)
 	require.Equal(n.t, expected, err)
 	require.NoError(n.t, n.B.RollBack())
 	if receipt == nil {
