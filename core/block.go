@@ -513,8 +513,9 @@ func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus) (*
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to flush state")
+		return nil, err
 	}
-	return block, err
+	return block, nil
 }
 
 // GetExecutedBlock converts BlockData instance to an already executed Block instance
