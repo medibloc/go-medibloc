@@ -7,18 +7,6 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 )
 
-// transaction types
-const (
-	TxOpTransfer            = "transfer"
-	TxOpAddRecord           = "add_record"
-	TxOpStake               = "stake"
-	TxOpUnstake             = "unstake"
-	TxOpAddCertification    = "add_certification"
-	TxOpRevokeCertification = "revoke_certification"
-	TxOpRegisterAlias       = "register_alias"
-	TxOpDeregisterAlias     = "deregister_alias"
-)
-
 // constants
 const (
 	UnstakingWaitDuration    = 7 * 24 * time.Hour

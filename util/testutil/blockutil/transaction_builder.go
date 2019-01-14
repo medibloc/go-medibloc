@@ -196,7 +196,7 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 
 	from := n.bb.KeyPairs[0]
 	to := testutil.NewAddrKeyPair(n.t)
-	return n.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
+	return n.Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
 }
 
 //RandomTxs generate random transactions
@@ -217,7 +217,7 @@ func (tb *TxBuilder) RandomTxs(n int) []*coreState.Transaction {
 //StakeTx generate stake Tx
 func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
-	return n.Type(coreState.TxOpStake).Value(med).SignPair(pair)
+	return n.Type(transaction.TxOpStake).Value(med).SignPair(pair)
 }
 
 //Build build transaction

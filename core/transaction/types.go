@@ -5,9 +5,44 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
-	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
+
+// transaction types
+const (
+	TxOpTransfer            = "transfer"
+	TxOpAddRecord           = "add_record"
+	TxOpStake               = "stake"
+	TxOpUnstake             = "unstake"
+	TxOpAddCertification    = "add_certification"
+	TxOpRevokeCertification = "revoke_certification"
+	TxOpRegisterAlias       = "register_alias"
+	TxOpDeregisterAlias     = "deregister_alias"
+)
+
+// Transaction's related to dpos
+const (
+	TxOpBecomeCandidate = "become_candidate"
+	TxOpQuitCandidacy   = "quit_candidacy"
+	TxOpVote            = "vote"
+)
+
+// DefaultTxMap is default map of transactions.
+var DefaultTxMap = core.MapTxFactory{
+	TxOpTransfer:            NewTransferTx,
+	TxOpAddRecord:           NewAddRecordTx,
+	TxOpStake:               NewStakeTx,
+	TxOpUnstake:             NewUnstakeTx,
+	TxOpAddCertification:    NewAddCertificationTx,
+	TxOpRevokeCertification: NewRevokeCertificationTx,
+	TxOpRegisterAlias:       NewRegisterAliasTx,
+	TxOpDeregisterAlias:     NewDeregisterAliasTx,
+
+	TxOpBecomeCandidate: NewBecomeCandidateTx,
+	TxOpQuitCandidacy:   NewQuitCandidateTx,
+	TxOpVote:            NewVoteTx,
+}
 
 // constants for staking and regeneration
 const (

@@ -26,6 +26,7 @@ import (
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -38,23 +39,7 @@ import (
 )
 
 func init() {
-	core.InjectTxFactory(DefaultTxFactory)
-}
-
-// DefaultTxFactory is default map of transactions.
-var DefaultTxFactory = core.MapTxFactory{
-	core.TxOpTransfer:            core.NewTransferTx,
-	core.TxOpAddRecord:           core.NewAddRecordTx,
-	core.TxOpStake:               core.NewStakeTx,
-	core.TxOpUnstake:             core.NewUnstakeTx,
-	core.TxOpAddCertification:    core.NewAddCertificationTx,
-	core.TxOpRevokeCertification: core.NewRevokeCertificationTx,
-	core.TxOpRegisterAlias:       core.NewRegisterAliasTx,
-	core.TxOpDeregisterAlias:     core.NewDeregisterAliasTx,
-
-	dpos.TxOpBecomeCandidate: dpos.NewBecomeCandidateTx,
-	dpos.TxOpQuitCandidacy:   dpos.NewQuitCandidateTx,
-	dpos.TxOpVote:            dpos.NewVoteTx,
+	core.InjectTxFactory(transaction.DefaultTxMap)
 }
 
 var (
