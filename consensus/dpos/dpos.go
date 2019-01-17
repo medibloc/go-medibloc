@@ -415,7 +415,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	}
 
 	// Change dynasty state for current block
-	if err := bs.SetMintDynastyState(tail.State(), d); err != nil {
+	if err := block.State().SetMintDynastyState(tail.State(), d); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")

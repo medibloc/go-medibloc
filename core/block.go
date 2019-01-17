@@ -566,7 +566,7 @@ func (b *Block) ExecuteTransaction(tx *coreState.Transaction) (*coreState.Receip
 	receipt.SetError(nil)
 
 	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
-	err = exeTx.Execute(bs)
+	err = exeTx.Execute(b)
 	if err != nil {
 		receipt.SetError([]byte(err.Error()))
 		return receipt, err
