@@ -157,7 +157,7 @@ type Canonical interface {
 
 // ExecutableTx interface for execute transaction on state
 type ExecutableTx interface {
-	Execute(b *BlockState) error
+	Execute(b *Block) error
 	Bandwidth() *common.Bandwidth
 	PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error)
 }

@@ -70,9 +70,9 @@ func NewAddRecordTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute AddRecordTx
-func (tx *AddRecordTx) Execute(bs *core.BlockState) error {
+func (tx *AddRecordTx) Execute(b *core.Block) error {
 	var err error
-	acc, err := bs.GetAccount(tx.owner)
+	acc, err := b.State().GetAccount(tx.owner)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (tx *AddRecordTx) Execute(bs *core.BlockState) error {
 	pbRecord := &corepb.Record{
 		Owner:      tx.owner.Bytes(),
 		RecordHash: tx.recordHash,
-		Timestamp:  bs.Timestamp(),
+		Timestamp:  b.Timestamp(),
 	}
 	recordBytes, err := proto.Marshal(pbRecord)
 	if err != nil {
@@ -114,7 +114,7 @@ func (tx *AddRecordTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.PutAccount(acc)
+	return b.State().PutAccount(acc)
 }
 
 //Bandwidth returns bandwidth.

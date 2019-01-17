@@ -82,8 +82,8 @@ func NewAddCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error)
 }
 
 //Execute AddCertificationTx
-func (tx *AddCertificationTx) Execute(bs *core.BlockState) error {
-	certified, err := bs.GetAccount(tx.Certified)
+func (tx *AddCertificationTx) Execute(b *core.Block) error {
+	certified, err := b.State().GetAccount(tx.Certified)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (tx *AddCertificationTx) Execute(bs *core.BlockState) error {
 		return ErrCertReceivedAlreadyAdded
 	}
 
-	issuer, err := bs.GetAccount(tx.Issuer)
+	issuer, err := b.State().GetAccount(tx.Issuer)
 	if err != nil {
 		return err
 	}
@@ -141,12 +141,12 @@ func (tx *AddCertificationTx) Execute(bs *core.BlockState) error {
 	if err := certified.Data.Flush(); err != nil {
 		return err
 	}
-	if err := bs.PutAccount(certified); err != nil {
+	if err := b.State().PutAccount(certified); err != nil {
 		return err
 	}
 
 	// Add certification to issuer's account state
-	issuer, err = bs.GetAccount(tx.Issuer)
+	issuer, err = b.State().GetAccount(tx.Issuer)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (tx *AddCertificationTx) Execute(bs *core.BlockState) error {
 	if err := issuer.Data.Flush(); err != nil {
 		return err
 	}
-	if err := bs.PutAccount(issuer); err != nil {
+	if err := b.State().PutAccount(issuer); err != nil {
 		return err
 	}
 
@@ -244,8 +244,8 @@ func NewRevokeCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, err
 }
 
 //Execute RevokeCertificationTx
-func (tx *RevokeCertificationTx) Execute(bs *core.BlockState) error {
-	issuer, err := bs.GetAccount(tx.Revoker)
+func (tx *RevokeCertificationTx) Execute(b *core.Block) error {
+	issuer, err := b.State().GetAccount(tx.Revoker)
 	if err != nil {
 		return err
 	}
@@ -266,11 +266,11 @@ func (tx *RevokeCertificationTx) Execute(bs *core.BlockState) error {
 	if pbCert.RevocationTime > int64(-1) {
 		return ErrCertAlreadyRevoked
 	}
-	if pbCert.ExpirationTime < bs.Timestamp() {
+	if pbCert.ExpirationTime < b.Timestamp() {
 		return ErrCertAlreadyExpired
 	}
 
-	pbCert.RevocationTime = bs.Timestamp()
+	pbCert.RevocationTime = b.Timestamp()
 	newCertBytes, err := proto.Marshal(pbCert)
 	if err != nil {
 		return err
@@ -296,7 +296,7 @@ func (tx *RevokeCertificationTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	err = bs.PutAccount(issuer)
+	err = b.State().PutAccount(issuer)
 	if err != nil {
 		return err
 	}
@@ -305,7 +305,7 @@ func (tx *RevokeCertificationTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	certified, err := bs.GetAccount(certAddr)
+	certified, err := b.State().GetAccount(certAddr)
 	if err != nil {
 		return err
 	}
@@ -329,7 +329,7 @@ func (tx *RevokeCertificationTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.PutAccount(certified)
+	return b.State().PutAccount(certified)
 }
 
 //Bandwidth returns bandwidth.

@@ -74,9 +74,9 @@ func NewTransferTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute TransferTx
-func (tx *TransferTx) Execute(bs *core.BlockState) error {
+func (tx *TransferTx) Execute(b *core.Block) error {
 	// subtract balance from sender's account
-	sender, err := bs.GetAccount(tx.from)
+	sender, err := b.State().GetAccount(tx.from)
 	if err != nil {
 		return err
 	}
@@ -87,13 +87,13 @@ func (tx *TransferTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	err = bs.PutAccount(sender)
+	err = b.State().PutAccount(sender)
 	if err != nil {
 		return err
 	}
 
 	// add balance to receiver's account
-	receiver, err := bs.GetAccount(tx.to)
+	receiver, err := b.State().GetAccount(tx.to)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (tx *TransferTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	err = bs.PutAccount(receiver)
+	err = b.State().PutAccount(receiver)
 	if err != nil {
 		return err
 	}

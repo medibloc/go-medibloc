@@ -73,7 +73,7 @@ func NewRegisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute RegisterAliasTx
-func (tx *RegisterAliasTx) Execute(bs *core.BlockState) error {
+func (tx *RegisterAliasTx) Execute(b *core.Block) error {
 	collateralLimit, err := util.NewUint128FromString(AliasCollateralMinimum)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func (tx *RegisterAliasTx) Execute(bs *core.BlockState) error {
 		return ErrAliasCollateralLimit
 	}
 
-	acc, err := bs.GetAccount(tx.addr)
+	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (tx *RegisterAliasTx) Execute(bs *core.BlockState) error {
 		return ErrAliasAlreadyHave
 	}
 
-	_, err = bs.GetAccountByAlias(tx.alias)
+	_, err = b.State().GetAccountByAlias(tx.alias)
 	if err != nil && err != ErrNotFound {
 		return err
 	} else if err == nil {
@@ -142,12 +142,12 @@ func (tx *RegisterAliasTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	err = bs.PutAccount(acc)
+	err = b.State().PutAccount(acc)
 	if err != nil {
 		return err
 	}
 
-	return bs.PutAccountAlias(tx.alias, tx.addr)
+	return b.State().PutAccountAlias(tx.alias, tx.addr)
 }
 
 //Bandwidth returns bandwidth.
@@ -187,8 +187,8 @@ func NewDeregisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) 
 }
 
 //Execute DeregisterAliasTx
-func (tx *DeregisterAliasTx) Execute(bs *core.BlockState) error {
-	acc, err := bs.GetAccount(tx.addr)
+func (tx *DeregisterAliasTx) Execute(b *core.Block) error {
+	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (tx *DeregisterAliasTx) Execute(bs *core.BlockState) error {
 		return err
 	}
 
-	err = bs.DelAccountAlias(pbAlias.AliasName, tx.addr)
+	err = b.State().DelAccountAlias(pbAlias.AliasName, tx.addr)
 	if err != nil {
 		return err
 	}
@@ -243,7 +243,7 @@ func (tx *DeregisterAliasTx) Execute(bs *core.BlockState) error {
 	if err != nil {
 		return err
 	}
-	return bs.PutAccount(acc)
+	return b.State().PutAccount(acc)
 }
 
 //Bandwidth returns bandwidth.

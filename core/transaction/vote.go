@@ -67,12 +67,12 @@ func NewVoteTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute VoteTx
-func (tx *VoteTx) Execute(bs *core.BlockState) error {
+func (tx *VoteTx) Execute(b *core.Block) error {
 	if len(tx.candidateIDs) > VoteMaximum {
 		return ErrOverMaxVote
 	}
 
-	acc, err := bs.GetAccount(tx.voter)
+	acc, err := b.State().GetAccount(tx.voter)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (tx *VoteTx) Execute(bs *core.BlockState) error {
 		return err
 	}
 
-	ds := bs.DposState()
+	ds := b.State().DposState()
 
 	// Add vote power to new voted
 	iter, err := newVoted.Iterator(nil)
@@ -163,7 +163,7 @@ func (tx *VoteTx) Execute(bs *core.BlockState) error {
 
 	// change voter's account
 	acc.Voted = newVoted
-	if err := bs.PutAccount(acc); err != nil {
+	if err := b.State().PutAccount(acc); err != nil {
 		return err
 	}
 

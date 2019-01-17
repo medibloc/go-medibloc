@@ -43,8 +43,8 @@ func NewStakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute StakeTx
-func (tx *StakeTx) Execute(bs *core.BlockState) error {
-	user, err := bs.GetAccount(tx.user)
+func (tx *StakeTx) Execute(b *core.Block) error {
+	user, err := b.State().GetAccount(tx.user)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (tx *StakeTx) Execute(bs *core.BlockState) error {
 		return err
 	}
 
-	err = bs.PutAccount(user)
+	err = b.State().PutAccount(user)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (tx *StakeTx) Execute(bs *core.BlockState) error {
 
 	// Add user's stake to candidates' votePower
 	for _, v := range voted {
-		err = bs.DposState().AddVotePowerToCandidate(v, tx.amount)
+		err = b.State().DposState().AddVotePowerToCandidate(v, tx.amount)
 		if err == trie.ErrNotFound {
 			continue
 		} else if err != nil {
@@ -123,8 +123,8 @@ func NewUnstakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute UnstakeTx
-func (tx *UnstakeTx) Execute(bs *core.BlockState) error {
-	account, err := bs.GetAccount(tx.user)
+func (tx *UnstakeTx) Execute(b *core.Block) error {
+	account, err := b.State().GetAccount(tx.user)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (tx *UnstakeTx) Execute(bs *core.BlockState) error {
 		}).Warn("Failed to add unstaking.")
 		return err
 	}
-	account.LastUnstakingTs = bs.Timestamp()
+	account.LastUnstakingTs = b.Timestamp()
 
 	if account.Staking.Cmp(account.Points) < 0 {
 		account.Points = account.Staking.DeepCopy()
@@ -155,7 +155,7 @@ func (tx *UnstakeTx) Execute(bs *core.BlockState) error {
 
 	voted := account.VotedSlice()
 
-	err = bs.PutAccount(account)
+	err = b.State().PutAccount(account)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -165,7 +165,7 @@ func (tx *UnstakeTx) Execute(bs *core.BlockState) error {
 
 	// Add user's staking to candidates' votePower
 	for _, v := range voted {
-		err = bs.DposState().SubVotePowerToCandidate(v, tx.amount)
+		err = b.State().DposState().SubVotePowerToCandidate(v, tx.amount)
 		if err == trie.ErrNotFound {
 			continue
 		} else if err != nil {

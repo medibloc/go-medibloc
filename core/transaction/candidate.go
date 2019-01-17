@@ -84,8 +84,8 @@ func NewBecomeCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) 
 }
 
 //Execute NewBecomeCandidateTx
-func (tx *BecomeCandidateTx) Execute(bs *core.BlockState) error {
-	acc, err := bs.GetAccount(tx.candidateAddr)
+func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
+	acc, err := b.State().GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (tx *BecomeCandidateTx) Execute(bs *core.BlockState) error {
 
 	acc.CandidateID = tx.txHash
 
-	if err := bs.PutAccount(acc); err != nil {
+	if err := b.State().PutAccount(acc); err != nil {
 		return nil
 	}
 
@@ -129,11 +129,11 @@ func (tx *BecomeCandidateTx) Execute(bs *core.BlockState) error {
 		Collateral: tx.collateral,
 		VotePower:  util.NewUint128(),
 		URL:        tx.payload.URL,
-		Timestamp:  bs.Timestamp(),
+		Timestamp:  b.Timestamp(),
 	}
 
 	// Add candidate to candidate state
-	return bs.DposState().PutCandidate(tx.txHash, candidate)
+	return b.State().DposState().PutCandidate(tx.txHash, candidate)
 }
 
 //Bandwidth returns bandwidth.
@@ -173,8 +173,8 @@ func NewQuitCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 }
 
 //Execute QuitCandidateTx
-func (tx *QuitCandidateTx) Execute(bs *core.BlockState) error {
-	acc, err := bs.GetAccount(tx.candidateAddr)
+func (tx *QuitCandidateTx) Execute(b *core.Block) error {
+	acc, err := b.State().GetAccount(tx.candidateAddr)
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func (tx *QuitCandidateTx) Execute(bs *core.BlockState) error {
 		return ErrNotCandidate
 	}
 
-	candidate, err := bs.DposState().GetCandidate(acc.CandidateID)
+	candidate, err := b.State().DposState().GetCandidate(acc.CandidateID)
 	if err == trie.ErrNotFound {
 		return ErrNotCandidate
 	} else if err != nil {
@@ -199,12 +199,12 @@ func (tx *QuitCandidateTx) Execute(bs *core.BlockState) error {
 		return err
 	}
 	// save changed account
-	if err := bs.PutAccount(acc); err != nil {
+	if err := b.State().PutAccount(acc); err != nil {
 		return err
 	}
 
 	// change quit flag on candidate
-	if err := bs.DposState().DelCandidate(cID); err != nil {
+	if err := b.State().DposState().DelCandidate(cID); err != nil {
 		return err
 	}
 
