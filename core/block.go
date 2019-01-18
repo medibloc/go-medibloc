@@ -54,8 +54,8 @@ func (b *Block) Clone() (*Block, error) {
 	}, nil
 }
 
-// Child return initial child block for verifying or making block
-func (b *Block) Child() (*Block, error) {
+// InitChild return initial child block for verifying or making block
+func (b *Block) InitChild() (*Block, error) {
 	bs, err := b.state.Clone()
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receip
 // CreateChildWithBlockData returns child block by executing block data on parent block.
 func (b *Block) CreateChildWithBlockData(bd *BlockData, consensus Consensus) (child *Block, err error) {
 	// Prepare Execution
-	child, err = b.Child()
+	child, err = b.InitChild()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

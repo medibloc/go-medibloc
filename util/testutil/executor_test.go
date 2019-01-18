@@ -40,7 +40,7 @@ import (
 //	require.NoError(t, err)
 //
 //	bb := blockutil.New(t, dynastySize).AddKeyPairs(nt.Seed.Config.Dynasties)
-//	block := bb.Block(genesis).Child().SignProposer().Build()
+//	block := bb.Block(genesis).InitChild().SignProposer().Build()
 //
 //	to := nt.Nodes[1]
 //	ch := make(chan net.Message)

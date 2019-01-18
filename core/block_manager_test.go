@@ -494,7 +494,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	//// Invalid Transaction Signer
 	//pair1 := testutil.NewAddrKeyPair(t)
 	//pair2 := testutil.NewAddrKeyPair(t)
-	//block = bb.Block(genesis).Child().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignProposer().Build()
+	//block = bb.Block(genesis).InitChild().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignProposer().Build()
 	//err = bm.PushBlockData(block.GetBlockData())
 	//assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
@@ -626,7 +626,7 @@ func TestBlockManagerImprovement(t *testing.T) {
 
 	blocks := make([]*core.Block, 100)
 	for i := 0; i < 100; i++ {
-		bb = bb.Child()
+		bb = bb.InitChild()
 		for j := 0; j < 100; j++ {
 			bb = bb.Tx().RandomTx().Execute()
 		}
@@ -655,13 +655,13 @@ func TestBlockManagerImprovement(t *testing.T) {
 
 	blocks = make([]*core.Block, 100)
 	for i := 0; i < 100; i++ {
-		bbT := bb.Child()
+		bbT := bb.InitChild()
 		for j := 0; j < 100; j++ {
 			bbT = bbT.Tx().RandomTx().Execute()
 		}
 		blocks[i] = bbT.SignProposer().Build()
 		if i == 99 {
-			blocks = append(blocks, bbT.Child().SignProposer().Build())
+			blocks = append(blocks, bbT.InitChild().SignProposer().Build())
 		}
 	}
 
