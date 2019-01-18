@@ -308,7 +308,7 @@ func (bm *BlockManager) runChainManager() {
 			return
 		case <-bm.trigCh:
 			// newData is used only for alarming not affecting lib, tailblock, indexing process
-			newTail := bm.consensus.ForkChoice(bm.bc)
+			newTail := bm.bc.ForkChoice()
 			if byteutils.Equal(mainTail.Hash(), newTail.Hash()) {
 				continue
 			}

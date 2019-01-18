@@ -230,8 +230,8 @@ func (bc *BlockChain) LIB() *Block {
 	return bc.lib
 }
 
-// TailBlocks returns TailBlocks.
-func (bc *BlockChain) TailBlocks() []*Block {
+// tailBlockList returns tailBlockList.
+func (bc *BlockChain) tailBlockList() []*Block {
 	blocks := make([]*Block, 0, bc.tailBlocks.Len())
 	for _, k := range bc.tailBlocks.Keys() {
 		v, ok := bc.tailBlocks.Get(k)
@@ -307,7 +307,7 @@ func (bc *BlockChain) SetLIB(newLIB *Block) error {
 		newLIB.EmitBlockEvent(bc.eventEmitter, event.TopicLibBlock)
 	}
 
-	for _, tail := range bc.TailBlocks() {
+	for _, tail := range bc.tailBlockList() {
 		if !bc.IsForkedBeforeLIB(tail) {
 			continue
 		}
@@ -374,6 +374,26 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	}
 
 	return blocks, newBlocks, nil
+}
+
+func (bc *BlockChain) ForkChoice() (newTail *Block) {
+	bc.mu.RLock()
+	newTail = bc.mainTailBlock
+	bc.mu.RUnlock()
+	for _, tail := range bc.tailBlockList() {
+		if bc.IsForkedBeforeLIB(tail) {
+			logging.WithFields(logrus.Fields{
+				"tail": tail,
+				"lib":  bc.LIB(),
+			}).Debug("Blocks forked before LIB can not be selected.")
+			continue
+		}
+		if tail.Height() > newTail.Height() {
+			newTail = tail
+		}
+	}
+
+	return newTail
 }
 
 // FindAncestorOnCanonical finds most recent ancestor block in canonical chain.

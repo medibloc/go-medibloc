@@ -204,26 +204,6 @@ func (d *Dpos) DynastyInterval() time.Duration {
 	return time.Duration(d.dynastySize*NumberOfRounds) * BlockInterval
 }
 
-// ForkChoice chooses fork.
-func (d *Dpos) ForkChoice(bc *core.BlockChain) (newTail *core.Block) {
-	newTail = bc.MainTailBlock()
-	tails := bc.TailBlocks()
-	for _, block := range tails {
-		if bc.IsForkedBeforeLIB(block) {
-			logging.WithFields(logrus.Fields{
-				"block": block,
-				"lib":   bc.LIB(),
-			}).Debug("Blocks forked before LIB can not be selected.")
-			continue
-		}
-		if block.Height() > newTail.Height() {
-			newTail = block
-		}
-	}
-
-	return newTail
-}
-
 // FindLIB finds new LIB.
 func (d *Dpos) FindLIB(bc *core.BlockChain) (newLIB *core.Block) {
 	lib := bc.LIB()

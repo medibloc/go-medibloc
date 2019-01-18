@@ -138,7 +138,6 @@ type Consensus interface {
 
 	VerifyHeightAndTimestamp(lib, bd *BlockData) error
 	MissingBlocks(lib, bd *BlockData) uint64
-	ForkChoice(bc *BlockChain) (newTail *Block)
 	VerifyInterval(bd *BlockData, parent *Block) error
 	VerifyProposer(b *Block) error
 	FindLIB(bc *BlockChain) (newLIB *Block)
