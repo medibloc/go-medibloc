@@ -76,12 +76,12 @@ func TestBlock_PayReward(t *testing.T) {
 
 	// wrong reward value (calculate reward based on wrong supply)
 	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(proposer.PrivKey).Build()
-	_, err := block.GetBlockData().ExecuteOnParentBlock(parent, cons)
+	_, err := parent.CreateChildWithBlockData(block.GetBlockData(), cons)
 	assert.Equal(t, core.ErrInvalidBlockReward, err)
 
 	// wrong supply on header
 	block = bb.Clone().PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(proposer.PrivKey).Build()
-	_, err = block.GetBlockData().ExecuteOnParentBlock(parent, cons)
+	_, err = parent.CreateChildWithBlockData(block.GetBlockData(), cons)
 	assert.Equal(t, core.ErrInvalidBlockSupply, err)
 
 }

@@ -221,7 +221,7 @@ func (bm *BlockManager) processTask(newData *BlockData) {
 		return
 	}
 
-	child, err := newData.ExecuteOnParentBlock(parent, bm.consensus)
+	child, err := parent.CreateChildWithBlockData(newData, bm.consensus)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":    err,

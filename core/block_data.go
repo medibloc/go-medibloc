@@ -234,41 +234,6 @@ func (bd *BlockData) CalcHash() ([]byte, error) {
 	return hash.GenHash(algorithm.SHA3256, blockHashTargetBytes)
 }
 
-// ExecuteOnParentBlock returns Block object with state after block execution
-func (bd *BlockData) ExecuteOnParentBlock(parent *Block, consensus Consensus) (*Block, error) {
-	// Prepare Execution
-	block, err := parent.Child()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to make child block for execution on parent block")
-		return nil, err
-	}
-	block.BlockData = bd
-	block.State().SetTimestamp(bd.timestamp)
-
-	err = block.Prepare()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := bd.verifyBandwidthUsage(); err != nil {
-		return nil, err
-	}
-
-	if err := block.VerifyExecution(parent, consensus); err != nil {
-		return nil, err
-	}
-	err = block.Flush()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to flush state")
-		return nil, err
-	}
-	return block, nil
-}
-
 // GetExecutedBlock converts BlockData instance to an already executed Block instance
 func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Storage) (*Block, error) {
 	var err error
