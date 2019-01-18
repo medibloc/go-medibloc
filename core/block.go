@@ -204,7 +204,7 @@ func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receip
 	receipt := new(corestate.Receipt)
 	receipt.SetExecuted(false)
 	receipt.SetTimestamp(bs.timestamp)
-	receipt.SetHeight(b.height)
+	receipt.SetHeight(b.Height())
 	receipt.SetCPUUsage(bw.CPUUsage())
 	receipt.SetNetUsage(bw.NetUsage())
 	receipt.SetPoints(points)
