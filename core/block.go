@@ -280,10 +280,6 @@ func (b *Block) CreateChildWithBlockData(bd *BlockData, consensus Consensus) (ch
 		return nil, err
 	}
 
-	if err := bd.verifyBandwidthUsage(); err != nil {
-		return nil, err
-	}
-
 	if err := child.VerifyExecution(b, consensus); err != nil {
 		return nil, err
 	}

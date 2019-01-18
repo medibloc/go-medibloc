@@ -161,7 +161,7 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 	return nil
 }
 
-// VerifyIntegrity verifies if block signature is valid
+// VerifyIntegrity verifies block integrity.
 func (bd *BlockData) VerifyIntegrity() error {
 	if bd.height == GenesisHeight {
 		return nil
@@ -170,6 +170,10 @@ func (bd *BlockData) VerifyIntegrity() error {
 		if err := tx.VerifyIntegrity(bd.chainID); err != nil {
 			return err
 		}
+	}
+
+	if err := bd.verifyUsageData(); err != nil {
+		return err
 	}
 
 	wantedHash, err := bd.CalcHash()
@@ -231,7 +235,7 @@ func (bd *BlockData) CalcHash() ([]byte, error) {
 	return hash.GenHash(algorithm.SHA3256, blockHashTargetBytes)
 }
 
-func (bd *BlockData) verifyBandwidthUsage() error {
+func (bd *BlockData) verifyUsageData() error {
 	if err := bd.verifyCPUUsage(); err != nil {
 		return err
 	}
