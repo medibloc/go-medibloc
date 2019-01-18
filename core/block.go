@@ -18,7 +18,7 @@ package core
 import (
 	"math/big"
 
-	"github.com/medibloc/go-medibloc/core/state"
+	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -35,7 +35,7 @@ type Block struct {
 	sealed  bool
 }
 
-//Clone clone block
+// Clone clone block
 func (b *Block) Clone() (*Block, error) {
 	bd, err := b.BlockData.Clone()
 	if err != nil {
@@ -54,7 +54,7 @@ func (b *Block) Clone() (*Block, error) {
 	}, nil
 }
 
-//Child return initial child block for verifying or making block
+// Child return initial child block for verifying or making block
 func (b *Block) Child() (*Block, error) {
 	bs, err := b.state.Clone()
 	if err != nil {
@@ -107,7 +107,7 @@ func (b *Block) Sealed() bool {
 	return b.sealed
 }
 
-//SetSealed set sealed
+// SetSealed set sealed
 func (b *Block) SetSealed(sealed bool) {
 	b.sealed = sealed
 }
@@ -463,7 +463,7 @@ func (b *Block) GetBlockData() *BlockData {
 	return b.BlockData
 }
 
-//calcMintReward returns calculated block produce reward
+// calcMintReward returns calculated block produce reward
 func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 	reward, err := parentSupply.MulWithRat(InflationRate)
 	if err != nil {
