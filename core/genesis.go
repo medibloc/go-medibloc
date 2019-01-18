@@ -89,9 +89,8 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			transactions: make([]*coreState.Transaction, 0),
 			height:       GenesisHeight,
 		},
-		storage: sto,
-		state:   blockState,
-		sealed:  false,
+		state:  blockState,
+		sealed: false,
 	}
 	if err := genesisBlock.Prepare(); err != nil {
 		return nil, err

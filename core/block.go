@@ -30,15 +30,13 @@ import (
 // Block represents block with actual state tries
 type Block struct {
 	*BlockData
-	storage storage.Storage
-	state   *BlockState
-	sealed  bool
+	state  *BlockState
+	sealed bool
 }
 
 func (b *Block) FromBlockData(bd *BlockData, consensus Consensus, storage storage.Storage) error {
 	var err error
 	b.BlockData = bd
-	b.storage = storage
 
 	// TODO rename newStates
 	if b.state, err = newStates(consensus, storage); err != nil {
@@ -98,7 +96,6 @@ func (b *Block) Clone() (*Block, error) {
 	}
 	return &Block{
 		BlockData: bd,
-		storage:   b.storage,
 		state:     bs,
 		sealed:    b.sealed,
 	}, nil
@@ -136,20 +133,14 @@ func (b *Block) InitChild() (*Block, error) {
 			transactions: make([]*corestate.Transaction, 0),
 			height:       b.height + 1,
 		},
-		storage: b.storage,
-		state:   bs,
-		sealed:  false,
+		state:  bs,
+		sealed: false,
 	}, nil
 }
 
 // State returns block state
 func (b *Block) State() *BlockState {
 	return b.state
-}
-
-// Storage returns storage used by block
-func (b *Block) Storage() storage.Storage {
-	return b.storage
 }
 
 // Sealed returns sealed
