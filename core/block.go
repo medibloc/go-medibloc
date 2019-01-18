@@ -21,9 +21,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	corestate "github.com/medibloc/go-medibloc/core/state"
-	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -144,7 +142,7 @@ func (b *Block) Seal() error {
 		return err
 	}
 
-	blockHash, err := HashBlockData(b.BlockData)
+	blockHash, err := b.CalcHash()
 	if err != nil {
 		return err
 	}
@@ -152,54 +150,6 @@ func (b *Block) Seal() error {
 	b.hash = blockHash
 	b.sealed = true
 	return nil
-}
-
-// HashBlockData returns hash of block
-func HashBlockData(bd *BlockData) ([]byte, error) {
-	rewardBytes, err := bd.Reward().ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	supplyBytes, err := bd.Supply().ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	cpuPriceBytes, err := bd.CPUPrice().ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-	netPriceBytes, err := bd.NetPrice().ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-
-	txHash := make([][]byte, len(bd.transactions))
-	for _, tx := range bd.transactions {
-		txHash = append(txHash, tx.Hash())
-	}
-
-	blockHashTarget := &corepb.BlockHashTarget{
-		ParentHash:   bd.ParentHash(),
-		Coinbase:     bd.Coinbase().Bytes(),
-		AccStateRoot: bd.AccStateRoot(),
-		TxStateRoot:  bd.TxStateRoot(),
-		DposRoot:     bd.DposRoot(),
-		Timestamp:    bd.Timestamp(),
-		ChainId:      bd.ChainID(),
-		Reward:       rewardBytes,
-		Supply:       supplyBytes,
-		CpuPrice:     cpuPriceBytes,
-		CpuUsage:     bd.cpuUsage,
-		NetPrice:     netPriceBytes,
-		NetUsage:     bd.netUsage,
-		TxHash:       txHash,
-	}
-	blockHashTargetBytes, err := proto.Marshal(blockHashTarget)
-	if err != nil {
-		return nil, err
-	}
-
-	return hash.GenHash(algorithm.SHA3256, blockHashTargetBytes)
 }
 
 // ExecuteTransaction on given block state
