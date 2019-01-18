@@ -353,11 +353,6 @@ func (b *Block) Execute(tx *corestate.Transaction) error {
 	return nil
 }
 
-// AppendTransaction append transaction to block data (only use on making block)
-func (b *Block) AppendTransaction(transaction *corestate.Transaction) {
-	b.BlockData.transactions = append(b.BlockData.transactions, transaction)
-}
-
 // VerifyState verifies block states comparing with root hashes in header
 func (b *Block) VerifyState() error {
 	if b.state.CPUPrice().Cmp(b.CPUPrice()) != 0 {

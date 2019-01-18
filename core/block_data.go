@@ -129,6 +129,11 @@ func (bd *BlockData) SetTransactions(txs []*corestate.Transaction) error {
 	return nil
 }
 
+// AppendTransaction append transaction to block data (only use on making block)
+func (bd *BlockData) AppendTransaction(tx *corestate.Transaction) {
+	bd.transactions = append(bd.transactions, tx)
+}
+
 // String implements Stringer interface.
 func (bd *BlockData) String() string {
 	proposer, _ := bd.Proposer()
