@@ -232,31 +232,41 @@ func (bd *BlockData) CalcHash() ([]byte, error) {
 }
 
 func (bd *BlockData) verifyBandwidthUsage() error {
-	if bd.CPUUsage() > CPULimit {
-		return ErrInvalidCPUUsage
+	if err := bd.verifyCPUUsage(); err != nil {
+		return err
 	}
-
-	if bd.NetUsage() > NetLimit {
-		return ErrInvalidNetUsage
-	}
-
-	if err := bd.verifyTotalBandwidth(); err != nil {
+	if err := bd.verifyNetUsage(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (bd *BlockData) verifyTotalBandwidth() error {
+func (bd *BlockData) verifyCPUUsage() error {
+	if bd.CPUUsage() > CPULimit {
+		return ErrInvalidCPUUsage
+	}
+
 	cpuUsage := uint64(0)
-	netUsage := uint64(0)
 	for _, tx := range bd.Transactions() {
 		cpuUsage = cpuUsage + tx.Receipt().CPUUsage()
-		netUsage = netUsage + tx.Receipt().NetUsage()
 	}
 
 	if cpuUsage != bd.cpuUsage {
 		return ErrWrongCPUUsage
 	}
+	return nil
+}
+
+func (bd *BlockData) verifyNetUsage() error {
+	if bd.NetUsage() > NetLimit {
+		return ErrInvalidNetUsage
+	}
+
+	netUsage := uint64(0)
+	for _, tx := range bd.Transactions() {
+		netUsage = netUsage + tx.Receipt().NetUsage()
+	}
+
 	if netUsage != bd.netUsage {
 		return ErrWrongNetUsage
 	}
