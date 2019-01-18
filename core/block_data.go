@@ -25,7 +25,7 @@ type BlockData struct {
 
 // ToProto converts Block to corepb.Block
 func (bd *BlockData) ToProto() (proto.Message, error) {
-	header, err := bd.BlockHeader.ToProto()
+	header, err := bd.BlockHeader.toProto()
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (bd *BlockData) ToProto() (proto.Message, error) {
 func (bd *BlockData) FromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.Block); ok {
 		bd.BlockHeader = new(BlockHeader)
-		if err := bd.BlockHeader.FromProto(msg.Header); err != nil {
+		if err := bd.BlockHeader.fromProto(msg.Header); err != nil {
 			return err
 		}
 

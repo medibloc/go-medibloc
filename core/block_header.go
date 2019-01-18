@@ -35,8 +35,8 @@ type BlockHeader struct {
 	netUsage uint64
 }
 
-// ToProto converts BlockHeader to corepb.BlockHeader
-func (b *BlockHeader) ToProto() (proto.Message, error) {
+// toProto converts BlockHeader to corepb.BlockHeader
+func (b *BlockHeader) toProto() (proto.Message, error) {
 	reward, err := b.reward.ToFixedSizeByteSlice()
 	if err != nil {
 		return nil, err
@@ -76,8 +76,8 @@ func (b *BlockHeader) ToProto() (proto.Message, error) {
 	}, nil
 }
 
-// FromProto converts corepb.BlockHeader to BlockHeader
-func (b *BlockHeader) FromProto(msg proto.Message) error {
+// fromProto converts corepb.BlockHeader to BlockHeader
+func (b *BlockHeader) fromProto(msg proto.Message) error {
 	if msg, ok := msg.(*corepb.BlockHeader); ok {
 		b.hash = msg.Hash
 		b.parentHash = msg.ParentHash
