@@ -10,10 +10,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/event"
-	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 )
 
 // BlockData represents a block
@@ -232,57 +229,6 @@ func (bd *BlockData) CalcHash() ([]byte, error) {
 	}
 
 	return hash.GenHash(algorithm.SHA3256, blockHashTargetBytes)
-}
-
-// GetExecutedBlock converts BlockData instance to an already executed Block instance
-func (bd *BlockData) GetExecutedBlock(consensus Consensus, storage storage.Storage) (*Block, error) {
-	var err error
-	block := &Block{
-		BlockData: bd,
-	}
-	if block.state, err = newStates(consensus, storage); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to create new block state.")
-		return nil, err
-	}
-
-	block.state.reward = bd.Reward()
-	block.state.supply = bd.Supply()
-
-	block.state.cpuPrice = bd.cpuPrice
-	block.state.cpuUsage = bd.cpuUsage
-	block.state.netPrice = bd.netPrice
-	block.state.netUsage = bd.netUsage
-
-	if err = block.state.loadAccountState(block.accStateRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load accounts root.")
-		return nil, err
-	}
-	if err = block.state.loadTransactionState(block.txStateRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load transaction root.")
-		return nil, err
-	}
-
-	ds, err := consensus.LoadConsensusState(block.dposRoot, storage)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to load consensus state.")
-		return nil, err
-	}
-	block.state.dposState = ds
-
-	block.storage = storage
-	return block, nil
 }
 
 func (bd *BlockData) verifyBandwidthUsage() error {
