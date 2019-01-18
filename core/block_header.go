@@ -271,7 +271,6 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 	if b.sign == nil {
 		return common.Address{}, ErrBlockSignatureNotExist
 	}
-	msg := b.hash
 
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
 	if err != nil {
@@ -282,7 +281,7 @@ func (b *BlockHeader) Proposer() (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	pubKey, err := sig.RecoverPublic(msg, b.sign)
+	pubKey, err := sig.RecoverPublic(b.hash, b.sign)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err":    err,
