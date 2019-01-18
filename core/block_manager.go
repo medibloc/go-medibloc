@@ -700,7 +700,8 @@ func (bm *BlockManager) handleReceiveBlock(msg net.Message) {
 		return
 	}
 
-	bd, err := BytesToBlockData(msg.Data())
+	bd := new(BlockData)
+	err := bd.FromBytes(msg.Data())
 	if err != nil {
 		return
 	}

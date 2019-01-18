@@ -536,7 +536,8 @@ func (bc *BlockChain) loadBlockByHash(hash []byte) (*Block, error) {
 		return nil, err
 	}
 
-	bd, err := BytesToBlockData(v)
+	bd := new(BlockData)
+	err = bd.FromBytes(v)
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"err": err,

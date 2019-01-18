@@ -18,9 +18,7 @@ package core
 import (
 	"math/big"
 
-	"github.com/gogo/protobuf/proto"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -463,19 +461,6 @@ func (b *Block) Flush() error {
 // GetBlockData returns data part of block
 func (b *Block) GetBlockData() *BlockData {
 	return b.BlockData
-}
-
-// BytesToBlockData unmarshals proto bytes to BlockData.
-func BytesToBlockData(bytes []byte) (*BlockData, error) {
-	pb := new(corepb.Block)
-	if err := proto.Unmarshal(bytes, pb); err != nil {
-		return nil, err
-	}
-	bd := new(BlockData)
-	if err := bd.FromProto(pb); err != nil {
-		return nil, err
-	}
-	return bd, nil
 }
 
 //calcMintReward returns calculated block produce reward
