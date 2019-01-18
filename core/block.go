@@ -463,24 +463,6 @@ func (b *Block) GetBlockData() *BlockData {
 	return b.BlockData
 }
 
-// calcMintReward returns calculated block produce reward
-func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
-	reward, err := parentSupply.MulWithRat(InflationRate)
-	if err != nil {
-		return nil, err
-	}
-	roundDownDecimal := util.NewUint128FromUint(InflationRoundDown)
-	reward, err = reward.Div(roundDownDecimal)
-	if err != nil {
-		return nil, err
-	}
-	reward, err = reward.Mul(roundDownDecimal)
-	if err != nil {
-		return nil, err
-	}
-	return reward, nil
-}
-
 // calculate cpu price
 func calcCPUPrice(parent *Block) (*util.Uint128, error) {
 	return calcBandwidthPrice(&calcBandwidthPriceArg{
