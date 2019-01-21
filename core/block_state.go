@@ -45,56 +45,6 @@ type BlockState struct {
 	storage storage.Storage
 }
 
-// Timestamp returns timestamp
-func (bs *BlockState) Timestamp() int64 {
-	return bs.timestamp
-}
-
-// SetTimestamp sets timestamp
-func (bs *BlockState) SetTimestamp(timestamp int64) {
-	bs.timestamp = timestamp
-}
-
-// Supply returns supply in state
-func (bs *BlockState) Supply() *util.Uint128 {
-	return bs.supply
-}
-
-// Reward returns reward in state
-func (bs *BlockState) Reward() *util.Uint128 {
-	return bs.reward
-}
-
-// CPUPrice returns cpuPrice
-func (bs *BlockState) CPUPrice() *util.Uint128 {
-	return bs.cpuPrice
-}
-
-// CPUUsage returns cpuUsage
-func (bs *BlockState) CPUUsage() uint64 {
-	return bs.cpuUsage
-}
-
-// NetPrice returns netPrice
-func (bs *BlockState) NetPrice() *util.Uint128 {
-	return bs.netPrice
-}
-
-// NetUsage returns netUsage
-func (bs *BlockState) NetUsage() uint64 {
-	return bs.netUsage
-}
-
-// DposState returns dpos state in state
-func (bs *BlockState) DposState() *dState.State {
-	return bs.dposState
-}
-
-// Price returns cpu price and net price
-func (bs *BlockState) Price() common.Price {
-	return common.Price{CPUPrice: bs.cpuPrice, NetPrice: bs.netPrice}
-}
-
 func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	accState, err := coreState.NewAccountState(nil, stor)
 	if err != nil {
@@ -256,6 +206,63 @@ func (bs *BlockState) reset() error {
 	return nil
 }
 
+// String returns stringified blocks state
+func (bs *BlockState) String() string {
+	return fmt.Sprintf(
+		"{reward: %v, supply: %v, cpuPrice: %v, cpuPoints: %v, netPrice: %v, netPoints: %v}",
+		bs.reward, bs.supply, bs.cpuPrice, bs.cpuUsage, bs.netPrice, bs.netUsage)
+}
+
+// Timestamp returns timestamp
+func (bs *BlockState) Timestamp() int64 {
+	return bs.timestamp
+}
+
+// SetTimestamp sets timestamp
+func (bs *BlockState) SetTimestamp(timestamp int64) {
+	bs.timestamp = timestamp
+}
+
+// Supply returns supply in state
+func (bs *BlockState) Supply() *util.Uint128 {
+	return bs.supply
+}
+
+// Reward returns reward in state
+func (bs *BlockState) Reward() *util.Uint128 {
+	return bs.reward
+}
+
+// CPUPrice returns cpuPrice
+func (bs *BlockState) CPUPrice() *util.Uint128 {
+	return bs.cpuPrice
+}
+
+// CPUUsage returns cpuUsage
+func (bs *BlockState) CPUUsage() uint64 {
+	return bs.cpuUsage
+}
+
+// NetPrice returns netPrice
+func (bs *BlockState) NetPrice() *util.Uint128 {
+	return bs.netPrice
+}
+
+// NetUsage returns netUsage
+func (bs *BlockState) NetUsage() uint64 {
+	return bs.netUsage
+}
+
+// DposState returns dpos state in state
+func (bs *BlockState) DposState() *dState.State {
+	return bs.dposState
+}
+
+// Price returns cpu price and net price
+func (bs *BlockState) Price() common.Price {
+	return common.Price{CPUPrice: bs.cpuPrice, NetPrice: bs.netPrice}
+}
+
 // AccountsRoot returns account state root
 func (bs *BlockState) AccountsRoot() ([]byte, error) {
 	return bs.accState.RootHash()
@@ -269,13 +276,6 @@ func (bs *BlockState) TxsRoot() ([]byte, error) {
 // DposRoot returns dpos state root
 func (bs *BlockState) DposRoot() ([]byte, error) {
 	return bs.dposState.RootBytes()
-}
-
-// String returns stringified blocks state
-func (bs *BlockState) String() string {
-	return fmt.Sprintf(
-		"{reward: %v, supply: %v, cpuPrice: %v, cpuPoints: %v, netPrice: %v, netPoints: %v}",
-		bs.reward, bs.supply, bs.cpuPrice, bs.cpuUsage, bs.netPrice, bs.netUsage)
 }
 
 func (bs *BlockState) loadAccountState(rootHash []byte) error {
