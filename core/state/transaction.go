@@ -318,25 +318,25 @@ func (t *Transaction) SignThis(key signature.PrivateKey) error {
 	return nil
 }
 
-func (t *Transaction) getPayerSignTarget() ([]byte, error) {
-	payerSignTarget := &corepb.TransactionPayerSignTarget{
+func (t *Transaction) payerSignTarget() ([]byte, error) {
+	target := &corepb.TransactionPayerSignTarget{
 		Hash: t.hash,
 		Sign: t.sign,
 	}
 
-	payerSignTargetBytes, err := proto.Marshal(payerSignTarget)
+	targetBytes, err := proto.Marshal(target)
 	if err != nil {
 		return nil, err
 	}
 
-	return hash.Sha3256(payerSignTargetBytes), nil
+	return hash.Sha3256(targetBytes), nil
 }
 
 func (t *Transaction) recoverPayer() (common.Address, error) {
 	if t.payerSign == nil || len(t.payerSign) == 0 {
 		return common.Address{}, ErrPayerSignatureNotExist
 	}
-	msg, err := t.getPayerSignTarget()
+	msg, err := t.payerSignTarget()
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -363,7 +363,7 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 
 // SignByPayer puts payer's sign in tx
 func (t *Transaction) SignByPayer(signer signature.Signature) error {
-	target, err := t.getPayerSignTarget()
+	target, err := t.payerSignTarget()
 	if err != nil {
 		return err
 	}
