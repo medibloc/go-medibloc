@@ -41,8 +41,6 @@ type BlockState struct {
 	accState  *coreState.AccountState
 	txState   *coreState.TransactionState
 	dposState *dState.State
-
-	storage storage.Storage
 }
 
 func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
@@ -71,7 +69,6 @@ func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
-		storage:   stor,
 	}, nil
 }
 
@@ -111,7 +108,6 @@ func NewBlockState(bd *BlockData, consensus Consensus, stor storage.Storage) (*B
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
-		storage:   stor,
 	}, nil
 }
 
@@ -143,7 +139,6 @@ func (bs *BlockState) Clone() (*BlockState, error) {
 		accState:  accState,
 		txState:   txState,
 		dposState: dposState,
-		storage:   bs.storage,
 	}, nil
 }
 
