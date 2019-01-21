@@ -268,14 +268,6 @@ func (t *Transaction) SetFrom(from common.Address) {
 	t.from = from
 }
 
-// IsRelatedToAddress return whether the transaction is related to the address
-func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
-	if t.from == address || t.to == address {
-		return true
-	}
-	return false
-}
-
 // CalcHash calculates transaction's hash.
 func (t *Transaction) CalcHash() ([]byte, error) {
 	value, err := t.value.ToFixedSizeByteSlice()
