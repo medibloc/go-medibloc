@@ -180,7 +180,7 @@ func (as *AccountState) PutAccountAlias(alias string, addr common.Address) error
 
 }
 
-//DelAccountAlias del alias name info
+// DelAccountAlias del alias name info
 func (as *AccountState) DelAccountAlias(alias string, addr common.Address) error {
 	addrBytes, err := as.Get(append([]byte(AliasAccountPrefix), []byte(alias)...))
 	if err != nil {

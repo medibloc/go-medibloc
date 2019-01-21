@@ -32,7 +32,7 @@ func (payload *DefaultPayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
-//TransferTx is a structure for sending MED
+// TransferTx is a structure for sending MED
 type TransferTx struct {
 	from    common.Address
 	to      common.Address
@@ -43,7 +43,7 @@ type TransferTx struct {
 
 var _ core.ExecutableTx = &TransferTx{}
 
-//NewTransferTx returns TransferTx
+// NewTransferTx returns TransferTx
 func NewTransferTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -73,7 +73,7 @@ func NewTransferTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 
 }
 
-//Execute TransferTx
+// Execute TransferTx
 func (tx *TransferTx) Execute(b *core.Block) error {
 	// subtract balance from sender's account
 	sender, err := b.State().GetAccount(tx.from)
@@ -108,7 +108,7 @@ func (tx *TransferTx) Execute(b *core.Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *TransferTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }

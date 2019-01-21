@@ -185,7 +185,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		txVote.SetPayload(votePayloadBytes)
 		require.NoError(t, txVote.SignThis(keypair.PrivKey))
 
-		//txs = append(txs, txStake, txCandidate, txVote)
+		// txs = append(txs, txStake, txCandidate, txVote)
 		txs = append(txs, txStake, txAlias, txCandidate, txVote)
 	}
 
@@ -232,7 +232,7 @@ func GetStorage(t *testing.T) storage.Storage {
 	return s
 }
 
-//FindRandomListenPorts returns empty ports
+// FindRandomListenPorts returns empty ports
 func FindRandomListenPorts(n int) (ports []string) {
 	listens := make([]goNet.Listener, 0)
 	for i := 0; i < n; i++ {
@@ -256,7 +256,7 @@ func FindRandomListenPorts(n int) (ports []string) {
 	return ports
 }
 
-//KeyOf find the key at which a given value can be found in the trie batch
+// KeyOf find the key at which a given value can be found in the trie batch
 func KeyOf(t *testing.T, trie *trie.Trie, value []byte) []byte {
 	iter, err := trie.Iterator(nil)
 	require.NoError(t, err)
@@ -272,7 +272,7 @@ func KeyOf(t *testing.T, trie *trie.Trie, value []byte) []byte {
 	return nil
 }
 
-//TrieLen counts the number of trie members
+// TrieLen counts the number of trie members
 func TrieLen(t *testing.T, trie *trie.Batch) int {
 	iter, err := trie.Iterator(nil)
 	require.NoError(t, err)
@@ -287,7 +287,7 @@ func TrieLen(t *testing.T, trie *trie.Batch) int {
 	return cnt
 }
 
-//IP2Local changes ip address to localhost address
+// IP2Local changes ip address to localhost address
 func IP2Local(ipAddr string) string {
 	return "http://localhost:" + strings.Split(ipAddr, ":")[1]
 }

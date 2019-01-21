@@ -25,13 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//Expect is a structure for expect
+// Expect is a structure for expect
 type Expect struct {
 	t     *testing.T
 	block *core.Block
 }
 
-//NewExpect return new expect
+// NewExpect return new expect
 func NewExpect(t *testing.T, block *core.Block) *Expect {
 	return &Expect{
 		t:     t,
@@ -45,16 +45,16 @@ func (e *Expect) account(addr common.Address) *coreState.Account {
 	return acc
 }
 
-//Balance compare balance of account to expected value
+// Balance compare balance of account to expected value
 func (e *Expect) Balance(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
 	value := FloatToUint128(e.t, med)
 	require.Equal(e.t, value.String(), acc.Balance.String())
-	//require.Zero(e.t, acc.Balance.Cmp(value))
+	// require.Zero(e.t, acc.Balance.Cmp(value))
 	return e
 }
 
-//Staking compare staking of account to expected value
+// Staking compare staking of account to expected value
 func (e *Expect) Staking(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
 	stake := FloatToUint128(e.t, med)
@@ -62,7 +62,7 @@ func (e *Expect) Staking(addr common.Address, med float64) *Expect {
 	return e
 }
 
-//Unstaking compares unstaking of account to expected value
+// Unstaking compares unstaking of account to expected value
 func (e *Expect) Unstaking(addr common.Address, med float64) *Expect {
 	acc := e.account(addr)
 	unstake := FloatToUint128(e.t, med)
@@ -70,28 +70,28 @@ func (e *Expect) Unstaking(addr common.Address, med float64) *Expect {
 	return e
 }
 
-//LastUnstakingTs compares last update time of unstaking
+// LastUnstakingTs compares last update time of unstaking
 func (e *Expect) LastUnstakingTs(addr common.Address, ts int64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.LastUnstakingTs, ts)
 	return e
 }
 
-//Nonce compare nonce of account to expected value
+// Nonce compare nonce of account to expected value
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.Nonce, nonce)
 	return e
 }
 
-//Points compares points of account to expected value
+// Points compares points of account to expected value
 func (e *Expect) Points(addr common.Address, bandwidth *util.Uint128) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, bandwidth.String(), acc.Points.String())
 	return e
 }
 
-//LastPointsTs compares last update time of points
+// LastPointsTs compares last update time of points
 func (e *Expect) LastPointsTs(addr common.Address, ts int64) *Expect {
 	acc := e.account(addr)
 	require.Equal(e.t, acc.LastPointsTs, ts)

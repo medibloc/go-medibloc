@@ -468,7 +468,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	seed.Start()
 	bm := seed.Med.BlockManager()
 
-	//dynasties := nt.Seed.Config.Dynasties
+	// dynasties := nt.Seed.Config.Dynasties
 	genesis := seed.GenesisBlock()
 	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.TokenDist).AddKeyPairs(seed.Config.Dynasties)
 
@@ -491,12 +491,12 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
 	assert.Equal(t, coreState.ErrInvalidTransactionHash, err)
 
-	//// Invalid Transaction Signer
-	//pair1 := testutil.NewAddrKeyPair(t)
-	//pair2 := testutil.NewAddrKeyPair(t)
-	//block = bb.Block(genesis).InitChild().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignProposer().Build()
-	//err = bm.PushBlockData(block.GetBlockData())
-	//assert.Equal(t, core.ErrInvalidTransactionSigner, err)
+	// // Invalid Transaction Signer
+	// pair1 := testutil.NewAddrKeyPair(t)
+	// pair2 := testutil.NewAddrKeyPair(t)
+	// block = bb.Block(genesis).InitChild().Tx().From(pair1.Addr).CalcHash().SignKey(pair2.PrivKey).Add().SignProposer().Build()
+	// err = bm.PushBlockData(block.GetBlockData())
+	// assert.Equal(t, core.ErrInvalidTransactionSigner, err)
 }
 
 func TestBlockManager_InvalidState(t *testing.T) {

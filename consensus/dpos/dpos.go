@@ -55,14 +55,14 @@ type Dpos struct {
 	eventEmitter *event.Emitter
 }
 
-//Proposer returns proposer
+// Proposer returns proposer
 type Proposer struct {
 	ProposerAddress common.Address
 	Privkey         signature.PrivateKey
 	Coinbase        common.Address
 }
 
-//Proposers returns Proposers
+// Proposers returns Proposers
 func (d *Dpos) Proposers() map[common.Address]*Proposer {
 	return d.proposers
 }
@@ -199,7 +199,7 @@ func (d *Dpos) consensusSize() int {
 	return int(d.dynastySize*2/3 + 1)
 }
 
-//DynastyInterval returns dynasty interval
+// DynastyInterval returns dynasty interval
 func (d *Dpos) DynastyInterval() time.Duration {
 	return time.Duration(d.dynastySize*NumberOfRounds) * BlockInterval
 }
@@ -546,7 +546,7 @@ func (d *Dpos) checkTransitionDynasty(parentTimestamp int64, curTimestamp int64)
 	return curDynastyIndex > parentDynastyIndex
 }
 
-//MakeMintDynasty returns dynasty slice for mint block
+// MakeMintDynasty returns dynasty slice for mint block
 func (d *Dpos) MakeMintDynasty(ts int64, parentState *core.BlockState) ([]common.Address, error) {
 	if !d.checkTransitionDynasty(parentState.Timestamp(), ts) && parentState.Timestamp() != core.GenesisTimestamp {
 		return nil, core.ErrSameDynasty
@@ -559,7 +559,7 @@ func (d *Dpos) MakeMintDynasty(ts int64, parentState *core.BlockState) ([]common
 	return mintDynasty, nil
 }
 
-//makeMintDynasty returns new dynasty slice for new block
+// makeMintDynasty returns new dynasty slice for new block
 func makeMintDynasty(sortedCandidates []common.Address, dynastySize int) []common.Address {
 	dynasty := make([]common.Address, 0)
 
@@ -580,7 +580,7 @@ func makeMintDynasty(sortedCandidates []common.Address, dynastySize int) []commo
 	return dynasty
 }
 
-//FindMintProposer returns proposer for mint block
+// FindMintProposer returns proposer for mint block
 func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
 	mintTs := NextMintSlot2(ts)
 	proposerIndex := d.calcProposerIndex(mintTs)
@@ -627,7 +627,7 @@ func nextMintSlot(ts time.Time) time.Time {
 	return time.Unix(int64(next/time.Second), 0)
 }
 
-//NextMintSlot2 returns timestamp for next mint slot
+// NextMintSlot2 returns timestamp for next mint slot
 func NextMintSlot2(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval
@@ -683,7 +683,7 @@ func (d *Dpos) calcProposerIndex(ts int64) int {
 	return (int(ts) / int(BlockInterval.Seconds())) % d.dynastySize
 }
 
-//VerifyHeightAndTimestamp verify height and timestamp based on lib
+// VerifyHeightAndTimestamp verify height and timestamp based on lib
 func (d *Dpos) VerifyHeightAndTimestamp(lib, bd *core.BlockData) error {
 	if bd.Height() <= lib.Height() || bd.Timestamp() <= lib.Timestamp() {
 		return ErrCannotRevertLIB
@@ -699,17 +699,17 @@ func (d *Dpos) VerifyHeightAndTimestamp(lib, bd *core.BlockData) error {
 	return nil
 }
 
-//MaximumHeightWithTimestamp return maximum height based on lib
+// MaximumHeightWithTimestamp return maximum height based on lib
 func (d *Dpos) MaximumHeightWithTimestamp(libHeight uint64, libTs, ts int64) uint64 {
 	return uint64(ts-libTs)/uint64(BlockInterval.Seconds()) + libHeight
 }
 
-//MinimumTimestampWithHeight returns minimum timestamp based on lib
+// MinimumTimestampWithHeight returns minimum timestamp based on lib
 func (d *Dpos) MinimumTimestampWithHeight(libTs int64, libHeight, height uint64) int64 {
 	return int64(libHeight-height)*int64(BlockInterval.Seconds()) + libTs
 }
 
-//MissingBlocks returns number of missing blocks based on lib
+// MissingBlocks returns number of missing blocks based on lib
 func (d *Dpos) MissingBlocks(lib, bd *core.BlockData) uint64 {
 	return d.MaximumHeightWithTimestamp(lib.Height(), lib.Timestamp(), bd.Timestamp()) - bd.Height()
 }

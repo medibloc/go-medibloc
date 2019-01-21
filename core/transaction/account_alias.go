@@ -44,7 +44,7 @@ type RegisterAliasTx struct {
 
 var _ core.ExecutableTx = &RegisterAliasTx{}
 
-//NewRegisterAliasTx returns RegisterAliasTx
+// NewRegisterAliasTx returns RegisterAliasTx
 func NewRegisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -72,7 +72,7 @@ func NewRegisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
-//Execute RegisterAliasTx
+// Execute RegisterAliasTx
 func (tx *RegisterAliasTx) Execute(b *core.Block) error {
 	collateralLimit, err := util.NewUint128FromString(AliasCollateralMinimum)
 	if err != nil {
@@ -150,7 +150,7 @@ func (tx *RegisterAliasTx) Execute(b *core.Block) error {
 	return b.State().PutAccountAlias(tx.alias, tx.addr)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *RegisterAliasTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
@@ -167,7 +167,7 @@ type DeregisterAliasTx struct {
 
 var _ core.ExecutableTx = &DeregisterAliasTx{}
 
-//NewDeregisterAliasTx returns RegisterAliasTx
+// NewDeregisterAliasTx returns RegisterAliasTx
 func NewDeregisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -186,7 +186,7 @@ func NewDeregisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) 
 	}, nil
 }
 
-//Execute DeregisterAliasTx
+// Execute DeregisterAliasTx
 func (tx *DeregisterAliasTx) Execute(b *core.Block) error {
 	acc, err := b.State().GetAccount(tx.addr)
 	if err != nil {
@@ -246,7 +246,7 @@ func (tx *DeregisterAliasTx) Execute(b *core.Block) error {
 	return b.State().PutAccount(acc)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *DeregisterAliasTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }

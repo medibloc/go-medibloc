@@ -71,7 +71,7 @@ type BlockManager struct {
 	cmFinishedCh         chan bool
 }
 
-//Consensus returns consensus
+// Consensus returns consensus
 func (bm *BlockManager) Consensus() Consensus {
 	return bm.consensus
 }
@@ -359,7 +359,7 @@ func (bm *BlockManager) ChainID() uint32 {
 	return bm.bc.ChainID()
 }
 
-//BlockHashByHeight returns the hash of the block contaied in the chain by height.
+// BlockHashByHeight returns the hash of the block contaied in the chain by height.
 func (bm *BlockManager) BlockHashByHeight(height uint64) ([]byte, error) {
 	return bm.bc.BlockHashByHeight(height)
 }
@@ -558,7 +558,7 @@ func (bm *BlockManager) verifyBlockData(bd *BlockData) error {
 	}
 
 	if err := bm.consensus.VerifyHeightAndTimestamp(bm.bc.LIB().BlockData, bd); err != nil {
-		//if bd.Height() <= bm.bc.LIB().Height() {
+		// if bd.Height() <= bm.bc.LIB().Height() {
 		logging.WithFields(logrus.Fields{
 			"blockData": bd,
 		}).Debug("Received a block forked before current LIB.")

@@ -118,19 +118,19 @@ func (ms *MedService) ClosePeer(peerID string, reason error) {
 	ms.node.ClosePeer(peerID, reason)
 }
 
-//SendPbMessageToPeer send protobuf message to peer
+// SendPbMessageToPeer send protobuf message to peer
 func (ms *MedService) SendPbMessageToPeer(msgType string, pb proto.Message, priority int, peerID string) {
 	b, _ := proto.Marshal(pb)
 	ms.node.SendMessageToPeer(msgType, b, priority, peerID)
 }
 
-//SendPbMessageToPeers send protobuf messages to filtered peers
+// SendPbMessageToPeers send protobuf messages to filtered peers
 func (ms *MedService) SendPbMessageToPeers(msgType string, pb proto.Message, priority int, filter PeerFilterAlgorithm) []string {
 	b, _ := proto.Marshal(pb)
 	return ms.SendMessageToPeers(msgType, b, priority, filter)
 }
 
-//RequestAndResponse set id to query and send to peers
+// RequestAndResponse set id to query and send to peers
 func (ms *MedService) RequestAndResponse(ctx context.Context, query Query, f MessageCallback, filter PeerFilterAlgorithm) (bool, []error) {
 	idBytes := hash.Sha3256([]byte(query.MessageType()), query.Hash(), byteutils.FromInt64(time.Now().UnixNano()))
 	id := byteutils.Bytes2Hex(idBytes)

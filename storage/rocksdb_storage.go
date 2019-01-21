@@ -55,8 +55,8 @@ func NewRocksStorage(path string) (*RocksStorage, error) {
 	opts.SetBlockBasedTableFactory(bbto)
 	opts.SetCreateIfMissing(true)
 	opts.SetMaxOpenFiles(500)
-	opts.SetWriteBufferSize(64 * opt.MiB) //Default: 4MB
-	opts.IncreaseParallelism(4)           //flush and compaction thread
+	opts.SetWriteBufferSize(64 * opt.MiB) // Default: 4MB
+	opts.IncreaseParallelism(4)           // flush and compaction thread
 
 	db, err := gorocksdb.OpenDb(opts, path)
 	if err != nil {
@@ -72,7 +72,7 @@ func NewRocksStorage(path string) (*RocksStorage, error) {
 		wo:          gorocksdb.NewDefaultWriteOptions(),
 	}
 
-	//go RecordMetrics(storage)
+	// go RecordMetrics(storage)
 
 	return storage, nil
 }
@@ -154,50 +154,50 @@ func (storage *RocksStorage) EnableBatch() {
 // Flush write and flush pending batch write.
 func (storage *RocksStorage) Flush() error {
 	return nil
-	//storage.mutex.Lock()
-	//defer storage.mutex.Unlock()
+	// storage.mutex.Lock()
+	// defer storage.mutex.Unlock()
 	//
-	//if !storage.enableBatch {
+	// if !storage.enableBatch {
 	//	return nil
-	//}
+	// }
 	//
-	////startAt := time.Now().UnixNano()
+	// //startAt := time.Now().UnixNano()
 	//
-	//wb := gorocksdb.NewWriteBatch()
-	//defer wb.Destroy()
+	// wb := gorocksdb.NewWriteBatch()
+	// defer wb.Destroy()
 	//
-	////bl := len(storage.batchOpts)
+	// //bl := len(storage.batchOpts)
 	//
-	//for _, opt := range storage.batchOpts {
+	// for _, opt := range storage.batchOpts {
 	//	if opt.deleted {
 	//		wb.Delete(opt.key)
 	//	} else {
 	//		wb.Put(opt.key, opt.value)
 	//	}
-	//}
-	//storage.batchOpts = make(map[string]*batchOpt)
+	// }
+	// storage.batchOpts = make(map[string]*batchOpt)
 	//
-	//err := storage.db.Write(storage.wo, wb)
+	// err := storage.db.Write(storage.wo, wb)
 	//
-	////endAt := time.Now().UnixNano()
-	////metricsRocksdbFlushTime.Update(endAt - startAt)
-	////metricsRocksdbFlushLen.Update(int64(bl))
+	// //endAt := time.Now().UnixNano()
+	// //metricsRocksdbFlushTime.Update(endAt - startAt)
+	// //metricsRocksdbFlushLen.Update(int64(bl))
 	//
-	//return err
+	// return err
 }
 
 // DisableBatch disable batch write.
 func (storage *RocksStorage) DisableBatch() {
 	return
-	//storage.mutex.Lock()
-	//defer storage.mutex.Unlock()
-	//storage.batchOpts = make(map[string]*batchOpt)
+	// storage.mutex.Lock()
+	// defer storage.mutex.Unlock()
+	// storage.batchOpts = make(map[string]*batchOpt)
 	//
-	//storage.enableBatch = false
+	// storage.enableBatch = false
 }
 
 // RecordMetrics record rocksdb metrics
-//func RecordMetrics(storage *RocksStorage) {
+// func RecordMetrics(storage *RocksStorage) {
 //	metricsUpdateChan := time.NewTicker(5 * time.Second).C
 //
 //	for {
@@ -224,4 +224,4 @@ func (storage *RocksStorage) DisableBatch() {
 //			//metricsBlocksdbCachePinnedSize.Update(int64(pinnedSize))
 //		}
 //	}
-//}
+// }

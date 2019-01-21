@@ -163,7 +163,7 @@ func (tb *Batch) Put(key []byte, value []byte) error {
 	return nil
 }
 
-//GetData get value from trie and set on serializable data
+// GetData get value from trie and set on serializable data
 func (tb *Batch) GetData(key []byte, data Serializable) error {
 	value, err := tb.Get(key)
 	if err != nil {
@@ -172,7 +172,7 @@ func (tb *Batch) GetData(key []byte, data Serializable) error {
 	return data.FromBytes(value)
 }
 
-//PutData put serializable data to trie
+// PutData put serializable data to trie
 func (tb *Batch) PutData(key []byte, data Serializable) error {
 	value, err := data.ToBytes()
 	if err != nil {

@@ -25,7 +25,7 @@ type MemoryStorage struct {
 	data *sync.Map
 }
 
-//Len returns number of keys in memory storage
+// Len returns number of keys in memory storage
 func (s *MemoryStorage) Len() int {
 	cnt := 0
 	s.data.Range(func(key, value interface{}) bool {
@@ -64,7 +64,7 @@ func (s *MemoryStorage) Put(key []byte, value []byte) error {
 	return nil
 }
 
-//Close closes memory storage
+// Close closes memory storage
 func (s *MemoryStorage) Close() error {
 	return nil
 }

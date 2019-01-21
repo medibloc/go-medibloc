@@ -152,7 +152,7 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 		// TODO emit event
 		evicted := tm.futurePool.Set(txc)
 		if byteutils.Equal(evicted.Hash(), txc.Hash()) {
-			//TODO Err Type
+			// TODO Err Type
 			return errors.New("transaction pool is full")
 		}
 		return nil

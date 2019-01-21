@@ -208,7 +208,7 @@ func TestPayerSigner(t *testing.T) {
 	payerAcc, err := bb.B.State().GetAccount(payer.Addr)
 	require.NoError(t, err)
 
-	//require.NoError(t,payerAcc.UpdatePoints(bb.B.Timestamp()))
+	// require.NoError(t,payerAcc.UpdatePoints(bb.B.Timestamp()))
 
 	t.Log("Payer's points after payer sign", payerAcc.Points)
 
@@ -236,7 +236,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		SignPair(from).
 		Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).
 		ExecuteErr(transaction.ErrAliasAlreadyHave)
-		//Execute()
+	// Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 400000000-collateralAmount-20000)
@@ -268,7 +268,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		Balance(from.Addr, 400000000-20000)
 
 	acc, err = bb.B.State().GetAccountByAlias(testutil.TestAliasName)
-	//require.NoError(t, err)
+	// require.NoError(t, err)
 	if err != nil {
 		t.Log(err)
 	} else {

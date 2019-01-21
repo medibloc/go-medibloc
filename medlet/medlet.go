@@ -231,7 +231,7 @@ func (m *Medlet) Stop() {
 
 	m.consensus.Stop()
 
-	//m.syncService.Stop()
+	// m.syncService.Stop()
 
 	err := m.storage.Close()
 	if err != nil {

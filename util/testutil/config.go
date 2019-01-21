@@ -188,7 +188,7 @@ func (cfg *NodeConfig) SetSeed(seed *Node) *NodeConfig {
 	return cfg
 }
 
-//DirSize returns dir size
+// DirSize returns dir size
 func DirSize(path string) (int64, error) {
 	var size int64
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
@@ -243,7 +243,7 @@ func (cfg *NodeConfig) String() string {
 		cfg.TokenDist)
 }
 
-//TempDir make temporary directory for test
+// TempDir make temporary directory for test
 func TempDir(t *testing.T) string {
 	err := os.MkdirAll(filepath.Join("testdata", t.Name()), 0755)
 	require.NoError(t, err)

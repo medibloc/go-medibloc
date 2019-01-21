@@ -71,7 +71,7 @@ func createDefaultConfigFile(filename string) error {
 	return nil
 }
 
-//DefaultConfig returns default config.
+// DefaultConfig returns default config.
 func DefaultConfig() *medletpb.Config {
 	return &medletpb.Config{
 		Global: &medletpb.GlobalConfig{

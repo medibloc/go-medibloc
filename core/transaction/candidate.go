@@ -60,7 +60,7 @@ type BecomeCandidateTx struct {
 
 var _ core.ExecutableTx = &BecomeCandidateTx{}
 
-//NewBecomeCandidateTx returns BecomeCandidateTx
+// NewBecomeCandidateTx returns BecomeCandidateTx
 func NewBecomeCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -83,7 +83,7 @@ func NewBecomeCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) 
 	}, nil
 }
 
-//Execute NewBecomeCandidateTx
+// Execute NewBecomeCandidateTx
 func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	acc, err := b.State().GetAccount(tx.candidateAddr)
 	if err != nil {
@@ -121,7 +121,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		return nil
 	}
 
-	//TODO: URL 유효성 확인? Regex? @shwankim
+	// TODO: URL 유효성 확인? Regex? @shwankim
 
 	candidate := &dState.Candidate{
 		ID:         tx.txHash,
@@ -136,7 +136,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 	return b.State().DposState().PutCandidate(tx.txHash, candidate)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *BecomeCandidateTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
@@ -145,7 +145,7 @@ func (tx *BecomeCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints
 	return points, nil
 }
 
-//QuitCandidateTx is a structure for quiting candidate
+// QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
 	candidateAddr common.Address
 	size          int
@@ -153,7 +153,7 @@ type QuitCandidateTx struct {
 
 var _ core.ExecutableTx = &QuitCandidateTx{}
 
-//NewQuitCandidateTx returns QuitCandidateTx
+// NewQuitCandidateTx returns QuitCandidateTx
 func NewQuitCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -172,7 +172,7 @@ func NewQuitCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
-//Execute QuitCandidateTx
+// Execute QuitCandidateTx
 func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 	acc, err := b.State().GetAccount(tx.candidateAddr)
 	if err != nil {
@@ -211,7 +211,7 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *QuitCandidateTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }

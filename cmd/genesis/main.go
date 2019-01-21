@@ -36,7 +36,7 @@ func randomPrivateKeys() []string {
 }
 
 func main() {
-	//privKeys := testnet_privKeys()
+	// privKeys := testnet_privKeys()
 	privKeys := randomPrivateKeys()
 
 	const chainID = 181228

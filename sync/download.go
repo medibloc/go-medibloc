@@ -44,7 +44,7 @@ type download struct {
 	baseBlock *core.BlockData
 }
 
-//Download start sync download
+// Download start sync download
 func (s *Service) Download(bd *core.BlockData) error {
 	if s.IsDownloadActivated() {
 		return ErrDownloadActivated
@@ -167,10 +167,10 @@ func (d *download) handleFindBaseResponse(_ net.Query, msg net.Message) error {
 			"sender": msg.MessageFrom(),
 			"err":    err,
 		}).Debug("failed to unmarshal msg")
-		return err //TODO: blacklist?
+		return err // TODO: blacklist?
 	}
 	if !res.Status {
-		return ErrNotFound //TODO: blacklist?
+		return ErrNotFound // TODO: blacklist?
 	}
 	if !byteutils.Equal(d.targetHash, res.TargetHash) {
 		return ErrDifferentTargetHash
@@ -262,10 +262,10 @@ func (d *download) handleBlockByHeightResponse(q net.Query, msg net.Message) err
 			"sender": msg.MessageFrom(),
 			"err":    err,
 		}).Debug("failed to unmarshal msg")
-		return err //TODO: blacklist?
+		return err // TODO: blacklist?
 	}
 	if !res.Status {
-		return ErrNotFound //TODO: blacklist?
+		return ErrNotFound // TODO: blacklist?
 	}
 	if !byteutils.Equal(d.targetHash, res.TargetHash) {
 		return ErrDifferentTargetHash

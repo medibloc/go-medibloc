@@ -45,12 +45,12 @@ type BlockState struct {
 	storage storage.Storage
 }
 
-//Timestamp returns timestamp
+// Timestamp returns timestamp
 func (bs *BlockState) Timestamp() int64 {
 	return bs.timestamp
 }
 
-//SetTimestamp sets timestamp
+// SetTimestamp sets timestamp
 func (bs *BlockState) SetTimestamp(timestamp int64) {
 	bs.timestamp = timestamp
 }
@@ -65,22 +65,22 @@ func (bs *BlockState) Reward() *util.Uint128 {
 	return bs.reward
 }
 
-//CPUPrice returns cpuPrice
+// CPUPrice returns cpuPrice
 func (bs *BlockState) CPUPrice() *util.Uint128 {
 	return bs.cpuPrice
 }
 
-//CPUUsage returns cpuUsage
+// CPUUsage returns cpuUsage
 func (bs *BlockState) CPUUsage() uint64 {
 	return bs.cpuUsage
 }
 
-//NetPrice returns netPrice
+// NetPrice returns netPrice
 func (bs *BlockState) NetPrice() *util.Uint128 {
 	return bs.netPrice
 }
 
-//NetUsage returns netUsage
+// NetUsage returns netUsage
 func (bs *BlockState) NetUsage() uint64 {
 	return bs.netUsage
 }
@@ -90,7 +90,7 @@ func (bs *BlockState) DposState() *dState.State {
 	return bs.dposState
 }
 
-//Price returns cpu price and net price
+// Price returns cpu price and net price
 func (bs *BlockState) Price() common.Price {
 	return common.Price{CPUPrice: bs.cpuPrice, NetPrice: bs.netPrice}
 }
@@ -125,7 +125,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	}, nil
 }
 
-//Clone clone states
+// Clone clone states
 func (bs *BlockState) Clone() (*BlockState, error) {
 	accState, err := bs.accState.Clone()
 	if err != nil {
@@ -256,22 +256,22 @@ func (bs *BlockState) reset() error {
 	return nil
 }
 
-//AccountsRoot returns account state root
+// AccountsRoot returns account state root
 func (bs *BlockState) AccountsRoot() ([]byte, error) {
 	return bs.accState.RootHash()
 }
 
-//TxsRoot returns transaction state root
+// TxsRoot returns transaction state root
 func (bs *BlockState) TxsRoot() ([]byte, error) {
 	return bs.txState.RootHash()
 }
 
-//DposRoot returns dpos state root
+// DposRoot returns dpos state root
 func (bs *BlockState) DposRoot() ([]byte, error) {
 	return bs.dposState.RootBytes()
 }
 
-//String returns stringified blocks state
+// String returns stringified blocks state
 func (bs *BlockState) String() string {
 	return fmt.Sprintf(
 		"{reward: %v, supply: %v, cpuPrice: %v, cpuPoints: %v, netPrice: %v, netPoints: %v}",
@@ -296,47 +296,47 @@ func (bs *BlockState) loadTransactionState(rootBytes []byte) error {
 	return nil
 }
 
-//GetAccount returns account in state
+// GetAccount returns account in state
 func (bs *BlockState) GetAccount(addr common.Address) (*coreState.Account, error) {
 	return bs.accState.GetAccount(addr, bs.Timestamp())
 }
 
-//PutAccount put account to state
+// PutAccount put account to state
 func (bs *BlockState) PutAccount(acc *coreState.Account) error {
 	return bs.accState.PutAccount(acc)
 }
 
-//GetAccountByAlias returns account by alias name
+// GetAccountByAlias returns account by alias name
 func (bs *BlockState) GetAccountByAlias(alias string) (*coreState.Account, error) {
 	return bs.accState.GetAccountByAlias(alias, bs.timestamp)
 }
 
-//PutAccountAlias set alias name for account
+// PutAccountAlias set alias name for account
 func (bs *BlockState) PutAccountAlias(alias string, addr common.Address) error {
 	return bs.accState.PutAccountAlias(alias, addr)
 }
 
-//DelAccountAlias delete alias information from account state
+// DelAccountAlias delete alias information from account state
 func (bs *BlockState) DelAccountAlias(alias string, addr common.Address) error {
 	return bs.accState.DelAccountAlias(alias, addr)
 }
 
-//GetTx get tx from transaction state
+// GetTx get tx from transaction state
 func (bs *BlockState) GetTx(txHash []byte) (*coreState.Transaction, error) {
 	return bs.txState.GetTx(txHash)
 }
 
-//PutTx put tx to state
+// PutTx put tx to state
 func (bs *BlockState) PutTx(tx *coreState.Transaction) error {
 	return bs.txState.Put(tx)
 }
 
-//AddVotePowerToCandidate add vote power to candidate
+// AddVotePowerToCandidate add vote power to candidate
 func (bs *BlockState) AddVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error {
 	return bs.dposState.AddVotePowerToCandidate(candidateID, amount)
 }
 
-//SubVotePowerToCandidate subtract vote power from candidate
+// SubVotePowerToCandidate subtract vote power from candidate
 func (bs *BlockState) SubVotePowerToCandidate(candidateID []byte, amount *util.Uint128) error {
 	return bs.dposState.SubVotePowerToCandidate(candidateID, amount)
 }
@@ -388,7 +388,7 @@ func (bs *BlockState) checkBandwidthLimit(bandwidth *common.Bandwidth) error {
 	return nil
 }
 
-//PayReward add reward to coinbase and update reward and supply
+// PayReward add reward to coinbase and update reward and supply
 func (bs *BlockState) PayReward(coinbase common.Address, parentSupply *util.Uint128) error {
 	reward, err := calcMintReward(parentSupply)
 	if err != nil {
@@ -469,7 +469,7 @@ func (bs *BlockState) AcceptTransaction(tx *coreState.Transaction) error {
 	return nil
 }
 
-//SetMintDynastyState set mint dys
+// SetMintDynastyState set mint dys
 func (bs *BlockState) SetMintDynastyState(parentState *BlockState, consensus Consensus) error {
 	mintDynasty, err := consensus.MakeMintDynasty(bs.timestamp, parentState)
 	if err == ErrSameDynasty {

@@ -68,7 +68,7 @@ func medi(ctx *cli.Context) error {
 		}).Error("Failed to create medlet.")
 		return err
 	}
-	//log.Init(m.Config().App.LogFile, m.Config().App.LogLevel, m.Config().App.LogAge)
+	// log.Init(m.Config().App.LogFile, m.Config().App.LogLevel, m.Config().App.LogAge)
 	return runMedi(m)
 }
 

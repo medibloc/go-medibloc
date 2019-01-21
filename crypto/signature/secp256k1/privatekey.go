@@ -42,7 +42,7 @@ func GeneratePrivateKey() *PrivateKey {
 	return priv
 }
 
-//NewPrivateKeyFromHex gets new private key from hex string.
+// NewPrivateKeyFromHex gets new private key from hex string.
 func NewPrivateKeyFromHex(b string) (*PrivateKey, error) {
 	ecdsaKey, err := HexToECDSA(b)
 	if err != nil {

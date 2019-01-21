@@ -146,7 +146,7 @@ func MakeKeystoreV3(privKeyHex, passphrase string, fn string) error {
 
 // EncryptKey encrypts a key using the specified scrypt parameters into a json
 func EncryptKey(key *Key, auth string, scryptN, scryptP int) ([]byte, error) {
-	//keyBytes := math.PaddedBigBytes(key.PrivateKey.D, 32)
+	// keyBytes := math.PaddedBigBytes(key.PrivateKey.D, 32)
 	keyBytes, err := key.PrivateKey.Encoded()
 	if err != nil {
 		return nil, err

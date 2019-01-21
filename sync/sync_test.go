@@ -50,7 +50,7 @@ func TestService_Start(t *testing.T) {
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().HexHash())
 
-	//create First Receiver
+	// create First Receiver
 	receiver := testNetwork.NewNode()
 	receiver.Start()
 
@@ -90,7 +90,7 @@ func TestForDuplicatedBlock(t *testing.T) {
 	require.Equal(t, uint64(nBlocks), seed.Tail().Height())
 	t.Logf("Seed Tail: %v floor, %v", seed.Tail().Height(), seed.Tail().HexHash())
 
-	//create First Receiver
+	// create First Receiver
 	receiver := testNetwork.NewNode()
 	receiver.Start()
 

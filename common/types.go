@@ -108,12 +108,12 @@ func (a Address) String() string {
 	return byteutils.Bytes2Hex(a.Bytes())
 }
 
-//ToBytes convert address to byte slice (for trie.Serializable)
+// ToBytes convert address to byte slice (for trie.Serializable)
 func (a Address) ToBytes() ([]byte, error) {
 	return a.Bytes(), nil
 }
 
-//FromBytes convert byte slice to slice (for trie.Serializable)
+// FromBytes convert byte slice to slice (for trie.Serializable)
 func (a *Address) FromBytes(b []byte) error {
 	a.SetBytes(b)
 	return nil

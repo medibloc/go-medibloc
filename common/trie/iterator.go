@@ -154,7 +154,7 @@ func (it *Iterator) Next() (bool, error) {
 				return false, errors.New("empty branch node")
 			}
 			if len(valid) > 1 {
-				//curRoute := append(route, []byte{byte(valid[1])}...)
+				// curRoute := append(route, []byte{byte(valid[1])}...)
 				it.push(node, valid[1], route)
 			}
 			if valid[0] == -1 {

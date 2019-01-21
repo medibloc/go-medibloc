@@ -10,7 +10,7 @@ type Bandwidth struct {
 	netUsage uint64
 }
 
-//NewBandwidth returns new bandwidth
+// NewBandwidth returns new bandwidth
 func NewBandwidth(cpu, net uint64) *Bandwidth {
 	return &Bandwidth{
 		cpuUsage: cpu,
@@ -26,22 +26,22 @@ func (b *Bandwidth) Clone() *Bandwidth {
 	}
 }
 
-//CPUUsage returns cpuUsage
+// CPUUsage returns cpuUsage
 func (b *Bandwidth) CPUUsage() uint64 {
 	return b.cpuUsage
 }
 
-//SetCPUUsage sets cpuUsage
+// SetCPUUsage sets cpuUsage
 func (b *Bandwidth) SetCPUUsage(cpuUsage uint64) {
 	b.cpuUsage = cpuUsage
 }
 
-//NetUsage returns netUsage
+// NetUsage returns netUsage
 func (b *Bandwidth) NetUsage() uint64 {
 	return b.netUsage
 }
 
-//SetNetUsage sets netUsage
+// SetNetUsage sets netUsage
 func (b *Bandwidth) SetNetUsage(netUsage uint64) {
 	b.netUsage = netUsage
 }

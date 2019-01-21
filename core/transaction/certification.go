@@ -39,7 +39,7 @@ func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
-//AddCertificationTx is a structure for adding certification
+// AddCertificationTx is a structure for adding certification
 type AddCertificationTx struct {
 	Issuer          common.Address
 	Certified       common.Address
@@ -51,7 +51,7 @@ type AddCertificationTx struct {
 
 var _ core.ExecutableTx = &AddCertificationTx{}
 
-//NewAddCertificationTx returns AddCertificationTx
+// NewAddCertificationTx returns AddCertificationTx
 func NewAddCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -81,7 +81,7 @@ func NewAddCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error)
 	}, nil
 }
 
-//Execute AddCertificationTx
+// Execute AddCertificationTx
 func (tx *AddCertificationTx) Execute(b *core.Block) error {
 	certified, err := b.State().GetAccount(tx.Certified)
 	if err != nil {
@@ -107,7 +107,7 @@ func (tx *AddCertificationTx) Execute(b *core.Block) error {
 		return ErrCertIssuedAlreadyAdded
 	}
 
-	//TODO: certification payload Verify: drsleepytiger
+	// TODO: certification payload Verify: drsleepytiger
 
 	pbCertification := &corepb.Certification{
 		CertificateHash: tx.CertificateHash,
@@ -175,7 +175,7 @@ func (tx *AddCertificationTx) Execute(b *core.Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *AddCertificationTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
@@ -207,7 +207,7 @@ func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
-//RevokeCertificationTx is a structure for revoking certification
+// RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
 	Revoker         common.Address
 	CertificateHash []byte
@@ -216,7 +216,7 @@ type RevokeCertificationTx struct {
 
 var _ core.ExecutableTx = &RevokeCertificationTx{}
 
-//NewRevokeCertificationTx returns RevokeCertificationTx
+// NewRevokeCertificationTx returns RevokeCertificationTx
 func NewRevokeCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -243,7 +243,7 @@ func NewRevokeCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, err
 	}, nil
 }
 
-//Execute RevokeCertificationTx
+// Execute RevokeCertificationTx
 func (tx *RevokeCertificationTx) Execute(b *core.Block) error {
 	issuer, err := b.State().GetAccount(tx.Revoker)
 	if err != nil {
@@ -332,7 +332,7 @@ func (tx *RevokeCertificationTx) Execute(b *core.Block) error {
 	return b.State().PutAccount(certified)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *RevokeCertificationTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }

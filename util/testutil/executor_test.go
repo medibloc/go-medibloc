@@ -25,7 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//func TestNetworkUtil(t *testing.T) {
+// func TestNetworkUtil(t *testing.T) {
 //	dynastySize := 3
 //	nt := testutil.NewNetwork(t, dynastySize)
 //	nt.NewSeedNode()
@@ -56,7 +56,7 @@ import (
 //	bd, err := core.BytesToBlockData(msg.Data())
 //	require.NoError(t, err)
 //	require.True(t, reflect.DeepEqual(block.GetBlockData(), bd))
-//}
+// }
 
 func TestNetworkProposer(t *testing.T) {
 	dynastySize := 3

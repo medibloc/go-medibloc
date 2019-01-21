@@ -29,7 +29,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//Service is the service for sync service
+// Service is the service for sync service
 type Service struct {
 	ctx context.Context
 
@@ -45,7 +45,7 @@ type Service struct {
 	activeDownloadLimit int
 }
 
-//IsDownloadActivated return status of activation
+// IsDownloadActivated return status of activation
 func (s *Service) IsDownloadActivated() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -128,7 +128,7 @@ func (s *Service) handleFindBaseRequest(msg net.Message) {
 			"sender": msg.MessageFrom(),
 			"err":    err,
 		}).Debug("failed to unmarshal msg")
-		return //TODO: blacklist?
+		return // TODO: blacklist?
 	}
 
 	res := new(syncpb.FindBaseResponse)
@@ -154,7 +154,7 @@ func (s *Service) handleBlockByHeightRequest(msg net.Message) {
 			"sender": msg.MessageFrom(),
 			"err":    err,
 		}).Debug("failed to unmarshal msg")
-		return //TODO: blacklist?
+		return // TODO: blacklist?
 	}
 
 	res := new(syncpb.BlockByHeightResponse)

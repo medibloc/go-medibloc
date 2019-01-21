@@ -35,13 +35,13 @@ const (
 	DynastyPrefix   = "d_" // alias account prefix for account state trie
 )
 
-//State is a structure for dpos state
+// State is a structure for dpos state
 type State struct {
 	candidateState *trie.Batch // key: candidate id(txHash), value: candidate
 	dynastyState   *trie.Batch // key: order, value: bpAddr
 }
 
-//NewDposState returns new dpos state
+// NewDposState returns new dpos state
 func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor storage.Storage) (*State, error) {
 	cs, err := trie.NewBatch(candidateStateHash, stor)
 	if err != nil {
@@ -58,7 +58,7 @@ func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor stora
 	}, nil
 }
 
-//GetCandidate returns candidate from candidate state
+// GetCandidate returns candidate from candidate state
 func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
 	candidate := new(Candidate)
 	if err := s.candidateState.GetData(cid, candidate); err != nil {
@@ -67,22 +67,22 @@ func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
 	return candidate, nil
 }
 
-//PutCandidate puts candidate to candidate state
+// PutCandidate puts candidate to candidate state
 func (s *State) PutCandidate(cid []byte, candidate *Candidate) error {
 	return s.candidateState.PutData(cid, candidate)
 }
 
-//DelCandidate del candidate from candidate state
+// DelCandidate del candidate from candidate state
 func (s *State) DelCandidate(cid []byte) error {
 	return s.candidateState.Delete(cid)
 }
 
-//CandidateState returns candidate state
+// CandidateState returns candidate state
 func (s *State) CandidateState() *trie.Batch {
 	return s.candidateState
 }
 
-//GetProposer returns proposer address of index
+// GetProposer returns proposer address of index
 func (s *State) GetProposer(index int) (common.Address, error) {
 	ds := s.dynastyState
 	b, err := ds.Get(byteutils.FromInt32(int32(index)))
@@ -92,18 +92,18 @@ func (s *State) GetProposer(index int) (common.Address, error) {
 	return common.BytesToAddress(b)
 }
 
-//PutProposer sets proposer address to index
+// PutProposer sets proposer address to index
 func (s *State) PutProposer(index int, addr common.Address) error {
 	ds := s.dynastyState
 	return ds.Put(byteutils.FromInt32(int32(index)), addr.Bytes())
 }
 
-//DynastyState returns dynasty state
+// DynastyState returns dynasty state
 func (s *State) DynastyState() *trie.Batch {
 	return s.dynastyState
 }
 
-//Prepare prepare trie
+// Prepare prepare trie
 func (s *State) Prepare() error {
 	if err := s.candidateState.Prepare(); err != nil {
 		return err
@@ -114,7 +114,7 @@ func (s *State) Prepare() error {
 	return nil
 }
 
-//BeginBatch begin batch
+// BeginBatch begin batch
 func (s *State) BeginBatch() error {
 	if err := s.candidateState.BeginBatch(); err != nil {
 		return err
@@ -125,7 +125,7 @@ func (s *State) BeginBatch() error {
 	return nil
 }
 
-//Commit saves batch to state
+// Commit saves batch to state
 func (s *State) Commit() error {
 	if err := s.candidateState.Commit(); err != nil {
 		return err
@@ -136,7 +136,7 @@ func (s *State) Commit() error {
 	return nil
 }
 
-//RollBack rollback batch
+// RollBack rollback batch
 func (s *State) RollBack() error {
 	if err := s.candidateState.RollBack(); err != nil {
 		return err
@@ -147,7 +147,7 @@ func (s *State) RollBack() error {
 	return nil
 }
 
-//Flush flush data to storage
+// Flush flush data to storage
 func (s *State) Flush() error {
 	if err := s.candidateState.Flush(); err != nil {
 		return err
@@ -158,7 +158,7 @@ func (s *State) Flush() error {
 	return nil
 }
 
-//Reset reset trie's refCounter
+// Reset reset trie's refCounter
 func (s *State) Reset() error {
 	if err := s.candidateState.Reset(); err != nil {
 		return err
@@ -169,7 +169,7 @@ func (s *State) Reset() error {
 	return nil
 }
 
-//Clone clone state
+// Clone clone state
 func (s *State) Clone() (*State, error) {
 	cs, err := s.candidateState.Clone()
 	if err != nil {
@@ -186,7 +186,7 @@ func (s *State) Clone() (*State, error) {
 	}, nil
 }
 
-//RootBytes returns root bytes for dpos state
+// RootBytes returns root bytes for dpos state
 func (s *State) RootBytes() ([]byte, error) {
 	csRoot, err := s.candidateState.RootHash()
 	if err != nil {
@@ -204,7 +204,7 @@ func (s *State) RootBytes() ([]byte, error) {
 	return proto.Marshal(pbState)
 }
 
-//SortByVotePower returns Descending ordered candidate slice
+// SortByVotePower returns Descending ordered candidate slice
 func (s *State) SortByVotePower() ([]common.Address, error) {
 	cs := s.candidateState
 	addresses := make([]common.Address, 0)
@@ -252,7 +252,7 @@ func (s *State) SortByVotePower() ([]common.Address, error) {
 	return addresses, nil
 }
 
-//SetDynasty set dynastyState by using dynasty slice
+// SetDynasty set dynastyState by using dynasty slice
 func (s *State) SetDynasty(dynasty []common.Address) error {
 	for i, addr := range dynasty {
 		if err := s.PutProposer(i, addr); err != nil {
@@ -262,7 +262,7 @@ func (s *State) SetDynasty(dynasty []common.Address) error {
 	return nil
 }
 
-//AddVotePowerToCandidate add vote power to candidate
+// AddVotePowerToCandidate add vote power to candidate
 func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
 	err := s.candidateState.GetData(id, candidate)
@@ -277,7 +277,7 @@ func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	return s.candidateState.PutData(id, candidate)
 }
 
-//SubVotePowerToCandidate sub vote power from candidate's vote power
+// SubVotePowerToCandidate sub vote power from candidate's vote power
 func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
 	err := s.candidateState.GetData(id, candidate)

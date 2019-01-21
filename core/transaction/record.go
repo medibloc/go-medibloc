@@ -33,7 +33,7 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
-//AddRecordTx is a structure for adding record
+// AddRecordTx is a structure for adding record
 type AddRecordTx struct {
 	owner      common.Address
 	recordHash []byte
@@ -42,7 +42,7 @@ type AddRecordTx struct {
 
 var _ core.ExecutableTx = &AddRecordTx{}
 
-//NewAddRecordTx returns AddRecordTx
+// NewAddRecordTx returns AddRecordTx
 func NewAddRecordTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -69,7 +69,7 @@ func NewAddRecordTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
-//Execute AddRecordTx
+// Execute AddRecordTx
 func (tx *AddRecordTx) Execute(b *core.Block) error {
 	var err error
 	acc, err := b.State().GetAccount(tx.owner)
@@ -117,7 +117,7 @@ func (tx *AddRecordTx) Execute(b *core.Block) error {
 	return b.State().PutAccount(acc)
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *AddRecordTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }

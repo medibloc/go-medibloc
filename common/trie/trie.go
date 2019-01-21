@@ -131,7 +131,7 @@ func (t *Trie) Clone() (*Trie, error) {
 	return NewTrie(t.rootHash, t.storage)
 }
 
-//Prepare prepare trie
+// Prepare prepare trie
 func (t *Trie) Prepare() error {
 	if t.prepared {
 		return ErrAlreadyPreparedTrie
@@ -142,7 +142,7 @@ func (t *Trie) Prepare() error {
 	return nil
 }
 
-//Flush save temp nodes to storage
+// Flush save temp nodes to storage
 func (t *Trie) Flush() error {
 	if !t.prepared {
 		return ErrNotPrepared
@@ -170,7 +170,7 @@ func (t *Trie) Flush() error {
 	return nil
 }
 
-//Reset reset temp nodes
+// Reset reset temp nodes
 func (t *Trie) Reset() error {
 	if !t.prepared {
 		return ErrNotPrepared
@@ -259,7 +259,7 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 		}
 
 		// branch has only one child node
-		if childrenCnt < 2 { //Todo: DeRef.(기존 branch, 기존 childNode)
+		if childrenCnt < 2 { // Todo: DeRef.(기존 branch, 기존 childNode)
 			t.deprecateNode(rootHash)
 			childNode, err := t.fetchNode(n.Val[childIndex])
 			if err != nil {
@@ -624,7 +624,7 @@ func KeyToRoute(key []byte) []byte {
 	return route
 }
 
-//RouteToKey convert route to key
+// RouteToKey convert route to key
 func RouteToKey(route []byte) []byte {
 	l := len(route) / 2
 	key := make([]byte, l)
@@ -664,7 +664,7 @@ func prefixLen(a, b []byte) int {
 	return length
 }
 
-//ShowPath return node's info in path
+// ShowPath return node's info in path
 func (t *Trie) ShowPath(key []byte) []string {
 	path, err := t.showPath(t.rootHash, KeyToRoute(key))
 	if err != nil {

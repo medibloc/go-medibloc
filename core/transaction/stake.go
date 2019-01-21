@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//StakeTx is a structure for staking med
+// StakeTx is a structure for staking med
 type StakeTx struct {
 	user   common.Address
 	amount *util.Uint128
@@ -19,7 +19,7 @@ type StakeTx struct {
 
 var _ core.ExecutableTx = &StakeTx{}
 
-//NewStakeTx returns NewTx
+// NewStakeTx returns NewTx
 func NewStakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -42,7 +42,7 @@ func NewStakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
-//Execute StakeTx
+// Execute StakeTx
 func (tx *StakeTx) Execute(b *core.Block) error {
 	user, err := b.State().GetAccount(tx.user)
 	if err != nil {
@@ -84,7 +84,7 @@ func (tx *StakeTx) Execute(b *core.Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *StakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
@@ -93,7 +93,7 @@ func (tx *StakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uin
 	return points.Add(tx.amount)
 }
 
-//UnstakeTx is a structure for unstaking med
+// UnstakeTx is a structure for unstaking med
 type UnstakeTx struct {
 	user   common.Address
 	amount *util.Uint128
@@ -102,7 +102,7 @@ type UnstakeTx struct {
 
 var _ core.ExecutableTx = &UnstakeTx{}
 
-//NewUnstakeTx returns UnstakeTx
+// NewUnstakeTx returns UnstakeTx
 func NewUnstakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -122,7 +122,7 @@ func NewUnstakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
-//Execute UnstakeTx
+// Execute UnstakeTx
 func (tx *UnstakeTx) Execute(b *core.Block) error {
 	account, err := b.State().GetAccount(tx.user)
 	if err != nil {
@@ -175,7 +175,7 @@ func (tx *UnstakeTx) Execute(b *core.Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }

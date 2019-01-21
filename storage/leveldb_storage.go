@@ -47,7 +47,7 @@ func NewLeveldbStorage(path string) (*LeveldbStorage, error) {
 	}, nil
 }
 
-//Close closes leveldb storage
+// Close closes leveldb storage
 func (storage *LeveldbStorage) Close() error {
 	return storage.db.Close()
 }

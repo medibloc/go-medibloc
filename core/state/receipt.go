@@ -38,57 +38,57 @@ type Receipt struct {
 	error []byte
 }
 
-//Height returns height
+// Height returns height
 func (r *Receipt) Height() uint64 {
 	return r.height
 }
 
-//SetHeight sets height
+// SetHeight sets height
 func (r *Receipt) SetHeight(height uint64) {
 	r.height = height
 }
 
-//Timestamp returns timestamp
+// Timestamp returns timestamp
 func (r *Receipt) Timestamp() int64 {
 	return r.timestamp
 }
 
-//SetTimestamp sets timestamp
+// SetTimestamp sets timestamp
 func (r *Receipt) SetTimestamp(timestamp int64) {
 	r.timestamp = timestamp
 }
 
-//CPUUsage returns cpu usage
+// CPUUsage returns cpu usage
 func (r *Receipt) CPUUsage() uint64 {
 	return r.cpuUsage
 }
 
-//SetCPUUsage sets cpu usage
+// SetCPUUsage sets cpu usage
 func (r *Receipt) SetCPUUsage(cpuUsage uint64) {
 	r.cpuUsage = cpuUsage
 }
 
-//NetUsage returns net usage
+// NetUsage returns net usage
 func (r *Receipt) NetUsage() uint64 {
 	return r.netUsage
 }
 
-//SetNetUsage sets net usage
+// SetNetUsage sets net usage
 func (r *Receipt) SetNetUsage(netUsage uint64) {
 	r.netUsage = netUsage
 }
 
-//Bandwidth returns bandwidth
+// Bandwidth returns bandwidth
 func (r *Receipt) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(r.CPUUsage(), r.NetUsage())
 }
 
-//Points returns consumed points by transaction
+// Points returns consumed points by transaction
 func (r *Receipt) Points() *util.Uint128 {
 	return r.points
 }
 
-//SetPoints sets points
+// SetPoints sets points
 func (r *Receipt) SetPoints(points *util.Uint128) {
 	r.points = points
 }
@@ -155,7 +155,7 @@ func (r *Receipt) String() string {
 	return fmt.Sprintf("{executed: %v, timestamp: %v, height: %v,cpu: %v, net: %v, points: %v, err: %v}", r.executed, r.timestamp, r.height, r.cpuUsage, r.netUsage, r.points.String(), r.error)
 }
 
-//Equal returns true if two receipts are equal
+// Equal returns true if two receipts are equal
 func (r *Receipt) Equal(obj *Receipt) bool {
 	return r.executed == obj.executed &&
 		r.timestamp == obj.timestamp &&
@@ -166,7 +166,7 @@ func (r *Receipt) Equal(obj *Receipt) bool {
 		byteutils.Equal(r.error, obj.error)
 }
 
-//NewReceipt returns new receipt
+// NewReceipt returns new receipt
 func NewReceipt() *Receipt {
 	return &Receipt{
 		executed:  false,

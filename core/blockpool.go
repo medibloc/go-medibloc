@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//BlockPool is a pool of all received blocks from network.
+// BlockPool is a pool of all received blocks from network.
 type BlockPool struct {
 	cache *lru.Cache
 	mu    sync.RWMutex

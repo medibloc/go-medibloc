@@ -37,7 +37,7 @@ const (
 	DefaultActiveDownloadLimit = 10
 )
 
-//BlockManager is interface of core.blockmanager.
+// BlockManager is interface of core.blockmanager.
 type BlockManager interface {
 	Start()
 	BlockHashByHeight(height uint64) ([]byte, error)

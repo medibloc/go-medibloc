@@ -33,7 +33,7 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 	return proto.Marshal(payloadPb)
 }
 
-//VoteTx is a structure for voting
+// VoteTx is a structure for voting
 type VoteTx struct {
 	voter        common.Address
 	candidateIDs [][]byte
@@ -42,7 +42,7 @@ type VoteTx struct {
 
 var _ core.ExecutableTx = &VoteTx{}
 
-//NewVoteTx returns VoteTx
+// NewVoteTx returns VoteTx
 func NewVoteTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -66,7 +66,7 @@ func NewVoteTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
-//Execute VoteTx
+// Execute VoteTx
 func (tx *VoteTx) Execute(b *core.Block) error {
 	if len(tx.candidateIDs) > VoteMaximum {
 		return ErrOverMaxVote
@@ -170,7 +170,7 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 	return nil
 }
 
-//Bandwidth returns bandwidth.
+// Bandwidth returns bandwidth.
 func (tx *VoteTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }

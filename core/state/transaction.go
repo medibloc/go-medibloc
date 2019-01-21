@@ -50,112 +50,112 @@ type Transaction struct {
 	payer common.Address
 }
 
-//Hash returns hash
+// Hash returns hash
 func (t *Transaction) Hash() []byte {
 	return t.hash
 }
 
-//SetHash sets hash
+// SetHash sets hash
 func (t *Transaction) SetHash(hash []byte) {
 	t.hash = hash
 }
 
-//TxType returns type
+// TxType returns type
 func (t *Transaction) TxType() string {
 	return t.txType
 }
 
-//SetTxType sets type
+// SetTxType sets type
 func (t *Transaction) SetTxType(txType string) {
 	t.txType = txType
 }
 
-//To returns to
+// To returns to
 func (t *Transaction) To() common.Address {
 	return t.to
 }
 
-//SetTo sets set
+// SetTo sets set
 func (t *Transaction) SetTo(to common.Address) {
 	t.to = to
 }
 
-//Value returns value
+// Value returns value
 func (t *Transaction) Value() *util.Uint128 {
 	return t.value
 }
 
-//SetValue sets value
+// SetValue sets value
 func (t *Transaction) SetValue(value *util.Uint128) {
 	t.value = value
 }
 
-//Nonce returns nonce
+// Nonce returns nonce
 func (t *Transaction) Nonce() uint64 {
 	return t.nonce
 }
 
-//SetNonce sets nonce
+// SetNonce sets nonce
 func (t *Transaction) SetNonce(nonce uint64) {
 	t.nonce = nonce
 }
 
-//ChainID returns chainID
+// ChainID returns chainID
 func (t *Transaction) ChainID() uint32 {
 	return t.chainID
 }
 
-//SetChainID sets chainID
+// SetChainID sets chainID
 func (t *Transaction) SetChainID(chainID uint32) {
 	t.chainID = chainID
 }
 
-//Payload returns payload
+// Payload returns payload
 func (t *Transaction) Payload() []byte {
 	return t.payload
 }
 
-//SetPayload sets payload
+// SetPayload sets payload
 func (t *Transaction) SetPayload(payload []byte) {
 	t.payload = payload
 }
 
-//Sign returns sign
+// Sign returns sign
 func (t *Transaction) Sign() []byte {
 	return t.sign
 }
 
-//SetSign sets sign
+// SetSign sets sign
 func (t *Transaction) SetSign(sign []byte) {
 	t.sign = sign
 }
 
-//Payer returns payer
+// Payer returns payer
 func (t *Transaction) Payer() common.Address {
 	return t.payer
 }
 
-//SetPayer sets payer
+// SetPayer sets payer
 func (t *Transaction) SetPayer(payer common.Address) {
 	t.payer = payer
 }
 
-//PayerSign returns payerSign
+// PayerSign returns payerSign
 func (t *Transaction) PayerSign() []byte {
 	return t.payerSign
 }
 
-//SetPayerSign sets payerSign
+// SetPayerSign sets payerSign
 func (t *Transaction) SetPayerSign(payerSign []byte) {
 	t.payerSign = payerSign
 }
 
-//Receipt returns receipt
+// Receipt returns receipt
 func (t *Transaction) Receipt() *Receipt {
 	return t.receipt
 }
 
-//SetReceipt sets receipt
+// SetReceipt sets receipt
 func (t *Transaction) SetReceipt(receipt *Receipt) {
 	t.receipt = receipt
 }
@@ -244,7 +244,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	return nil
 }
 
-//ToBytes convert transaction to
+// ToBytes convert transaction to
 func (t *Transaction) ToBytes() ([]byte, error) {
 	pb, err := t.ToProto()
 	if err != nil {
@@ -253,22 +253,22 @@ func (t *Transaction) ToBytes() ([]byte, error) {
 	return proto.Marshal(pb)
 }
 
-//HexHash returns hex converted hash
+// HexHash returns hex converted hash
 func (t *Transaction) HexHash() string {
 	return byteutils.Bytes2Hex(t.Hash())
 }
 
-//From returns from
+// From returns from
 func (t *Transaction) From() common.Address {
 	return t.from
 }
 
-//SetFrom sets from
+// SetFrom sets from
 func (t *Transaction) SetFrom(from common.Address) {
 	t.from = from
 }
 
-//IsRelatedToAddress return whether the transaction is related to the address
+// IsRelatedToAddress return whether the transaction is related to the address
 func (t *Transaction) IsRelatedToAddress(address common.Address) bool {
 	if t.from == address || t.to == address {
 		return true
@@ -476,7 +476,7 @@ func (t *Transaction) TriggerAccEvent(e *event.Emitter, eType string) {
 	return
 }
 
-//Clone clone transaction
+// Clone clone transaction
 func (t *Transaction) Clone() (*Transaction, error) {
 	protoTx, err := t.ToProto()
 	if err != nil {
@@ -492,7 +492,7 @@ func (t *Transaction) Clone() (*Transaction, error) {
 	return newTx, nil
 }
 
-//Size returns bytes size of transaction
+// Size returns bytes size of transaction
 func (t *Transaction) Size() (int, error) {
 	pbTx, err := t.ToProto()
 	if err != nil {

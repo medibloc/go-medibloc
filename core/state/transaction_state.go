@@ -24,12 +24,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//TransactionState is a structure for save transaction
+// TransactionState is a structure for save transaction
 type TransactionState struct {
 	*trie.Batch
 }
 
-//NewTransactionState returns transaction state
+// NewTransactionState returns transaction state
 func NewTransactionState(rootHash []byte, stor storage.Storage) (*TransactionState, error) {
 	trieBatch, err := trie.NewBatch(rootHash, stor)
 	if err != nil {
@@ -40,7 +40,7 @@ func NewTransactionState(rootHash []byte, stor storage.Storage) (*TransactionSta
 	}, nil
 }
 
-//Clone clones state
+// Clone clones state
 func (ts *TransactionState) Clone() (*TransactionState, error) {
 	newBatch, err := ts.Batch.Clone()
 	if err != nil {
@@ -51,7 +51,7 @@ func (ts *TransactionState) Clone() (*TransactionState, error) {
 	}, nil
 }
 
-//GetTx returns transaction from transaction state
+// GetTx returns transaction from transaction state
 func (ts *TransactionState) GetTx(hash []byte) (*Transaction, error) {
 	txBytes, err := ts.Batch.Get(hash)
 	if err != nil {
@@ -68,7 +68,7 @@ func (ts *TransactionState) GetTx(hash []byte) (*Transaction, error) {
 	return tx, nil
 }
 
-//Put put transaction to transaction state
+// Put put transaction to transaction state
 func (ts *TransactionState) Put(tx *Transaction) error {
 	pbTx, err := tx.ToProto()
 	if err != nil {

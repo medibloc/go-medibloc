@@ -81,7 +81,7 @@ type PeerFilterAlgorithm interface {
 	Filter([]peer.ID) []peer.ID
 }
 
-//Query is interface for send request/response message
+// Query is interface for send request/response message
 type Query interface {
 	Hash() []byte
 	MessageType() string
@@ -89,7 +89,7 @@ type Query interface {
 	SetID(string)
 }
 
-//MessageCallback is a function for handle response message
+// MessageCallback is a function for handle response message
 type MessageCallback func(q Query, message Message) error
 
 // Service net Service interface

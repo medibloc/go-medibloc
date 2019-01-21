@@ -43,7 +43,7 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 	return signer
 }
 
-//Points returns bandwidth usage of a transaction.
+// Points returns bandwidth usage of a transaction.
 func Points(t *testing.T, tx *coreState.Transaction, b *core.Block) *util.Uint128 {
 	execTx, err := transaction.NewExecutableTx(tx)
 	require.NoError(t, err)

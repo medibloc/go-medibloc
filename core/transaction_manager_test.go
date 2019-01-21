@@ -92,10 +92,10 @@ func TestTransactionManager_Push(t *testing.T) {
 	failed = tm.PushAndExclusiveBroadcast(noSignTx)
 	assert.Equal(t, coreState.ErrTransactionSignatureNotExist, failed[noSignTx.HexHash()])
 
-	//// Invalid signature
-	//invalidSigner := testutil.NewAddrKeyPair(t)
-	//invalidSignTx := randomTb.SignKey(invalidSigner.PrivKey).Build()
-	//assert.Equal(t, core.ErrInvalidTransactionSigner, tm.Push(invalidSignTx))
+	// // Invalid signature
+	// invalidSigner := testutil.NewAddrKeyPair(t)
+	// invalidSignTx := randomTb.SignKey(invalidSigner.PrivKey).Build()
+	// assert.Equal(t, core.ErrInvalidTransactionSigner, tm.Push(invalidSignTx))
 
 	// No transactions on pool
 	assert.Nil(t, tm.Pop())
@@ -253,7 +253,7 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 		}
 	}
 
-	//seedTm.PushAndExclusiveBroadcast(txs[numberOfPop:numberOfPop+numberOfDel]...)
+	// seedTm.PushAndExclusiveBroadcast(txs[numberOfPop:numberOfPop+numberOfDel]...)
 }
 
 func TestTransactionManager_BandwidthLimit(t *testing.T) {

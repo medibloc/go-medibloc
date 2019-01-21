@@ -44,7 +44,7 @@ func Sha3256(args ...[]byte) []byte {
 	return hasher.Sum(nil)
 }
 
-//Sha3256Pb returns the SAH#-256 diggest of the data from protobuf type
+// Sha3256Pb returns the SAH#-256 diggest of the data from protobuf type
 func Sha3256Pb(pb proto.Message) []byte {
 	b, _ := proto.Marshal(pb)
 	return Sha3256(b)

@@ -167,7 +167,7 @@ func NewUint128FromFixedSizeByteSlice(bytes []byte) (*Uint128, error) {
 	return u, nil
 }
 
-//Add returns u + x
+// Add returns u + x
 func (u *Uint128) Add(x *Uint128) (*Uint128, error) {
 	obj := &Uint128{NewUint128().value.Add(u.value, x.value)}
 	if err := obj.Validate(); nil != err {
@@ -176,7 +176,7 @@ func (u *Uint128) Add(x *Uint128) (*Uint128, error) {
 	return obj, nil
 }
 
-//Sub returns u - x
+// Sub returns u - x
 func (u *Uint128) Sub(x *Uint128) (*Uint128, error) {
 	obj := &Uint128{NewUint128().value.Sub(u.value, x.value)}
 	if err := obj.Validate(); nil != err {
@@ -185,7 +185,7 @@ func (u *Uint128) Sub(x *Uint128) (*Uint128, error) {
 	return obj, nil
 }
 
-//Mul returns u * x
+// Mul returns u * x
 func (u *Uint128) Mul(x *Uint128) (*Uint128, error) {
 	obj := &Uint128{NewUint128().value.Mul(u.value, x.value)}
 	if err := obj.Validate(); nil != err {
@@ -194,7 +194,7 @@ func (u *Uint128) Mul(x *Uint128) (*Uint128, error) {
 	return obj, nil
 }
 
-//Div returns u / x
+// Div returns u / x
 func (u *Uint128) Div(x *Uint128) (*Uint128, error) {
 	obj := &Uint128{NewUint128().value.Div(u.value, x.value)}
 	if err := obj.Validate(); nil != err {
@@ -203,7 +203,7 @@ func (u *Uint128) Div(x *Uint128) (*Uint128, error) {
 	return obj, nil
 }
 
-//Exp returns u^x
+// Exp returns u^x
 func (u *Uint128) Exp(x *Uint128) (*Uint128, error) {
 	obj := &Uint128{NewUint128().value.Exp(u.value, x.value, nil)}
 	if err := obj.Validate(); nil != err {
@@ -212,7 +212,7 @@ func (u *Uint128) Exp(x *Uint128) (*Uint128, error) {
 	return obj, nil
 }
 
-//DeepCopy returns a deep copy of u
+// DeepCopy returns a deep copy of u
 func (u *Uint128) DeepCopy() *Uint128 {
 	z := new(big.Int)
 	z.Set(u.value)
@@ -228,7 +228,7 @@ func (u *Uint128) Cmp(x *Uint128) int {
 	return u.value.Cmp(x.value)
 }
 
-//Bytes absolute value of u as a big-endian byte slice.
+// Bytes absolute value of u as a big-endian byte slice.
 func (u *Uint128) Bytes() []byte {
 	return u.value.Bytes()
 }

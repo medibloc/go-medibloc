@@ -7,7 +7,7 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 )
 
-//Candidate is struct for save candidate state
+// Candidate is struct for save candidate state
 type Candidate struct {
 	ID         []byte // candidate id = txHash
 	Addr       common.Address
@@ -55,7 +55,7 @@ func (c *Candidate) toProto() (*dpospb.Candidate, error) {
 	}, nil
 }
 
-//FromBytes set Candidate struct from bytes
+// FromBytes set Candidate struct from bytes
 func (c *Candidate) FromBytes(bytes []byte) error {
 	var err error
 	pbCandidate := new(dpospb.Candidate)
@@ -79,7 +79,7 @@ func (c *Candidate) FromBytes(bytes []byte) error {
 	return nil
 }
 
-//ToBytes marshal Candidate struct to bytes
+// ToBytes marshal Candidate struct to bytes
 func (c *Candidate) ToBytes() ([]byte, error) {
 	collateral, err := c.Collateral.ToFixedSizeByteSlice()
 	if err != nil {

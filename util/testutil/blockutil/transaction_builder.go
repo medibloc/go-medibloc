@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//TxBuilder is a structure for transaction builder
+// TxBuilder is a structure for transaction builder
 type TxBuilder struct {
 	t  *testing.T
 	bb *BlockBuilder
@@ -67,28 +67,28 @@ func (tb *TxBuilder) copy() *TxBuilder {
 
 /* Setters and Getters */
 
-//Hash sets hash
+// Hash sets hash
 func (tb *TxBuilder) Hash(hash []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetHash(hash)
 	return n
 }
 
-//From sets from
+// From sets from
 func (tb *TxBuilder) From(addr common.Address) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetFrom(addr)
 	return n
 }
 
-//To sets to
+// To sets to
 func (tb *TxBuilder) To(addr common.Address) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetTo(addr)
 	return n
 }
 
-//Value sets value
+// Value sets value
 func (tb *TxBuilder) Value(med float64) *TxBuilder {
 	n := tb.copy()
 	value := FloatToUint128(n.t, med)
@@ -96,14 +96,14 @@ func (tb *TxBuilder) Value(med float64) *TxBuilder {
 	return n
 }
 
-//Type sets type
+// Type sets type
 func (tb *TxBuilder) Type(txType string) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetTxType(txType)
 	return n
 }
 
-//Payload sets payload
+// Payload sets payload
 func (tb *TxBuilder) Payload(payload transaction.Payload) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -114,28 +114,28 @@ func (tb *TxBuilder) Payload(payload transaction.Payload) *TxBuilder {
 	return n
 }
 
-//Nonce sets nonce
+// Nonce sets nonce
 func (tb *TxBuilder) Nonce(nonce uint64) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetNonce(nonce)
 	return n
 }
 
-//ChainID sets chainID
+// ChainID sets chainID
 func (tb *TxBuilder) ChainID(chainID uint32) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetChainID(chainID)
 	return n
 }
 
-//Sign sets sign
+// Sign sets sign
 func (tb *TxBuilder) Sign(sign []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetSign(sign)
 	return n
 }
 
-//PayerSign sets payerSign
+// PayerSign sets payerSign
 func (tb *TxBuilder) PayerSign(sign []byte) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetPayerSign(sign)
@@ -144,7 +144,7 @@ func (tb *TxBuilder) PayerSign(sign []byte) *TxBuilder {
 
 /* Additional Commands */
 
-//CalcHash calculate hash
+// CalcHash calculate hash
 func (tb *TxBuilder) CalcHash() *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -155,7 +155,7 @@ func (tb *TxBuilder) CalcHash() *TxBuilder {
 	return n
 }
 
-//SignKey sign by private key
+// SignKey sign by private key
 func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -168,7 +168,7 @@ func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
-//SignPayerKey sign by payer private key
+// SignPayerKey sign by payer private key
 func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -178,7 +178,7 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
-//SignPair set from, seal ,calculate hash and sign with key pair
+// SignPair set from, seal ,calculate hash and sign with key pair
 func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 	n := tb.copy()
 	if n.tx.Nonce() == 0 {
@@ -189,7 +189,7 @@ func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
 	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 
-//RandomTx generate random Tx
+// RandomTx generate random Tx
 func (tb *TxBuilder) RandomTx() *TxBuilder {
 	n := tb.copy()
 	require.NotEqual(n.t, 0, len(n.bb.KeyPairs), "No key pair added on block builder")
@@ -199,7 +199,7 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 	return n.Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
 }
 
-//RandomTxs generate random transactions
+// RandomTxs generate random transactions
 func (tb *TxBuilder) RandomTxs(n int) []*coreState.Transaction {
 	require.NotEqual(tb.t, 0, len(tb.bb.KeyPairs), "No key pair added on block builder")
 	txs := make([]*coreState.Transaction, 0, n)
@@ -214,13 +214,13 @@ func (tb *TxBuilder) RandomTxs(n int) []*coreState.Transaction {
 	return txs
 }
 
-//StakeTx generate stake Tx
+// StakeTx generate stake Tx
 func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
 	return n.Type(transaction.TxOpStake).Value(med).SignPair(pair)
 }
 
-//Build build transaction
+// Build build transaction
 func (tb *TxBuilder) Build() *coreState.Transaction {
 	n := tb.copy()
 	return n.tx
@@ -234,7 +234,7 @@ func (tb *TxBuilder) BuildCtx() *core.TxContext {
 	return txc
 }
 
-//BuildProto build protobuf transaction
+// BuildProto build protobuf transaction
 func (tb *TxBuilder) BuildProto() *corepb.Transaction {
 	n := tb.copy()
 	t := tb.t
@@ -244,7 +244,7 @@ func (tb *TxBuilder) BuildProto() *corepb.Transaction {
 	return pb.(*corepb.Transaction)
 }
 
-//BuildBytes build marshaled transaction
+// BuildBytes build marshaled transaction
 func (tb *TxBuilder) BuildBytes() []byte {
 	n := tb.copy()
 	t := tb.t
@@ -256,19 +256,19 @@ func (tb *TxBuilder) BuildBytes() []byte {
 	return data
 }
 
-//Execute excute transaction on block builder
+// Execute excute transaction on block builder
 func (tb *TxBuilder) Execute() *BlockBuilder {
 	n := tb.copy()
 	return n.bb.ExecuteTx(n.tx)
 }
 
-//ExecuteErr expect error occurred on executing
+// ExecuteErr expect error occurred on executing
 func (tb *TxBuilder) ExecuteErr(err error) *BlockBuilder {
 	n := tb.copy()
 	return n.bb.ExecuteTxErr(n.tx, err)
 }
 
-//Add add transaction on block builder
+// Add add transaction on block builder
 func (tb *TxBuilder) Add() *BlockBuilder {
 	n := tb.copy()
 	return n.bb.AddTx(n.tx)
