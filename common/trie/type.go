@@ -4,10 +4,9 @@ import (
 	"errors"
 )
 
-// Trie errors string representationn
+// Trie errors string representation
 var (
-	ErrBeginAgainInBatch       = errors.New("cannot begin with a batch task unfinished")
-	ErrCannotCloneOnBatching   = errors.New("cannot clone on batching")
+	ErrCannotPerformInBatch    = errors.New("cannot perform in batch")
 	ErrNotBatching             = errors.New("not batching")
 	ErrAlreadyPreparedTrie     = errors.New("cannot prepare again")
 	ErrNotPrepared             = errors.New("not preparing")

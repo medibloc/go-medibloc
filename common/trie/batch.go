@@ -30,9 +30,10 @@ type dirty struct {
 // Batch batch implementation for trie
 type Batch struct {
 	*Trie
+
+	mu       sync.RWMutex
 	batching bool
 	dirties  map[string]*dirty
-	mu       sync.RWMutex
 }
 
 // NewBatch return new Batch instance
@@ -42,15 +43,19 @@ func NewBatch(rootHash []byte, stor storage.Storage) (*Batch, error) {
 		return nil, err
 	}
 	return &Batch{
-		Trie:    t,
-		dirties: make(map[string]*dirty),
+		Trie:     t,
+		dirties:  make(map[string]*dirty),
+		batching: false,
 	}, nil
 }
 
 // BeginBatch begin batch
 func (tb *Batch) BeginBatch() error {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
 	if tb.batching {
-		return ErrBeginAgainInBatch
+		return ErrCannotPerformInBatch
 	}
 	tb.dirties = make(map[string]*dirty)
 	tb.batching = true
@@ -59,8 +64,11 @@ func (tb *Batch) BeginBatch() error {
 
 // Clone clone Batch
 func (tb *Batch) Clone() (*Batch, error) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
 	if tb.batching {
-		return nil, ErrCannotCloneOnBatching
+		return nil, ErrCannotPerformInBatch
 	}
 	tr, err := tb.Trie.Clone()
 	if err != nil {
@@ -75,11 +83,12 @@ func (tb *Batch) Clone() (*Batch, error) {
 
 // Commit commit batch WARNING: not thread-safe
 func (tb *Batch) Commit() error {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
 	if !tb.batching {
 		return ErrNotBatching
 	}
-	tb.mu.Lock()
-	defer tb.mu.Unlock()
 	for keyHex, d := range tb.dirties {
 		key, err := byteutils.Hex2Bytes(keyHex)
 		if err != nil {
@@ -103,11 +112,18 @@ func (tb *Batch) Commit() error {
 
 // Delete delete in trie
 func (tb *Batch) Delete(key []byte) error {
-	if !tb.batching {
-		return ErrNotBatching
-	}
 	tb.mu.Lock()
-	defer tb.mu.Unlock()
+	if tb.batching {
+		err := tb.batchDelete(key)
+		tb.mu.Unlock()
+		return err
+	}
+	tb.mu.Unlock()
+
+	return tb.Trie.Delete(key)
+}
+
+func (tb *Batch) batchDelete(key []byte) error {
 	keyHex := byteutils.Bytes2Hex(key)
 
 	d, ok := tb.dirties[keyHex]
@@ -132,11 +148,18 @@ func (tb *Batch) Delete(key []byte) error {
 
 // Get get from trie
 func (tb *Batch) Get(key []byte) ([]byte, error) {
-	if !tb.batching {
-		return tb.Trie.Get(key)
-	}
 	tb.mu.Lock()
-	defer tb.mu.Unlock()
+	if tb.batching {
+		val, err := tb.batchGet(key)
+		tb.mu.Unlock()
+		return val, err
+	}
+	tb.mu.Unlock()
+
+	return tb.Trie.Get(key)
+}
+
+func (tb *Batch) batchGet(key []byte) ([]byte, error) {
 	keyHex := byteutils.Bytes2Hex(key)
 	d, ok := tb.dirties[keyHex]
 	if ok {
@@ -150,17 +173,23 @@ func (tb *Batch) Get(key []byte) ([]byte, error) {
 
 // Put put to trie
 func (tb *Batch) Put(key []byte, value []byte) error {
-	if !tb.batching {
-		return ErrNotBatching
-	}
 	tb.mu.Lock()
-	defer tb.mu.Unlock()
+	if tb.batching {
+		tb.batchPut(key, value)
+		tb.mu.Unlock()
+		return nil
+	}
+	tb.mu.Unlock()
+
+	return tb.Trie.Put(key, value)
+}
+
+func (tb *Batch) batchPut(key []byte, value []byte) {
 	keyHex := byteutils.Bytes2Hex(key)
 	tb.dirties[keyHex] = &dirty{
 		value:      value,
 		deleteFlag: false,
 	}
-	return nil
 }
 
 // GetData get value from trie and set on serializable data
@@ -183,6 +212,9 @@ func (tb *Batch) PutData(key []byte, data Serializable) error {
 
 // RollBack rollback batch WARNING: not thread-safe
 func (tb *Batch) RollBack() error {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
 	if !tb.batching {
 		return ErrNotBatching
 	}
@@ -194,8 +226,11 @@ func (tb *Batch) RollBack() error {
 
 // RootHash getter for rootHash
 func (tb *Batch) RootHash() ([]byte, error) {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
 	if tb.batching {
-		return nil, ErrNotBatching
+		return nil, ErrCannotPerformInBatch
 	}
 	return tb.Trie.RootHash(), nil
 }
