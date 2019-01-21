@@ -157,78 +157,100 @@ func (bs *BlockState) Clone() (*BlockState, error) {
 	}, nil
 }
 
+type batchCallType func(batch Batch) error
+
+func prepareCall(batch Batch) error    { return batch.Prepare() }
+func beginBatchCall(batch Batch) error { return batch.BeginBatch() }
+func commitCall(batch Batch) error     { return batch.Commit() }
+func rollbackCall(batch Batch) error   { return batch.RollBack() }
+func flushCall(batch Batch) error      { return batch.Flush() }
+func resetCall(batch Batch) error      { return batch.Reset() }
+
+func (bs *BlockState) applyBatchToEachState(fn batchCallType) error {
+	err := fn(bs.accState)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to apply batch function to account state.")
+		return err
+	}
+	err = fn(bs.txState)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to apply batch function to transaction state.")
+		return err
+	}
+	err = fn(bs.dposState)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to apply batch function to dpos state.")
+		return err
+	}
+	return nil
+}
+
 func (bs *BlockState) prepare() error {
-	if err := bs.accState.Prepare(); err != nil {
-		return err
-	}
-	if err := bs.txState.Prepare(); err != nil {
-		return err
-	}
-	if err := bs.DposState().Prepare(); err != nil {
+	err := bs.applyBatchToEachState(prepareCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to prepare block state.")
 		return err
 	}
 	return nil
 }
 
 func (bs *BlockState) beginBatch() error {
-	if err := bs.accState.BeginBatch(); err != nil {
-		return err
-	}
-	if err := bs.txState.BeginBatch(); err != nil {
-		return err
-	}
-	if err := bs.DposState().BeginBatch(); err != nil {
+	err := bs.applyBatchToEachState(beginBatchCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to begin batch block state.")
 		return err
 	}
 	return nil
 }
 
 func (bs *BlockState) commit() error {
-	if err := bs.accState.Commit(); err != nil {
-		return err
-	}
-	if err := bs.txState.Commit(); err != nil {
-		return err
-	}
-	if err := bs.dposState.Commit(); err != nil {
+	err := bs.applyBatchToEachState(commitCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to commit block state.")
 		return err
 	}
 	return nil
 }
 func (bs *BlockState) rollBack() error {
-	if err := bs.accState.RollBack(); err != nil {
-		return err
-	}
-	if err := bs.txState.RollBack(); err != nil {
-		return err
-	}
-	if err := bs.dposState.RollBack(); err != nil {
+	err := bs.applyBatchToEachState(rollbackCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to rollback block state.")
 		return err
 	}
 	return nil
 }
 
 func (bs *BlockState) flush() error {
-	if err := bs.accState.Flush(); err != nil {
-		return err
-	}
-	if err := bs.txState.Flush(); err != nil {
-		return err
-	}
-	if err := bs.dposState.Flush(); err != nil {
+	err := bs.applyBatchToEachState(flushCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to flush block state.")
 		return err
 	}
 	return nil
 }
 
 func (bs *BlockState) reset() error {
-	if err := bs.accState.Reset(); err != nil {
-		return err
-	}
-	if err := bs.txState.Reset(); err != nil {
-		return err
-	}
-	if err := bs.dposState.Reset(); err != nil {
+	err := bs.applyBatchToEachState(resetCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to reset block state.")
 		return err
 	}
 	return nil
