@@ -131,7 +131,6 @@ type HashableBlock interface {
 // Consensus is an interface of consensus model
 type Consensus interface {
 	NewConsensusState(dposRootBytes []byte, stor storage.Storage) (*dState.State, error)
-	LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (*dState.State, error)
 
 	DynastySize() int
 	MakeMintDynasty(ts int64, parentState *BlockState) ([]common.Address, error)

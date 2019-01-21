@@ -75,6 +75,46 @@ func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	}, nil
 }
 
+func NewBlockState(bd *BlockData, consensus Consensus, stor storage.Storage) (*BlockState, error) {
+	accState, err := coreState.NewAccountState(bd.AccStateRoot(), stor)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": bd,
+			"err":   err,
+		}).Error("Failed to create account state.")
+		return nil, err
+	}
+	txState, err := coreState.NewTransactionState(bd.TxStateRoot(), stor)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": bd,
+			"err":   err,
+		}).Error("Failed to create transaction state.")
+		return nil, err
+	}
+	dposState, err := consensus.NewConsensusState(bd.DposRoot(), stor)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": bd,
+			"err":   err,
+		}).Error("Failed to create consensus state.")
+		return nil, err
+	}
+	return &BlockState{
+		timestamp: 0,
+		reward:    bd.Reward().DeepCopy(),
+		supply:    bd.Supply().DeepCopy(),
+		cpuPrice:  bd.CPUPrice().DeepCopy(),
+		cpuUsage:  bd.CPUUsage(),
+		netPrice:  bd.NetPrice().DeepCopy(),
+		netUsage:  bd.NetUsage(),
+		accState:  accState,
+		txState:   txState,
+		dposState: dposState,
+		storage:   stor,
+	}, nil
+}
+
 // Clone clone states
 func (bs *BlockState) Clone() (*BlockState, error) {
 	accState, err := bs.accState.Clone()
@@ -276,24 +316,6 @@ func (bs *BlockState) TxsRoot() ([]byte, error) {
 // DposRoot returns dpos state root
 func (bs *BlockState) DposRoot() ([]byte, error) {
 	return bs.dposState.RootBytes()
-}
-
-func (bs *BlockState) loadAccountState(rootHash []byte) error {
-	accState, err := coreState.NewAccountState(rootHash, bs.storage)
-	if err != nil {
-		return err
-	}
-	bs.accState = accState
-	return nil
-}
-
-func (bs *BlockState) loadTransactionState(rootBytes []byte) error {
-	txState, err := coreState.NewTransactionState(rootBytes, bs.storage)
-	if err != nil {
-		return err
-	}
-	bs.txState = txState
-	return nil
 }
 
 // GetAccount returns account in state

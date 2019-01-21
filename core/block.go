@@ -37,49 +37,15 @@ type Block struct {
 func (b *Block) FromBlockData(bd *BlockData, consensus Consensus, storage storage.Storage) error {
 	var err error
 	b.BlockData = bd
-
-	// TODO rename newStates
-	if b.state, err = newStates(consensus, storage); err != nil {
-		logging.WithFields(logrus.Fields{
+	b.state, err = NewBlockState(bd, consensus, storage)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"block": bd,
 			"err":   err,
-			"block": b,
 		}).Error("Failed to create new block state.")
 		return err
 	}
-
-	b.state.reward = bd.Reward()
-	b.state.supply = bd.Supply()
-
-	b.state.cpuPrice = bd.CPUPrice()
-	b.state.cpuUsage = bd.CPUUsage()
-	b.state.netPrice = bd.NetPrice()
-	b.state.netUsage = bd.NetUsage()
-
-	if err = b.state.loadAccountState(b.accStateRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": b,
-		}).Error("Failed to load accounts root.")
-		return err
-	}
-	if err = b.state.loadTransactionState(b.txStateRoot); err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": b,
-		}).Error("Failed to load transaction root.")
-		return err
-	}
-
-	ds, err := consensus.LoadConsensusState(b.dposRoot, storage)
-	if err != nil {
-		logging.WithFields(logrus.Fields{
-			"err":   err,
-			"block": b,
-		}).Error("Failed to load consensus state.")
-		return err
-	}
-	b.state.dposState = ds
-
+	b.sealed = true
 	return nil
 }
 

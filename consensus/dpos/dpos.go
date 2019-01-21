@@ -96,16 +96,6 @@ func (d *Dpos) NewConsensusState(dposRootBytes []byte, stor storage.Storage) (*d
 	return dState.NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
 }
 
-// LoadConsensusState loads a consensus state from marshalled bytes
-func (d *Dpos) LoadConsensusState(dposRootBytes []byte, stor storage.Storage) (*dState.State, error) {
-	pbState := new(dpospb.State)
-	err := proto.Unmarshal(dposRootBytes, pbState)
-	if err != nil {
-		return nil, err
-	}
-	return dState.NewDposState(pbState.CandidateRootHash, pbState.DynastyRootHash, stor)
-}
-
 // Setup sets up dpos.
 func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.BlockManager, tm *core.TransactionManager) error {
 	// Setup proposer
