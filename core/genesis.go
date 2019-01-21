@@ -123,7 +123,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	initialTx.SetHash(txHash)
 
 	// Genesis transactions do not consume bandwidth(only put in txState)
-	if err := genesisBlock.state.PutTx(initialTx); err != nil {
+	if err := genesisBlock.State().PutTx(initialTx); err != nil {
 		return nil, err
 	}
 	genesisBlock.AppendTransaction(initialTx) // append on block header
@@ -135,7 +135,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		if err != nil {
 			return nil, err
 		}
-		acc, err := genesisBlock.state.GetAccount(addr)
+		acc, err := genesisBlock.State().GetAccount(addr)
 		if err != nil {
 			return nil, err
 		}
@@ -153,7 +153,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 			return nil, err
 		}
 
-		if err := genesisBlock.state.PutAccount(acc); err != nil {
+		if err := genesisBlock.State().PutAccount(acc); err != nil {
 			return nil, err
 		}
 
@@ -170,13 +170,13 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		tx.SetHash(txHash)
 
 		// Genesis transactions do not consume bandwidth(only put in txState)
-		if err := genesisBlock.state.txState.Put(tx); err != nil {
+		if err := genesisBlock.State().txState.Put(tx); err != nil {
 			return nil, err
 		}
 		genesisBlock.AppendTransaction(tx) // append on block header
 
 	}
-	genesisBlock.state.supply = supply
+	genesisBlock.State().supply = supply
 
 	for _, pbTx := range conf.Transactions {
 		tx := new(coreState.Transaction)
