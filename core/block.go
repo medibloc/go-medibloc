@@ -104,6 +104,38 @@ func (b *Block) InitChild() (*Block, error) {
 	}, nil
 }
 
+// CreateChildWithBlockData returns child block by executing block data on parent block.
+func (b *Block) CreateChildWithBlockData(bd *BlockData, consensus Consensus) (child *Block, err error) {
+	// Prepare Execution
+	child, err = b.InitChild()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to make child block for execution on parent block")
+		return nil, err
+	}
+	child.BlockData = bd
+	child.State().SetTimestamp(bd.timestamp)
+	// TODO call block.Timestamp() instead
+
+	err = child.Prepare()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := child.VerifyExecution(b, consensus); err != nil {
+		return nil, err
+	}
+	err = child.Flush()
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to flush state")
+		return nil, err
+	}
+	return child, nil
+}
+
 // State returns block state
 func (b *Block) State() *BlockState {
 	return b.state
@@ -225,38 +257,6 @@ func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receip
 	}
 	receipt.SetExecuted(true)
 	return receipt, nil
-}
-
-// CreateChildWithBlockData returns child block by executing block data on parent block.
-func (b *Block) CreateChildWithBlockData(bd *BlockData, consensus Consensus) (child *Block, err error) {
-	// Prepare Execution
-	child, err = b.InitChild()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to make child block for execution on parent block")
-		return nil, err
-	}
-	child.BlockData = bd
-	child.State().SetTimestamp(bd.timestamp)
-	// TODO call block.Timestamp() instead
-
-	err = child.Prepare()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := child.VerifyExecution(b, consensus); err != nil {
-		return nil, err
-	}
-	err = child.Flush()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to flush state")
-		return nil, err
-	}
-	return child, nil
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
