@@ -320,7 +320,7 @@ func (b *Block) verifyExecution(parent *Block, consensus Consensus) error {
 		return err
 	}
 
-	if err := b.State().PayReward(b.coinbase, b.State().Supply()); err != nil {
+	if err := b.PayReward(parent.Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
@@ -461,6 +461,66 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 	b.state.netUsage += tx.Receipt().NetUsage()
 
 	return nil
+}
+
+var ErrCoinbaseNotSet = errors.New("coinbase is not set")
+
+// PayReward add reward to coinbase and update reward and supply
+func (b *Block) PayReward(parentSupply *util.Uint128) error {
+	if b.coinbase.Equals(common.Address{}) {
+		return ErrCoinbaseNotSet
+	}
+
+	reward, err := calcMintReward(parentSupply)
+	if err != nil {
+		return err
+	}
+	supply, err := parentSupply.Add(reward)
+	if err != nil {
+		return err
+	}
+
+	acc, err := b.state.GetAccount(b.coinbase)
+	if err != nil {
+		return err
+	}
+	acc.Balance, err = acc.Balance.Add(reward)
+	if err != nil {
+		return err
+	}
+
+	execErr, err := b.Atomic(func(block *Block) error {
+		return block.state.PutAccount(acc)
+	})
+	if err != nil {
+		return err
+	}
+	if execErr != nil {
+		return execErr
+	}
+
+	b.state.reward = reward
+	b.state.supply = supply
+
+	return nil
+}
+
+// calcMintReward returns calculated block produce reward
+func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
+	reward, err := parentSupply.MulWithRat(InflationRate)
+	if err != nil {
+		return nil, err
+	}
+	roundDownDecimal := util.NewUint128FromUint(InflationRoundDown)
+	reward, err = reward.Div(roundDownDecimal)
+	if err != nil {
+		return nil, err
+	}
+	reward, err = reward.Mul(roundDownDecimal)
+	if err != nil {
+		return nil, err
+	}
+	return reward, nil
 }
 
 // verifyState verifies block states comparing with root hashes in header

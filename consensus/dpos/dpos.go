@@ -438,7 +438,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 	}
 
 	block.SetCoinbase(coinbase)
-	if err := block.State().PayReward(coinbase, tail.Supply()); err != nil {
+	if err := block.PayReward(tail.Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to pay reward.")

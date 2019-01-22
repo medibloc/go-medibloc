@@ -307,9 +307,7 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *coreState.Transaction, expected error) 
 func (bb *BlockBuilder) PayReward() *BlockBuilder {
 	n := bb.copy()
 
-	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.State().PayReward(n.B.Coinbase(), n.B.Supply()))
-	require.NoError(n.t, n.B.Commit())
+	require.NoError(n.t, n.B.PayReward(n.B.Supply()))
 
 	return n
 }
