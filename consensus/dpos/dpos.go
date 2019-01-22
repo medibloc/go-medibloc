@@ -415,10 +415,10 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 
 		// Execute transaction and change states
 		receipt, err := block.ExecuteTransaction(tx)
-		if err != nil && err == core.ErrBatchOperation {
+		if err != nil && err == core.ErrAtomicError {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
-			}).Error("Failed to execute batch operation.")
+			}).Error("Failed to execute atomic operation.")
 			return nil, err
 		}
 		if err != nil {

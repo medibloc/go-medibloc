@@ -192,7 +192,7 @@ func (b *Block) Seal() error {
 }
 
 var (
-	ErrBatchOperation = errors.New("failed to execute batch operation")
+	ErrAtomicError = errors.New("failed to process atomic operation")
 )
 
 // ExecuteTransaction on given block state
@@ -220,25 +220,14 @@ func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receip
 		return nil, err
 	}
 
-	// Execute Transaction
-	err = b.BeginBatch()
+	err = b.Atomic(exeTx.Execute)
+	if err != nil && err == ErrAtomicError {
+		return nil, err
+	}
 	if err != nil {
-		return nil, ErrBatchOperation
+		return b.makeErrorReceipt(exeTx.Bandwidth(), point, err), nil
 	}
-	receiptErr := exeTx.Execute(b)
-	if receiptErr != nil {
-		if err := b.RollBack(); err != nil {
-			return nil, ErrBatchOperation
-		}
-		receipt := b.makeErrorReceipt(exeTx.Bandwidth(), point, receiptErr)
-		return receipt, nil
-	}
-	err = b.Commit()
-	if err != nil {
-		return nil, ErrBatchOperation
-	}
-	receipt := b.makeSuccessReceipt(exeTx.Bandwidth(), point)
-	return receipt, nil
+	return b.makeSuccessReceipt(exeTx.Bandwidth(), point), nil
 }
 
 func (b *Block) receiptTemplate(bw *common.Bandwidth, point *util.Uint128) *corestate.Receipt {
@@ -404,20 +393,9 @@ func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
 		return err
 	}
 
-	if err := b.BeginBatch(); err != nil {
-		return ErrBatchOperation
-	}
-	err = b.state.DposState().SetDynasty(mintDynasty)
-	if err != nil {
-		if err := b.RollBack(); err != nil {
-			return ErrBatchOperation
-		}
-		return err
-	}
-	if err := b.Commit(); err != nil {
-		return ErrBatchOperation
-	}
-	return nil
+	return b.Atomic(func(block *Block) error {
+		return block.state.DposState().SetDynasty(mintDynasty)
+	})
 }
 
 func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
@@ -454,31 +432,19 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 		return err
 	}
 
-	if err := b.BeginBatch(); err != nil {
-		return ErrBatchOperation
-	}
-	err = func() error {
-		if err := b.state.PutAccount(from); err != nil {
+	err = b.Atomic(func(block *Block) error {
+		if err := block.state.PutAccount(from); err != nil {
 			return err
 		}
 		if !tx.Payer().Equals(tx.From()) {
-			if err := b.state.PutAccount(payer); err != nil {
+			if err := block.state.PutAccount(payer); err != nil {
 				return err
 			}
 		}
-		if err := b.state.PutTx(tx); err != nil {
-			return err
-		}
-		return nil
-	}()
+		return block.state.PutTx(tx)
+	})
 	if err != nil {
-		if err := b.RollBack(); err != nil {
-			return ErrBatchOperation
-		}
 		return err
-	}
-	if err := b.Commit(); err != nil {
-		return ErrBatchOperation
 	}
 
 	b.state.cpuUsage += tx.Receipt().CPUUsage()
@@ -592,6 +558,22 @@ func (b *Block) Commit() error {
 // Flush saves batch updates to storage
 func (b *Block) Flush() error {
 	return b.state.flush()
+}
+
+func (b *Block) Atomic(batch func(block *Block) error) error {
+	if err := b.BeginBatch(); err != nil {
+		return ErrAtomicError
+	}
+	if execErr := batch(b); execErr != nil {
+		if err := b.RollBack(); err != nil {
+			return ErrAtomicError
+		}
+		return execErr
+	}
+	if err := b.Commit(); err != nil {
+		return ErrAtomicError
+	}
+	return nil
 }
 
 // GetBlockData returns data part of block
