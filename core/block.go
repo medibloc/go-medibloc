@@ -425,14 +425,23 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 		return ErrNoTransactionReceipt
 	}
 
-	// consume payer's points
-	payer, err := b.state.GetAccount(tx.Payer())
+	from, err := b.state.GetAccount(tx.From())
 	if err != nil {
 		return err
 	}
+	from.Nonce++
 
+	var payer *corestate.Account
+	if tx.Payer().Equals(tx.From()) {
+		payer = from
+	} else {
+		payer, err = b.state.GetAccount(tx.Payer())
+		if err != nil {
+			return err
+		}
+	}
 	payer.Points, err = payer.Points.Sub(tx.Receipt().Points())
-	if err == util.ErrUint128Underflow {
+	if err != nil && err == util.ErrUint128Underflow {
 		logging.Console().WithFields(logrus.Fields{
 			"tx_points":    tx.Receipt().Points(),
 			"payer_points": payer.Points,
@@ -445,26 +454,35 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 		return err
 	}
 
-	if err := b.state.PutAccount(payer); err != nil {
-		return err
+	if err := b.BeginBatch(); err != nil {
+		return ErrBatchOperation
 	}
-
-	// increase from's points
-	from, err := b.state.GetAccount(tx.From())
+	err = func() error {
+		if err := b.state.PutAccount(from); err != nil {
+			return err
+		}
+		if !tx.Payer().Equals(tx.From()) {
+			if err := b.state.PutAccount(payer); err != nil {
+				return err
+			}
+		}
+		if err := b.state.PutTx(tx); err != nil {
+			return err
+		}
+		return nil
+	}()
 	if err != nil {
+		if err := b.RollBack(); err != nil {
+			return ErrBatchOperation
+		}
 		return err
 	}
-	from.Nonce++
-	if err := b.state.PutAccount(from); err != nil {
-		return err
+	if err := b.Commit(); err != nil {
+		return ErrBatchOperation
 	}
 
 	b.state.cpuUsage += tx.Receipt().CPUUsage()
 	b.state.netUsage += tx.Receipt().NetUsage()
-
-	if err := b.state.PutTx(tx); err != nil {
-		return err
-	}
 
 	return nil
 }
