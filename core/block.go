@@ -311,9 +311,6 @@ func (b *Block) calcPointUsage(exeTx ExecutableTx) (*util.Uint128, error) {
 // VerifyExecution executes txs in block and verify root hashes using block header
 func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 	if err := b.State().SetMintDynastyState(parent.State(), consensus); err != nil {
-		if err := b.RollBack(); err != nil {
-			return err
-		}
 		return err
 	}
 
@@ -387,11 +384,6 @@ func (b *Block) Execute(tx *corestate.Transaction) error {
 		return ErrWrongReceipt
 	}
 
-	err = b.BeginBatch()
-	if err != nil {
-		return err
-	}
-
 	if err := b.state.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
@@ -400,11 +392,6 @@ func (b *Block) Execute(tx *corestate.Transaction) error {
 		}).Warn("Failed to accept a transaction.")
 		return err
 	}
-	err = b.Commit()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
