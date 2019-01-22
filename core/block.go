@@ -16,8 +16,10 @@
 package core
 
 import (
+	"errors"
 	"math/big"
 
+	"github.com/medibloc/go-medibloc/common"
 	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/storage"
@@ -189,83 +191,125 @@ func (b *Block) Seal() error {
 	return nil
 }
 
+var (
+	ErrBatchOperation = errors.New("failed to execute batch operation")
+)
+
 // ExecuteTransaction on given block state
 func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receipt, error) {
-	// Executing process consists of two major parts
-	// Part 1 : Verify transaction and not affect state trie
-	// Part 2 : Execute transaction and affect state trie(store)
-
-	// Part 1 : Verify transaction and not affect state trie
-
-	bs := b.State()
-
-	// STEP 1. Check nonce
-	if err := bs.checkNonce(tx); err != nil {
-		return nil, err
-	}
-
+	// Verify that transaction is executable
 	exeTx, err := TxConv(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	// STEP 3. Check tx components and set cpu, net usage on receipt
-	bw := exeTx.Bandwidth()
-
-	// STEP 4. Check bandwidth (Exceeding block's max cpu/net bandwidth)
-	if err := bs.checkBandwidthLimit(bw); err != nil {
+	if err := b.checkNonce(tx); err != nil {
 		return nil, err
 	}
 
-	// STEP 5. Check payer's bandwidth
-	payer, err := bs.GetAccount(tx.Payer())
+	if err := b.checkBandwidth(exeTx); err != nil {
+		return nil, err
+	}
+
+	point, err := b.calcPointUsage(exeTx)
 	if err != nil {
 		return nil, err
 	}
 
-	points, err := bw.CalcPoints(bs.Price())
-	if err != nil {
+	if err := b.checkAvailablePoint(tx.Payer(), exeTx, point); err != nil {
 		return nil, err
+	}
+
+	// Execute Transaction
+	err = b.BeginBatch()
+	if err != nil {
+		return nil, ErrBatchOperation
+	}
+	receiptErr := exeTx.Execute(b)
+	if receiptErr != nil {
+		if err := b.RollBack(); err != nil {
+			return nil, ErrBatchOperation
+		}
+		receipt := b.makeErrorReceipt(exeTx.Bandwidth(), point, receiptErr)
+		return receipt, nil
+	}
+	err = b.Commit()
+	if err != nil {
+		return nil, ErrBatchOperation
+	}
+	receipt := b.makeSuccessReceipt(exeTx.Bandwidth(), point)
+	return receipt, nil
+}
+
+func (b *Block) receiptTemplate(bw *common.Bandwidth, point *util.Uint128) *corestate.Receipt {
+	receipt := new(corestate.Receipt)
+	receipt.SetTimestamp(b.state.timestamp)
+	receipt.SetHeight(b.Height())
+	receipt.SetCPUUsage(bw.CPUUsage())
+	receipt.SetNetUsage(bw.NetUsage())
+	receipt.SetPoints(point)
+	receipt.SetExecuted(false)
+	receipt.SetError(nil)
+	return receipt
+}
+
+func (b *Block) makeErrorReceipt(bw *common.Bandwidth, point *util.Uint128, err error) *corestate.Receipt {
+	receipt := b.receiptTemplate(bw, point)
+	receipt.SetError([]byte(err.Error()))
+	return receipt
+}
+
+func (b *Block) makeSuccessReceipt(bw *common.Bandwidth, point *util.Uint128) *corestate.Receipt {
+	receipt := b.receiptTemplate(bw, point)
+	receipt.SetExecuted(true)
+	return receipt
+}
+
+// TODO move to types.go
+var ErrNonceNotExecutable = errors.New("transaction nonce not executable")
+
+func (b *Block) checkNonce(tx *corestate.Transaction) error {
+	from, err := b.state.GetAccount(tx.From())
+	if err != nil {
+		return err
+	}
+	if tx.Nonce() != from.Nonce+1 {
+		return ErrNonceNotExecutable
+	}
+	return nil
+}
+
+func (b *Block) checkBandwidth(exeTx ExecutableTx) error {
+	if err := b.state.checkBandwidthLimit(exeTx.Bandwidth()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Block) checkAvailablePoint(addr common.Address, exeTx ExecutableTx, point *util.Uint128) error {
+	payer, err := b.state.GetAccount(addr)
+	if err != nil {
+		return err
 	}
 
 	avail := payer.Points
 	modified, err := exeTx.PointModifier(avail)
 	if err != nil {
-		return nil, err
-	}
-	if modified.Cmp(points) < 0 {
-		return nil, corestate.ErrPointNotEnough
+		return err
 	}
 
-	// Part 2 : Execute transaction and affect state trie(store)
-	// Even if transaction fails, still consume account's bandwidth
-
-	receipt := new(corestate.Receipt)
-	receipt.SetExecuted(false)
-	receipt.SetTimestamp(bs.timestamp)
-	receipt.SetHeight(b.Height())
-	receipt.SetCPUUsage(bw.CPUUsage())
-	receipt.SetNetUsage(bw.NetUsage())
-	receipt.SetPoints(points)
-	receipt.SetError(nil)
-
-	// Case 1. Already executed transaction payload & Execute Error (Non-system error)
-	err = exeTx.Execute(b)
-	if err != nil {
-		receipt.SetError([]byte(err.Error()))
-		return receipt, err
+	if modified.Cmp(point) < 0 {
+		return corestate.ErrPointNotEnough
 	}
-	receipt.SetExecuted(true)
-	return receipt, nil
+	return nil
+}
+
+func (b *Block) calcPointUsage(exeTx ExecutableTx) (*util.Uint128, error) {
+	return exeTx.Bandwidth().CalcPoints(b.state.Price())
 }
 
 // VerifyExecution executes txs in block and verify root hashes using block header
 func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
-	err := b.BeginBatch()
-	if err != nil {
-		return err
-	}
-
 	if err := b.State().SetMintDynastyState(parent.State(), consensus); err != nil {
 		if err := b.RollBack(); err != nil {
 			return err
@@ -281,10 +325,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 		}).Warn("Failed to verifyProposer")
 		return err
 	}
-	err = b.Commit()
-	if err != nil {
-		return err
-	}
+
 	if err := b.ExecuteAll(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
@@ -293,19 +334,11 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 		return err
 	}
 
-	err = b.BeginBatch()
-	if err != nil {
-		return err
-	}
 	if err := b.State().PayReward(b.coinbase, b.State().Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
 		}).Error("Failed to pay block reward.")
-		return err
-	}
-	err = b.Commit()
-	if err != nil {
 		return err
 	}
 
@@ -334,29 +367,14 @@ func (b *Block) ExecuteAll() error {
 
 // Execute executes a transaction.
 func (b *Block) Execute(tx *corestate.Transaction) error {
-	err := b.BeginBatch()
-	if err != nil {
-		return err
-	}
-
 	receipt, err := b.ExecuteTransaction(tx)
-	if receipt == nil {
+	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
 			"block":       b,
-		}).Warn("No Receipt from transaction execution")
+		}).Debug("Failed to execute transaction.")
 		return err
-	}
-
-	if err != nil {
-		if err := b.RollBack(); err != nil {
-			return err
-		}
-	} else {
-		if err := b.Commit(); err != nil {
-			return err
-		}
 	}
 
 	if !receipt.Equal(tx.Receipt()) {

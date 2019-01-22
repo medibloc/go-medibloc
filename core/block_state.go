@@ -358,27 +358,6 @@ func (bs *BlockState) SubVotePowerToCandidate(candidateID []byte, amount *util.U
 	return bs.dposState.SubVotePowerToCandidate(candidateID, amount)
 }
 
-// checkNonce compare given transaction's nonce with expected account's nonce
-func (bs *BlockState) checkNonce(tx *coreState.Transaction) error {
-	fromAcc, err := bs.GetAccount(tx.From())
-	if err != nil {
-		return err
-	}
-	expectedNonce := fromAcc.Nonce + 1
-	if tx.Nonce() > expectedNonce {
-		logging.WithFields(logrus.Fields{
-			"hash":        tx.Hash(),
-			"nonce":       tx.Nonce(),
-			"expected":    expectedNonce,
-			"transaction": tx,
-		}).Debug("Transaction nonce gap exist")
-		return ErrLargeTransactionNonce
-	} else if tx.Nonce() < expectedNonce {
-		return ErrSmallTransactionNonce
-	}
-	return nil
-}
-
 func (bs *BlockState) checkBandwidthLimit(bandwidth *common.Bandwidth) error {
 	cpu := bandwidth.CPUUsage()
 	net := bandwidth.NetUsage()

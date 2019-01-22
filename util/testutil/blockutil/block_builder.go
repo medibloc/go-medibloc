@@ -275,32 +275,31 @@ func (bb *BlockBuilder) AddTx(tx *coreState.Transaction) *BlockBuilder {
 // ExecuteTx execute transaction
 func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
 	n := bb.copy()
-	require.NoError(n.t, n.B.BeginBatch())
 	receipt, err := n.B.ExecuteTransaction(tx)
 	require.NoError(n.t, err)
+	require.Nil(n.t, receipt.Error())
+	require.True(n.t, receipt.Executed())
+
 	tx.SetReceipt(receipt)
 	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
 	n.B.AppendTransaction(tx)
-	require.NoError(n.t, n.B.Commit())
-
 	return n
 }
 
 // ExecuteTxErr expect error occurred on executing
 func (bb *BlockBuilder) ExecuteTxErr(tx *coreState.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
-	require.NoError(n.t, n.B.BeginBatch())
 	receipt, err := n.B.ExecuteTransaction(tx)
-	require.Equal(n.t, expected, err)
-	require.NoError(n.t, n.B.RollBack())
-	if receipt == nil {
+	if err != nil {
+		require.Equal(n.t, expected, err)
 		return n
 	}
-	require.NoError(n.t, n.B.BeginBatch())
+	require.Equal(n.t, expected.Error(), receipt.Error())
+	require.False(n.t, receipt.Executed())
+
 	tx.SetReceipt(receipt)
 	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
 	n.B.AppendTransaction(tx)
-	require.NoError(n.t, n.B.Commit())
 	return n
 }
 

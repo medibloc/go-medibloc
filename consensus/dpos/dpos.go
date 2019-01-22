@@ -430,55 +430,24 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}
 		d.tm.SetRequiredNonce(tx.From(), acc.Nonce+2)
 
-		if err := block.BeginBatch(); err != nil {
-			return nil, err
-		}
-
 		// Execute transaction and change states
 		receipt, err := block.ExecuteTransaction(tx)
+		if err != nil && err == core.ErrBatchOperation {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to execute batch operation.")
+			return nil, err
+		}
 		if err != nil {
-			if err := block.RollBack(); err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to rollback new block.")
-				return nil, err
-			}
-			// TODO Refactor processing retryable txs.
-			if isRetryable(err) {
-				continue
-			}
-			if receipt == nil {
-				logging.Console().WithFields(logrus.Fields{
-					"transaction": tx.Hash(),
-					"err":         err,
-				}).Info("failed to execute transaction")
-				tx.TriggerEvent(d.eventEmitter, event.TypeAccountTransactionDeleted)
-				continue
-			}
-			if err := block.BeginBatch(); err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to begin batch.")
-				return nil, err
-			}
-			if err := includeTransaction(block, tx, receipt); err != nil {
-				if err := block.RollBack(); err != nil {
-					logging.Console().WithFields(logrus.Fields{
-						"err": err,
-					}).Error("Failed to rollback.")
-					return nil, err
-				}
-				continue
-			}
-			if err := block.Commit(); err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to commit.")
-				return nil, err
-			}
 			continue
 		}
 
+		if err := block.BeginBatch(); err != nil {
+			logging.Console().WithFields(logrus.Fields{
+				"err": err,
+			}).Error("Failed to begin batch.")
+			return nil, err
+		}
 		if err := includeTransaction(block, tx, receipt); err != nil {
 			if err := block.RollBack(); err != nil {
 				logging.Console().WithFields(logrus.Fields{
@@ -488,11 +457,10 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			}
 			continue
 		}
-
 		if err := block.Commit(); err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err": err,
-			}).Error("Failed to commit execution result")
+			}).Error("Failed to commit.")
 			return nil, err
 		}
 	}
@@ -583,10 +551,6 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 		return common.Address{}, err
 	}
 	return dynasty[proposerIndex], nil
-}
-
-func isRetryable(err error) bool {
-	return err == core.ErrLargeTransactionNonce || err == core.ErrExceedBlockMaxCPUUsage || err == core.ErrExceedBlockMaxNetUsage
 }
 
 func includeTransaction(block *core.Block, transaction *cState.Transaction, receipt *cState.Receipt) error {
