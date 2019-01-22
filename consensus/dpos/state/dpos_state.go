@@ -103,12 +103,31 @@ func (s *State) DynastyState() *trie.Batch {
 	return s.dynastyState
 }
 
-// Prepare prepare trie
-func (s *State) Prepare() error {
-	if err := s.candidateState.Prepare(); err != nil {
+func (s *State) applyBatchToEachState(fn trie.BatchCallType) error {
+	err := fn(s.candidateState)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to apply batch function to candidate state.")
 		return err
 	}
-	if err := s.dynastyState.Prepare(); err != nil {
+	err = fn(s.dynastyState)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to apply batch function to dynasty state.")
+		return err
+	}
+	return nil
+}
+
+// Prepare prepare trie
+func (s *State) Prepare() error {
+	err := s.applyBatchToEachState(trie.PrepareCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to prepare dpos state.")
 		return err
 	}
 	return nil
@@ -116,10 +135,11 @@ func (s *State) Prepare() error {
 
 // BeginBatch begin batch
 func (s *State) BeginBatch() error {
-	if err := s.candidateState.BeginBatch(); err != nil {
-		return err
-	}
-	if err := s.dynastyState.BeginBatch(); err != nil {
+	err := s.applyBatchToEachState(trie.BeginBatchCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to begin batch dpos state.")
 		return err
 	}
 	return nil
@@ -127,10 +147,11 @@ func (s *State) BeginBatch() error {
 
 // Commit saves batch to state
 func (s *State) Commit() error {
-	if err := s.candidateState.Commit(); err != nil {
-		return err
-	}
-	if err := s.dynastyState.Commit(); err != nil {
+	err := s.applyBatchToEachState(trie.CommitCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to commit dpos state.")
 		return err
 	}
 	return nil
@@ -138,10 +159,11 @@ func (s *State) Commit() error {
 
 // RollBack rollback batch
 func (s *State) RollBack() error {
-	if err := s.candidateState.RollBack(); err != nil {
-		return err
-	}
-	if err := s.dynastyState.RollBack(); err != nil {
+	err := s.applyBatchToEachState(trie.RollbackCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to rollback dpos state.")
 		return err
 	}
 	return nil
@@ -149,10 +171,11 @@ func (s *State) RollBack() error {
 
 // Flush flush data to storage
 func (s *State) Flush() error {
-	if err := s.candidateState.Flush(); err != nil {
-		return err
-	}
-	if err := s.dynastyState.Flush(); err != nil {
+	err := s.applyBatchToEachState(trie.FlushCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to flush dpos state.")
 		return err
 	}
 	return nil
@@ -160,10 +183,11 @@ func (s *State) Flush() error {
 
 // Reset reset trie's refCounter
 func (s *State) Reset() error {
-	if err := s.candidateState.Reset(); err != nil {
-		return err
-	}
-	if err := s.dynastyState.Reset(); err != nil {
+	err := s.applyBatchToEachState(trie.ResetCall)
+	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"err": err,
+		}).Error("Failed to reset dpos state.")
 		return err
 	}
 	return nil
