@@ -122,23 +122,7 @@ func (tx *RegisterAliasTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
-	err = acc.Data.Prepare()
-	if err != nil {
-		return err
-	}
-	err = acc.Data.BeginBatch()
-	if err != nil {
-		return err
-	}
 	err = acc.PutData("", []byte(coreState.AliasKey), aliasBytes)
-	if err != nil {
-		return err
-	}
-	err = acc.Data.Commit()
-	if err != nil {
-		return err
-	}
-	err = acc.Data.Flush()
 	if err != nil {
 		return err
 	}
@@ -223,23 +207,7 @@ func (tx *DeregisterAliasTx) Execute(b *core.Block) error {
 		return err
 	}
 
-	err = acc.Data.Prepare()
-	if err != nil {
-		return err
-	}
-	err = acc.Data.BeginBatch()
-	if err != nil {
-		return err
-	}
 	err = acc.Data.Delete([]byte(coreState.AliasKey))
-	if err != nil {
-		return err
-	}
-	err = acc.Data.Commit()
-	if err != nil {
-		return err
-	}
-	err = acc.Data.Flush()
 	if err != nil {
 		return err
 	}

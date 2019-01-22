@@ -94,23 +94,7 @@ func (tx *AddRecordTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
-	err = acc.Data.Prepare()
-	if err != nil {
-		return err
-	}
-	err = acc.Data.BeginBatch()
-	if err != nil {
-		return err
-	}
 	err = acc.PutData(coreState.RecordsPrefix, tx.recordHash, recordBytes)
-	if err != nil {
-		return err
-	}
-	err = acc.Data.Commit()
-	if err != nil {
-		return err
-	}
-	err = acc.Data.Flush()
 	if err != nil {
 		return err
 	}

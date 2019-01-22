@@ -85,10 +85,6 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
-	err = newVoted.BeginBatch()
-	if err != nil {
-		return err
-	}
 	for _, c := range tx.candidateIDs {
 		_, err := newVoted.Get(c)
 		// Check duplicated vote
@@ -102,10 +98,6 @@ func (tx *VoteTx) Execute(b *core.Block) error {
 		if err := newVoted.Put(c, c); err != nil {
 			return err
 		}
-	}
-	err = newVoted.Commit()
-	if err != nil {
-		return err
 	}
 	err = newVoted.Flush()
 	if err != nil {

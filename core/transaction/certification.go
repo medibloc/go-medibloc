@@ -123,22 +123,7 @@ func (tx *AddCertificationTx) Execute(b *core.Block) error {
 	}
 
 	// Add certification to certified's account state
-	if err := certified.Data.Prepare(); err != nil {
-		return err
-	}
-	if err := certified.Data.BeginBatch(); err != nil {
-		return err
-	}
 	if err := certified.PutData(coreState.CertReceivedPrefix, tx.CertificateHash, certificationBytes); err != nil {
-		if err := certified.Data.RollBack(); err != nil {
-			return err
-		}
-		return err
-	}
-	if err := certified.Data.Commit(); err != nil {
-		return err
-	}
-	if err := certified.Data.Flush(); err != nil {
 		return err
 	}
 	if err := b.State().PutAccount(certified); err != nil {
@@ -150,22 +135,7 @@ func (tx *AddCertificationTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
-	if err := issuer.Data.Prepare(); err != nil {
-		return err
-	}
-	if err := issuer.Data.BeginBatch(); err != nil {
-		return err
-	}
 	if err := issuer.PutData(coreState.CertIssuedPrefix, tx.CertificateHash, certificationBytes); err != nil {
-		if err := issuer.Data.RollBack(); err != nil {
-			return err
-		}
-		return err
-	}
-	if err := issuer.Data.Commit(); err != nil {
-		return err
-	}
-	if err := issuer.Data.Flush(); err != nil {
 		return err
 	}
 	if err := b.State().PutAccount(issuer); err != nil {
@@ -276,23 +246,7 @@ func (tx *RevokeCertificationTx) Execute(b *core.Block) error {
 		return err
 	}
 	// change cert on issuer's cert issued List
-	err = issuer.Data.Prepare()
-	if err != nil {
-		return err
-	}
-	err = issuer.Data.BeginBatch()
-	if err != nil {
-		return err
-	}
 	err = issuer.PutData(coreState.CertIssuedPrefix, tx.CertificateHash, newCertBytes)
-	if err != nil {
-		return err
-	}
-	err = issuer.Data.Commit()
-	if err != nil {
-		return err
-	}
-	err = issuer.Data.Flush()
 	if err != nil {
 		return err
 	}
@@ -309,23 +263,7 @@ func (tx *RevokeCertificationTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
-	err = certified.Data.Prepare()
-	if err != nil {
-		return err
-	}
-	err = certified.Data.BeginBatch()
-	if err != nil {
-		return err
-	}
 	err = certified.PutData(coreState.CertReceivedPrefix, tx.CertificateHash, newCertBytes)
-	if err != nil {
-		return err
-	}
-	err = certified.Data.Commit()
-	if err != nil {
-		return err
-	}
-	err = certified.Data.Flush()
 	if err != nil {
 		return err
 	}
