@@ -415,56 +415,6 @@ func (bs *BlockState) PayReward(coinbase common.Address, parentSupply *util.Uint
 	return nil
 }
 
-// AcceptTransaction consume bandwidth and adds tx in block state
-func (bs *BlockState) AcceptTransaction(tx *coreState.Transaction) error {
-	if tx.Receipt() == nil {
-		return ErrNoTransactionReceipt
-	}
-
-	// consume payer's points
-	payer, err := bs.GetAccount(tx.Payer())
-	if err != nil {
-		return err
-	}
-
-	payer.Points, err = payer.Points.Sub(tx.Receipt().Points())
-	if err == util.ErrUint128Underflow {
-		logging.Console().WithFields(logrus.Fields{
-			"tx_points":    tx.Receipt().Points(),
-			"payer_points": payer.Points,
-			"payer":        tx.Payer().Hex(),
-			"err":          err,
-		}).Warn("Points limit exceeded.")
-		return coreState.ErrPointNotEnough
-	}
-	if err != nil {
-		return err
-	}
-
-	if err := bs.PutAccount(payer); err != nil {
-		return err
-	}
-
-	// increase from's points
-	from, err := bs.GetAccount(tx.From())
-	if err != nil {
-		return err
-	}
-	from.Nonce++
-	if err := bs.PutAccount(from); err != nil {
-		return err
-	}
-
-	bs.cpuUsage += tx.Receipt().CPUUsage()
-	bs.netUsage += tx.Receipt().NetUsage()
-
-	if err := bs.PutTx(tx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // calcMintReward returns calculated block produce reward
 func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 	reward, err := parentSupply.MulWithRat(InflationRate)

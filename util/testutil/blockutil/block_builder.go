@@ -281,7 +281,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
 	require.True(n.t, receipt.Executed())
 
 	tx.SetReceipt(receipt)
-	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
+	require.NoError(n.t, n.B.AcceptTransaction(tx))
 	n.B.AppendTransaction(tx)
 	return n
 }
@@ -298,7 +298,7 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *coreState.Transaction, expected error) 
 	require.False(n.t, receipt.Executed())
 
 	tx.SetReceipt(receipt)
-	require.NoError(n.t, n.B.State().AcceptTransaction(tx))
+	require.NoError(n.t, n.B.AcceptTransaction(tx))
 	n.B.AppendTransaction(tx)
 	return n
 }

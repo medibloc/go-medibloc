@@ -384,7 +384,7 @@ func (b *Block) execute(tx *corestate.Transaction) error {
 		return ErrWrongReceipt
 	}
 
-	if err := b.state.AcceptTransaction(tx); err != nil {
+	if err := b.AcceptTransaction(tx); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":         err,
 			"transaction": tx,
@@ -417,6 +417,55 @@ func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
 	if err := b.Commit(); err != nil {
 		return ErrBatchOperation
 	}
+	return nil
+}
+
+func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
+	if tx.Receipt() == nil {
+		return ErrNoTransactionReceipt
+	}
+
+	// consume payer's points
+	payer, err := b.state.GetAccount(tx.Payer())
+	if err != nil {
+		return err
+	}
+
+	payer.Points, err = payer.Points.Sub(tx.Receipt().Points())
+	if err == util.ErrUint128Underflow {
+		logging.Console().WithFields(logrus.Fields{
+			"tx_points":    tx.Receipt().Points(),
+			"payer_points": payer.Points,
+			"payer":        tx.Payer().Hex(),
+			"err":          err,
+		}).Warn("Points limit exceeded.")
+		return corestate.ErrPointNotEnough
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := b.state.PutAccount(payer); err != nil {
+		return err
+	}
+
+	// increase from's points
+	from, err := b.state.GetAccount(tx.From())
+	if err != nil {
+		return err
+	}
+	from.Nonce++
+	if err := b.state.PutAccount(from); err != nil {
+		return err
+	}
+
+	b.state.cpuUsage += tx.Receipt().CPUUsage()
+	b.state.netUsage += tx.Receipt().NetUsage()
+
+	if err := b.state.PutTx(tx); err != nil {
+		return err
+	}
+
 	return nil
 }
 

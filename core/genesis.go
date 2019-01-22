@@ -193,7 +193,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 		}
 		tx.SetReceipt(receipt)
 
-		if err = genesisBlock.State().AcceptTransaction(tx); err != nil {
+		if err = genesisBlock.AcceptTransaction(tx); err != nil {
 			return nil, err
 		}
 		genesisBlock.AppendTransaction(tx) // append on block header

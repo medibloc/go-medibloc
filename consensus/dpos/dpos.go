@@ -426,7 +426,7 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		}
 
 		tx.SetReceipt(receipt)
-		err = block.State().AcceptTransaction(tx)
+		err = block.AcceptTransaction(tx)
 		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
 				"err":         err,
