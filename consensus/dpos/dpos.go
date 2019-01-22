@@ -27,7 +27,6 @@ import (
 	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
-	cState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
@@ -375,27 +374,11 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		return nil, err
 	}
 
-	// Enable states changing (acc, tx, dpos)
-	if err := block.BeginBatch(); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":   err,
-			"block": block,
-		}).Error("Failed to begin batch of new block.")
-		return nil, err
-	}
-
 	// Change dynasty state for current block
 	if err := block.State().SetMintDynastyState(tail.State(), d); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to set dynasty")
-		return nil, err
-	}
-
-	// Save state changes (only dpos state in this line)
-	// Even though block Proposer doesn't have enough time for including transactions below,
-	// states changed above need to be safely saved.
-	if err := block.Commit(); err != nil {
 		return nil, err
 	}
 
@@ -442,47 +425,23 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			continue
 		}
 
-		if err := block.BeginBatch(); err != nil {
+		tx.SetReceipt(receipt)
+		err = block.State().AcceptTransaction(tx)
+		if err != nil {
 			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Failed to begin batch.")
+				"err":         err,
+				"transaction": tx,
+			}).Error("Failed to accept transaction.")
 			return nil, err
 		}
-		if err := includeTransaction(block, tx, receipt); err != nil {
-			if err := block.RollBack(); err != nil {
-				logging.Console().WithFields(logrus.Fields{
-					"err": err,
-				}).Error("Failed to rollback.")
-				return nil, err
-			}
-			continue
-		}
-		if err := block.Commit(); err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Failed to commit.")
-			return nil, err
-		}
+		block.AppendTransaction(tx)
 	}
 
-	if err := block.BeginBatch(); err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to begin batch.")
-		return nil, err
-	}
 	block.SetCoinbase(coinbase)
 	if err := block.State().PayReward(coinbase, tail.Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
 		}).Error("Failed to pay reward.")
-		return nil, err
-	}
-	err = block.Commit()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to commit.")
 		return nil, err
 	}
 
@@ -551,22 +510,6 @@ func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, e
 		return common.Address{}, err
 	}
 	return dynasty[proposerIndex], nil
-}
-
-func includeTransaction(block *core.Block, transaction *cState.Transaction, receipt *cState.Receipt) error {
-	transaction.SetReceipt(receipt)
-
-	err := block.State().AcceptTransaction(transaction)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err":         err,
-			"transaction": transaction,
-		}).Error("Failed to accept transaction.")
-		return err
-	}
-
-	block.AppendTransaction(transaction)
-	return nil
 }
 
 func lastMintSlot(ts time.Time) time.Time {
