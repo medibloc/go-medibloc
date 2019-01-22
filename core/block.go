@@ -310,7 +310,7 @@ func (b *Block) calcPointUsage(exeTx ExecutableTx) (*util.Uint128, error) {
 
 // verifyExecution executes txs in block and verify root hashes using block header
 func (b *Block) verifyExecution(parent *Block, consensus Consensus) error {
-	if err := b.State().SetMintDynastyState(parent.State(), consensus); err != nil {
+	if err := b.SetMintDynasty(parent, consensus); err != nil {
 		return err
 	}
 
@@ -391,6 +391,31 @@ func (b *Block) execute(tx *corestate.Transaction) error {
 			"block":       b,
 		}).Warn("Failed to accept a transaction.")
 		return err
+	}
+	return nil
+}
+
+func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
+	mintDynasty, err := consensus.MakeMintDynasty(b.state.timestamp, parent.State())
+	if err != nil && err == ErrSameDynasty {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := b.BeginBatch(); err != nil {
+		return ErrBatchOperation
+	}
+	err = b.state.DposState().SetDynasty(mintDynasty)
+	if err != nil {
+		if err := b.RollBack(); err != nil {
+			return ErrBatchOperation
+		}
+		return err
+	}
+	if err := b.Commit(); err != nil {
+		return ErrBatchOperation
 	}
 	return nil
 }

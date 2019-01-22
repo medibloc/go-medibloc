@@ -465,18 +465,6 @@ func (bs *BlockState) AcceptTransaction(tx *coreState.Transaction) error {
 	return nil
 }
 
-// SetMintDynastyState set mint dys
-func (bs *BlockState) SetMintDynastyState(parentState *BlockState, consensus Consensus) error {
-	mintDynasty, err := consensus.MakeMintDynasty(bs.timestamp, parentState)
-	if err == ErrSameDynasty {
-		return nil // dynasty state is not changed
-	}
-	if err != nil {
-		return err
-	}
-	return bs.dposState.SetDynasty(mintDynasty)
-}
-
 // calcMintReward returns calculated block produce reward
 func calcMintReward(parentSupply *util.Uint128) (*util.Uint128, error) {
 	reward, err := parentSupply.MulWithRat(InflationRate)

@@ -392,9 +392,7 @@ func (bb *BlockBuilder) UpdateDynastyState(parent *core.Block) *BlockBuilder {
 	require.NoError(n.t, err)
 	n.proposer = mintProposer
 
-	require.NoError(n.t, n.B.BeginBatch())
-	require.NoError(n.t, n.B.State().SetMintDynastyState(parent.State(), d))
-	require.NoError(n.t, n.B.Commit())
+	require.NoError(n.t, n.B.SetMintDynasty(parent, d))
 
 	return n
 }
