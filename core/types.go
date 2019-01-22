@@ -159,12 +159,3 @@ type ExecutableTx interface {
 	Bandwidth() *common.Bandwidth
 	PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error)
 }
-
-type Batch interface {
-	Prepare() error
-	BeginBatch() error
-	Commit() error
-	RollBack() error
-	Flush() error
-	Reset() error
-}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/common/trie"
 	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/storage"
@@ -142,16 +143,7 @@ func (bs *BlockState) Clone() (*BlockState, error) {
 	}, nil
 }
 
-type batchCallType func(batch Batch) error
-
-func prepareCall(batch Batch) error    { return batch.Prepare() }
-func beginBatchCall(batch Batch) error { return batch.BeginBatch() }
-func commitCall(batch Batch) error     { return batch.Commit() }
-func rollbackCall(batch Batch) error   { return batch.RollBack() }
-func flushCall(batch Batch) error      { return batch.Flush() }
-func resetCall(batch Batch) error      { return batch.Reset() }
-
-func (bs *BlockState) applyBatchToEachState(fn batchCallType) error {
+func (bs *BlockState) applyBatchToEachState(fn trie.BatchCallType) error {
 	err := fn(bs.accState)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -177,7 +169,7 @@ func (bs *BlockState) applyBatchToEachState(fn batchCallType) error {
 }
 
 func (bs *BlockState) prepare() error {
-	err := bs.applyBatchToEachState(prepareCall)
+	err := bs.applyBatchToEachState(trie.PrepareCall)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -188,7 +180,7 @@ func (bs *BlockState) prepare() error {
 }
 
 func (bs *BlockState) beginBatch() error {
-	err := bs.applyBatchToEachState(beginBatchCall)
+	err := bs.applyBatchToEachState(trie.BeginBatchCall)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -199,7 +191,7 @@ func (bs *BlockState) beginBatch() error {
 }
 
 func (bs *BlockState) commit() error {
-	err := bs.applyBatchToEachState(commitCall)
+	err := bs.applyBatchToEachState(trie.CommitCall)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -209,7 +201,7 @@ func (bs *BlockState) commit() error {
 	return nil
 }
 func (bs *BlockState) rollBack() error {
-	err := bs.applyBatchToEachState(rollbackCall)
+	err := bs.applyBatchToEachState(trie.RollbackCall)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -220,7 +212,7 @@ func (bs *BlockState) rollBack() error {
 }
 
 func (bs *BlockState) flush() error {
-	err := bs.applyBatchToEachState(flushCall)
+	err := bs.applyBatchToEachState(trie.FlushCall)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -231,7 +223,7 @@ func (bs *BlockState) flush() error {
 }
 
 func (bs *BlockState) reset() error {
-	err := bs.applyBatchToEachState(resetCall)
+	err := bs.applyBatchToEachState(trie.ResetCall)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

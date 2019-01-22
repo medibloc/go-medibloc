@@ -18,3 +18,21 @@ type Serializable interface {
 	ToBytes() ([]byte, error)
 	FromBytes([]byte) error
 }
+
+type Batcher interface {
+	Prepare() error
+	BeginBatch() error
+	Commit() error
+	RollBack() error
+	Flush() error
+	Reset() error
+}
+
+type BatchCallType func(batch Batcher) error
+
+func PrepareCall(batch Batcher) error    { return batch.Prepare() }
+func BeginBatchCall(batch Batcher) error { return batch.BeginBatch() }
+func CommitCall(batch Batcher) error     { return batch.Commit() }
+func RollbackCall(batch Batcher) error   { return batch.RollBack() }
+func FlushCall(batch Batcher) error      { return batch.Flush() }
+func ResetCall(batch Batcher) error      { return batch.Reset() }
