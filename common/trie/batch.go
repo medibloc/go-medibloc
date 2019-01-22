@@ -49,19 +49,6 @@ func NewBatch(rootHash []byte, stor storage.Storage) (*Batch, error) {
 	}, nil
 }
 
-// BeginBatch begin batch
-func (tb *Batch) BeginBatch() error {
-	tb.mu.Lock()
-	defer tb.mu.Unlock()
-
-	if tb.batching {
-		return ErrCannotPerformInBatch
-	}
-	tb.dirties = make(map[string]*dirty)
-	tb.batching = true
-	return nil
-}
-
 // Clone clone Batch
 func (tb *Batch) Clone() (*Batch, error) {
 	tb.mu.Lock()
@@ -79,6 +66,19 @@ func (tb *Batch) Clone() (*Batch, error) {
 		dirties: make(map[string]*dirty),
 	}
 	return newBatch, nil
+}
+
+// BeginBatch begin batch
+func (tb *Batch) BeginBatch() error {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
+	if tb.batching {
+		return ErrCannotPerformInBatch
+	}
+	tb.dirties = make(map[string]*dirty)
+	tb.batching = true
+	return nil
 }
 
 // Commit commit batch WARNING: not thread-safe
@@ -105,6 +105,20 @@ func (tb *Batch) Commit() error {
 			return err
 		}
 	}
+	tb.dirties = make(map[string]*dirty)
+	tb.batching = false
+	return nil
+}
+
+// RollBack rollback batch WARNING: not thread-safe
+func (tb *Batch) RollBack() error {
+	tb.mu.Lock()
+	defer tb.mu.Unlock()
+
+	if !tb.batching {
+		return ErrNotBatching
+	}
+
 	tb.dirties = make(map[string]*dirty)
 	tb.batching = false
 	return nil
@@ -208,20 +222,6 @@ func (tb *Batch) PutData(key []byte, data Serializable) error {
 		return err
 	}
 	return tb.Put(key, value)
-}
-
-// RollBack rollback batch WARNING: not thread-safe
-func (tb *Batch) RollBack() error {
-	tb.mu.Lock()
-	defer tb.mu.Unlock()
-
-	if !tb.batching {
-		return ErrNotBatching
-	}
-
-	tb.dirties = make(map[string]*dirty)
-	tb.batching = false
-	return nil
 }
 
 // RootHash getter for rootHash
