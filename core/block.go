@@ -125,7 +125,7 @@ func (b *Block) CreateChildWithBlockData(bd *BlockData, consensus Consensus) (ch
 		return nil, err
 	}
 
-	if err := child.VerifyExecution(b, consensus); err != nil {
+	if err := child.verifyExecution(b, consensus); err != nil {
 		return nil, err
 	}
 	err = child.Flush()
@@ -308,8 +308,8 @@ func (b *Block) calcPointUsage(exeTx ExecutableTx) (*util.Uint128, error) {
 	return exeTx.Bandwidth().CalcPoints(b.state.Price())
 }
 
-// VerifyExecution executes txs in block and verify root hashes using block header
-func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
+// verifyExecution executes txs in block and verify root hashes using block header
+func (b *Block) verifyExecution(parent *Block, consensus Consensus) error {
 	if err := b.State().SetMintDynastyState(parent.State(), consensus); err != nil {
 		return err
 	}
@@ -323,7 +323,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 		return err
 	}
 
-	if err := b.ExecuteAll(); err != nil {
+	if err := b.executeAll(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
@@ -339,7 +339,7 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 		return err
 	}
 
-	if err := b.VerifyState(); err != nil {
+	if err := b.verifyState(); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err":   err,
 			"block": b,
@@ -350,10 +350,10 @@ func (b *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 	return nil
 }
 
-// ExecuteAll executes all txs in block
-func (b *Block) ExecuteAll() error {
+// executeAll executes all txs in block
+func (b *Block) executeAll() error {
 	for _, transaction := range b.transactions {
-		err := b.Execute(transaction)
+		err := b.execute(transaction)
 		if err != nil {
 			return err
 		}
@@ -362,8 +362,8 @@ func (b *Block) ExecuteAll() error {
 	return nil
 }
 
-// Execute executes a transaction.
-func (b *Block) Execute(tx *corestate.Transaction) error {
+// execute executes a transaction.
+func (b *Block) execute(tx *corestate.Transaction) error {
 	receipt, err := b.ExecuteTransaction(tx)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -395,8 +395,8 @@ func (b *Block) Execute(tx *corestate.Transaction) error {
 	return nil
 }
 
-// VerifyState verifies block states comparing with root hashes in header
-func (b *Block) VerifyState() error {
+// verifyState verifies block states comparing with root hashes in header
+func (b *Block) verifyState() error {
 	if b.state.CPUPrice().Cmp(b.CPUPrice()) != 0 {
 		logging.Console().WithFields(logrus.Fields{
 			"state":  b.state.CPUPrice(),
