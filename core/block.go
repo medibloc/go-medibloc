@@ -220,12 +220,12 @@ func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receip
 		return nil, err
 	}
 
-	err = b.Atomic(exeTx.Execute)
-	if err != nil && err == ErrAtomicError {
-		return nil, err
-	}
+	execErr, err := b.Atomic(exeTx.Execute)
 	if err != nil {
-		return b.makeErrorReceipt(exeTx.Bandwidth(), point, err), nil
+		return nil, ErrAtomicError
+	}
+	if execErr != nil {
+		return b.makeErrorReceipt(exeTx.Bandwidth(), point, execErr), nil
 	}
 	return b.makeSuccessReceipt(exeTx.Bandwidth(), point), nil
 }
@@ -393,9 +393,16 @@ func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
 		return err
 	}
 
-	return b.Atomic(func(block *Block) error {
+	execErr, err := b.Atomic(func(block *Block) error {
 		return block.state.DposState().SetDynasty(mintDynasty)
 	})
+	if err != nil {
+		return err
+	}
+	if execErr != nil {
+		return execErr
+	}
+	return nil
 }
 
 func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
@@ -432,7 +439,7 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 		return err
 	}
 
-	err = b.Atomic(func(block *Block) error {
+	execErr, err := b.Atomic(func(block *Block) error {
 		if err := block.state.PutAccount(from); err != nil {
 			return err
 		}
@@ -444,6 +451,9 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 		return block.state.PutTx(tx)
 	})
 	if err != nil {
+		return err
+	}
+	if execErr != nil {
 		return err
 	}
 
@@ -560,20 +570,20 @@ func (b *Block) Flush() error {
 	return b.state.flush()
 }
 
-func (b *Block) Atomic(batch func(block *Block) error) error {
+func (b *Block) Atomic(batch func(block *Block) error) (execErr error, err error) {
 	if err := b.BeginBatch(); err != nil {
-		return ErrAtomicError
+		return nil, ErrAtomicError
 	}
 	if execErr := batch(b); execErr != nil {
 		if err := b.RollBack(); err != nil {
-			return ErrAtomicError
+			return nil, ErrAtomicError
 		}
-		return execErr
+		return execErr, nil
 	}
 	if err := b.Commit(); err != nil {
-		return ErrAtomicError
+		return nil, ErrAtomicError
 	}
-	return nil
+	return nil, nil
 }
 
 // GetBlockData returns data part of block
