@@ -255,9 +255,17 @@ func (bs *BlockState) Supply() *util.Uint128 {
 	return bs.supply
 }
 
+func (bs *BlockState) SetSupply(supply *util.Uint128) {
+	bs.supply = supply
+}
+
 // Reward returns reward in state
 func (bs *BlockState) Reward() *util.Uint128 {
 	return bs.reward
+}
+
+func (bs *BlockState) SetReward(reward *util.Uint128) {
+	bs.reward = reward
 }
 
 // CPUPrice returns cpuPrice

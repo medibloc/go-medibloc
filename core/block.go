@@ -506,8 +506,8 @@ func (b *Block) PayReward(parentSupply *util.Uint128) error {
 		return execErr
 	}
 
-	b.state.reward = reward
-	b.state.supply = supply
+	b.state.SetReward(reward)
+	b.state.SetSupply(supply)
 
 	return nil
 }
