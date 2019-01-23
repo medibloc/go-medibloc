@@ -29,6 +29,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 )
@@ -325,8 +326,8 @@ func (n *Network) SetRandomProposer(node *Node) {
 	node.Config.SetRandomProposer()
 }
 
-func (n *Network) assignedProposers() []*AddrKeyPair {
-	proposers := make([]*AddrKeyPair, 0)
+func (n *Network) assignedProposers() []*keyutil.AddrKeyPair {
+	proposers := make([]*keyutil.AddrKeyPair, 0)
 	for _, node := range n.Nodes {
 		if node.Config.Proposer != nil {
 			proposers = append(proposers, node.Config.Proposer)
@@ -336,7 +337,7 @@ func (n *Network) assignedProposers() []*AddrKeyPair {
 }
 
 // FindProposer returns block proposer for time stamp
-func (n *Network) FindProposer(ts int64, parent *core.Block) *AddrKeyPair {
+func (n *Network) FindProposer(ts int64, parent *core.Block) *keyutil.AddrKeyPair {
 	dynasties := n.Seed.Config.Dynasties
 	d := n.Seed.Med.Consensus()
 	proposer, err := d.FindMintProposer(ts, parent)

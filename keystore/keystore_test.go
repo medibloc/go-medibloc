@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
@@ -103,7 +104,7 @@ func TestDposSetup(t *testing.T) {
 	defer tn.Cleanup()
 
 	for i := 0; i < 3; i++ {
-		pair := testutil.NewAddrKeyPair(t)
+		pair := keyutil.NewAddrKeyPair(t)
 
 		privKeyBytes, err := pair.PrivKey.Encoded()
 		require.NoError(t, err)

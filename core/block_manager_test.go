@@ -25,11 +25,12 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -480,13 +481,13 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	assert.Equal(t, core.ErrInvalidBlockHash, err)
 
 	// Invalid Block Signer
-	invalidPair := testutil.NewAddrKeyPair(t)
+	invalidPair := keyutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().SignPair(invalidPair).Build()
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
 	assert.Equal(t, core.ErrInvalidBlock, err)
 
 	// Invalid Transaction Hash
-	pair = testutil.NewAddrKeyPair(t)
+	pair = keyutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignProposer().Build()
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
 	assert.Equal(t, coreState.ErrInvalidTransactionHash, err)

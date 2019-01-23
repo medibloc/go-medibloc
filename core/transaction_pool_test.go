@@ -24,6 +24,7 @@ import (
 	"github.com/medibloc/go-medibloc/event"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -71,7 +72,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 	from := bb.KeyPairs[0]
-	to := testutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 
 	tb := bb.Tx()
 	var txs []*coreState.Transaction
@@ -106,9 +107,9 @@ func TestEmptyPool(t *testing.T) {
 
 func TestInfiniteLoop(t *testing.T) {
 	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
-	from1 := testutil.NewAddrKeyPair(t)
-	from2 := testutil.NewAddrKeyPair(t)
-	to := testutil.NewAddrKeyPair(t)
+	from1 := keyutil.NewAddrKeyPair(t)
+	from2 := keyutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 
 	from1Nonce2 := tb.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(2).
 		SignPair(from1).Build()

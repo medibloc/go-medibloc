@@ -19,7 +19,8 @@ import (
 	"testing"
 	"time"
 
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
 	"github.com/gogo/protobuf/proto"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -34,7 +35,7 @@ import (
 func TestSend(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 	from := bb.TokenDist[testutil.DynastySize]
-	to := testutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 
 	bb.
 		Tx().StakeTx(from, 10000).Execute().
@@ -192,8 +193,8 @@ func TestPayerSigner(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	payer := bb.TokenDist[testutil.DynastySize]
-	from := testutil.NewAddrKeyPair(t)
-	to := testutil.NewAddrKeyPair(t)
+	from := keyutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 	bb = bb.
 		Tx().StakeTx(payer, 10000).Execute().
 		Tx().Type(coreState.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().

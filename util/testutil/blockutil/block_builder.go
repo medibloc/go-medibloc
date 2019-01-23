@@ -28,6 +28,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,9 +39,9 @@ type BlockBuilder struct {
 
 	dynastySize int
 	proposer    common.Address
-	Dynasties   testutil.AddrKeyPairs
-	TokenDist   testutil.AddrKeyPairs
-	KeyPairs    testutil.AddrKeyPairs
+	Dynasties   keyutil.AddrKeyPairs
+	TokenDist   keyutil.AddrKeyPairs
+	KeyPairs    keyutil.AddrKeyPairs
 }
 
 // New returns new block builder
@@ -52,7 +53,7 @@ func New(t *testing.T, dynastySize int) *BlockBuilder {
 }
 
 // AddKeyPairs sets key pairs on block builder
-func (bb *BlockBuilder) AddKeyPairs(keyPairs testutil.AddrKeyPairs) *BlockBuilder {
+func (bb *BlockBuilder) AddKeyPairs(keyPairs keyutil.AddrKeyPairs) *BlockBuilder {
 	n := bb.copy()
 	n.KeyPairs = append(n.KeyPairs, keyPairs...)
 	return n
@@ -241,7 +242,7 @@ func (bb *BlockBuilder) SignKey(key signature.PrivateKey) *BlockBuilder {
 }
 
 // SignPair set coinbase, seal, calculate hash and sign with key pair
-func (bb *BlockBuilder) SignPair(pair *testutil.AddrKeyPair) *BlockBuilder {
+func (bb *BlockBuilder) SignPair(pair *keyutil.AddrKeyPair) *BlockBuilder {
 	n := bb.copy()
 
 	return n.Coinbase(pair.Addr).PayReward().Flush().Seal().CalcHash().SignKey(pair.PrivKey)
@@ -255,7 +256,7 @@ func (bb *BlockBuilder) SignProposer() *BlockBuilder {
 }
 
 // FindProposer finds proposer.
-func (bb *BlockBuilder) FindProposer() *testutil.AddrKeyPair {
+func (bb *BlockBuilder) FindProposer() *keyutil.AddrKeyPair {
 	require.NotNil(bb.t, bb.proposer)
 	pair := bb.KeyPairs.FindPair(bb.proposer)
 	require.NotNil(bb.t, pair)

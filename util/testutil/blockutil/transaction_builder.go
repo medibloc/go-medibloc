@@ -27,6 +27,7 @@ import (
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -186,7 +187,7 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 }
 
 // SignPair set from, seal ,calculate hash and sign with key pair
-func (tb *TxBuilder) SignPair(pair *testutil.AddrKeyPair) *TxBuilder {
+func (tb *TxBuilder) SignPair(pair *keyutil.AddrKeyPair) *TxBuilder {
 	n := tb.copy()
 	if n.tx.Nonce() == 0 {
 		acc, err := n.bb.B.State().GetAccount(pair.Addr)
@@ -202,7 +203,7 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 	require.NotEqual(n.t, 0, len(n.bb.KeyPairs), "No key pair added on block builder")
 
 	from := n.bb.KeyPairs[0]
-	to := testutil.NewAddrKeyPair(n.t)
+	to := keyutil.NewAddrKeyPair(n.t)
 	return n.Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from)
 }
 
@@ -222,7 +223,7 @@ func (tb *TxBuilder) RandomTxs(n int) []*coreState.Transaction {
 }
 
 // StakeTx generate stake Tx
-func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder {
+func (tb *TxBuilder) StakeTx(pair *keyutil.AddrKeyPair, med float64) *TxBuilder {
 	n := tb.copy()
 	return n.Type(transaction.TxOpStake).Value(med).SignPair(pair)
 }

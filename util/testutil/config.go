@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	multiaddr "github.com/multiformats/go-multiaddr"
 
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -42,11 +43,11 @@ type NodeConfig struct {
 	dir string
 
 	Config   *medletpb.Config
-	Proposer *AddrKeyPair
+	Proposer *keyutil.AddrKeyPair
 
 	Genesis   *corepb.Genesis
-	Dynasties AddrKeyPairs
-	TokenDist AddrKeyPairs
+	Dynasties keyutil.AddrKeyPairs
+	TokenDist keyutil.AddrKeyPairs
 }
 
 func defaultConfig(t *testing.T) *NodeConfig {
@@ -106,7 +107,7 @@ func (cfg *NodeConfig) SetRandomPorts() *NodeConfig {
 }
 
 // SetProposer sets proposer.
-func (cfg *NodeConfig) SetProposer(proposer *AddrKeyPair) *NodeConfig {
+func (cfg *NodeConfig) SetProposer(proposer *keyutil.AddrKeyPair) *NodeConfig {
 	cfg.Proposer = proposer
 	cfg.Config.Chain.StartMine = true
 	cfg.Config.Chain.Privkey = proposer.PrivateKey()
@@ -121,7 +122,7 @@ func (cfg *NodeConfig) SetProposer(proposer *AddrKeyPair) *NodeConfig {
 }
 
 // SetProposerFromDynasties chooses proposer from dynasties.
-func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*AddrKeyPair) *NodeConfig {
+func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*keyutil.AddrKeyPair) *NodeConfig {
 	excludeMap := make(map[string]bool)
 	for _, e := range exclude {
 		excludeMap[e.Address()] = true
@@ -140,7 +141,7 @@ func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*AddrKeyPair) *NodeCon
 
 // SetRandomProposer sets random proposer.
 func (cfg *NodeConfig) SetRandomProposer() *NodeConfig {
-	keypair := NewAddrKeyPair(cfg.t)
+	keypair := keyutil.NewAddrKeyPair(cfg.t)
 	return cfg.SetProposer(keypair)
 }
 

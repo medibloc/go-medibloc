@@ -23,11 +23,12 @@ import (
 	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,7 +65,7 @@ func TestNonceCheck(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
 	from := bb.TokenDist[len(bb.TokenDist)-1]
-	to := testutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 
 	bb = bb.
 		Tx().StakeTx(from, 100000).Execute().
@@ -116,7 +117,7 @@ func TestUpdatePoints(t *testing.T) {
 func TestUpdatePayerPoints(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	user := testutil.NewAddrKeyPair(t)
+	user := keyutil.NewAddrKeyPair(t)
 	payer := bb.TokenDist[0]
 
 	recordHash, err := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
@@ -151,7 +152,7 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 func TestTxsFromTxsTo(t *testing.T) {
 	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
 
-	to := testutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 	from := bb.TokenDist[testutil.DynastySize]
 
 	bb = bb.Stake().
@@ -195,7 +196,7 @@ func TestBandwidthUsageAndPrice(t *testing.T) {
 
 	bb = bb.Child().Stake().SignProposer()
 
-	to := testutil.NewAddrKeyPair(t)
+	to := keyutil.NewAddrKeyPair(t)
 	from := bb.TokenDist[testutil.DynastySize]
 
 	bb = bb.Child()

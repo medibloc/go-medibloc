@@ -24,94 +24,23 @@ import (
 
 	"time"
 
-	"fmt"
-
-	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
-	"github.com/medibloc/go-medibloc/crypto"
-	"github.com/medibloc/go-medibloc/crypto/signature"
-	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// AddrKeyPair contains address and private key.
-type AddrKeyPair struct {
-	Addr    common.Address
-	PrivKey signature.PrivateKey
-}
-
-// NewAddrKeyPairFromPrivKey creates a pair from private key.
-func NewAddrKeyPairFromPrivKey(t *testing.T, privKey signature.PrivateKey) *AddrKeyPair {
-	addr, err := common.PublicKeyToAddress(privKey.PublicKey())
-	require.NoError(t, err)
-	return &AddrKeyPair{
-		Addr:    addr,
-		PrivKey: privKey,
-	}
-}
-
-// NewAddrKeyPair creates a pair of address and private key.
-func NewAddrKeyPair(t *testing.T) *AddrKeyPair {
-	privKey, err := crypto.GenerateKey(algorithm.SECP256K1)
-	require.NoError(t, err)
-
-	return NewAddrKeyPairFromPrivKey(t, privKey)
-}
-
-// Address returns address.
-func (pair *AddrKeyPair) Address() string {
-	return pair.Addr.Hex()
-}
-
-// PrivateKey returns private key.
-func (pair *AddrKeyPair) PrivateKey() string {
-	d, _ := pair.PrivKey.Encoded()
-	return byteutils.Bytes2Hex(d)
-}
-
-// String describes AddrKeyPair in string format.
-func (pair *AddrKeyPair) String() string {
-	if pair == nil {
-		return ""
-	}
-	return fmt.Sprintf("Addr:%v, PrivKey:%v\n", pair.Address(), pair.PrivateKey())
-}
-
-// AddrKeyPairs is a slice of AddrKeyPair structure.
-type AddrKeyPairs []*AddrKeyPair
-
-// FindPrivKey finds private key of given address.
-func (pairs AddrKeyPairs) FindPrivKey(addr common.Address) signature.PrivateKey {
-	for _, dynasty := range pairs {
-		if dynasty.Addr.Equals(addr) {
-			return dynasty.PrivKey
-		}
-	}
-	return nil
-}
-
-// FindPair finds AddrKeyPair of given address.
-func (pairs AddrKeyPairs) FindPair(addr common.Address) *AddrKeyPair {
-	for _, dynasty := range pairs {
-		if dynasty.Addr.Equals(addr) {
-			return dynasty
-		}
-	}
-	return nil
-}
-
 // NewTestGenesisConf returns a genesis configuration for tests.
-func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
+func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dynasties keyutil.AddrKeyPairs, distributed keyutil.AddrKeyPairs) {
 	conf = &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{
 			ChainId:     ChainID,
@@ -129,7 +58,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 		ChainID(ChainID)
 
 	for i := 0; i < dynastySize; i++ {
-		keypair := NewAddrKeyPair(t)
+		keypair := keyutil.NewAddrKeyPair(t)
 		dynasty = append(dynasty, keypair.Addr.Hex())
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
 			Address: keypair.Addr.Hex(),
@@ -185,7 +114,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 	distCnt := 40 - dynastySize
 
 	for i := 0; i < distCnt; i++ {
-		keypair := NewAddrKeyPair(t)
+		keypair := keyutil.NewAddrKeyPair(t)
 		tokenDist = append(tokenDist, &corepb.GenesisTokenDistribution{
 			Address: keypair.Addr.Hex(),
 			Balance: "400000000000000000000",
@@ -207,7 +136,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 }
 
 // NewTestGenesisBlock returns a genesis block for tests.
-func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dynasties AddrKeyPairs, distributed AddrKeyPairs) {
+func NewTestGenesisBlock(t *testing.T, dynastySize int) (genesis *core.Block, dynasties keyutil.AddrKeyPairs, distributed keyutil.AddrKeyPairs) {
 	conf, dynasties, distributed := NewTestGenesisConf(t, dynastySize)
 	s, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
