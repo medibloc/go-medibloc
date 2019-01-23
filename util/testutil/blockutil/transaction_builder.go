@@ -34,13 +34,13 @@ import (
 type TxBuilder struct {
 	t  *testing.T
 	bb *BlockBuilder
-	tx *coreState.Transaction
+	tx *coreState.TransactionTestWrap
 }
 
 func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
 
-	tx := &coreState.Transaction{}
+	tx := &coreState.TransactionTestWrap{}
 	tx.SetChainID(testutil.ChainID)
 	tx.SetValue(util.Uint128Zero())
 
@@ -52,7 +52,7 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 }
 
 func (tb *TxBuilder) copy() *TxBuilder {
-	var tx *coreState.Transaction
+	var tx *coreState.TransactionTestWrap
 	var err error
 	if tb.tx != nil {
 		tx, err = tb.tx.Clone()
@@ -92,6 +92,13 @@ func (tb *TxBuilder) To(addr common.Address) *TxBuilder {
 func (tb *TxBuilder) Value(med float64) *TxBuilder {
 	n := tb.copy()
 	value := FloatToUint128(n.t, med)
+	n.tx.SetValue(value)
+	return n
+}
+
+// Value sets value
+func (tb *TxBuilder) ValueRaw(value *util.Uint128) *TxBuilder {
+	n := tb.copy()
 	n.tx.SetValue(value)
 	return n
 }
@@ -223,13 +230,13 @@ func (tb *TxBuilder) StakeTx(pair *testutil.AddrKeyPair, med float64) *TxBuilder
 // Build build transaction
 func (tb *TxBuilder) Build() *coreState.Transaction {
 	n := tb.copy()
-	return n.tx
+	return n.tx.Transaction
 }
 
 // BuildCtx build transaction context.
 func (tb *TxBuilder) BuildCtx() *core.TxContext {
 	n := tb.copy()
-	txc, err := core.NewTxContext(n.tx)
+	txc, err := core.NewTxContext(n.tx.Transaction)
 	require.NoError(tb.t, err)
 	return txc
 }
@@ -259,17 +266,17 @@ func (tb *TxBuilder) BuildBytes() []byte {
 // Execute excute transaction on block builder
 func (tb *TxBuilder) Execute() *BlockBuilder {
 	n := tb.copy()
-	return n.bb.ExecuteTx(n.tx)
+	return n.bb.ExecuteTx(n.tx.Transaction)
 }
 
 // ExecuteErr expect error occurred on executing
 func (tb *TxBuilder) ExecuteErr(err error) *BlockBuilder {
 	n := tb.copy()
-	return n.bb.ExecuteTxErr(n.tx, err)
+	return n.bb.ExecuteTxErr(n.tx.Transaction, err)
 }
 
 // Add add transaction on block builder
 func (tb *TxBuilder) Add() *BlockBuilder {
 	n := tb.copy()
-	return n.bb.AddTx(n.tx)
+	return n.bb.AddTx(n.tx.Transaction)
 }

@@ -29,17 +29,17 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,6 +125,9 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 	var tokenDist []*corepb.GenesisTokenDistribution
 	txs := make([]*coreState.Transaction, 0)
 
+	builder := blockutil.New(t, dynastySize).Tx().
+		ChainID(ChainID)
+
 	for i := 0; i < dynastySize; i++ {
 		keypair := NewAddrKeyPair(t)
 		dynasty = append(dynasty, keypair.Addr.Hex())
@@ -138,55 +141,45 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 		staking, err := util.NewUint128FromString("100000000000000000000")
 		require.NoError(t, err)
+		tx := builder.
+			Type(transaction.TxOpStake).
+			ValueRaw(staking).
+			Nonce(1).
+			SignKey(keypair.PrivKey).
+			Build()
+		txs = append(txs, tx)
+
 		collateral, err := util.NewUint128FromString("1000000000000000000")
 		require.NoError(t, err)
-
-		tx := new(coreState.Transaction)
-
-		tx.SetChainID(ChainID)
-		tx.SetValue(util.NewUint128())
-
-		txStake, err := tx.Clone()
-		require.NoError(t, err)
-		txStake.SetTxType(coreState.TxOpStake)
-		txStake.SetValue(staking)
-		txStake.SetNonce(1)
-		require.NoError(t, txStake.SignThis(keypair.PrivKey))
-
 		aliasPayload := &transaction.RegisterAliasPayload{AliasName: "accountalias" + strconv.Itoa(i)}
-		aliasePayloadBytes, err := aliasPayload.ToBytes()
-		require.NoError(t, err)
+		tx = builder.
+			Type(transaction.TxOpRegisterAlias).
+			ValueRaw(collateral).
+			Nonce(2).
+			Payload(aliasPayload).
+			SignKey(keypair.PrivKey).
+			Build()
+		txs = append(txs, tx)
 
-		txAlias, err := tx.Clone()
-		require.NoError(t, err)
-		txAlias.SetTxType(coreState.TxOpRegisterAlias)
-		txAlias.SetValue(collateral)
-		txAlias.SetNonce(2)
-		txAlias.SetPayload(aliasePayloadBytes)
-		require.NoError(t, txAlias.SignThis(keypair.PrivKey))
+		tx = builder.
+			Type(transaction.TxOpBecomeCandidate).
+			ValueRaw(collateral).
+			Nonce(3).
+			SignKey(keypair.PrivKey).
+			Build()
+		txs = append(txs, tx)
 
-		txCandidate, err := tx.Clone()
-		require.NoError(t, err)
-		txCandidate.SetTxType(dposState.TxOpBecomeCandidate)
-		txCandidate.SetValue(collateral)
-		txCandidate.SetNonce(3)
-		require.NoError(t, txCandidate.SignThis(keypair.PrivKey))
-
-		votePayload := new(transaction.VotePayload)
-		candidateIds := make([][]byte, 0)
-		votePayload.CandidateIDs = append(candidateIds, txCandidate.Hash())
-		votePayloadBytes, err := votePayload.ToBytes()
-		require.NoError(t, err)
-
-		txVote, err := tx.Clone()
-		require.NoError(t, err)
-		txVote.SetTxType(dposState.TxOpVote)
-		txVote.SetNonce(4)
-		txVote.SetPayload(votePayloadBytes)
-		require.NoError(t, txVote.SignThis(keypair.PrivKey))
-
-		// txs = append(txs, txStake, txCandidate, txVote)
-		txs = append(txs, txStake, txAlias, txCandidate, txVote)
+		candidateID := tx.Hash()
+		votePayload := &transaction.VotePayload{
+			CandidateIDs: [][]byte{candidateID},
+		}
+		tx = builder.
+			Type(transaction.TxOpVote).
+			Nonce(4).
+			Payload(votePayload).
+			SignKey(keypair.PrivKey).
+			Build()
+		txs = append(txs, tx)
 	}
 
 	distCnt := 40 - dynastySize

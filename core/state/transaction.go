@@ -55,19 +55,9 @@ func (t *Transaction) Hash() []byte {
 	return t.hash
 }
 
-// SetHash sets hash
-func (t *Transaction) SetHash(hash []byte) {
-	t.hash = hash
-}
-
 // TxType returns type
 func (t *Transaction) TxType() string {
 	return t.txType
-}
-
-// SetTxType sets type
-func (t *Transaction) SetTxType(txType string) {
-	t.txType = txType
 }
 
 // To returns to
@@ -75,19 +65,9 @@ func (t *Transaction) To() common.Address {
 	return t.to
 }
 
-// SetTo sets set
-func (t *Transaction) SetTo(to common.Address) {
-	t.to = to
-}
-
 // Value returns value
 func (t *Transaction) Value() *util.Uint128 {
 	return t.value
-}
-
-// SetValue sets value
-func (t *Transaction) SetValue(value *util.Uint128) {
-	t.value = value
 }
 
 // Nonce returns nonce
@@ -95,19 +75,9 @@ func (t *Transaction) Nonce() uint64 {
 	return t.nonce
 }
 
-// SetNonce sets nonce
-func (t *Transaction) SetNonce(nonce uint64) {
-	t.nonce = nonce
-}
-
 // ChainID returns chainID
 func (t *Transaction) ChainID() uint32 {
 	return t.chainID
-}
-
-// SetChainID sets chainID
-func (t *Transaction) SetChainID(chainID uint32) {
-	t.chainID = chainID
 }
 
 // Payload returns payload
@@ -115,19 +85,9 @@ func (t *Transaction) Payload() []byte {
 	return t.payload
 }
 
-// SetPayload sets payload
-func (t *Transaction) SetPayload(payload []byte) {
-	t.payload = payload
-}
-
 // Sign returns sign
 func (t *Transaction) Sign() []byte {
 	return t.sign
-}
-
-// SetSign sets sign
-func (t *Transaction) SetSign(sign []byte) {
-	t.sign = sign
 }
 
 // Payer returns payer
@@ -135,19 +95,9 @@ func (t *Transaction) Payer() common.Address {
 	return t.payer
 }
 
-// SetPayer sets payer
-func (t *Transaction) SetPayer(payer common.Address) {
-	t.payer = payer
-}
-
 // PayerSign returns payerSign
 func (t *Transaction) PayerSign() []byte {
 	return t.payerSign
-}
-
-// SetPayerSign sets payerSign
-func (t *Transaction) SetPayerSign(payerSign []byte) {
-	t.payerSign = payerSign
 }
 
 // Receipt returns receipt
@@ -261,11 +211,6 @@ func (t *Transaction) HexHash() string {
 // From returns from
 func (t *Transaction) From() common.Address {
 	return t.from
-}
-
-// SetFrom sets from
-func (t *Transaction) SetFrom(from common.Address) {
-	t.from = from
 }
 
 // CalcHash calculates transaction's hash.
