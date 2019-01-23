@@ -70,7 +70,7 @@ func (b *Block) Clone() (*Block, error) {
 }
 
 // InitChild return initial child block for verifying or making block
-func (b *Block) InitChild() (*Block, error) {
+func (b *Block) InitChild(coinbase common.Address) (*Block, error) {
 	bs, err := b.state.Clone()
 	if err != nil {
 		return nil, err
@@ -89,14 +89,21 @@ func (b *Block) InitChild() (*Block, error) {
 	return &Block{
 		BlockData: &BlockData{
 			BlockHeader: &BlockHeader{
-				parentHash: b.Hash(),
-				chainID:    b.chainID,
-				supply:     b.supply.DeepCopy(),
-				reward:     util.NewUint128(),
-				cpuPrice:   util.NewUint128(),
-				cpuUsage:   0,
-				netPrice:   util.NewUint128(),
-				netUsage:   0,
+				hash:         nil,
+				parentHash:   b.Hash(),
+				accStateRoot: nil,
+				txStateRoot:  nil,
+				dposRoot:     nil,
+				coinbase:     coinbase,
+				reward:       util.NewUint128(),
+				supply:       b.supply.DeepCopy(),
+				timestamp:    0,
+				chainID:      b.chainID,
+				sign:         nil,
+				cpuPrice:     util.NewUint128(),
+				cpuUsage:     0,
+				netPrice:     util.NewUint128(),
+				netUsage:     0,
 			},
 			transactions: make([]*corestate.Transaction, 0),
 			height:       b.height + 1,
@@ -109,7 +116,7 @@ func (b *Block) InitChild() (*Block, error) {
 // CreateChildWithBlockData returns child block by executing block data on parent block.
 func (b *Block) CreateChildWithBlockData(bd *BlockData, consensus Consensus) (child *Block, err error) {
 	// Prepare Execution
-	child, err = b.InitChild()
+	child, err = b.InitChild(bd.coinbase)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

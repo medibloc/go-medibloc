@@ -359,7 +359,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline time.Time, nextMintTs time.Time) (*core.Block, error) {
 	logging.Console().Info("Start to make mint block.")
 
-	block, err := tail.InitChild()
+	block, err := tail.InitChild(coinbase)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -437,7 +437,6 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 		block.AppendTransaction(tx)
 	}
 
-	block.SetCoinbase(coinbase)
 	if err := block.PayReward(tail.Supply()); err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,

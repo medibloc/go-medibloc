@@ -365,7 +365,7 @@ func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	n := bb.copy()
 	var err error
 	parent := bb.B
-	n.B, err = parent.InitChild()
+	n.B, err = parent.InitChild(common.Address{})
 	require.NoError(n.t, err)
 	return n.Timestamp(ts).Prepare().UpdateDynastyState(parent)
 }
