@@ -51,24 +51,6 @@ func (b *Block) FromBlockData(bd *BlockData, consensus Consensus, storage storag
 	return nil
 }
 
-// Clone clone block
-func (b *Block) Clone() (*Block, error) {
-	bd, err := b.BlockData.Clone()
-	if err != nil {
-		return nil, err
-	}
-
-	bs, err := b.state.Clone()
-	if err != nil {
-		return nil, err
-	}
-	return &Block{
-		BlockData: bd,
-		state:     bs,
-		sealed:    b.sealed,
-	}, nil
-}
-
 // InitChild return initial child block for verifying or making block
 func (b *Block) InitChild(coinbase common.Address) (*Block, error) {
 	bs, err := b.state.Clone()

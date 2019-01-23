@@ -2,7 +2,7 @@ package core
 
 import (
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/core/state"
+	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
 
@@ -11,11 +11,22 @@ type BlockTestWrap struct {
 }
 
 func (b *BlockTestWrap) Clone() (*BlockTestWrap, error) {
-	bb, err := b.Block.Clone()
+	bd, err := b.Block.BlockData.Clone()
 	if err != nil {
 		return nil, err
 	}
-	return &BlockTestWrap{Block: bb}, nil
+
+	bs, err := b.Block.state.Clone()
+	if err != nil {
+		return nil, err
+	}
+
+	return &BlockTestWrap{
+		&Block{
+			BlockData: bd,
+			state:     bs,
+			sealed:    b.Block.sealed,
+		}}, nil
 }
 
 func (b *BlockTestWrap) InitChild(coinbase common.Address) (*BlockTestWrap, error) {
