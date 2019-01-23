@@ -99,7 +99,7 @@ func NewBlockState(bd *BlockData, consensus Consensus, stor storage.Storage) (*B
 		return nil, err
 	}
 	return &BlockState{
-		timestamp: 0,
+		timestamp: bd.timestamp,
 		reward:    bd.Reward().DeepCopy(),
 		supply:    bd.Supply().DeepCopy(),
 		cpuPrice:  bd.CPUPrice().DeepCopy(),
