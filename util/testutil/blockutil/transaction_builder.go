@@ -26,7 +26,6 @@ import (
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +41,7 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
 
 	tx := &coreState.TransactionTestWrap{}
-	tx.SetChainID(testutil.ChainID)
+	tx.SetChainID(ChainID)
 	tx.SetValue(util.Uint128Zero())
 
 	return &TxBuilder{

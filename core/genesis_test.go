@@ -24,7 +24,6 @@ import (
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/storage"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/mitchellh/copystructure"
 	"github.com/stretchr/testify/assert"
@@ -32,14 +31,14 @@ import (
 )
 
 func TestGenesisConf(t *testing.T) {
-	conf, _, _ := testutil.NewTestGenesisConf(t, 21)
+	conf, _, _ := blockutil.NewTestGenesisConf(t, 21)
 	str := proto.MarshalTextString(conf)
 	t.Log(str)
 }
 
 func TestNewGenesisBlock(t *testing.T) {
 	dynastySize := 21
-	genesisBlock, dynasties, dist := testutil.NewTestGenesisBlock(t, dynastySize)
+	genesisBlock, dynasties, dist := blockutil.NewTestGenesisBlock(t, dynastySize)
 
 	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
@@ -94,10 +93,10 @@ func TestNewGenesisBlock(t *testing.T) {
 }
 
 func TestCheckGenesisBlock(t *testing.T) {
-	conf, _, _ := testutil.NewTestGenesisConf(t, testutil.DynastySize)
+	conf, _, _ := blockutil.NewTestGenesisConf(t, blockutil.DynastySize)
 	stor, err := storage.NewMemoryStorage()
 	require.NoError(t, err)
-	consensus := dpos.New(testutil.DynastySize)
+	consensus := dpos.New(blockutil.DynastySize)
 	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 

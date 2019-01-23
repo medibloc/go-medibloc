@@ -22,6 +22,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,11 +40,11 @@ func TestNewBlockChain(t *testing.T) {
 }
 
 func TestRestartNode(t *testing.T) {
-	testNet := testutil.NewNetwork(t, testutil.DynastySize)
+	testNet := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNet.Cleanup()
 
 	seed := testNet.NewSeedNode()
-	for i := 0; i < testutil.DynastySize; i++ {
+	for i := 0; i < blockutil.DynastySize; i++ {
 		testNet.SetProposerFromDynasties(seed)
 	}
 	seed.Start()

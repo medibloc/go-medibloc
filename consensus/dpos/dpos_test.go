@@ -22,7 +22,7 @@ func TestChangeDynasty(t *testing.T) {
 		pushTimeLimit = 10 * time.Second
 	)
 
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -30,10 +30,10 @@ func TestChangeDynasty(t *testing.T) {
 
 	bm := seed.Med.BlockManager()
 
-	newCandidate := seed.Config.TokenDist[testutil.DynastySize]
+	newCandidate := seed.Config.TokenDist[blockutil.DynastySize]
 	t.Log("new candidiate:", newCandidate.Addr.Hex())
 
-	bb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
+	bb := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
 
 	// Become new candidate
 	bb = bb.ChildNextDynasty().

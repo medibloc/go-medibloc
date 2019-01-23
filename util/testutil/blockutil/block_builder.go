@@ -27,7 +27,6 @@ import (
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/require"
 )
@@ -85,7 +84,7 @@ func (bb *BlockBuilder) Clone() *BlockBuilder {
 // Genesis create genesis block
 func (bb *BlockBuilder) Genesis() *BlockBuilder {
 	n := bb.copy()
-	genesis, dynasties, tokenDist := testutil.NewTestGenesisBlock(bb.t, bb.dynastySize)
+	genesis, dynasties, tokenDist := NewTestGenesisBlock(bb.t, bb.dynastySize)
 	n.B = &core.BlockTestWrap{Block: genesis}
 	n.Dynasties = dynasties
 	n.TokenDist = tokenDist

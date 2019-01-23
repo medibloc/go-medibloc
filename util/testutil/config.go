@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	multiaddr "github.com/multiformats/go-multiaddr"
 
@@ -155,7 +156,7 @@ func (cfg *NodeConfig) setGenesis(genesis *corepb.Genesis) *NodeConfig {
 
 // SetRandomGenesis sets random genesis configuration.
 func (cfg *NodeConfig) SetRandomGenesis(dynastySize int) *NodeConfig {
-	genesis, dynasties, tokenDist := NewTestGenesisConf(cfg.t, dynastySize)
+	genesis, dynasties, tokenDist := blockutil.NewTestGenesisConf(cfg.t, dynastySize)
 	cfg.setGenesis(genesis)
 	cfg.Dynasties = dynasties
 	cfg.TokenDist = tokenDist

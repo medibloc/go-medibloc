@@ -31,7 +31,7 @@ import (
 )
 
 func TestTransactionManager_Broadcast(t *testing.T) {
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -40,7 +40,7 @@ func TestTransactionManager_Broadcast(t *testing.T) {
 	node.Start()
 	testNetwork.WaitForEstablished()
 
-	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 
 	tx := tb.RandomTx().Build()
 	require.NoError(t, seed.Med.TransactionManager().Broadcast(tx))
@@ -66,17 +66,17 @@ func TestTransactionManager_Broadcast(t *testing.T) {
 }
 
 func TestTransactionManager_Push(t *testing.T) {
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	tm := seed.Med.TransactionManager()
 
-	randomTb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx()
+	randomTb := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx().RandomTx()
 
 	// Wrong chainID
-	wrongChainIDTx := randomTb.ChainID(testutil.ChainID + 1).Build()
+	wrongChainIDTx := randomTb.ChainID(blockutil.ChainID + 1).Build()
 	failed := tm.PushAndExclusiveBroadcast(wrongChainIDTx)
 	assert.Equal(t, coreState.ErrInvalidTxChainID, failed[wrongChainIDTx.HexHash()])
 
@@ -114,7 +114,7 @@ func TestTransactionManager_PushAndBroadcast(t *testing.T) {
 		timeout       = 50 * time.Millisecond
 		numberOfNodes = 3
 	)
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -126,7 +126,7 @@ func TestTransactionManager_PushAndBroadcast(t *testing.T) {
 	}
 	testNetwork.WaitForEstablished()
 
-	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 	randomTx1 := tb.RandomTx().Build()
 	randomTx2 := tb.Nonce(randomTx1.Nonce() + 1).RandomTx().Build()
 
@@ -158,7 +158,7 @@ func TestTransactionManager_PushAndExclusiveBroadcast(t *testing.T) {
 		numberOfNodes = 3
 	)
 
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -170,7 +170,7 @@ func TestTransactionManager_PushAndExclusiveBroadcast(t *testing.T) {
 	}
 	testNetwork.WaitForEstablished()
 
-	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 	randomTx1 := tb.RandomTx().Build()
 	randomTx2 := tb.Nonce(randomTx1.Nonce() + 1).RandomTx().Build()
 
@@ -205,7 +205,7 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 		numberOfPop          = 10
 		numberOfDel          = 5
 	)
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -217,7 +217,7 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 	}
 	testNetwork.WaitForEstablished()
 
-	txs := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).
+	txs := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).
 		Tx().RandomTxs(numberOfTransactions)
 
 	failed := seedTm.PushAndBroadcast(txs...)
@@ -257,16 +257,16 @@ func TestTransactionManager_MaxPending(t *testing.T) {
 }
 
 func TestTransactionManager_BandwidthLimit(t *testing.T) {
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	seedTm := seed.Med.TransactionManager()
 
-	from := seed.Config.TokenDist[testutil.DynastySize]
+	from := seed.Config.TokenDist[blockutil.DynastySize]
 
-	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).Block(seed.Tail()).Child().SignProposer()
+	bb := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).Block(seed.Tail()).Child().SignProposer()
 	err := seed.Med.BlockManager().PushBlockDataSync(bb.Build().GetBlockData(), 1000*time.Millisecond)
 	assert.NoError(t, err)
 
@@ -293,14 +293,14 @@ func TestTransactionManager_ReplacePending(t *testing.T) {
 		numberOfTransactions = 10
 		newReplaceAllowTime  = 1 * time.Second
 	)
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 	seedTm := seed.Med.TransactionManager()
 
-	tb := blockutil.New(t, testutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist).Tx()
 
 	txs := tb.RandomTxs(numberOfTransactions)
 

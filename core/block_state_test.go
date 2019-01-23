@@ -26,7 +26,6 @@ import (
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
@@ -35,7 +34,7 @@ import (
 )
 
 func TestCloneState(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 	block := bb.SignProposer().Build()
 
 	state := block.State()
@@ -62,7 +61,7 @@ func TestCloneState(t *testing.T) {
 }
 
 func TestNonceCheck(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
 	from := bb.TokenDist[len(bb.TokenDist)-1]
 	to := keyutil.NewAddrKeyPair(t)
@@ -78,7 +77,7 @@ func TestNonceCheck(t *testing.T) {
 
 func TestUpdatePoints(t *testing.T) {
 	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().ChildWithTimestamp(nextMintTs)
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().ChildWithTimestamp(nextMintTs)
 
 	from := bb.TokenDist[len(bb.TokenDist)-1]
 	to := bb.TokenDist[len(bb.TokenDist)-2]
@@ -115,7 +114,7 @@ func TestUpdatePoints(t *testing.T) {
 }
 
 func TestUpdatePayerPoints(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
 	user := keyutil.NewAddrKeyPair(t)
 	payer := bb.TokenDist[0]
@@ -138,8 +137,8 @@ func TestUpdatePayerPoints(t *testing.T) {
 }
 
 func TestBandwidthWhenUnstaking(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	from := bb.TokenDist[testutil.DynastySize]
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[blockutil.DynastySize]
 
 	bb.Tx().StakeTx(from, 100).SignPair(from).Execute().
 		Tx().Type(coreState.TxOpUnstake).Value(100).SignPair(from).ExecuteErr(coreState.ErrStakingNotEnough).
@@ -150,10 +149,10 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 }
 
 func TestTxsFromTxsTo(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
 	to := keyutil.NewAddrKeyPair(t)
-	from := bb.TokenDist[testutil.DynastySize]
+	from := bb.TokenDist[blockutil.DynastySize]
 
 	bb = bb.Stake().
 		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
@@ -192,12 +191,12 @@ func TestTxsFromTxsTo(t *testing.T) {
 }
 
 func TestBandwidthUsageAndPrice(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
 
 	bb = bb.Child().Stake().SignProposer()
 
 	to := keyutil.NewAddrKeyPair(t)
-	from := bb.TokenDist[testutil.DynastySize]
+	from := bb.TokenDist[blockutil.DynastySize]
 
 	bb = bb.Child()
 	for i := 0; i < 3000; i++ {

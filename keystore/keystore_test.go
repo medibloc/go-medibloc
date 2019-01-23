@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
 	"github.com/medibloc/go-medibloc/common"
@@ -97,10 +98,10 @@ func TestDposSetup(t *testing.T) {
 	testPassphrases := [3]string{testPassphrase1, testPassphrase2, testPassphrase3}
 	addresses := [3]common.Address{}
 	keyBytes := [3][]byte{} // make struct?
-	cfg := testutil.NewConfig(t).SetRandomGenesis(testutil.DynastySize)
+	cfg := testutil.NewConfig(t).SetRandomGenesis(blockutil.DynastySize)
 	cfg.Config.Chain.Proposers = make([]*medletpb.ProposerConfig, 3)
 
-	tn := testutil.NewNetwork(t, testutil.DynastySize)
+	tn := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer tn.Cleanup()
 
 	for i := 0; i < 3; i++ {

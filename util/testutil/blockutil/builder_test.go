@@ -5,14 +5,13 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBlockBuilder_ChildNextDynasty(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
-	dynastyInterval := dpos.New(testutil.DynastySize).DynastyInterval()
+	bb := blockutil.New(t, DynastySize).Genesis()
+	dynastyInterval := dpos.New(DynastySize).DynastyInterval()
 	t.Log("Dynasty Interval:", dynastyInterval)
 
 	bb = bb.ChildNextDynasty().SignProposer()

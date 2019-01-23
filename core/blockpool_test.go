@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +38,7 @@ func TestBlockPoolEvict(t *testing.T) {
 	bp, err := core.NewBlockPool(cacheSize)
 	require.Nil(t, err)
 
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
 
 	tail := bb.Build()
 	for i := 0; i < nBlocks; i++ {
@@ -62,7 +61,7 @@ func TestDuplicatedBlock(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	block := blockutil.New(t, testutil.DynastySize).Genesis().Child().SignProposer().Build()
+	block := blockutil.New(t, blockutil.DynastySize).Genesis().Child().SignProposer().Build()
 
 	err = bp.Push(block)
 	assert.Nil(t, err)
@@ -83,7 +82,7 @@ func TestRemove(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
 	genesis := bb.Build()
 
 	// Push genesis
@@ -117,7 +116,7 @@ func TestNotFound(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	genesis := blockutil.New(t, testutil.DynastySize).Genesis().Build()
+	genesis := blockutil.New(t, blockutil.DynastySize).Genesis().Build()
 
 	blocks := bp.FindChildren(genesis)
 	assert.Len(t, blocks, 0)
@@ -133,7 +132,7 @@ func TestFindBlockWithoutPush(t *testing.T) {
 	bp, err := core.NewBlockPool(128)
 	require.Nil(t, err)
 
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
 	genesis := bb.Build()
 
 	bb = bb.Child().Stake().SignProposer()

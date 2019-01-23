@@ -29,9 +29,9 @@ import (
 )
 
 func TestBecomeAndQuitCandidate(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
-	candidate := bb.TokenDist[testutil.DynastySize]
+	candidate := bb.TokenDist[blockutil.DynastySize]
 
 	txType := dState.TxOpBecomeCandidate
 	bb = bb.

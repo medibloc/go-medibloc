@@ -29,7 +29,7 @@ import (
 )
 
 func TestGetProposer(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
 	proposer, err := bb.Build().Proposer()
 	require.Error(t, err)
@@ -66,13 +66,13 @@ func TestBlock_BasicTx(t *testing.T) {
 }
 
 func TestBlock_PayReward(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
 	parent := bb.Build()
 
 	bb = bb.Child().Stake().Tx().RandomTx().Execute().Flush()
 	proposer := bb.FindProposer()
 
-	cons := dpos.New(testutil.DynastySize)
+	cons := dpos.New(blockutil.DynastySize)
 
 	// wrong reward value (calculate reward based on wrong supply)
 	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(proposer.PrivKey).Build()

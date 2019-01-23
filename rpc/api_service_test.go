@@ -28,16 +28,16 @@ import (
 )
 
 func TestAPIService_GetAccount(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
 	seed.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
+	bb := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[testutil.DynastySize]
+	payer := seed.Config.TokenDist[blockutil.DynastySize]
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 400000000).Build()
@@ -127,7 +127,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 }
 
 func TestAPIService_GetBlock(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -227,7 +227,7 @@ func TestAPIService_GetBlock(t *testing.T) {
 }
 
 func TestAPIService_GetBlocks(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -287,7 +287,7 @@ func TestAPIService_GetBlocks(t *testing.T) {
 }
 
 func TestAPIService_GetCandidates(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -303,7 +303,7 @@ func TestAPIService_GetCandidates(t *testing.T) {
 }
 
 func TestAPIService_GetCandidate(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -328,14 +328,14 @@ func TestAPIService_GetCandidate(t *testing.T) {
 }
 
 func TestAPIService_GetDynasty(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
 	seed.Start()
 	network.WaitForEstablished()
 
-	b := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).
+	b := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.Dynasties).
 		Block(seed.Tail()).Child().SignProposer().Build()
 
 	err := seed.Med.BlockManager().PushBlockData(b.BlockData)
@@ -356,7 +356,7 @@ func TestAPIService_GetDynasty(t *testing.T) {
 }
 
 func TestAPIService_GetMedState(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -384,7 +384,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 }
 
 func TestAPIService_GetPendingTransactions(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -415,14 +415,14 @@ func TestAPIService_GetPendingTransactions(t *testing.T) {
 }
 
 func TestAPIService_GetTransaction(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
 	seed.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Child().Stake()
+	bb := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Child().Stake()
 	tx := bb.Tx().RandomTx().Build()
 	b := bb.ExecuteTx(tx).SignProposer().Build()
 
@@ -465,7 +465,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 }
 
 func TestAPIService_GetTransactionReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -475,7 +475,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix())).Stake()
 
-	payer := seed.Config.TokenDist[testutil.DynastySize]
+	payer := seed.Config.TokenDist[blockutil.DynastySize]
 	recordHash, err := byteutils.Hex2Bytes("255607ec7ef55d7cfd8dcb531c4aa33c4605f8aac0f5784a590041690695e6f7")
 	require.NoError(t, err)
 	payload := &transaction.AddRecordPayload{
@@ -526,7 +526,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 }
 
 func TestAPIService_HealthCheck(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -542,7 +542,7 @@ func TestAPIService_HealthCheck(t *testing.T) {
 }
 
 func TestAPIService_SendTransaction(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -603,7 +603,7 @@ type Data struct {
 }
 
 func TestAPIService_Subscribe(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -618,9 +618,9 @@ func TestAPIService_Subscribe(t *testing.T) {
 	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
-	tx := make([]*coreState.Transaction, testutil.DynastySize)
-	payer := seed.Config.TokenDist[testutil.DynastySize]
-	for i := 0; i < testutil.DynastySize; i++ {
+	tx := make([]*coreState.Transaction, blockutil.DynastySize)
+	payer := seed.Config.TokenDist[blockutil.DynastySize]
+	for i := 0; i < blockutil.DynastySize; i++ {
 		tx[i] = bb.Tx().Type(coreState.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i + 2)).SignPair(payer).Build()
 	}
 
@@ -665,14 +665,14 @@ func TestAPIService_Subscribe(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < testutil.DynastySize; i++ {
+	for i := 0; i < blockutil.DynastySize; i++ {
 		// At least 3 seconds for next block
 		time.Sleep(1000 * time.Millisecond)
 		seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx[i])
 	}
 
 	bb = bb.ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
-	for i := 0; i < testutil.DynastySize; i++ {
+	for i := 0; i < blockutil.DynastySize; i++ {
 		time.Sleep(500 * time.Millisecond)
 		bb.ExecuteTx(tx[i])
 	}

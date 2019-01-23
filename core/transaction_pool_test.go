@@ -22,7 +22,6 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/event"
-	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +29,7 @@ import (
 )
 
 func TestTransactionGetDel(t *testing.T) {
-	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Genesis().Child().Tx()
 
 	tx1 := tb.RandomTx().Build()
 	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
@@ -70,7 +69,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 		poolSize     = 3
 	)
 
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 	from := bb.KeyPairs[0]
 	to := keyutil.NewAddrKeyPair(t)
 
@@ -96,7 +95,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 }
 
 func TestEmptyPool(t *testing.T) {
-	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Genesis().Child().Tx()
 	tx := tb.RandomTx().Build()
 
 	pool := core.NewTransactionPool(128)
@@ -106,7 +105,7 @@ func TestEmptyPool(t *testing.T) {
 }
 
 func TestInfiniteLoop(t *testing.T) {
-	tb := blockutil.New(t, testutil.DynastySize).Genesis().Child().Tx()
+	tb := blockutil.New(t, blockutil.DynastySize).Genesis().Child().Tx()
 	from1 := keyutil.NewAddrKeyPair(t)
 	from2 := keyutil.NewAddrKeyPair(t)
 	to := keyutil.NewAddrKeyPair(t)

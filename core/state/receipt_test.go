@@ -23,7 +23,7 @@ import (
 	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -37,7 +37,7 @@ import (
 // CASE 3. Make invalid transaction and receipt should hold matched error message
 
 func TestReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -47,7 +47,7 @@ func TestReceipt(t *testing.T) {
 	network.WaitForEstablished()
 
 	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[testutil.DynastySize]
+	payer := seed.Config.TokenDist[blockutil.DynastySize]
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 100).Build()
@@ -76,7 +76,7 @@ func TestReceipt(t *testing.T) {
 }
 
 func TestErrorTransactionReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -85,9 +85,9 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	receiver.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
+	bb := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
 		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
-	payer := seed.Config.TokenDist[testutil.DynastySize]
+	payer := seed.Config.TokenDist[blockutil.DynastySize]
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 1000).Build()
@@ -123,13 +123,13 @@ func TestErrorTransactionReceipt(t *testing.T) {
 }
 
 func TestWrongReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
 	seed.Start()
 
-	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
+	bb := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
 		Block(seed.GenesisBlock()).Child()
 
 	b := bb.Tx().RandomTx().Execute().SignProposer().Build()
@@ -141,7 +141,7 @@ func TestWrongReceipt(t *testing.T) {
 }
 
 func TestVoteTransactionReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, testutil.DynastySize)
+	network := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -150,12 +150,12 @@ func TestVoteTransactionReceipt(t *testing.T) {
 	receiver.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, testutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
+	bb := blockutil.New(t, blockutil.DynastySize).AddKeyPairs(seed.Config.TokenDist).
 		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
 		NextMintSlot2(time.Now().Unix())).Stake()
 
-	payer := seed.Config.TokenDist[testutil.DynastySize]
-	payer2 := seed.Config.TokenDist[testutil.DynastySize+1]
+	payer := seed.Config.TokenDist[blockutil.DynastySize]
+	payer2 := seed.Config.TokenDist[blockutil.DynastySize+1]
 	aliasPayload1 := &transaction.RegisterAliasPayload{AliasName: "helloworld10"}
 	aliasPayload2 := &transaction.RegisterAliasPayload{AliasName: "helloworld20"}
 	aliasTx1 := bb.Tx().Nonce(2).Payload(aliasPayload1).Value(1000000).Type(coreState.TxOpRegisterAlias).SignPair(payer).Build()

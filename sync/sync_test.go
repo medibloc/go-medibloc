@@ -33,7 +33,7 @@ func TestService_Start(t *testing.T) {
 	const (
 		nBlocks = 100
 	)
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -73,7 +73,7 @@ func TestForDuplicatedBlock(t *testing.T) {
 		nBlocks              = 10
 		indexDuplicatedBlock = 5
 	)
-	testNetwork := testutil.NewNetwork(t, testutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()

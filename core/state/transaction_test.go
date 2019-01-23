@@ -33,8 +33,8 @@ import (
 )
 
 func TestSend(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	from := bb.TokenDist[testutil.DynastySize]
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[blockutil.DynastySize]
 	to := keyutil.NewAddrKeyPair(t)
 
 	bb.
@@ -49,7 +49,7 @@ func TestSend(t *testing.T) {
 }
 
 func TestAddRecord(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
 
 	recordHash, err := byteutils.Hex2Bytes("03e7b794e1de1851b52ab0b0b995cc87558963265a7b26630f26ea8bb9131a7e")
 	require.NoError(t, err)
@@ -73,9 +73,9 @@ func TestAddRecord(t *testing.T) {
 }
 
 func TestStakingAndUnstaking(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
-	from := bb.TokenDist[testutil.DynastySize]
+	from := bb.TokenDist[blockutil.DynastySize]
 	stakingAmount := 1000.0
 	unstakingAmount := 301.0
 
@@ -111,7 +111,7 @@ func TestStakingAndUnstaking(t *testing.T) {
 }
 
 func TestAddAndRevokeCertification(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
 	issuer := bb.TokenDist[0]
 	certified := bb.TokenDist[1]
@@ -190,9 +190,9 @@ func TestAddAndRevokeCertification(t *testing.T) {
 }
 
 func TestPayerSigner(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 
-	payer := bb.TokenDist[testutil.DynastySize]
+	payer := bb.TokenDist[blockutil.DynastySize]
 	from := keyutil.NewAddrKeyPair(t)
 	to := keyutil.NewAddrKeyPair(t)
 	bb = bb.
@@ -216,8 +216,8 @@ func TestPayerSigner(t *testing.T) {
 }
 
 func TestRegisterAndDeregisterAlias(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	from := bb.TokenDist[testutil.DynastySize]
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[blockutil.DynastySize]
 	const (
 		collateralAmount = 1000000
 	)
@@ -286,8 +286,8 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 }
 
 func TestRegisterAliasTable(t *testing.T) {
-	bb := blockutil.New(t, testutil.DynastySize).Genesis().Child()
-	from := bb.TokenDist[testutil.DynastySize]
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+	from := bb.TokenDist[blockutil.DynastySize]
 	const (
 		collateralAmount = 1000000
 	)

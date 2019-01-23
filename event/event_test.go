@@ -183,7 +183,7 @@ func TestTopicLibBlock(t *testing.T) {
 }
 
 func TestTopicNewTailBlock(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := blockutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 
@@ -221,7 +221,7 @@ func TestTopicNewTailBlock(t *testing.T) {
 }
 
 func TestTopicPendingTransaction(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := blockutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 
@@ -248,7 +248,7 @@ func TestTopicPendingTransaction(t *testing.T) {
 }
 
 func TestTopicRevertBlock(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := blockutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 
@@ -290,7 +290,7 @@ func TestTopicRevertBlock(t *testing.T) {
 }
 
 func TestTopicTransactionExecutionResult(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := blockutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 
@@ -319,7 +319,7 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 }
 
 func TestTopicAcceptedBlock(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := blockutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 
@@ -343,7 +343,7 @@ func TestTopicAcceptedBlock(t *testing.T) {
 }
 
 func TestTypeAccountTransaction(t *testing.T) {
-	dynastySize := testutil.DynastySize
+	dynastySize := blockutil.DynastySize
 	testNetwork := testutil.NewNetwork(t, dynastySize)
 	defer testNetwork.Cleanup()
 
