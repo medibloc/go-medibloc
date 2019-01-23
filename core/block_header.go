@@ -131,19 +131,9 @@ func (b *BlockHeader) HexHash() string {
 	return byteutils.Bytes2Hex(b.hash)
 }
 
-// SetHash set block header's hash
-func (b *BlockHeader) SetHash(hash []byte) {
-	b.hash = hash
-}
-
 // ParentHash returns block header's parent hash
 func (b *BlockHeader) ParentHash() []byte {
 	return b.parentHash
-}
-
-// SetParentHash set block header's parent hash
-func (b *BlockHeader) SetParentHash(parentHash []byte) {
-	b.parentHash = parentHash
 }
 
 // AccStateRoot returns block header's accStateRoot
@@ -151,19 +141,9 @@ func (b *BlockHeader) AccStateRoot() []byte {
 	return b.accStateRoot
 }
 
-// SetAccStateRoot set block header's accStateRoot
-func (b *BlockHeader) SetAccStateRoot(accStateRoot []byte) {
-	b.accStateRoot = accStateRoot
-}
-
 // TxStateRoot returns block header's txsRoot
 func (b *BlockHeader) TxStateRoot() []byte {
 	return b.txStateRoot
-}
-
-// SetTxStateRoot set block header's txsRoot
-func (b *BlockHeader) SetTxStateRoot(txStateRoot []byte) {
-	b.txStateRoot = txStateRoot
 }
 
 // DposRoot returns block header's dposRoot
@@ -171,19 +151,9 @@ func (b *BlockHeader) DposRoot() []byte {
 	return b.dposRoot
 }
 
-// SetDposRoot set block header's dposRoot
-func (b *BlockHeader) SetDposRoot(dposRoot []byte) {
-	b.dposRoot = dposRoot
-}
-
 // Coinbase returns coinbase
 func (b *BlockHeader) Coinbase() common.Address {
 	return b.coinbase
-}
-
-// SetCoinbase set coinbase
-func (b *BlockHeader) SetCoinbase(coinbase common.Address) {
-	b.coinbase = coinbase
 }
 
 // Reward returns reward
@@ -191,19 +161,9 @@ func (b *BlockHeader) Reward() *util.Uint128 {
 	return b.reward
 }
 
-// SetReward sets reward
-func (b *BlockHeader) SetReward(reward *util.Uint128) {
-	b.reward = reward
-}
-
 // Supply returns supply
 func (b *BlockHeader) Supply() *util.Uint128 {
 	return b.supply.DeepCopy()
-}
-
-// SetSupply sets supply
-func (b *BlockHeader) SetSupply(supply *util.Uint128) {
-	b.supply = supply
 }
 
 // Timestamp returns timestamp of block
@@ -211,19 +171,9 @@ func (b *BlockHeader) Timestamp() int64 {
 	return b.timestamp
 }
 
-// SetTimestamp sets timestamp of block
-func (b *BlockHeader) SetTimestamp(timestamp int64) {
-	b.timestamp = timestamp
-}
-
 // ChainID returns chainID
 func (b *BlockHeader) ChainID() uint32 {
 	return b.chainID
-}
-
-// SetChainID sets chainID
-func (b *BlockHeader) SetChainID(chainID uint32) {
-	b.chainID = chainID
 }
 
 // CPUPrice returns cpuPrice
@@ -231,29 +181,14 @@ func (b *BlockHeader) CPUPrice() *util.Uint128 {
 	return b.cpuPrice
 }
 
-// SetCPUPrice sets cpuPrice
-func (b *BlockHeader) SetCPUPrice(cpuPrice *util.Uint128) {
-	b.cpuPrice = cpuPrice
-}
-
 // NetPrice returns netPrice
 func (b *BlockHeader) NetPrice() *util.Uint128 {
 	return b.netPrice
 }
 
-// SetNetPrice sets netPrice
-func (b *BlockHeader) SetNetPrice(netPrice *util.Uint128) {
-	b.netPrice = netPrice
-}
-
 // Sign returns sign
 func (b *BlockHeader) Sign() []byte {
 	return b.sign
-}
-
-// SetSign sets sign
-func (b *BlockHeader) SetSign(sign []byte) {
-	b.sign = sign
 }
 
 // CPUUsage returns cpuUsage

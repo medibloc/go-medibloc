@@ -155,11 +155,6 @@ func (b *Block) Sealed() bool {
 	return b.sealed
 }
 
-// SetSealed set sealed
-func (b *Block) SetSealed(sealed bool) {
-	b.sealed = sealed
-}
-
 // Seal writes state root hashes and block hash in block header
 func (b *Block) Seal() error {
 	var err error

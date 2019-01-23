@@ -110,20 +110,9 @@ func (bd *BlockData) Height() uint64 {
 	return bd.height
 }
 
-// SetHeight sets height.
-func (bd *BlockData) SetHeight(height uint64) {
-	bd.height = height
-}
-
 // Transactions returns txs in block
 func (bd *BlockData) Transactions() []*corestate.Transaction {
 	return bd.transactions
-}
-
-// SetTransactions sets transactions TO BE REMOVED: For test without block pool
-func (bd *BlockData) SetTransactions(txs []*corestate.Transaction) error {
-	bd.transactions = txs
-	return nil
 }
 
 // AppendTransaction append transaction to block data (only use on making block)

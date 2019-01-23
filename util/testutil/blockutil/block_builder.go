@@ -34,7 +34,7 @@ import (
 // BlockBuilder is structure for building block
 type BlockBuilder struct {
 	t *testing.T
-	B *core.Block
+	B *core.BlockTestWrap
 
 	dynastySize int
 	proposer    common.Address
@@ -85,7 +85,7 @@ func (bb *BlockBuilder) Clone() *BlockBuilder {
 func (bb *BlockBuilder) Genesis() *BlockBuilder {
 	n := bb.copy()
 	genesis, dynasties, tokenDist := testutil.NewTestGenesisBlock(bb.t, bb.dynastySize)
-	n.B = genesis
+	n.B = &core.BlockTestWrap{Block: genesis}
 	n.Dynasties = dynasties
 	n.TokenDist = tokenDist
 	n.KeyPairs = append(n.Dynasties, n.TokenDist...)
@@ -98,7 +98,7 @@ func (bb *BlockBuilder) Block(b *core.Block) *BlockBuilder {
 	proposer, _ := b.Proposer()
 	// require.NoError(n.t, err)
 
-	n.B = b
+	n.B = &core.BlockTestWrap{Block: b}
 	n.proposer = proposer
 	return n
 }
@@ -329,7 +329,7 @@ func (bb *BlockBuilder) Seal() *BlockBuilder {
 // Build builds block.
 func (bb *BlockBuilder) Build() *core.Block {
 	n := bb.copy()
-	return n.B
+	return n.B.Block
 }
 
 // BuildProto builds block in protobuf format.
@@ -367,7 +367,7 @@ func (bb *BlockBuilder) ChildWithTimestamp(ts int64) *BlockBuilder {
 	parent := bb.B
 	n.B, err = parent.InitChild(common.Address{})
 	require.NoError(n.t, err)
-	return n.Timestamp(ts).Prepare().UpdateDynastyState(parent)
+	return n.Timestamp(ts).Prepare().UpdateDynastyState(parent.Block)
 }
 
 // ChildNextDynasty create first child block of next dynasty
