@@ -28,4 +28,5 @@ var (
 	ErrInvalidTransactionHash       = errors.New("invalid transaction hash")
 	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
 	ErrInvalidTxChainID             = errors.New("invalid transaction chainID")
+	ErrGenesisSignShouldNotExist    = errors.New("genesis sign should not exist")
 )
