@@ -165,16 +165,3 @@ func (r *Receipt) Equal(obj *Receipt) bool {
 		r.points.Cmp(obj.points) == 0 &&
 		byteutils.Equal(r.error, obj.error)
 }
-
-// NewReceipt returns new receipt
-func NewReceipt() *Receipt {
-	return &Receipt{
-		executed:  false,
-		timestamp: 0,
-		height:    0,
-		cpuUsage:  0,
-		netUsage:  0,
-		points:    util.NewUint128(),
-		error:     nil,
-	}
-}

@@ -25,11 +25,6 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 )
 
-// Transaction's string representation.
-const (
-	TxTyGenesis = "genesis"
-)
-
 // Transaction's message types.
 const (
 	MessageTypeNewTx = "newtx"
