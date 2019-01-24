@@ -304,6 +304,7 @@ func (s *APIService) GetDynasty(ctx context.Context, req *rpcpb.NonParamRequest)
 	dynastySize := s.bm.Consensus().DynastySize()
 	dynasty := make([]common.Address, dynastySize)
 
+	// TODO Fix bug when fewer dynasty
 	var err error
 	for i := 0; i < dynastySize; i++ {
 		dynasty[i], err = block.State().DposState().GetProposer(i)

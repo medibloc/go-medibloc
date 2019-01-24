@@ -326,6 +326,7 @@ func (bm *BlockManager) runChainManager() {
 				continue
 			}
 
+			// TODO concurrency?
 			newLIB := bm.consensus.FindLIB(bm.bc)
 			if byteutils.Equal(LIB.Hash(), newLIB.Hash()) {
 				continue

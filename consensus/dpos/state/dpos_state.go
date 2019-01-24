@@ -29,6 +29,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO applying prefix
 // Prefixes for blockState trie
 const (
 	CandidatePrefix = "c_" // alias account prefix for account state trie

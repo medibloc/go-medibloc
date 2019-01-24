@@ -152,6 +152,7 @@ func (bd *BlockData) SignThis(signer signature.Signature) error {
 
 // VerifyIntegrity verifies block integrity.
 func (bd *BlockData) VerifyIntegrity() error {
+	// TODO Verify integrity of genesis block
 	if bd.height == GenesisHeight {
 		return nil
 	}
