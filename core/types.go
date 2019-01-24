@@ -42,10 +42,10 @@ const (
 	MessageTypeResponseBlock = "respblock"
 )
 
-//InflationRate is rate for reward
+// InflationRate is rate for reward
 var InflationRate = big.NewRat(464, 100000000000) // 4.64e-09
-//InflationRoundDown is constant for round down reward
-const InflationRoundDown = 10000000000 //1e10
+// InflationRoundDown is constant for round down reward
+const InflationRoundDown = 10000000000 // 1e10
 
 // Points limit per block
 const (
