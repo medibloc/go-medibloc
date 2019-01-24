@@ -35,7 +35,7 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 
 // AddRecordTx is a structure for adding record
 type AddRecordTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	owner      common.Address
 	recordHash []byte
 	size       int
@@ -44,7 +44,7 @@ type AddRecordTx struct {
 var _ core.ExecutableTx = &AddRecordTx{}
 
 // NewAddRecordTx returns AddRecordTx
-func NewAddRecordTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewAddRecordTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}

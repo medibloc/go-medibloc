@@ -21,8 +21,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
@@ -34,13 +33,13 @@ import (
 type TxBuilder struct {
 	t  *testing.T
 	bb *BlockBuilder
-	tx *coreState.TransactionTestWrap
+	tx *core.TransactionTestWrap
 }
 
 func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
 
-	tx := &coreState.TransactionTestWrap{}
+	tx := &core.TransactionTestWrap{}
 	tx.SetChainID(ChainID)
 	tx.SetValue(util.Uint128Zero())
 
@@ -52,7 +51,7 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 }
 
 func (tb *TxBuilder) copy() *TxBuilder {
-	var tx *coreState.TransactionTestWrap
+	var tx *core.TransactionTestWrap
 	var err error
 	if tb.tx != nil {
 		tx, err = tb.tx.Clone()
@@ -207,9 +206,9 @@ func (tb *TxBuilder) RandomTx() *TxBuilder {
 }
 
 // RandomTxs generate random transactions
-func (tb *TxBuilder) RandomTxs(n int) []*coreState.Transaction {
+func (tb *TxBuilder) RandomTxs(n int) []*core.Transaction {
 	require.NotEqual(tb.t, 0, len(tb.bb.KeyPairs), "No key pair added on block builder")
-	txs := make([]*coreState.Transaction, 0, n)
+	txs := make([]*core.Transaction, 0, n)
 
 	from := tb.bb.KeyPairs[0]
 	acc, err := tb.bb.B.State().GetAccount(from.Addr)
@@ -228,7 +227,7 @@ func (tb *TxBuilder) StakeTx(pair *keyutil.AddrKeyPair, med float64) *TxBuilder 
 }
 
 // Build build transaction
-func (tb *TxBuilder) Build() *coreState.Transaction {
+func (tb *TxBuilder) Build() *core.Transaction {
 	n := tb.copy()
 	return n.tx.Transaction
 }

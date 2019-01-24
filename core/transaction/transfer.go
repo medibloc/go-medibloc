@@ -5,7 +5,6 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/pb"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
 
@@ -34,7 +33,7 @@ func (payload *DefaultPayload) ToBytes() ([]byte, error) {
 
 // TransferTx is a structure for sending MED
 type TransferTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	from    common.Address
 	to      common.Address
 	value   *util.Uint128
@@ -45,7 +44,7 @@ type TransferTx struct {
 var _ core.ExecutableTx = &TransferTx{}
 
 // NewTransferTx returns TransferTx
-func NewTransferTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewTransferTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}

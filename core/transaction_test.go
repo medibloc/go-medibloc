@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package corestate_test
+package core_test
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
 	"github.com/gogo/protobuf/proto"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -198,7 +198,7 @@ func TestPayerSigner(t *testing.T) {
 	bb = bb.
 		Tx().StakeTx(payer, 10000).Execute().
 		Tx().Type(coreState.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(coreState.ErrPointNotEnough).
+		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(ErrPointNotEnough).
 		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
 	bb.
 		Expect().

@@ -21,10 +21,9 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/event"
-	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
+	"github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -591,7 +590,7 @@ func verifyBlockHeight(bd *BlockData, parent *Block) error {
 
 func (bm *BlockManager) rearrangeTransactions(revertBlock []*Block, newBlocks []*Block) error {
 	addrNonce := make(map[common.Address]uint64)
-	exclusiveFilter := make(map[*coreState.Transaction]bool)
+	exclusiveFilter := make(map[*Transaction]bool)
 
 	for _, newBlock := range newBlocks {
 		for _, tx := range newBlock.Transactions() {

@@ -19,16 +19,15 @@ import (
 	"encoding/hex"
 
 	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/event"
 	"github.com/sirupsen/logrus"
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/net"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -518,7 +517,7 @@ func (s *APIService) SendTransaction(ctx context.Context, req *rpcpb.SendTransac
 		Receipt:   nil,
 	}
 
-	tx := &coreState.Transaction{}
+	tx := &core.Transaction{}
 	if err := tx.FromProto(pbTx); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

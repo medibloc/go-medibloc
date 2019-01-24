@@ -78,19 +78,19 @@ func TestTransactionManager_Push(t *testing.T) {
 	// Wrong chainID
 	wrongChainIDTx := randomTb.ChainID(blockutil.ChainID + 1).Build()
 	failed := tm.PushAndExclusiveBroadcast(wrongChainIDTx)
-	assert.Equal(t, coreState.ErrInvalidTxChainID, failed[wrongChainIDTx.HexHash()])
+	assert.Equal(t, ErrInvalidTxChainID, failed[wrongChainIDTx.HexHash()])
 
 	// Wrong hash
 	wrongHash, err := byteutils.Hex2Bytes("1234567890123456789012345678901234567890123456789012345678901234")
 	require.NoError(t, err)
 	wrongHashTx := randomTb.Hash(wrongHash).Build()
 	failed = tm.PushAndExclusiveBroadcast(wrongHashTx)
-	assert.Equal(t, coreState.ErrInvalidTransactionHash, failed[wrongHashTx.HexHash()])
+	assert.Equal(t, ErrInvalidTransactionHash, failed[wrongHashTx.HexHash()])
 
 	// No signature
 	noSignTx := randomTb.Sign([]byte{}).Build()
 	failed = tm.PushAndExclusiveBroadcast(noSignTx)
-	assert.Equal(t, coreState.ErrTransactionSignatureNotExist, failed[noSignTx.HexHash()])
+	assert.Equal(t, ErrTransactionSignatureNotExist, failed[noSignTx.HexHash()])
 
 	// // Invalid signature
 	// invalidSigner := testutil.NewAddrKeyPair(t)
@@ -276,7 +276,7 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 
 	failed := seedTm.PushAndExclusiveBroadcast(tx1)
 	err = failed[byteutils.Bytes2Hex(tx1.Hash())]
-	require.Equal(t, coreState.ErrPointNotEnough, err)
+	require.Equal(t, ErrPointNotEnough, err)
 
 	failed = seedTm.PushAndExclusiveBroadcast(tx2)
 	err = failed[byteutils.Bytes2Hex(tx2.Hash())]
@@ -284,7 +284,7 @@ func TestTransactionManager_BandwidthLimit(t *testing.T) {
 
 	failed = seedTm.PushAndExclusiveBroadcast(tx3)
 	err = failed[byteutils.Bytes2Hex(tx3.Hash())]
-	require.Equal(t, coreState.ErrStakingNotEnough, err)
+	require.Equal(t, ErrStakingNotEnough, err)
 
 }
 
@@ -325,7 +325,7 @@ func TestTransactionManager_ReplacePending(t *testing.T) {
 	}
 }
 
-func waitForTransaction(t *testing.T, deadline time.Duration, node *testutil.Node, tx *coreState.Transaction, has bool) {
+func waitForTransaction(t *testing.T, deadline time.Duration, node *testutil.Node, tx *Transaction, has bool) {
 	timeout := time.NewTimer(deadline)
 	defer timeout.Stop()
 

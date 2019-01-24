@@ -3,14 +3,13 @@ package transaction
 import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
 )
 
-func recoverSigner(tx *corestate.Transaction) (common.Address, error) {
+func recoverSigner(tx *core.Transaction) (common.Address, error) {
 	if len(tx.Sign()) == 0 {
-		return common.Address{}, corestate.ErrTransactionSignatureNotExist
+		return common.Address{}, core.ErrTransactionSignatureNotExist
 	}
 
 	sig, err := crypto.NewSignature(algorithm.SECP256K1)
@@ -25,9 +24,9 @@ func recoverSigner(tx *corestate.Transaction) (common.Address, error) {
 	return common.PublicKeyToAddress(pubKey)
 }
 
-func recoverGenesis(tx *corestate.Transaction) (common.Address, error) {
+func recoverGenesis(tx *core.Transaction) (common.Address, error) {
 	if len(tx.Sign()) != 0 {
-		return common.Address{}, corestate.ErrGenesisSignShouldNotExist
+		return common.Address{}, core.ErrGenesisSignShouldNotExist
 	}
 	return core.GenesisCoinbase, nil
 }

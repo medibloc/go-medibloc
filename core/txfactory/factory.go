@@ -2,7 +2,6 @@ package txfactory
 
 import (
 	"github.com/medibloc/go-medibloc/core"
-	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -10,8 +9,8 @@ import (
 type Factory struct {
 }
 
-func (f *Factory) Genesis(chainID uint32, nonce uint64, msg string) *corestate.Transaction {
-	template := corestate.NewTransactionTemplate(&corestate.TransactionTemplateParam{
+func (f *Factory) Genesis(chainID uint32, nonce uint64, msg string) *core.Transaction {
+	template := core.NewTransactionTemplate(&core.TransactionTemplateParam{
 		TxType:  transaction.TxOpGenesis,
 		To:      nil,
 		Value:   util.Uint128Zero(),

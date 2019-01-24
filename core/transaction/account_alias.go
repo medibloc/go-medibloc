@@ -36,7 +36,7 @@ func (payload *RegisterAliasPayload) ToBytes() ([]byte, error) {
 
 // RegisterAliasTx is a structure for register alias
 type RegisterAliasTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	addr       common.Address
 	collateral *util.Uint128
 	alias      string
@@ -46,7 +46,7 @@ type RegisterAliasTx struct {
 var _ core.ExecutableTx = &RegisterAliasTx{}
 
 // NewRegisterAliasTx returns RegisterAliasTx
-func NewRegisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewRegisterAliasTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -151,7 +151,7 @@ func (tx *RegisterAliasTx) RecoverFrom() (common.Address, error) {
 
 // DeregisterAliasTx is a structure for deregister alias
 type DeregisterAliasTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	addr common.Address
 	size int
 }
@@ -159,7 +159,7 @@ type DeregisterAliasTx struct {
 var _ core.ExecutableTx = &DeregisterAliasTx{}
 
 // NewDeregisterAliasTx returns RegisterAliasTx
-func NewDeregisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewDeregisterAliasTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}

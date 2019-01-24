@@ -23,7 +23,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/medlet"
@@ -118,7 +118,7 @@ func TestBlockManager_Forked(t *testing.T) {
 	}
 
 	tail = genesis
-	var txs []*coreState.Transaction
+	var txs []*Transaction
 	for i := 1; i < forkedChainHeight; i++ {
 		var mint *core.Block
 		if i+1 < forkedHeight {
@@ -490,7 +490,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	pair = keyutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignProposer().Build()
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
-	assert.Equal(t, coreState.ErrInvalidTransactionHash, err)
+	assert.Equal(t, ErrInvalidTransactionHash, err)
 
 	// // Invalid Transaction Signer
 	// pair1 := testutil.NewAddrKeyPair(t)

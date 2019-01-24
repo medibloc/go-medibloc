@@ -1,4 +1,4 @@
-package corestate
+package core
 
 import (
 	"github.com/medibloc/go-medibloc/common"

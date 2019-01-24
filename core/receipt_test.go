@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-package corestate_test
+package core_test
 
 import (
 	"testing"
@@ -54,7 +54,7 @@ func TestReceipt(t *testing.T) {
 	tx2 := tb.Nonce(2).Type(coreState.TxOpUnstake).Value(200).SignPair(payer).
 		Build()
 	tx3 := tb.Nonce(2).Type(coreState.TxOpUnstake).Value(50).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, coreState.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))

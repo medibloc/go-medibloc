@@ -19,9 +19,9 @@ import (
 	"github.com/gogo/protobuf/proto"
 	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
-	rpcpb "github.com/medibloc/go-medibloc/rpc/pb"
+	"github.com/medibloc/go-medibloc/rpc/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
@@ -92,7 +92,7 @@ func dposCandidate2rpcCandidate(candidate *dposState.Candidate) *rpcpb.Candidate
 }
 
 // CoreTx2rpcTx converts core transaction type to rpcpb response type
-func CoreTx2rpcTx(tx *coreState.Transaction, onChain bool) *rpcpb.Transaction {
+func CoreTx2rpcTx(tx *core.Transaction, onChain bool) *rpcpb.Transaction {
 	var rpcReceipt *rpcpb.TransactionReceipt
 
 	if onChain {
@@ -115,7 +115,7 @@ func CoreTx2rpcTx(tx *coreState.Transaction, onChain bool) *rpcpb.Transaction {
 	}
 }
 
-func transactions2rpcTxs(txs []*coreState.Transaction, onChain bool) []*rpcpb.Transaction {
+func transactions2rpcTxs(txs []*core.Transaction, onChain bool) []*rpcpb.Transaction {
 	var rpcTxs []*rpcpb.Transaction
 	for _, tx := range txs {
 		rpcTx := CoreTx2rpcTx(tx, onChain)
@@ -124,7 +124,7 @@ func transactions2rpcTxs(txs []*coreState.Transaction, onChain bool) []*rpcpb.Tr
 	return rpcTxs
 }
 
-func coreReceipt2rpcReceipt(tx *coreState.Transaction) *rpcpb.TransactionReceipt {
+func coreReceipt2rpcReceipt(tx *core.Transaction) *rpcpb.TransactionReceipt {
 	err := string(tx.Receipt().Error())
 	points := tx.Receipt().Points().String()
 

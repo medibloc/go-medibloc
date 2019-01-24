@@ -8,7 +8,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/roundrobin"
-	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -127,7 +127,7 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Accoun
 }
 
 // Get gets a transaction.
-func (pool *PendingTransactionPool) Get(hash []byte) *corestate.Transaction {
+func (pool *PendingTransactionPool) Get(hash []byte) *Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 	txc, exist := pool.all[byteutils.Bytes2Hex(hash)]
@@ -187,7 +187,7 @@ func (pool *PendingTransactionPool) NonceUpperLimit(acc *corestate.Account) uint
 }
 
 // Next returns a transaction to process in round-robin order
-func (pool *PendingTransactionPool) Next() *corestate.Transaction {
+func (pool *PendingTransactionPool) Next() *Transaction {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -376,7 +376,7 @@ func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Accoun
 		return err
 	}
 	if modified.Cmp(points) < 0 {
-		return corestate.ErrPointNotEnough
+		return ErrPointNotEnough
 	}
 
 	return nil

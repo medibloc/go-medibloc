@@ -4,7 +4,6 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -12,7 +11,7 @@ import (
 
 // StakeTx is a structure for staking med
 type StakeTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	user   common.Address
 	amount *util.Uint128
 	size   int
@@ -21,7 +20,7 @@ type StakeTx struct {
 var _ core.ExecutableTx = &StakeTx{}
 
 // NewStakeTx returns NewTx
-func NewStakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewStakeTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -101,7 +100,7 @@ func (tx *StakeTx) RecoverFrom() (common.Address, error) {
 
 // UnstakeTx is a structure for unstaking med
 type UnstakeTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	user   common.Address
 	amount *util.Uint128
 	size   int
@@ -110,7 +109,7 @@ type UnstakeTx struct {
 var _ core.ExecutableTx = &UnstakeTx{}
 
 // NewUnstakeTx returns UnstakeTx
-func NewUnstakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewUnstakeTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -139,7 +138,7 @@ func (tx *UnstakeTx) Execute(b *core.Block) error {
 
 	account.Staking, err = account.Staking.Sub(tx.amount)
 	if err == util.ErrUint128Underflow {
-		return coreState.ErrStakingNotEnough
+		return core.ErrStakingNotEnough
 	}
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{

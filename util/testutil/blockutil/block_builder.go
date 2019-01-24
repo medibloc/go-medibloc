@@ -23,8 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	coreState "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
@@ -264,7 +263,7 @@ func (bb *BlockBuilder) FindProposer() *keyutil.AddrKeyPair {
 }
 
 // AddTx add transaction
-func (bb *BlockBuilder) AddTx(tx *coreState.Transaction) *BlockBuilder {
+func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	txs := n.B.Transactions()
 	txs = append(txs, tx)
@@ -273,7 +272,7 @@ func (bb *BlockBuilder) AddTx(tx *coreState.Transaction) *BlockBuilder {
 }
 
 // ExecuteTx execute transaction
-func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
+func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	receipt, err := n.B.ExecuteTransaction(tx)
 	require.NoError(n.t, err)
@@ -287,7 +286,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *coreState.Transaction) *BlockBuilder {
 }
 
 // ExecuteTxErr expect error occurred on executing
-func (bb *BlockBuilder) ExecuteTxErr(tx *coreState.Transaction, expected error) *BlockBuilder {
+func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *BlockBuilder {
 	n := bb.copy()
 	receipt, err := n.B.ExecuteTransaction(tx)
 	if err != nil {

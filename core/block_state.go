@@ -40,7 +40,7 @@ type BlockState struct {
 	netUsage uint64
 
 	accState  *coreState.AccountState
-	txState   *coreState.TransactionState
+	txState   *TransactionState
 	dposState *dState.State
 }
 
@@ -50,7 +50,7 @@ func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
 		return nil, err
 	}
 
-	txState, err := coreState.NewTransactionState(nil, stor)
+	txState, err := NewTransactionState(nil, stor)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func NewBlockState(bd *BlockData, consensus Consensus, stor storage.Storage) (*B
 		}).Error("Failed to create account state.")
 		return nil, err
 	}
-	txState, err := coreState.NewTransactionState(bd.TxStateRoot(), stor)
+	txState, err := NewTransactionState(bd.TxStateRoot(), stor)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"block": bd,
@@ -339,12 +339,12 @@ func (bs *BlockState) DelAccountAlias(alias string, addr common.Address) error {
 }
 
 // GetTx get tx from transaction state
-func (bs *BlockState) GetTx(txHash []byte) (*coreState.Transaction, error) {
+func (bs *BlockState) GetTx(txHash []byte) (*Transaction, error) {
 	return bs.txState.GetTx(txHash)
 }
 
 // PutTx put tx to state
-func (bs *BlockState) PutTx(tx *coreState.Transaction) error {
+func (bs *BlockState) PutTx(tx *Transaction) error {
 	return bs.txState.Put(tx)
 }
 

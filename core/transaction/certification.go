@@ -41,7 +41,7 @@ func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
 
 // AddCertificationTx is a structure for adding certification
 type AddCertificationTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	Issuer          common.Address
 	Certified       common.Address
 	CertificateHash []byte
@@ -53,7 +53,7 @@ type AddCertificationTx struct {
 var _ core.ExecutableTx = &AddCertificationTx{}
 
 // NewAddCertificationTx returns AddCertificationTx
-func NewAddCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewAddCertificationTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -185,7 +185,7 @@ func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
 
 // RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	Revoker         common.Address
 	CertificateHash []byte
 	size            int
@@ -194,7 +194,7 @@ type RevokeCertificationTx struct {
 var _ core.ExecutableTx = &RevokeCertificationTx{}
 
 // NewRevokeCertificationTx returns RevokeCertificationTx
-func NewRevokeCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewRevokeCertificationTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}

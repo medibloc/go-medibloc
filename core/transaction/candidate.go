@@ -51,7 +51,7 @@ func (payload *BecomeCandidatePayload) ToBytes() ([]byte, error) {
 
 // BecomeCandidateTx is a structure for quiting cadidate
 type BecomeCandidateTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	txHash        []byte
 	candidateAddr common.Address
 	collateral    *util.Uint128
@@ -62,7 +62,7 @@ type BecomeCandidateTx struct {
 var _ core.ExecutableTx = &BecomeCandidateTx{}
 
 // NewBecomeCandidateTx returns BecomeCandidateTx
-func NewBecomeCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewBecomeCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -153,7 +153,7 @@ func (tx *BecomeCandidateTx) RecoverFrom() (common.Address, error) {
 
 // QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	candidateAddr common.Address
 	size          int
 }
@@ -161,7 +161,7 @@ type QuitCandidateTx struct {
 var _ core.ExecutableTx = &QuitCandidateTx{}
 
 // NewQuitCandidateTx returns QuitCandidateTx
-func NewQuitCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewQuitCandidateTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}

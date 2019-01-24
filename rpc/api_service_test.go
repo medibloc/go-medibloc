@@ -312,7 +312,7 @@ func TestAPIService_GetCandidate(t *testing.T) {
 
 	e := httpexpect.New(t, testutil.IP2Local(seed.Config.Config.Rpc.HttpListen[0]))
 
-	TX := &coreState.Transaction{}
+	TX := &core.Transaction{}
 	for _, tx := range seed.GenesisBlock().Transactions() {
 		if tx.TxType() == dposState.TxOpBecomeCandidate {
 			TX = tx
@@ -618,7 +618,7 @@ func TestAPIService_Subscribe(t *testing.T) {
 	err = seed.WaitUntilTailHeight(b.Height(), 10*time.Second)
 	require.NoError(t, err)
 
-	tx := make([]*coreState.Transaction, blockutil.DynastySize)
+	tx := make([]*core.Transaction, blockutil.DynastySize)
 	payer := seed.Config.TokenDist[blockutil.DynastySize]
 	for i := 0; i < blockutil.DynastySize; i++ {
 		tx[i] = bb.Tx().Type(coreState.TxOpTransfer).To(payer.Addr).Value(1).Nonce(uint64(i + 2)).SignPair(payer).Build()

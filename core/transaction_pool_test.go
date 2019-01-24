@@ -74,7 +74,7 @@ func TestTransactionPoolEvict(t *testing.T) {
 	to := keyutil.NewAddrKeyPair(t)
 
 	tb := bb.Tx()
-	var txs []*coreState.Transaction
+	var txs []*Transaction
 	for i := 0; i < nTransaction; i++ {
 		tx := tb.Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(uint64(i + 1)).SignPair(from).Build()
 		txs = append(txs, tx)

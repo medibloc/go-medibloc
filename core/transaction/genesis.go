@@ -5,18 +5,17 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	"github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
 
 type GenesisTx struct {
-	*corestate.Transaction
+	*core.Transaction
 	hash []byte
 }
 
 var _ core.ExecutableTx = &GenesisTx{}
 
-func NewGenesisTx(tx *corestate.Transaction) (core.ExecutableTx, error) {
+func NewGenesisTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
@@ -50,14 +49,14 @@ func (tx *GenesisTx) RecoverFrom() (common.Address, error) {
 }
 
 type GenesisDistributionTx struct {
-	*corestate.Transaction
+	*core.Transaction
 	target  common.Address
 	balance *util.Uint128
 }
 
 var _ core.ExecutableTx = &GenesisDistributionTx{}
 
-func NewGenesisDistributionTx(tx *corestate.Transaction) (core.ExecutableTx, error) {
+func NewGenesisDistributionTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	return &GenesisDistributionTx{
 		Transaction: tx,
 		target:      tx.To(),

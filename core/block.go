@@ -20,7 +20,7 @@ import (
 	"math/big"
 
 	"github.com/medibloc/go-medibloc/common"
-	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -87,7 +87,7 @@ func (b *Block) InitChild(coinbase common.Address) (*Block, error) {
 				netPrice:     util.NewUint128(),
 				netUsage:     0,
 			},
-			transactions: make([]*corestate.Transaction, 0),
+			transactions: make([]*Transaction, 0),
 			height:       b.height + 1,
 		},
 		state:  bs,
@@ -180,7 +180,7 @@ var (
 )
 
 // ExecuteTransaction on given block state
-func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receipt, error) {
+func (b *Block) ExecuteTransaction(tx *Transaction) (*Receipt, error) {
 	// Verify that transaction is executable
 	exeTx, err := TxConv(tx)
 	if err != nil {
@@ -214,8 +214,8 @@ func (b *Block) ExecuteTransaction(tx *corestate.Transaction) (*corestate.Receip
 	return b.makeSuccessReceipt(exeTx.Bandwidth(), point), nil
 }
 
-func (b *Block) receiptTemplate(bw *common.Bandwidth, point *util.Uint128) *corestate.Receipt {
-	receipt := new(corestate.Receipt)
+func (b *Block) receiptTemplate(bw *common.Bandwidth, point *util.Uint128) *Receipt {
+	receipt := new(Receipt)
 	receipt.SetTimestamp(b.state.timestamp)
 	receipt.SetHeight(b.Height())
 	receipt.SetCPUUsage(bw.CPUUsage())
@@ -226,13 +226,13 @@ func (b *Block) receiptTemplate(bw *common.Bandwidth, point *util.Uint128) *core
 	return receipt
 }
 
-func (b *Block) makeErrorReceipt(bw *common.Bandwidth, point *util.Uint128, err error) *corestate.Receipt {
+func (b *Block) makeErrorReceipt(bw *common.Bandwidth, point *util.Uint128, err error) *Receipt {
 	receipt := b.receiptTemplate(bw, point)
 	receipt.SetError([]byte(err.Error()))
 	return receipt
 }
 
-func (b *Block) makeSuccessReceipt(bw *common.Bandwidth, point *util.Uint128) *corestate.Receipt {
+func (b *Block) makeSuccessReceipt(bw *common.Bandwidth, point *util.Uint128) *Receipt {
 	receipt := b.receiptTemplate(bw, point)
 	receipt.SetExecuted(true)
 	return receipt
@@ -241,7 +241,7 @@ func (b *Block) makeSuccessReceipt(bw *common.Bandwidth, point *util.Uint128) *c
 // TODO move to types.go
 var ErrNonceNotExecutable = errors.New("transaction nonce not executable")
 
-func (b *Block) checkNonce(tx *corestate.Transaction) error {
+func (b *Block) checkNonce(tx *Transaction) error {
 	from, err := b.state.GetAccount(tx.From())
 	if err != nil {
 		return err
@@ -272,7 +272,7 @@ func (b *Block) checkAvailablePoint(addr common.Address, exeTx ExecutableTx, poi
 	}
 
 	if modified.Cmp(point) < 0 {
-		return corestate.ErrPointNotEnough
+		return ErrPointNotEnough
 	}
 	return nil
 }
@@ -336,7 +336,7 @@ func (b *Block) executeAll() error {
 }
 
 // execute executes a transaction.
-func (b *Block) execute(tx *corestate.Transaction) error {
+func (b *Block) execute(tx *Transaction) error {
 	receipt, err := b.ExecuteTransaction(tx)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
@@ -389,7 +389,7 @@ func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
 	return nil
 }
 
-func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
+func (b *Block) AcceptTransaction(tx *Transaction) error {
 	if tx.Receipt() == nil {
 		return ErrNoTransactionReceipt
 	}
@@ -417,7 +417,7 @@ func (b *Block) AcceptTransaction(tx *corestate.Transaction) error {
 			"payer":        tx.Payer().Hex(),
 			"err":          err,
 		}).Warn("Points limit exceeded.")
-		return corestate.ErrPointNotEnough
+		return ErrPointNotEnough
 	}
 	if err != nil {
 		return err

@@ -6,8 +6,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
@@ -28,7 +27,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (conf *corepb.Genesis, dy
 
 	var dynasty []string
 	var tokenDist []*corepb.GenesisTokenDistribution
-	txs := make([]*corestate.Transaction, 0)
+	txs := make([]*core.Transaction, 0)
 
 	builder := New(t, dynastySize).Tx().
 		ChainID(ChainID)

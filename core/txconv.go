@@ -1,16 +1,12 @@
 package core
 
-import (
-	corestate "github.com/medibloc/go-medibloc/core/state"
-)
-
 var txMapper TxMapper
 
 // TxMap is a map for transaction to executable tx.
-type TxMapper map[string]func(tx *corestate.Transaction) (ExecutableTx, error)
+type TxMapper map[string]func(tx *Transaction) (ExecutableTx, error)
 
 // Executable converts transaction to executable tx.
-func (m TxMapper) Executable(tx *corestate.Transaction) (ExecutableTx, error) {
+func (m TxMapper) Executable(tx *Transaction) (ExecutableTx, error) {
 	constructor, ok := m[tx.TxType()]
 	if !ok {
 		return nil, ErrTxTypeInvalid
@@ -24,6 +20,6 @@ func InjectTxMapper(mapper TxMapper) {
 }
 
 // TxConv returns executable tx.
-func TxConv(tx *corestate.Transaction) (ExecutableTx, error) {
+func TxConv(tx *Transaction) (ExecutableTx, error) {
 	return txMapper.Executable(tx)
 }

@@ -118,6 +118,20 @@ var (
 	ErrNotGenesisBlock                 = errors.New("block is not genesis")
 )
 
+var (
+	ErrStakingNotEnough             = errors.New("staking is not enough")
+	ErrPointNotEnough               = errors.New("points are not enough")
+	ErrCannotConvertReceipt         = errors.New("proto message cannot be converted into Receipt")
+	ErrInvalidReceiptToProto        = errors.New("receipt cannot be converted into proto")
+	ErrCannotConvertTransaction     = errors.New("proto message cannot be converted into Transaction")
+	ErrTransactionSignatureNotExist = errors.New("signature does not exist in the tx")
+	ErrPayerSignatureNotExist       = errors.New("payer signature does not exist in the tx")
+	ErrInvalidTransactionHash       = errors.New("invalid transaction hash")
+	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
+	ErrInvalidTxChainID             = errors.New("invalid transaction chainID")
+	ErrGenesisSignShouldNotExist    = errors.New("genesis sign should not exist")
+)
+
 // HashableBlock is an interface that can get its own or parent's hash.
 type HashableBlock interface {
 	Hash() []byte

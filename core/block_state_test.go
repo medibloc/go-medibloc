@@ -141,7 +141,7 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 	from := bb.TokenDist[blockutil.DynastySize]
 
 	bb.Tx().StakeTx(from, 100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpUnstake).Value(100).SignPair(from).ExecuteErr(coreState.ErrStakingNotEnough).
+		Tx().Type(coreState.TxOpUnstake).Value(100).SignPair(from).ExecuteErr(ErrStakingNotEnough).
 		Tx().Type(coreState.TxOpUnstake).Value(40).SignPair(from).Execute().
 		Expect().
 		Unstaking(from.Addr, 40).

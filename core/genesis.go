@@ -20,9 +20,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/logging"
@@ -179,7 +177,7 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Stor
 	genesisBlock.State().supply = supply
 
 	for _, pbTx := range conf.Transactions {
-		tx := new(coreState.Transaction)
+		tx := new(Transaction)
 		if err := tx.FromProto(pbTx); err != nil {
 			return nil, err
 		}

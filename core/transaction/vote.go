@@ -6,7 +6,6 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
 
@@ -35,7 +34,7 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 
 // VoteTx is a structure for voting
 type VoteTx struct {
-	*coreState.Transaction
+	*core.Transaction
 	voter        common.Address
 	candidateIDs [][]byte
 	size         int
@@ -44,7 +43,7 @@ type VoteTx struct {
 var _ core.ExecutableTx = &VoteTx{}
 
 // NewVoteTx returns VoteTx
-func NewVoteTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
+func NewVoteTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}

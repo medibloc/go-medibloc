@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/medibloc/go-medibloc/common"
-	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
 
@@ -48,7 +47,7 @@ func (b *BlockTestWrap) SetHeight(height uint64) {
 }
 
 // SetTransactions sets transactions TO BE REMOVED: For test without block pool
-func (b *BlockTestWrap) SetTransactions(txs []*corestate.Transaction) error {
+func (b *BlockTestWrap) SetTransactions(txs []*Transaction) error {
 	b.transactions = txs
 	return nil
 }

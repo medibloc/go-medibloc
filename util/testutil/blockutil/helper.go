@@ -19,8 +19,6 @@ import (
 	"math/big"
 	"testing"
 
-	coreState "github.com/medibloc/go-medibloc/core/state"
-	transaction "github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 
 	"github.com/medibloc/go-medibloc/core"
@@ -44,11 +42,11 @@ func signer(t *testing.T, key signature.PrivateKey) signature.Signature {
 }
 
 // Points returns bandwidth usage of a transaction.
-func Points(t *testing.T, tx *coreState.Transaction, b *core.Block) *util.Uint128 {
-	execTx, err := transaction.NewExecutableTx(tx)
+func Points(t *testing.T, tx *core.Transaction, b *core.Block) *util.Uint128 {
+	execTx, err := core.TxConv(tx)
 	require.NoError(t, err)
 
-	points, err := execTx.CalcPoints(b.State().Price())
+	points, err := execTx.Bandwidth().CalcPoints(b.State().Price())
 	require.NoError(t, err)
 
 	return points

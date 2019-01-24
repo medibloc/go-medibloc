@@ -4,8 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/proto"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
-	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/crypto/signature/algorithm"
@@ -16,7 +15,7 @@ import (
 // BlockData represents a block
 type BlockData struct {
 	*BlockHeader
-	transactions []*corestate.Transaction
+	transactions []*Transaction
 	height       uint64
 }
 
@@ -56,9 +55,9 @@ func (bd *BlockData) FromProto(msg proto.Message) error {
 			return err
 		}
 
-		bd.transactions = make([]*corestate.Transaction, len(msg.Transactions))
+		bd.transactions = make([]*Transaction, len(msg.Transactions))
 		for idx, v := range msg.Transactions {
-			tx := new(corestate.Transaction)
+			tx := new(Transaction)
 			if err := tx.FromProto(v); err != nil {
 				return err
 			}
@@ -111,12 +110,12 @@ func (bd *BlockData) Height() uint64 {
 }
 
 // Transactions returns txs in block
-func (bd *BlockData) Transactions() []*corestate.Transaction {
+func (bd *BlockData) Transactions() []*Transaction {
 	return bd.transactions
 }
 
 // AppendTransaction append transaction to block data (only use on making block)
-func (bd *BlockData) AppendTransaction(tx *corestate.Transaction) {
+func (bd *BlockData) AppendTransaction(tx *Transaction) {
 	bd.transactions = append(bd.transactions, tx)
 }
 
