@@ -39,7 +39,7 @@ import (
 )
 
 func init() {
-	core.InjectTxFactory(transaction.DefaultTxMap)
+	core.InjectTxMapper(transaction.DefaultTxMap)
 }
 
 var (

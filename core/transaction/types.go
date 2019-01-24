@@ -28,7 +28,7 @@ const (
 )
 
 // DefaultTxMap is default map of transactions.
-var DefaultTxMap = core.MapTxFactory{
+var DefaultTxMap = core.TxMapper{
 	TxOpTransfer:            NewTransferTx,
 	TxOpAddRecord:           NewAddRecordTx,
 	TxOpStake:               NewStakeTx,
