@@ -8,7 +8,13 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
-// transaction types
+// genesis transaction types
+const (
+	TxOpGenesis             = "genesis"
+	TxOpGenesisDistribution = "genesis_distribution"
+)
+
+// core transaction types
 const (
 	TxOpTransfer            = "transfer"
 	TxOpAddRecord           = "add_record"
@@ -20,7 +26,7 @@ const (
 	TxOpDeregisterAlias     = "deregister_alias"
 )
 
-// Transaction's related to dpos
+// dpos transaction types
 const (
 	TxOpBecomeCandidate = "become_candidate"
 	TxOpQuitCandidacy   = "quit_candidacy"
@@ -29,6 +35,9 @@ const (
 
 // DefaultTxMap is default map of transactions.
 var DefaultTxMap = core.TxMapper{
+	TxOpGenesis:             NewGenesisTx,
+	TxOpGenesisDistribution: NewGenesisDistributionTx,
+
 	TxOpTransfer:            NewTransferTx,
 	TxOpAddRecord:           NewAddRecordTx,
 	TxOpStake:               NewStakeTx,
