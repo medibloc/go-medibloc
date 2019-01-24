@@ -302,7 +302,7 @@ func (t *Transaction) recoverPayer() (common.Address, error) {
 	}
 	logging.Console().WithFields(logrus.Fields{
 		"payer": payer.Hex(),
-	}).Info("Secondary sign exist")
+	}).Debug("Secondary sign exist")
 	return payer, nil
 }
 
