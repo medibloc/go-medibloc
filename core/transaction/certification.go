@@ -4,7 +4,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -41,6 +41,7 @@ func (payload *AddCertificationPayload) ToBytes() ([]byte, error) {
 
 // AddCertificationTx is a structure for adding certification
 type AddCertificationTx struct {
+	*coreState.Transaction
 	Issuer          common.Address
 	Certified       common.Address
 	CertificateHash []byte
@@ -72,6 +73,7 @@ func NewAddCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, error)
 	}
 
 	return &AddCertificationTx{
+		Transaction:     tx,
 		Issuer:          tx.From(),
 		Certified:       tx.To(),
 		CertificateHash: payload.CertificateHash,
@@ -154,6 +156,10 @@ func (tx *AddCertificationTx) PointModifier(points *util.Uint128) (modifiedPoint
 	return points, nil
 }
 
+func (tx *AddCertificationTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
+}
+
 // RevokeCertificationPayload is payload type for RevokeCertificationTx
 type RevokeCertificationPayload struct {
 	CertificateHash []byte
@@ -179,6 +185,7 @@ func (payload *RevokeCertificationPayload) ToBytes() ([]byte, error) {
 
 // RevokeCertificationTx is a structure for revoking certification
 type RevokeCertificationTx struct {
+	*coreState.Transaction
 	Revoker         common.Address
 	CertificateHash []byte
 	size            int
@@ -207,6 +214,7 @@ func NewRevokeCertificationTx(tx *coreState.Transaction) (core.ExecutableTx, err
 	}
 
 	return &RevokeCertificationTx{
+		Transaction:     tx,
 		Revoker:         tx.From(),
 		CertificateHash: payload.CertificateHash,
 		size:            size,
@@ -277,4 +285,8 @@ func (tx *RevokeCertificationTx) Bandwidth() *common.Bandwidth {
 
 func (tx *RevokeCertificationTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *RevokeCertificationTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }

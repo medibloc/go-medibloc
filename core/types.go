@@ -120,6 +120,7 @@ var (
 	ErrInvalidBlock                    = errors.New("invalid block")
 	ErrSameDynasty                     = errors.New("new block is in same dynasty with parent block")
 	ErrTxTypeInvalid                   = errors.New("invalid transaction type")
+	ErrNotGenesisBlock                 = errors.New("block is not genesis")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -143,7 +144,7 @@ type Consensus interface {
 	FindMintProposer(ts int64, parent *Block) (common.Address, error)
 }
 
-//SyncService interface for sync
+// SyncService interface for sync
 type SyncService interface {
 	Download(bd *BlockData) error
 	IsDownloadActivated() bool
@@ -158,4 +159,5 @@ type ExecutableTx interface {
 	Execute(b *Block) error
 	Bandwidth() *common.Bandwidth
 	PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error)
+	RecoverFrom() (common.Address, error)
 }

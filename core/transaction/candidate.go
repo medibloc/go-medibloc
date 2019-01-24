@@ -19,7 +19,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
@@ -51,6 +51,7 @@ func (payload *BecomeCandidatePayload) ToBytes() ([]byte, error) {
 
 // BecomeCandidateTx is a structure for quiting cadidate
 type BecomeCandidateTx struct {
+	*coreState.Transaction
 	txHash        []byte
 	candidateAddr common.Address
 	collateral    *util.Uint128
@@ -75,6 +76,7 @@ func NewBecomeCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) 
 	}
 
 	return &BecomeCandidateTx{
+		Transaction:   tx,
 		txHash:        tx.Hash(),
 		candidateAddr: tx.From(),
 		collateral:    tx.Value(),
@@ -145,8 +147,13 @@ func (tx *BecomeCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints
 	return points, nil
 }
 
+func (tx *BecomeCandidateTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
+}
+
 // QuitCandidateTx is a structure for quiting candidate
 type QuitCandidateTx struct {
+	*coreState.Transaction
 	candidateAddr common.Address
 	size          int
 }
@@ -167,6 +174,7 @@ func NewQuitCandidateTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &QuitCandidateTx{
+		Transaction:   tx,
 		candidateAddr: tx.From(),
 		size:          size,
 	}, nil
@@ -219,4 +227,8 @@ func (tx *QuitCandidateTx) Bandwidth() *common.Bandwidth {
 // PointModifier returns modifier
 func (tx *QuitCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *QuitCandidateTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }

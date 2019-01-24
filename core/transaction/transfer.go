@@ -4,7 +4,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -34,6 +34,7 @@ func (payload *DefaultPayload) ToBytes() ([]byte, error) {
 
 // TransferTx is a structure for sending MED
 type TransferTx struct {
+	*coreState.Transaction
 	from    common.Address
 	to      common.Address
 	value   *util.Uint128
@@ -64,11 +65,12 @@ func NewTransferTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &TransferTx{
-		from:    tx.From(),
-		to:      tx.To(),
-		value:   tx.Value(),
-		payload: payload,
-		size:    size,
+		Transaction: tx,
+		from:        tx.From(),
+		to:          tx.To(),
+		value:       tx.Value(),
+		payload:     payload,
+		size:        size,
 	}, nil
 
 }
@@ -115,4 +117,8 @@ func (tx *TransferTx) Bandwidth() *common.Bandwidth {
 
 func (tx *TransferTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *TransferTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }

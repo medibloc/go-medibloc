@@ -4,7 +4,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -35,6 +35,7 @@ func (payload *AddRecordPayload) ToBytes() ([]byte, error) {
 
 // AddRecordTx is a structure for adding record
 type AddRecordTx struct {
+	*coreState.Transaction
 	owner      common.Address
 	recordHash []byte
 	size       int
@@ -63,9 +64,10 @@ func NewAddRecordTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &AddRecordTx{
-		owner:      tx.From(),
-		recordHash: payload.RecordHash,
-		size:       size,
+		Transaction: tx,
+		owner:       tx.From(),
+		recordHash:  payload.RecordHash,
+		size:        size,
 	}, nil
 }
 
@@ -108,4 +110,8 @@ func (tx *AddRecordTx) Bandwidth() *common.Bandwidth {
 
 func (tx *AddRecordTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *AddRecordTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }

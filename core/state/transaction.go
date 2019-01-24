@@ -20,6 +20,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
+	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/crypto"
 	"github.com/medibloc/go-medibloc/crypto/hash"
@@ -48,6 +49,34 @@ type Transaction struct {
 
 	from  common.Address
 	payer common.Address
+}
+
+type TransactionTemplateParam struct {
+	TxType  string
+	To      common.Address
+	Value   *util.Uint128
+	Nonce   uint64
+	ChainID uint32
+	Payload []byte
+	From    common.Address
+	Payer   common.Address
+}
+
+func NewTransactionTemplate(param *TransactionTemplateParam) *Transaction {
+	return &Transaction{
+		hash:      nil,
+		txType:    param.TxType,
+		to:        param.To,
+		value:     param.Value,
+		nonce:     param.Nonce,
+		chainID:   param.ChainID,
+		payload:   param.Payload,
+		sign:      nil,
+		payerSign: nil,
+		receipt:   nil,
+		from:      param.From,
+		payer:     param.Payer,
+	}
 }
 
 // Hash returns hash
@@ -179,7 +208,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.payerSign = pbTx.PayerSign
 	t.receipt = receipt
 
-	t.from, err = t.recoverSigner()
+	t.from, err = t.recoverFrom()
 	if err == ErrTransactionSignatureNotExist {
 		t.from = common.Address{}
 	} else if err != nil {
@@ -329,7 +358,7 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 		return ErrInvalidTxChainID
 	}
 
-	t.from, err = t.recoverSigner()
+	t.from, err = t.recoverFrom()
 	if err != nil {
 		return err
 	}
@@ -350,22 +379,13 @@ func (t *Transaction) VerifyIntegrity(chainID uint32) error {
 	return nil
 }
 
-func (t *Transaction) recoverSigner() (common.Address, error) {
-	if t.sign == nil || len(t.sign) == 0 {
-		return common.Address{}, ErrTransactionSignatureNotExist
-	}
-
-	sig, err := crypto.NewSignature(algorithm.SECP256K1)
+func (t *Transaction) recoverFrom() (common.Address, error) {
+	exeTx, err := core.TxConv(t)
 	if err != nil {
 		return common.Address{}, err
 	}
 
-	pubKey, err := sig.RecoverPublic(t.hash, t.sign)
-	if err != nil {
-		return common.Address{}, err
-	}
-
-	return common.PublicKeyToAddress(pubKey)
+	return exeTx.RecoverFrom()
 }
 
 // String returns string representation of tx

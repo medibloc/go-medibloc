@@ -4,7 +4,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/core"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
@@ -35,6 +35,7 @@ func (payload *VotePayload) ToBytes() ([]byte, error) {
 
 // VoteTx is a structure for voting
 type VoteTx struct {
+	*coreState.Transaction
 	voter        common.Address
 	candidateIDs [][]byte
 	size         int
@@ -60,6 +61,7 @@ func NewVoteTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &VoteTx{
+		Transaction:  tx,
 		voter:        tx.From(),
 		candidateIDs: payload.CandidateIDs,
 		size:         size,
@@ -169,4 +171,8 @@ func (tx *VoteTx) Bandwidth() *common.Bandwidth {
 
 func (tx *VoteTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *VoteTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }

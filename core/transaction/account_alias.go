@@ -6,7 +6,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -36,6 +36,7 @@ func (payload *RegisterAliasPayload) ToBytes() ([]byte, error) {
 
 // RegisterAliasTx is a structure for register alias
 type RegisterAliasTx struct {
+	*coreState.Transaction
 	addr       common.Address
 	collateral *util.Uint128
 	alias      string
@@ -65,10 +66,11 @@ func NewRegisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &RegisterAliasTx{
-		addr:       tx.From(),
-		alias:      payload.AliasName,
-		collateral: tx.Value(),
-		size:       size,
+		Transaction: tx,
+		addr:        tx.From(),
+		alias:       payload.AliasName,
+		collateral:  tx.Value(),
+		size:        size,
 	}, nil
 }
 
@@ -143,8 +145,13 @@ func (tx *RegisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *
 	return points, nil
 }
 
+func (tx *RegisterAliasTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
+}
+
 // DeregisterAliasTx is a structure for deregister alias
 type DeregisterAliasTx struct {
+	*coreState.Transaction
 	addr common.Address
 	size int
 }
@@ -165,8 +172,9 @@ func NewDeregisterAliasTx(tx *coreState.Transaction) (core.ExecutableTx, error) 
 	}
 
 	return &DeregisterAliasTx{
-		addr: tx.From(),
-		size: size,
+		Transaction: tx,
+		addr:        tx.From(),
+		size:        size,
 	}, nil
 }
 
@@ -222,6 +230,10 @@ func (tx *DeregisterAliasTx) Bandwidth() *common.Bandwidth {
 // PointModifier returns modifier
 func (tx *DeregisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *DeregisterAliasTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }
 
 // ValidateAlias checks alias

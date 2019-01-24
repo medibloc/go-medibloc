@@ -12,6 +12,7 @@ import (
 
 // StakeTx is a structure for staking med
 type StakeTx struct {
+	*coreState.Transaction
 	user   common.Address
 	amount *util.Uint128
 	size   int
@@ -36,9 +37,10 @@ func NewStakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &StakeTx{
-		user:   tx.From(),
-		amount: tx.Value(),
-		size:   size,
+		Transaction: tx,
+		user:        tx.From(),
+		amount:      tx.Value(),
+		size:        size,
 	}, nil
 }
 
@@ -93,8 +95,13 @@ func (tx *StakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uin
 	return points.Add(tx.amount)
 }
 
+func (tx *StakeTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
+}
+
 // UnstakeTx is a structure for unstaking med
 type UnstakeTx struct {
+	*coreState.Transaction
 	user   common.Address
 	amount *util.Uint128
 	size   int
@@ -116,9 +123,10 @@ func NewUnstakeTx(tx *coreState.Transaction) (core.ExecutableTx, error) {
 	}
 
 	return &UnstakeTx{
-		user:   tx.From(),
-		amount: tx.Value(),
-		size:   size,
+		Transaction: tx,
+		user:        tx.From(),
+		amount:      tx.Value(),
+		size:        size,
 	}, nil
 }
 
@@ -182,4 +190,8 @@ func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 
 func (tx *UnstakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points.Sub(tx.amount)
+}
+
+func (tx *UnstakeTx) RecoverFrom() (common.Address, error) {
+	return recoverSigner(tx.Transaction)
 }
