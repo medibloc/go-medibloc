@@ -20,7 +20,7 @@ import (
 	"math/big"
 
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/core/state"
+	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"

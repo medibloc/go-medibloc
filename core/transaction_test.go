@@ -23,7 +23,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/testutil"
