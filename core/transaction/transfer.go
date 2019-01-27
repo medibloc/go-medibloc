@@ -68,7 +68,7 @@ func NewTransferTx(tx *core.Transaction) (core.ExecutableTx, error) {
 		from:        tx.From(),
 		to:          tx.To(),
 		value:       tx.Value(),
-		payload:     payload,
+		payload:     payload, // TODO not used
 		size:        size,
 	}, nil
 
