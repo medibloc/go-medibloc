@@ -30,21 +30,18 @@ import (
 var (
 	// GenesisParentHash is hash of genesis block's parent hash
 	GenesisParentHash = make([]byte, common.HashLength)
+
 	// GenesisTimestamp is timestamp of genesis block
 	GenesisTimestamp = int64(0)
+
 	// GenesisCoinbase coinbase address of genesis block
-	//GenesisCoinbase = common.HexToAddress("02fc22ea22d02fc2469f5ec8fab44bc3de42dda2bf9ebc0c0055a9eb7df579056c")
 	GenesisCoinbase, _ = common.HexToAddress("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+	// TODO Add trie's key prefix of address
+	//GenesisCoinbase, _ = common.HexToAddress("000000000000000000000000000000000000000000000000000000000000000000")
+
 	// GenesisHeight is height of genesis block
 	GenesisHeight = uint64(1)
 )
-
-// genesisTxReceipt is a receipt for genesis transaction
-func genesisTxReceipt() *coreState.Receipt {
-	receipt := coreState.NewReceipt()
-	receipt.SetExecuted(true)
-	return receipt
-}
 
 // LoadGenesisConf loads genesis conf file
 func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
@@ -61,155 +58,200 @@ func LoadGenesisConf(filePath string) (*corepb.Genesis, error) {
 	return genesis, nil
 }
 
-// NewGenesisBlock generates genesis block
-func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, sto storage.Storage) (*Block, error) {
-	if conf == nil {
-		return nil, ErrNilArgument
-	}
-	blockState, err := newStates(consensus, sto)
-	if err != nil {
-		return nil, err
-	}
-	blockState.SetTimestamp(GenesisTimestamp)
-
-	genesisBlock := &Block{
-		BlockData: &BlockData{
-			BlockHeader: &BlockHeader{
-				parentHash: GenesisParentHash,
-				chainID:    conf.Meta.ChainId,
-				coinbase:   GenesisCoinbase,
-				reward:     util.NewUint128FromUint(0),
-				cpuPrice:   util.NewUint128FromUint(0),
-				cpuUsage:   0,
-				netPrice:   util.NewUint128FromUint(0),
-				netUsage:   0,
-			},
-			transactions: make([]*coreState.Transaction, 0),
-			height:       GenesisHeight,
+func genesisTemplate(chainID uint32, consensus Consensus, stor storage.Storage) (*Block, error) {
+	bd := &BlockData{
+		BlockHeader: &BlockHeader{
+			hash:         nil,
+			parentHash:   GenesisParentHash,
+			accStateRoot: nil,
+			txStateRoot:  nil,
+			dposRoot:     nil,
+			coinbase:     GenesisCoinbase,
+			reward:       util.NewUint128(),
+			supply:       util.NewUint128(),
+			timestamp:    GenesisTimestamp,
+			chainID:      chainID,
+			sign:         nil,
+			cpuPrice:     util.NewUint128(),
+			cpuUsage:     0,
+			netPrice:     util.NewUint128(),
+			netUsage:     0,
 		},
-		state:  blockState,
-		sealed: false,
-	}
-	if err := genesisBlock.Prepare(); err != nil {
-		return nil, err
-	}
-	if err := genesisBlock.BeginBatch(); err != nil {
-		return nil, err
+		transactions: nil,
+		height:       GenesisHeight,
 	}
 
-	initialMessage := "Genesis block of MediBloc"
-	payload := &transaction.DefaultPayload{
-		Message: initialMessage,
-	}
-	payloadBuf, err := payload.ToBytes()
+	bs, err := NewBlockState(bd, consensus, stor)
 	if err != nil {
 		return nil, err
 	}
 
-	initialTx := new(coreState.Transaction)
-	initialTx.SetTxType(TxTyGenesis)
-	initialTx.SetTo(GenesisCoinbase)
-	initialTx.SetValue(util.Uint128Zero())
-	initialTx.SetChainID(conf.Meta.ChainId)
-	initialTx.SetPayload(payloadBuf)
-	initialTx.SetReceipt(genesisTxReceipt())
+	return &Block{
+		BlockData: bd,
+		state:     bs,
+		sealed:    false,
+	}, nil
+}
 
-	txHash, err := initialTx.CalcHash()
+// TODO config verification, tx.verifyIntegrity, height, timestamp, chainid, ...
+// NewGenesisBlock generates genesis block
+func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, stor storage.Storage) (*Block, error) {
+	genesis, err := genesisTemplate(conf.Meta.ChainId, consensus, stor)
 	if err != nil {
 		return nil, err
 	}
-	initialTx.SetHash(txHash)
 
-	// Genesis transactions do not consume bandwidth(only put in txState)
-	if err := genesisBlock.State().PutTx(initialTx); err != nil {
+	if err := genesis.Prepare(); err != nil {
 		return nil, err
 	}
-	genesisBlock.AppendTransaction(initialTx) // append on block header
-
-	// Token distribution
-	supply := util.NewUint128()
-	for _, dist := range conf.TokenDistribution {
-		addr, err := common.HexToAddress(dist.Address)
-		if err != nil {
-			return nil, err
-		}
-		acc, err := genesisBlock.State().GetAccount(addr)
-		if err != nil {
-			return nil, err
-		}
-		balance, err := util.NewUint128FromString(dist.Balance)
-		if err != nil {
-			if err := genesisBlock.RollBack(); err != nil {
-				return nil, err
-			}
-			return nil, err
-		}
-
-		acc.Balance = balance
-		supply, err = supply.Add(balance)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := genesisBlock.State().PutAccount(acc); err != nil {
-			return nil, err
-		}
-
-		tx := new(coreState.Transaction)
-		tx.SetTxType(TxTyGenesis)
-		tx.SetTo(addr)
-		tx.SetValue(acc.Balance)
-		tx.SetChainID(conf.Meta.ChainId)
-		tx.SetReceipt(genesisTxReceipt())
-		txHash, err = tx.CalcHash()
-		if err != nil {
-			return nil, err
-		}
-		tx.SetHash(txHash)
-
-		// Genesis transactions do not consume bandwidth(only put in txState)
-		if err := genesisBlock.State().txState.Put(tx); err != nil {
-			return nil, err
-		}
-		genesisBlock.AppendTransaction(tx) // append on block header
-
-	}
-	genesisBlock.State().supply = supply
 
 	for _, pbTx := range conf.Transactions {
 		tx := new(Transaction)
 		if err := tx.FromProto(pbTx); err != nil {
 			return nil, err
 		}
-		exeTx, err := transaction.NewExecutableTx(tx)
-		if err != nil {
-			return nil, err
-		}
-		receipt, err := genesisBlock.ExecuteTransaction(exeTx)
+		receipt, err := genesis.ExecuteTransaction(tx)
 		if err != nil {
 			return nil, err
 		}
 		tx.SetReceipt(receipt)
-
-		if err = genesisBlock.AcceptTransaction(tx); err != nil {
+		if err = genesis.AcceptTransaction(tx); err != nil {
 			return nil, err
 		}
-		genesisBlock.AppendTransaction(tx) // append on block header
+		genesis.AppendTransaction(tx)
 	}
 
-	if err := genesisBlock.Commit(); err != nil {
-		return nil, err
-	}
-	if err := genesisBlock.Flush(); err != nil {
+	if err := genesis.Flush(); err != nil {
 		return nil, err
 	}
 
-	if err := genesisBlock.Seal(); err != nil {
-		return nil, err
-	}
-
-	return genesisBlock, nil
+	return genesis, nil
 }
+
+// // NewGenesisBlock generates genesis block
+// func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, stor storage.Storage) (*Block, error) {
+// 	if conf == nil {
+// 		return nil, ErrNilArgument
+// 	}
+//
+// 	genesis, err := genesisTemplate(conf, consensus, stor)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	if err := genesis.Prepare(); err != nil {
+// 		return nil, err
+// 	}
+//
+// 	// initialMessage := "Genesis block of MediBloc"
+// 	// payload := &transaction.DefaultPayload{
+// 	// 	Message: initialMessage,
+// 	// }
+// 	// payloadBuf, err := payload.ToBytes()
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+//
+// 	initialTx := new(coreState.Transaction)
+// 	// initialTx.SetTxType(TxTyGenesis)
+// 	// initialTx.SetTo(GenesisCoinbase)
+// 	// initialTx.SetValue(util.Uint128Zero())
+// 	// initialTx.SetChainID(conf.Meta.ChainId)
+// 	// initialTx.SetPayload(payloadBuf)
+// 	// initialTx.SetReceipt(genesisTxReceipt())
+//
+// 	// txHash, err := initialTx.CalcHash()
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
+// 	// initialTx.SetHash(txHash)
+//
+// 	// Genesis transactions do not consume bandwidth(only put in txState)
+// 	if err := genesis.State().PutTx(initialTx); err != nil {
+// 		return nil, err
+// 	}
+// 	genesis.AppendTransaction(initialTx) // append on block header
+//
+// 	// Token distribution
+// 	supply := util.NewUint128()
+// 	for _, dist := range conf.TokenDistribution {
+// 		addr, err := common.HexToAddress(dist.Address)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		acc, err := genesis.State().GetAccount(addr)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		balance, err := util.NewUint128FromString(dist.Balance)
+// 		if err != nil {
+// 			if err := genesis.RollBack(); err != nil {
+// 				return nil, err
+// 			}
+// 			return nil, err
+// 		}
+//
+// 		acc.Balance = balance
+// 		supply, err = supply.Add(balance)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+//
+// 		if err := genesis.State().PutAccount(acc); err != nil {
+// 			return nil, err
+// 		}
+//
+// 		tx := new(coreState.Transaction)
+// 		// tx.SetTxType(TxTyGenesis)
+// 		// tx.SetTo(addr)
+// 		// tx.SetValue(acc.Balance)
+// 		// tx.SetChainID(conf.Meta.ChainId)
+// 		// tx.SetReceipt(genesisTxReceipt())
+// 		// txHash, err := tx.CalcHash()
+// 		// if err != nil {
+// 		// 	return nil, err
+// 		// }
+// 		// tx.SetHash(txHash)
+//
+// 		// Genesis transactions do not consume bandwidth(only put in txState)
+// 		if err := genesis.State().txState.Put(tx); err != nil {
+// 			return nil, err
+// 		}
+// 		genesis.AppendTransaction(tx) // append on block header
+//
+// 	}
+// 	genesis.State().supply = supply
+//
+// 	for _, pbTx := range conf.Transactions {
+// 		tx := new(coreState.Transaction)
+// 		if err := tx.FromProto(pbTx); err != nil {
+// 			return nil, err
+// 		}
+// 		receipt, err := genesis.ExecuteTransaction(tx)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		tx.SetReceipt(receipt)
+//
+// 		if err = genesis.AcceptTransaction(tx); err != nil {
+// 			return nil, err
+// 		}
+// 		genesis.AppendTransaction(tx) // append on block header
+// 	}
+//
+// 	if err := genesis.Commit(); err != nil {
+// 		return nil, err
+// 	}
+// 	if err := genesis.Flush(); err != nil {
+// 		return nil, err
+// 	}
+//
+// 	if err := genesis.Seal(); err != nil {
+// 		return nil, err
+// 	}
+//
+// 	return genesis, nil
+// }
 
 // CheckGenesisBlock checks if a block is genesis block
 func CheckGenesisBlock(block *Block) bool {
