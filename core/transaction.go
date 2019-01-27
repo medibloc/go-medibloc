@@ -42,8 +42,6 @@ type TransactionTemplateParam struct {
 	Nonce   uint64
 	ChainID uint32
 	Payload []byte
-	From    common.Address
-	Payer   common.Address
 }
 
 func NewTransactionTemplate(param *TransactionTemplateParam) *Transaction {
@@ -58,8 +56,8 @@ func NewTransactionTemplate(param *TransactionTemplateParam) *Transaction {
 		sign:      nil,
 		payerSign: nil,
 		receipt:   nil,
-		from:      param.From,
-		payer:     param.Payer,
+		from:      common.Address{},
+		payer:     common.Address{},
 	}
 }
 
@@ -273,6 +271,17 @@ func (t *Transaction) SignThis(key signature.PrivateKey) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (t *Transaction) SignGenesis() error {
+	var err error
+	t.from = common.Address{}
+	t.hash, err = t.CalcHash()
+	if err != nil {
+		return err
+	}
+	t.sign = nil
 	return nil
 }
 

@@ -19,6 +19,10 @@ func NewGenesisTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
 	}
+	payload := new(DefaultPayload)
+	if err := BytesToTransactionPayload(tx.Payload(), payload); err != nil {
+		return nil, err
+	}
 	return &GenesisTx{
 		Transaction: tx,
 		hash:        tx.Hash(),
@@ -72,6 +76,10 @@ func (tx *GenesisDistributionTx) Execute(b *core.Block) error {
 	if err != nil {
 		return err
 	}
+	if acc.Balance.Cmp(util.Uint128Zero()) != 0 {
+		return core.ErrGenesisDistributionAllowedOnce
+	}
+
 	acc.Balance, err = acc.Balance.Add(tx.balance)
 	if err != nil {
 		return err

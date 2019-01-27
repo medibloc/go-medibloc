@@ -115,7 +115,6 @@ var (
 	ErrInvalidBlock                    = errors.New("invalid block")
 	ErrSameDynasty                     = errors.New("new block is in same dynasty with parent block")
 	ErrTxTypeInvalid                   = errors.New("invalid transaction type")
-	ErrNotGenesisBlock                 = errors.New("block is not genesis")
 )
 
 var (
@@ -130,6 +129,11 @@ var (
 	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
 	ErrInvalidTxChainID             = errors.New("invalid transaction chainID")
 	ErrGenesisSignShouldNotExist    = errors.New("genesis sign should not exist")
+)
+
+var (
+	ErrNotGenesisBlock                = errors.New("block is not genesis")
+	ErrGenesisDistributionAllowedOnce = errors.New("genesis Distribution is allowed once per account")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
