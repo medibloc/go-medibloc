@@ -125,6 +125,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, stor storage.Sto
 		return nil, err
 	}
 
+	if err := genesis.Seal(); err != nil {
+		return nil, err
+	}
+
 	return genesis, nil
 }
 
@@ -271,22 +275,22 @@ func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
 		return false
 	}
 
-	accounts, err := block.State().accState.Accounts()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get accounts from genesis block.")
-		return false
-	}
+	// accounts, err := block.State().accState.Accounts()
+	// if err != nil {
+	// 	logging.Console().WithFields(logrus.Fields{
+	// 		"err": err,
+	// 	}).Error("Failed to get accounts from genesis block.")
+	// 	return false
+	// }
 
-	tokenDist := genesis.GetTokenDistribution()
-	if len(accounts) != len(tokenDist) {
-		logging.Console().WithFields(logrus.Fields{
-			"accountCount": len(accounts),
-			"tokenCount":   len(tokenDist),
-		}).Error("Size of token distribution accounts does not match.")
-		return false
-	}
+	// tokenDist := genesis.GetTokenDistribution()
+	// if len(accounts) != len(tokenDist) {
+	// 	logging.Console().WithFields(logrus.Fields{
+	// 		"accountCount": len(accounts),
+	// 		"tokenCount":   len(tokenDist),
+	// 	}).Error("Size of token distribution accounts does not match.")
+	// 	return false
+	// }
 
 	return true
 }

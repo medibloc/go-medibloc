@@ -1,8 +1,6 @@
 package transaction
 
 import (
-	"bytes"
-
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util"
@@ -31,10 +29,6 @@ func NewGenesisTx(tx *core.Transaction) (core.ExecutableTx, error) {
 
 func (tx *GenesisTx) Execute(b *core.Block) error {
 	if b.Height() != core.GenesisHeight {
-		return core.ErrNotGenesisBlock
-	}
-	firstInBlock := b.Transactions()[0]
-	if !bytes.Equal(tx.hash, firstInBlock.Hash()) {
 		return core.ErrNotGenesisBlock
 	}
 	return nil
