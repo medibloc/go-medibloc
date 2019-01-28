@@ -44,35 +44,6 @@ type BlockState struct {
 	dposState *dState.State
 }
 
-func newStates(consensus Consensus, stor storage.Storage) (*BlockState, error) {
-	accState, err := coreState.NewAccountState(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-
-	txState, err := NewTransactionState(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-
-	dposState, err := consensus.NewConsensusState(nil, stor)
-	if err != nil {
-		return nil, err
-	}
-
-	return &BlockState{
-		reward:    util.NewUint128(),
-		supply:    util.NewUint128(),
-		cpuPrice:  util.NewUint128(),
-		cpuUsage:  0,
-		netPrice:  util.NewUint128(),
-		netUsage:  0,
-		accState:  accState,
-		txState:   txState,
-		dposState: dposState,
-	}, nil
-}
-
 func NewBlockState(bd *BlockData, consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	accState, err := coreState.NewAccountState(bd.AccStateRoot(), stor)
 	if err != nil {
