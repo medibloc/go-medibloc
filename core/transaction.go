@@ -190,6 +190,7 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.payerSign = pbTx.PayerSign
 	t.receipt = receipt
 
+	// TODO fix error handling
 	t.from, err = t.recoverFrom()
 	if err == ErrTransactionSignatureNotExist {
 		t.from = common.Address{}
@@ -424,22 +425,6 @@ func (t *Transaction) TriggerAccEvent(e *event.Emitter, eType string) {
 		e.Trigger(ev)
 	}
 	return
-}
-
-// Clone clone transaction
-func (t *Transaction) Clone() (*Transaction, error) {
-	protoTx, err := t.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	newTx := new(Transaction)
-	err = newTx.FromProto(protoTx)
-	if err != nil {
-		return nil, err
-	}
-
-	newTx.from = t.from
-	return newTx, nil
 }
 
 // Size returns bytes size of transaction

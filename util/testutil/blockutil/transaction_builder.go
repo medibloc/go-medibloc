@@ -52,10 +52,8 @@ func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 
 func (tb *TxBuilder) copy() *TxBuilder {
 	var tx *core.TransactionTestWrap
-	var err error
 	if tb.tx != nil {
-		tx, err = tb.tx.Clone()
-		require.NoError(tb.t, err)
+		tx = tb.tx.Clone()
 	}
 	return &TxBuilder{
 		t:  tb.t,
