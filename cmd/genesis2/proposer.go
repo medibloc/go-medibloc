@@ -7,7 +7,10 @@ import (
 
 func ProposerOutput(cont Container) []byte {
 	proposers := make([]*medletpb.ProposerConfig, 0, len(cont.Secrets))
-	for _, s := range cont.Secrets {
+	for i, s := range cont.Secrets {
+		if i >= int(cont.Config.DynastySize) {
+			break
+		}
 		proposers = append(proposers, &medletpb.ProposerConfig{
 			Proposer: s.Public,
 			Privkey:  s.Private,
