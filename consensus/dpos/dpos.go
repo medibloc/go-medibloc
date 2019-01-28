@@ -57,8 +57,9 @@ type Dpos struct {
 // Proposer returns proposer
 type Proposer struct {
 	ProposerAddress common.Address
-	Privkey         signature.PrivateKey
 	Coinbase        common.Address
+
+	privkey signature.PrivateKey
 }
 
 // Proposers returns Proposers
@@ -129,7 +130,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 					return keystore.ErrFailedToDecrypt
 				}
 				p.ProposerAddress = key.Address
-				p.Privkey = key.PrivateKey
+				p.privkey = key.PrivateKey
 
 			} else {
 				var err error
@@ -137,7 +138,7 @@ func (d *Dpos) Setup(cfg *medletpb.Config, genesis *corepb.Genesis, bm *core.Blo
 				if err != nil {
 					return err
 				}
-				p.Privkey, err = secp256k1.NewPrivateKeyFromHex(pbProposer.Privkey)
+				p.privkey, err = secp256k1.NewPrivateKeyFromHex(pbProposer.Privkey)
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
 						"err": err,
@@ -317,7 +318,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 		}).Error("Failed to create new crypto signature.")
 		return err
 	}
-	sig.InitSign(p.Privkey)
+	sig.InitSign(p.privkey)
 
 	err = block.SignThis(sig)
 	if err != nil {
