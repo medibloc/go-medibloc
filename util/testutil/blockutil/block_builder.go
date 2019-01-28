@@ -94,8 +94,12 @@ func (bb *BlockBuilder) Genesis() *BlockBuilder {
 // Block sets block
 func (bb *BlockBuilder) Block(b *core.Block) *BlockBuilder {
 	n := bb.copy()
-	proposer, _ := b.Proposer()
-	// require.NoError(n.t, err)
+	proposer, err := b.Proposer()
+	if err == core.ErrBlockSignatureNotExist {
+		proposer = common.Address{}
+	} else {
+		require.NoError(n.t, err)
+	}
 
 	n.B = &core.BlockTestWrap{Block: b}
 	n.proposer = proposer
