@@ -99,14 +99,14 @@ func TestCheckGenesisBlock(t *testing.T) {
 	genesis, err := core.NewGenesisBlock(conf, consensus, stor)
 	require.NoError(t, err)
 
-	ok := core.CheckGenesisConf(genesis, conf)
+	ok := core.CheckGenesisConfig(conf, consensus, genesis)
 	require.True(t, ok)
 
 	modified := copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
 	modified.Meta.ChainId = 9898
-	require.False(t, core.CheckGenesisConf(genesis, modified))
+	require.False(t, core.CheckGenesisConfig(modified, consensus, genesis))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
 	modified.TokenDistribution = modified.TokenDistribution[1:]
-	require.False(t, core.CheckGenesisConf(genesis, modified))
+	require.False(t, core.CheckGenesisConfig(modified, consensus, genesis))
 }

@@ -16,15 +16,14 @@
 package core
 
 import (
+	"bytes"
 	"io/ioutil"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	corepb "github.com/medibloc/go-medibloc/core/pb"
+	"github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
-	"github.com/medibloc/go-medibloc/util/logging"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -132,32 +131,26 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, stor storage.Sto
 	return genesis, nil
 }
 
-// CheckGenesisConf checks if block and genesis configuration match
-func CheckGenesisConf(block *Block, genesis *corepb.Genesis) bool {
-	if block.ChainID() != genesis.GetMeta().ChainId {
-		logging.Console().WithFields(logrus.Fields{
-			"block":   block,
-			"genesis": genesis,
-		}).Error("Genesis ChainID does not match.")
+// CheckGenesisConfig checks if block and genesis configuration match
+func CheckGenesisConfig(conf *corepb.Genesis, consensus Consensus, block *Block) bool {
+	stor, err := storage.NewMemoryStorage()
+	if err != nil {
 		return false
 	}
-
-	// accounts, err := block.State().accState.Accounts()
-	// if err != nil {
-	// 	logging.Console().WithFields(logrus.Fields{
-	// 		"err": err,
-	// 	}).Error("Failed to get accounts from genesis block.")
-	// 	return false
-	// }
-
-	// tokenDist := genesis.GetTokenDistribution()
-	// if len(accounts) != len(tokenDist) {
-	// 	logging.Console().WithFields(logrus.Fields{
-	// 		"accountCount": len(accounts),
-	// 		"tokenCount":   len(tokenDist),
-	// 	}).Error("Size of token distribution accounts does not match.")
-	// 	return false
-	// }
-
+	genesisBlock, err := NewGenesisBlock(conf, consensus, stor)
+	if err != nil {
+		return false
+	}
+	genesisBytes, err := genesisBlock.ToBytes()
+	if err != nil {
+		return false
+	}
+	blockBytes, err := block.ToBytes()
+	if err != nil {
+		return false
+	}
+	if !bytes.Equal(genesisBytes, blockBytes) {
+		return false
+	}
 	return true
 }

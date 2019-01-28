@@ -124,7 +124,7 @@ func (bc *BlockChain) Setup(genesis *corepb.Genesis, consensus Consensus, stor s
 		}
 	}
 
-	if !CheckGenesisConf(genesisBlock, bc.genesis) {
+	if !CheckGenesisConfig(bc.genesis, bc.consensus, genesisBlock) {
 		logging.Console().WithFields(logrus.Fields{
 			"block":   genesisBlock,
 			"genesis": bc.genesis,
