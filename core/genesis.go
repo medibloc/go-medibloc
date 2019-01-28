@@ -17,11 +17,12 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	"github.com/medibloc/go-medibloc/core/pb"
+	corepb "github.com/medibloc/go-medibloc/core/pb"
 	"github.com/medibloc/go-medibloc/storage"
 	"github.com/medibloc/go-medibloc/util"
 )
@@ -112,6 +113,10 @@ func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, stor storage.Sto
 		receipt, err := genesis.ExecuteTransaction(tx)
 		if err != nil {
 			return nil, err
+		}
+		if !receipt.executed {
+			// TODO receipt error : []byte -> error
+			return nil, errors.New(string(receipt.Error()))
 		}
 		tx.SetReceipt(receipt)
 		if err = genesis.AcceptTransaction(tx); err != nil {
