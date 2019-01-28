@@ -40,7 +40,6 @@ func TestNewGenesisBlock(t *testing.T) {
 	dynastySize := 21
 	genesisBlock, dynasties, dist := blockutil.NewTestGenesisBlock(t, dynastySize)
 
-	assert.True(t, core.CheckGenesisBlock(genesisBlock))
 	txs := genesisBlock.Transactions()
 	initialMessage := "Genesis block of MediBloc"
 	defaultPayload := &transaction.DefaultPayload{
