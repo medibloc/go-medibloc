@@ -10,8 +10,8 @@ import (
 )
 
 func TestBlockBuilder_ChildNextDynasty(t *testing.T) {
-	bb := blockutil.New(t, DynastySize).Genesis()
-	dynastyInterval := dpos.New(DynastySize).DynastyInterval()
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis()
+	dynastyInterval := dpos.New(blockutil.DynastySize).DynastyInterval()
 	t.Log("Dynasty Interval:", dynastyInterval)
 
 	bb = bb.ChildNextDynasty().SignProposer()

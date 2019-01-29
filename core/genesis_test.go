@@ -18,7 +18,6 @@ package core_test
 import (
 	"testing"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/consensus/dpos"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
@@ -29,12 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestGenesisConf(t *testing.T) {
-	conf, _, _ := blockutil.NewTestGenesisConf(t, 21)
-	str := proto.MarshalTextString(conf)
-	t.Log(str)
-}
 
 func TestNewGenesisBlock(t *testing.T) {
 	dynastySize := 21
