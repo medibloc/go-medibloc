@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/medibloc/go-medibloc/util/genesisutil"
 )
 
 func printUsage() {
@@ -14,20 +16,31 @@ func printUsage() {
 
 func main() {
 	if len(os.Args) == 3 && os.Args[1] == "pre" {
-		out := preConfig()
-		err := ioutil.WriteFile(os.Args[2], out, 0600)
+		conf := genesisutil.DefaultConfig()
+		out, err := genesisutil.ConfigToBytes(conf)
+		if err != nil {
+			panic(err)
+		}
+		err = ioutil.WriteFile(os.Args[2], out, 0600)
 		if err != nil {
 			panic(err)
 		}
 		return
 	} else if len(os.Args) == 5 && os.Args[1] == "final" {
-		buf, err := ioutil.ReadFile(os.Args[2])
+		in, err := ioutil.ReadFile(os.Args[2])
 		if err != nil {
 			printUsage()
 			os.Exit(1)
 		}
-
-		genesis, proposer := finalConfig(buf)
+		conf, err := genesisutil.BytesToConfig(in)
+		if err != nil {
+			panic(err)
+		}
+		genesis, err := genesisutil.ConvertGenesisConfBytes(conf)
+		if err != nil {
+			panic(err)
+		}
+		proposer := genesisutil.ConvertProposerConfBytes(conf)
 		err = ioutil.WriteFile(os.Args[3], genesis, 0600)
 		if err != nil {
 			panic(err)
@@ -36,12 +49,15 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
 		return
 	} else if len(os.Args) == 2 && os.Args[1] == "auto" {
-		pre := preConfig()
-		genesis, proposer := finalConfig(pre)
-		err := ioutil.WriteFile("genesis.conf", genesis, 0600)
+		conf := genesisutil.DefaultConfig()
+		genesis, err := genesisutil.ConvertGenesisConfBytes(conf)
+		if err != nil {
+			panic(err)
+		}
+		proposer := genesisutil.ConvertProposerConfBytes(conf)
+		err = ioutil.WriteFile("genesis.conf", genesis, 0600)
 		if err != nil {
 			panic(err)
 		}
