@@ -200,7 +200,7 @@ func (b *Block) ExecuteTransaction(tx *Transaction) (*Receipt, error) {
 		return nil, err
 	}
 
-	if err := b.checkAvailablePoint(tx.Payer(), exeTx, point); err != nil {
+	if err := b.checkAvailablePoint(tx.PayerOrFrom(), exeTx, point); err != nil {
 		return nil, err
 	}
 
@@ -401,10 +401,10 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 	from.Nonce++
 
 	var payer *corestate.Account
-	if tx.Payer().Equals(tx.From()) {
+	if tx.PayerOrFrom().Equals(tx.From()) {
 		payer = from
 	} else {
-		payer, err = b.state.GetAccount(tx.Payer())
+		payer, err = b.state.GetAccount(tx.PayerOrFrom())
 		if err != nil {
 			return err
 		}
@@ -414,7 +414,7 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 		logging.Console().WithFields(logrus.Fields{
 			"tx_points":    tx.Receipt().Points(),
 			"payer_points": payer.Points,
-			"payer":        tx.Payer().Hex(),
+			"payer":        tx.PayerOrFrom().Hex(),
 			"err":          err,
 		}).Warn("Points limit exceeded.")
 		return ErrPointNotEnough
@@ -427,7 +427,7 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 		if err := block.state.PutAccount(from); err != nil {
 			return err
 		}
-		if !tx.Payer().Equals(tx.From()) {
+		if !tx.PayerOrFrom().Equals(tx.From()) {
 			if err := block.state.PutAccount(payer); err != nil {
 				return err
 			}

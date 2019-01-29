@@ -121,6 +121,13 @@ func (t *Transaction) SetReceipt(receipt *Receipt) {
 	t.receipt = receipt
 }
 
+func (t *Transaction) PayerOrFrom() common.Address {
+	if t.payer.Equals(common.Address{}) {
+		return t.from
+	}
+	return t.payer
+}
+
 // ToProto converts Transaction to corepb.Transaction
 func (t *Transaction) ToProto() (proto.Message, error) {
 	value, err := t.value.ToFixedSizeByteSlice()
@@ -190,17 +197,12 @@ func (t *Transaction) FromProto(msg proto.Message) error {
 	t.payerSign = pbTx.PayerSign
 	t.receipt = receipt
 
-	// TODO fix error handling
 	t.from, err = t.recoverFrom()
-	if err == ErrTransactionSignatureNotExist {
-		t.from = common.Address{}
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 	t.payer, err = t.recoverPayer()
-	if err == ErrPayerSignatureNotExist {
-		t.payer = t.from
-	} else if err != nil {
+	if err != nil && err != ErrPayerSignatureNotExist {
 		return ErrCannotRecoverPayer
 	}
 	return nil

@@ -69,9 +69,9 @@ func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, 
 		return ErrNonceNotAcceptable
 	}
 
-	accPayer, exist := pool.payer[tx.Payer()]
+	accPayer, exist := pool.payer[tx.PayerOrFrom()]
 	if !exist {
-		accPayer = newAccountPayer(tx.Payer())
+		accPayer = newAccountPayer(tx.PayerOrFrom())
 	}
 	if err := accPayer.checkPointAvailable(tx, acc, price); err != nil {
 		return err
@@ -82,7 +82,7 @@ func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, 
 
 	pool.all[tx.HexHash()] = tx
 	pool.from[tx.From()] = accFrom
-	pool.payer[tx.Payer()] = accPayer
+	pool.payer[tx.PayerOrFrom()] = accPayer
 
 	pool.selector.Include(tx.From().Hex())
 	return nil
@@ -100,19 +100,19 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Accoun
 		return ErrFailedToReplacePendingTx
 	}
 
-	accPayer, exist := pool.payer[tx.Payer()]
+	accPayer, exist := pool.payer[tx.PayerOrFrom()]
 	if !exist {
-		accPayer = newAccountPayer(tx.Payer())
+		accPayer = newAccountPayer(tx.PayerOrFrom())
 	}
 	if err := accPayer.checkPointAvailable(tx, acc, price); err != nil {
 		return err
 	}
 
 	oldTx := accFrom.remove(tx.Nonce())
-	oldPayer := pool.payer[oldTx.Payer()]
+	oldPayer := pool.payer[oldTx.PayerOrFrom()]
 	oldPayer.remove(oldTx)
 	if oldPayer.size() == 0 {
-		delete(pool.payer, oldTx.Payer())
+		delete(pool.payer, oldTx.PayerOrFrom())
 	}
 	delete(pool.all, oldTx.HexHash())
 
@@ -121,7 +121,7 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Accoun
 
 	pool.all[tx.HexHash()] = tx
 	pool.from[tx.From()] = accFrom
-	pool.payer[tx.Payer()] = accPayer
+	pool.payer[tx.PayerOrFrom()] = accPayer
 
 	return nil
 }
@@ -154,10 +154,10 @@ func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit u
 			break
 		}
 		accFrom.remove(tx.Nonce())
-		accPayer := pool.payer[tx.Payer()]
+		accPayer := pool.payer[tx.PayerOrFrom()]
 		accPayer.remove(tx)
 		if accPayer.size() == 0 {
-			delete(pool.payer, tx.Payer())
+			delete(pool.payer, tx.PayerOrFrom())
 		}
 		delete(pool.all, tx.HexHash())
 	}
