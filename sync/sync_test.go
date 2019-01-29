@@ -33,7 +33,7 @@ func TestService_Start(t *testing.T) {
 	const (
 		nBlocks = 100
 	)
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -73,7 +73,7 @@ func TestForDuplicatedBlock(t *testing.T) {
 		nBlocks              = 10
 		indexDuplicatedBlock = 5
 	)
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -123,7 +123,7 @@ func TestForkRecover(t *testing.T) {
 		blockInterval = int64(dpos.BlockInterval.Seconds())
 	)
 
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetworkWithDynastySize(t, dynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -220,7 +220,7 @@ func TestForAutoActivation1(t *testing.T) {
 		syncActivationHeight = uint64(40)
 	)
 
-	testNetwork := testutil.NewNetwork(t, 3)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -305,7 +305,7 @@ func TestForAutoActivation2(t *testing.T) {
 		blockInterval = int64(dpos.BlockInterval.Seconds())
 	)
 
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetworkWithDynastySize(t, dynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()

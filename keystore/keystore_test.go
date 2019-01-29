@@ -101,7 +101,7 @@ func TestDposSetup(t *testing.T) {
 	cfg := testutil.NewConfig(t).SetRandomGenesis(blockutil.DynastySize)
 	cfg.Config.Chain.Proposers = make([]*medletpb.ProposerConfig, 3)
 
-	tn := testutil.NewNetwork(t, blockutil.DynastySize)
+	tn := testutil.NewNetworkWithDynastySize(t, blockutil.DynastySize)
 	defer tn.Cleanup()
 
 	for i := 0; i < 3; i++ {

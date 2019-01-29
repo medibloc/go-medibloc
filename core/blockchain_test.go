@@ -40,7 +40,7 @@ func TestNewBlockChain(t *testing.T) {
 }
 
 func TestRestartNode(t *testing.T) {
-	testNet := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNet := testutil.NewNetwork(t)
 	defer testNet.Cleanup()
 
 	seed := testNet.NewSeedNode()

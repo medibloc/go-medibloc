@@ -29,6 +29,7 @@ import (
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/logging"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
@@ -195,8 +196,13 @@ type Network struct {
 	Nodes       []*Node
 }
 
-// NewNetwork creates network.
-func NewNetwork(t *testing.T, dynastySize int) *Network {
+// NewNetworkWithDynastySize creates network.
+func NewNetwork(t *testing.T) *Network {
+	return NewNetworkWithDynastySize(t, blockutil.DynastySize)
+}
+
+// NewNetworkWithDynastySize creates network with dynasty size.
+func NewNetworkWithDynastySize(t *testing.T, dynastySize int) *Network {
 	logHook := logging.InitTestLogger(filepath.Join("testdata", t.Name()))
 	return &Network{
 		t:           t,

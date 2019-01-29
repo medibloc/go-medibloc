@@ -43,7 +43,7 @@ func TestGetProposer(t *testing.T) {
 }
 
 func TestBlock_BasicTx(t *testing.T) {
-	nt := testutil.NewNetwork(t, 3)
+	nt := testutil.NewNetwork(t)
 	defer nt.Cleanup()
 
 	seed := nt.NewSeedNode()

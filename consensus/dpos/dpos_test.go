@@ -22,7 +22,7 @@ func TestChangeDynasty(t *testing.T) {
 		pushTimeLimit = 10 * time.Second
 	)
 
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()

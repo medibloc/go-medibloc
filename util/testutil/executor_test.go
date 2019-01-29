@@ -27,7 +27,7 @@ import (
 
 // func TestNetworkUtil(t *testing.T) {
 //	dynastySize := 3
-//	nt := testutil.NewNetwork(t, dynastySize)
+//	nt := testutil.NewNetworkWithDynastySize(t, dynastySize)
 //	nt.NewSeedNode()
 //	for i := 0; i < dynastySize-1; i++ {
 //		nt.NewNode()
@@ -59,14 +59,13 @@ import (
 // }
 
 func TestNetworkProposer(t *testing.T) {
-	dynastySize := 3
-	nt := testutil.NewNetwork(t, dynastySize)
+	nt := testutil.NewNetwork(t)
 	defer nt.Cleanup()
 
 	seed := nt.NewSeedNode()
 	nt.SetProposerFromDynasties(seed)
 	seed.Start()
-	for i := 0; i < dynastySize-1; i++ {
+	for i := 0; i < nt.DynastySize-1; i++ {
 		node := nt.NewNode()
 		nt.SetProposerFromDynasties(node)
 	}

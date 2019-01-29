@@ -149,7 +149,7 @@ func TestEventEmitterWithRunningRegDereg(t *testing.T) {
 
 func TestTopicLibBlock(t *testing.T) {
 	dynastySize := 6
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetworkWithDynastySize(t, dynastySize)
 	defer testNetwork.Cleanup()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -183,14 +183,13 @@ func TestTopicLibBlock(t *testing.T) {
 }
 
 func TestTopicNewTailBlock(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
 		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
 
 	bm := seed.Med.BlockManager()
@@ -221,14 +220,13 @@ func TestTopicNewTailBlock(t *testing.T) {
 }
 
 func TestTopicPendingTransaction(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
 		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
 
 	tm := seed.Med.TransactionManager()
@@ -248,14 +246,13 @@ func TestTopicPendingTransaction(t *testing.T) {
 }
 
 func TestTopicRevertBlock(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
 		TokenDist).Block(seed.GenesisBlock()).Child().SignProposer()
 
 	bm := seed.Med.BlockManager()
@@ -290,14 +287,13 @@ func TestTopicRevertBlock(t *testing.T) {
 }
 
 func TestTopicTransactionExecutionResult(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
 		TokenDist).Block(seed.GenesisBlock()).Child()
 
 	emitter := seed.Med.EventEmitter()
@@ -319,14 +315,13 @@ func TestTopicTransactionExecutionResult(t *testing.T) {
 }
 
 func TestTopicAcceptedBlock(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
 		TokenDist).Block(seed.GenesisBlock()).Child()
 	b := bb.SignProposer().Build()
 
@@ -343,8 +338,7 @@ func TestTopicAcceptedBlock(t *testing.T) {
 }
 
 func TestTypeAccountTransaction(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -352,7 +346,7 @@ func TestTypeAccountTransaction(t *testing.T) {
 
 	bm := seed.Med.BlockManager()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.
 		TokenDist).Block(seed.GenesisBlock()).Child()
 
 	tx := bb.Tx().RandomTx().Build()

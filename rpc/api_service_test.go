@@ -28,7 +28,7 @@ import (
 )
 
 func TestAPIService_GetAccount(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -127,7 +127,7 @@ func TestAPIService_GetAccount(t *testing.T) {
 }
 
 func TestAPIService_GetBlock(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -227,7 +227,7 @@ func TestAPIService_GetBlock(t *testing.T) {
 }
 
 func TestAPIService_GetBlocks(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -287,7 +287,7 @@ func TestAPIService_GetBlocks(t *testing.T) {
 }
 
 func TestAPIService_GetCandidates(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -303,7 +303,7 @@ func TestAPIService_GetCandidates(t *testing.T) {
 }
 
 func TestAPIService_GetCandidate(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -328,7 +328,7 @@ func TestAPIService_GetCandidate(t *testing.T) {
 }
 
 func TestAPIService_GetDynasty(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -356,7 +356,7 @@ func TestAPIService_GetDynasty(t *testing.T) {
 }
 
 func TestAPIService_GetMedState(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -384,7 +384,7 @@ func TestAPIService_GetMedState(t *testing.T) {
 }
 
 func TestAPIService_GetPendingTransactions(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -415,7 +415,7 @@ func TestAPIService_GetPendingTransactions(t *testing.T) {
 }
 
 func TestAPIService_GetTransaction(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -465,7 +465,7 @@ func TestAPIService_GetTransaction(t *testing.T) {
 }
 
 func TestAPIService_GetTransactionReceipt(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -526,7 +526,7 @@ func TestAPIService_GetTransactionReceipt(t *testing.T) {
 }
 
 func TestAPIService_HealthCheck(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -542,7 +542,7 @@ func TestAPIService_HealthCheck(t *testing.T) {
 }
 
 func TestAPIService_SendTransaction(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()
@@ -603,7 +603,7 @@ type Data struct {
 }
 
 func TestAPIService_Subscribe(t *testing.T) {
-	network := testutil.NewNetwork(t, blockutil.DynastySize)
+	network := testutil.NewNetwork(t)
 	defer network.Cleanup()
 
 	seed := network.NewSeedNode()

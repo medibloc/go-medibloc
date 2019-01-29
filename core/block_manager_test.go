@@ -40,7 +40,7 @@ import (
 func TestBlockManager_Sequential(t *testing.T) {
 	var nBlocks = 5
 
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -63,7 +63,7 @@ func TestBlockManager_Sequential(t *testing.T) {
 func TestBlockManager_Reverse(t *testing.T) {
 	var nBlocks = 5
 
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -96,7 +96,7 @@ func TestBlockManager_Forked(t *testing.T) {
 		forkedChainBlocks []*core.Block
 	)
 
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -155,7 +155,7 @@ func TestBlockManager_Forked(t *testing.T) {
 }
 
 func TestBlockManager_CircularParentLink(t *testing.T) {
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -182,9 +182,10 @@ func TestBlockManager_CircularParentLink(t *testing.T) {
 }
 
 func TestBlockManager_FilterByLIB(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
+
+	dynastySize := testNetwork.DynastySize
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -248,9 +249,10 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 }
 
 func TestBlockManager_PruneByLIB(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
+
+	dynastySize := testNetwork.DynastySize
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -302,7 +304,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 
 func TestBlockManager_InvalidHeight(t *testing.T) {
 	dynastySize := 21
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetworkWithDynastySize(t, dynastySize)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -374,8 +376,7 @@ func TestBlockManager_Setup(t *testing.T) {
 }
 
 func TestBlockManager_InvalidChainID(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -384,15 +385,14 @@ func TestBlockManager_InvalidChainID(t *testing.T) {
 
 	genesis := seed.GenesisBlock()
 
-	block := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist).
+	block := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist).
 		Block(genesis).Child().ChainID(959123).SignProposer().Build()
 	err := bm.PushBlockData(block.GetBlockData())
 	require.Equal(t, core.ErrInvalidBlockChainID, err)
 }
 
 func TestBlockManager_RequestParentBlock(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 	hook := testNetwork.LogTestHook()
 
@@ -405,7 +405,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 
 	testNetwork.WaitForEstablished()
 
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 	genesis := seed.GenesisBlock()
 
 	blocks := make([]*core.Block, 0)
@@ -461,8 +461,7 @@ func TestBlockManager_RequestParentBlock(t *testing.T) {
 }
 
 func TestBlockManager_VerifyIntegrity(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	testNetwork := testutil.NewNetwork(t, dynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
@@ -470,7 +469,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 
 	// dynasties := nt.Seed.Config.Dynasties
 	genesis := seed.GenesisBlock()
-	bb := blockutil.New(t, dynastySize).AddKeyPairs(seed.Config.TokenDist).AddKeyPairs(seed.Config.Dynasties)
+	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist).AddKeyPairs(seed.Config.Dynasties)
 
 	// Invalid Block Hash
 	bb = bb.Block(genesis).Child()
@@ -500,9 +499,11 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 }
 
 func TestBlockManager_InvalidState(t *testing.T) {
-	dynastySize := blockutil.DynastySize
-	tn := testutil.NewNetwork(t, dynastySize)
+	tn := testutil.NewNetwork(t)
 	defer tn.Cleanup()
+
+	dynastySize := tn.DynastySize
+
 	seed := tn.NewSeedNode()
 	seed.Start()
 	bm := seed.Med.BlockManager()
@@ -562,7 +563,7 @@ func TestBlockManager_InvalidState(t *testing.T) {
 func TestBlockManager_PushBlockDataSync(t *testing.T) {
 	var nBlocks = 5
 
-	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
+	testNetwork := testutil.NewNetwork(t)
 	defer testNetwork.Cleanup()
 
 	seed := testNetwork.NewSeedNode()
@@ -609,7 +610,7 @@ func TestBlockManager_PushBlockDataSync(t *testing.T) {
 /*
 func TestBlockManagerImprovement(t *testing.T) {
 	dynastySize := testutil.DynastySize
-	tn := testutil.NewNetwork(t, dynastySize)
+	tn := testutil.NewNetworkWithDynastySize(t, dynastySize)
 	defer tn.Cleanup()
 	tn.SetLogTestHook()
 	seed1 := tn.NewSeedNode()
