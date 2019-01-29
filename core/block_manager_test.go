@@ -98,7 +98,6 @@ func TestBlockManager_Forked(t *testing.T) {
 
 	testNetwork := testutil.NewNetwork(t, blockutil.DynastySize)
 	defer testNetwork.Cleanup()
-	testNetwork.LogTestHook()
 
 	seed := testNetwork.NewSeedNode()
 	seed.Start()
