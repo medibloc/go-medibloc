@@ -150,7 +150,7 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 	if txc.Nonce() > nonceUpperLimit {
 		// TODO emit event
 		evicted := tm.futurePool.Set(txc)
-		if byteutils.Equal(evicted.Hash(), txc.Hash()) {
+		if evicted != nil && byteutils.Equal(evicted.Hash(), txc.Hash()) {
 			// TODO Err Type
 			return errors.New("transaction pool is full")
 		}
