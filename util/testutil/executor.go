@@ -285,9 +285,9 @@ func (n *Network) Cleanup() {
 
 	size, err := DirSize(filepath.Join("testdata", n.t.Name()))
 	require.NoError(n.t, err)
-	n.t.Log("TestData size:", size)
 
 	if n.t.Failed() {
+		n.t.Log("TestData size:", size)
 		wd, err := os.Getwd()
 		require.NoError(n.t, err)
 		n.t.Logf("Test Failed. LogDir:%s/%s", wd, filepath.Join("testdata", n.t.Name()))
