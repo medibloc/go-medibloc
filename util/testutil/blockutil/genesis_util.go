@@ -16,6 +16,7 @@ import (
 // NewTestGenesisConf returns a genesis configuration for tests.
 func NewTestGenesisConf(t *testing.T, dynastySize int) (genesis *corepb.Genesis, dynasties keyutil.AddrKeyPairs, distributed keyutil.AddrKeyPairs) {
 	param := genesisutil.DefaultConfigParam()
+	param.ChainID = ChainID
 	param.DynastySize = dynastySize
 	conf := genesisutil.ConfigGenerator(param)
 	genesis, err := genesisutil.ConvertGenesisConf(conf)
