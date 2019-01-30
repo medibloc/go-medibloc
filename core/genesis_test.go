@@ -100,6 +100,6 @@ func TestCheckGenesisBlock(t *testing.T) {
 	require.False(t, core.CheckGenesisConfig(modified, consensus, genesis))
 
 	modified = copystructure.Must(copystructure.Copy(conf)).(*corepb.Genesis)
-	modified.TokenDistribution = modified.TokenDistribution[1:]
+	modified.Transactions[0].Nonce++
 	require.False(t, core.CheckGenesisConfig(modified, consensus, genesis))
 }
