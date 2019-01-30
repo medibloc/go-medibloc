@@ -78,6 +78,13 @@ func (tb *TxBuilder) From(addr common.Address) *TxBuilder {
 	return n
 }
 
+// Payer sets payer
+func (tb *TxBuilder) Payer(addr common.Address) *TxBuilder {
+	n := tb.copy()
+	n.tx.SetPayer(addr)
+	return n
+}
+
 // To sets to
 func (tb *TxBuilder) To(addr common.Address) *TxBuilder {
 	n := tb.copy()
@@ -172,6 +179,18 @@ func (tb *TxBuilder) SignKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
+// SignPair set from, seal ,calculate hash and sign with key pair
+func (tb *TxBuilder) SignPair(pair *keyutil.AddrKeyPair) *TxBuilder {
+	n := tb.copy()
+	if n.tx.Nonce() == 0 {
+		acc, err := n.bb.B.State().GetAccount(pair.Addr)
+		require.NoError(n.t, err)
+		n = n.Nonce(acc.Nonce + 1)
+	}
+	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
+}
+
+// TODO Make SignPayerkey consistent with SignKey
 // SignPayerKey sign by payer private key
 func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
@@ -182,15 +201,9 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
-// SignPair set from, seal ,calculate hash and sign with key pair
-func (tb *TxBuilder) SignPair(pair *keyutil.AddrKeyPair) *TxBuilder {
+func (tb *TxBuilder) SignPayerPair(pair *keyutil.AddrKeyPair) *TxBuilder {
 	n := tb.copy()
-	if n.tx.Nonce() == 0 {
-		acc, err := n.bb.B.State().GetAccount(pair.Addr)
-		require.NoError(n.t, err)
-		n = n.Nonce(acc.Nonce + 1)
-	}
-	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
+	return n.Payer(pair.Addr).SignPayerKey(pair.PrivKey)
 }
 
 // RandomTx generate random Tx
