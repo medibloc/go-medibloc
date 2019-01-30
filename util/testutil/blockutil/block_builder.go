@@ -280,7 +280,7 @@ func (bb *BlockBuilder) ExecuteTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()
 	receipt, err := n.B.ExecuteTransaction(tx)
 	require.NoError(n.t, err)
-	require.Nil(n.t, receipt.Error())
+	require.Equal(n.t, "", string(receipt.Error()))
 	require.True(n.t, receipt.Executed())
 
 	tx.SetReceipt(receipt)
