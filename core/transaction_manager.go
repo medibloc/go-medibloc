@@ -213,10 +213,10 @@ func (tm *TransactionManager) Get(hash []byte) *Transaction {
 		return tx
 	}
 	txc := tm.futurePool.Get(hash)
-	if txc == nil {
-
+	if txc != nil {
+		return txc.Transaction
 	}
-	return txc.Transaction
+	return nil
 }
 
 // DelByAddressNonce del transaction specific addr-nonce transaction
