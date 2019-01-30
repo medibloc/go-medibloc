@@ -9,7 +9,7 @@ type TxMapper map[string]func(tx *Transaction) (ExecutableTx, error)
 func (m TxMapper) Executable(tx *Transaction) (ExecutableTx, error) {
 	constructor, ok := m[tx.TxType()]
 	if !ok {
-		return nil, ErrTxTypeInvalid
+		return nil, ErrInvalidTransactionType
 	}
 	return constructor(tx)
 }

@@ -114,7 +114,6 @@ var (
 	ErrForkedBeforeLIB                 = errors.New("block is forked before LIB")
 	ErrInvalidBlock                    = errors.New("invalid block")
 	ErrSameDynasty                     = errors.New("new block is in same dynasty with parent block")
-	ErrTxTypeInvalid                   = errors.New("invalid transaction type")
 )
 
 var (
@@ -126,6 +125,7 @@ var (
 	ErrTransactionSignatureNotExist = errors.New("signature does not exist in the tx")
 	ErrPayerSignatureNotExist       = errors.New("payer signature does not exist in the tx")
 	ErrInvalidTransactionHash       = errors.New("invalid transaction hash")
+	ErrInvalidTransactionType       = errors.New("invalid transaction type")
 	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
 	ErrInvalidTxChainID             = errors.New("invalid transaction chainID")
 	ErrGenesisSignShouldNotExist    = errors.New("genesis sign should not exist")
