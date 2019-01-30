@@ -65,9 +65,6 @@ const (
 // Error types of core package.
 var (
 	ErrNotFound                        = storage.ErrKeyNotFound
-	ErrBeginAgainInBatch               = errors.New("cannot begin with a batch task unfinished")
-	ErrCannotCloneOnBatching           = errors.New("cannot clone on batching")
-	ErrNotBatching                     = errors.New("not batching")
 	ErrFailedValidateHeightAndHeight   = errors.New("failed to verify height and timestamp by lib")
 	ErrCannotRemoveBlockOnCanonical    = errors.New("cannot remove block on canonical chain")
 	ErrDuplicatedBlock                 = errors.New("duplicated block")

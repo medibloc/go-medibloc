@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/medibloc/go-medibloc/common/trie"
-	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,13 +32,13 @@ func testBatch(t *testing.T, batch *trie.Batch) {
 	assert.Nil(t, err)
 
 	err = batch.BeginBatch()
-	assert.Equal(t, core.ErrBeginAgainInBatch, err)
+	assert.Equal(t, trie.ErrCannotPerformInBatch, err)
 
 	err = batch.RollBack()
 	assert.Nil(t, err)
 
 	err = batch.RollBack()
-	assert.Equal(t, core.ErrNotBatching, err)
+	assert.Equal(t, trie.ErrNotBatching, err)
 }
 
 func TestTrieBatch(t *testing.T) {
@@ -52,7 +51,7 @@ func TestTrieBatch(t *testing.T) {
 
 	require.NoError(t, trieBatch.BeginBatch())
 
-	assert.Equal(t, core.ErrBeginAgainInBatch, trieBatch.BeginBatch())
+	assert.Equal(t, trie.ErrCannotPerformInBatch, trieBatch.BeginBatch())
 
 	key1, _ := hex.DecodeString("2ed1b10c")
 	val1 := []byte("leafmedi1")
@@ -101,7 +100,7 @@ func TestTrieBatch_Clone(t *testing.T) {
 	assert.Nil(t, err)
 
 	_, err = trBatch1.Clone()
-	assert.Equal(t, core.ErrCannotCloneOnBatching, err)
+	assert.Equal(t, trie.ErrCannotPerformInBatch, err)
 
 	key1, _ := hex.DecodeString("2ed1b10c")
 	val1 := []byte("leafmedi1")
@@ -115,7 +114,7 @@ func TestTrieBatch_Clone(t *testing.T) {
 	_, err = trBatch1.Get(key1)
 	assert.Nil(t, err)
 	_, err = trBatch2.Get(key1)
-	assert.Equal(t, core.ErrNotFound, err)
+	assert.Equal(t, trie.ErrNotFound, err)
 
 	err = trBatch2.BeginBatch()
 	assert.Nil(t, err)
