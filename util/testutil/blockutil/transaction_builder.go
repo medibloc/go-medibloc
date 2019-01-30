@@ -39,7 +39,9 @@ type TxBuilder struct {
 func newTxBuilder(bb *BlockBuilder) *TxBuilder {
 	n := bb.copy()
 
-	tx := &core.TransactionTestWrap{}
+	tx := &core.TransactionTestWrap{
+		Transaction: &core.Transaction{},
+	}
 	tx.SetChainID(ChainID)
 	tx.SetValue(util.Uint128Zero())
 

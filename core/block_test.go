@@ -52,13 +52,18 @@ func TestBlock_BasicTx(t *testing.T) {
 
 	nt.WaitForEstablished()
 
-	tb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Tx()
-	tx1 := tb.RandomTx().Build()
-	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
-	tx3 := tb.Nonce(tx2.Nonce() + 1).RandomTx().Build()
+	tm := seed.Med.TransactionManager()
 
-	failed := seed.Med.TransactionManager().PushAndExclusiveBroadcast(tx1, tx2, tx3)
-	require.Zero(t, len(failed))
+	tb := blockutil.New(t, nt.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).Tx()
+	tx1 := tb.RandomTx().Build()
+	err := tm.Push(tx1)
+	require.NoError(t, err)
+	tx2 := tb.Nonce(tx1.Nonce() + 1).RandomTx().Build()
+	err = tm.Push(tx2)
+	require.NoError(t, err)
+	tx3 := tb.Nonce(tx2.Nonce() + 1).RandomTx().Build()
+	err = tm.Push(tx3)
+	require.NoError(t, err)
 
 	for seed.Tail().Height() < 2 {
 		time.Sleep(10 * time.Millisecond)

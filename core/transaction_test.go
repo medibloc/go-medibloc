@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 
@@ -39,8 +40,8 @@ func TestSend(t *testing.T) {
 
 	bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(transaction.ErrBalanceNotEnough).
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(transaction.ErrBalanceNotEnough).
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
 		Balance(from.Addr, 199989990).
@@ -58,7 +59,7 @@ func TestAddRecord(t *testing.T) {
 
 	block := bb.
 		Tx().StakeTx(owner, 10000).Execute().
-		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(owner).Execute().
+		Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(owner).Execute().
 		Build()
 
 	acc, err := block.State().GetAccount(owner.Addr)
@@ -80,14 +81,14 @@ func TestStakingAndUnstaking(t *testing.T) {
 	unstakingAmount := 301.0
 
 	bb = bb.
-		Tx().Type(coreState.TxOpStake).Value(stakingAmount).SignPair(from).Execute()
+		Tx().Type(transaction.TxOpStake).Value(stakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 200000000-stakingAmount).
 		Staking(from.Addr, stakingAmount)
 
 	bb = bb.
-		Tx().Type(coreState.TxOpUnstake).Value(unstakingAmount).SignPair(from).Execute()
+		Tx().Type(transaction.TxOpUnstake).Value(unstakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
 		Balance(from.Addr, 200000000-stakingAmount).
@@ -104,7 +105,7 @@ func TestStakingAndUnstaking(t *testing.T) {
 	}
 
 	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(coreState.UnstakingWaitDuration/time.Second) + 1).
-		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(from).Execute()
+		Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(from).Execute()
 	bb.Expect().
 		Balance(from.Addr, 200000000-stakingAmount+unstakingAmount).
 		Unstaking(from.Addr, 0)
@@ -129,7 +130,7 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	}
 
 	bb = bb.Stake().
-		Tx().Type(coreState.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
+		Tx().Type(transaction.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
 
 	proposer := bb.FindProposer()
 	block := bb.Coinbase(proposer.Addr).PayReward().Flush().Seal().Build()
@@ -162,11 +163,11 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	revokePayload := &transaction.RevokeCertificationPayload{CertificateHash: hash}
 
 	bb.ChildWithTimestamp(expirationTime + int64(1)).
-		Tx().Type(coreState.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).ExecuteErr(transaction.ErrCertAlreadyExpired)
+		Tx().Type(transaction.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).ExecuteErr(transaction.ErrCertAlreadyExpired)
 
 	bb = bb.ChildWithTimestamp(revokeTime).
-		Tx().Type(coreState.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).Execute().
-		Tx().Type(coreState.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).
+		Tx().Type(transaction.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).Execute().
+		Tx().Type(transaction.TxOpRevokeCertification).Payload(revokePayload).SignPair(issuer).
 		ExecuteErr(transaction.ErrCertAlreadyRevoked)
 	block = bb.Build()
 
@@ -198,9 +199,9 @@ func TestPayerSigner(t *testing.T) {
 	to := keyutil.NewAddrKeyPair(t)
 	bb = bb.
 		Tx().StakeTx(payer, 10000).Execute().
-		Tx().Type(coreState.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(ErrPointNotEnough).
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerKey(payer.PrivKey).Execute()
+		Tx().Type(transaction.TxOpTransfer).To(from.Addr).Value(1000).SignPair(payer).Execute().
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).ExecuteErr(core.ErrPointNotEnough).
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(300).SignPair(from).SignPayerPair(payer).Execute()
 	bb.
 		Expect().
 		Balance(to.Addr, 300).
@@ -225,7 +226,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(coreState.TxOpRegisterAlias).
+		Tx().Type(transaction.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
 		Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).
@@ -233,7 +234,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(coreState.TxOpRegisterAlias).
+		Tx().Type(transaction.TxOpRegisterAlias).
 		Value(collateralAmount).
 		SignPair(from).
 		Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).
@@ -257,12 +258,12 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	t.Log(pbAlias.AliasName)
 
 	bb = bb.
-		Tx().Type(coreState.TxOpDeregisterAlias).
+		Tx().Type(transaction.TxOpDeregisterAlias).
 		SignPair(from).
 		Execute()
 
 	bb = bb.
-		Tx().Type(coreState.TxOpDeregisterAlias).
+		Tx().Type(transaction.TxOpDeregisterAlias).
 		SignPair(from).
 		ExecuteErr(transaction.ErrAliasNotExist)
 
@@ -311,7 +312,7 @@ func TestRegisterAliasTable(t *testing.T) {
 	bb = bb.
 		Tx().StakeTx(from, 10000).Execute()
 	for _, es := range testNames {
-		bb.Tx().Type(coreState.TxOpRegisterAlias).
+		bb.Tx().Type(transaction.TxOpRegisterAlias).
 			Value(collateralAmount).
 			SignPair(from).
 			Payload(&transaction.RegisterAliasPayload{AliasName: es.name}).

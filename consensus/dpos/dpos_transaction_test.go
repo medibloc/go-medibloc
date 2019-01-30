@@ -19,8 +19,6 @@ import (
 	"testing"
 
 	"github.com/medibloc/go-medibloc/common/trie"
-	dState "github.com/medibloc/go-medibloc/consensus/dpos/state"
-	cState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -33,11 +31,11 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 
 	candidate := bb.TokenDist[blockutil.DynastySize]
 
-	txType := dState.TxOpBecomeCandidate
+	txType := transaction.TxOpBecomeCandidate
 	bb = bb.
 		Tx().StakeTx(candidate, 100000).Execute().
 		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(transaction.ErrAliasNotExist).
-		Tx().Type(cState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(candidate).Execute().
+		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(candidate).Execute().
 		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(transaction.ErrBalanceNotEnough).
 		Tx().Type(txType).Value(999999).SignPair(candidate).ExecuteErr(transaction.ErrNotEnoughCandidateCollateral).
 		Tx().Type(txType).Value(1000000).SignPair(candidate).Execute().
@@ -62,8 +60,8 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	assert.Equal(t, blockutil.FloatToUint128(t, 1000000), c.Collateral)
 
 	bb = bb.
-		Tx().Type(dState.TxOpQuitCandidacy).SignPair(candidate).Execute().
-		Tx().Type(dState.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(transaction.ErrNotCandidate)
+		Tx().Type(transaction.TxOpQuitCandidacy).SignPair(candidate).Execute().
+		Tx().Type(transaction.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(transaction.ErrNotCandidate)
 
 	bb.Expect().Balance(candidate.Addr, 400000000-100000-1000000)
 
@@ -86,10 +84,10 @@ func TestVote(t *testing.T) {
 	candidates := append(bb.TokenDist[:transaction.VoteMaximum], newCandidate)
 
 	bb = bb.
-		Tx().Type(cState.TxOpStake).Value(333).SignPair(voter).Execute().
+		Tx().Type(transaction.TxOpStake).Value(333).SignPair(voter).Execute().
 		Tx().StakeTx(newCandidate, 10000).Execute().
-		Tx().Type(cState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(newCandidate).Execute().
-		Tx().Type(dState.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
+		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(newCandidate).Execute().
+		Tx().Type(transaction.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
 	bb.Expect().Balance(newCandidate.Addr, 400000000-10000-1000000-1000000)
 	block := bb.Build()
@@ -110,9 +108,9 @@ func TestVote(t *testing.T) {
 	duplicatePayload.CandidateIDs[0] = candidateIDs[1]
 
 	bb = bb.
-		Tx().Type(dState.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(transaction.ErrOverMaxVote).
-		Tx().Type(dState.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(transaction.ErrDuplicateVote).
-		Tx().Type(dState.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
+		Tx().Type(transaction.TxOpVote).Payload(overSizePayload).SignPair(voter).ExecuteErr(transaction.ErrOverMaxVote).
+		Tx().Type(transaction.TxOpVote).Payload(duplicatePayload).SignPair(voter).ExecuteErr(transaction.ErrDuplicateVote).
+		Tx().Type(transaction.TxOpVote).Payload(votePayload).SignPair(voter).Execute()
 
 	voterAcc, err := block.State().GetAccount(voter.Addr)
 	assert.NoError(t, err)
@@ -133,7 +131,7 @@ func TestVote(t *testing.T) {
 
 	// Reset vote to nil
 	bb = bb.
-		Tx().Type(dState.TxOpVote).Payload(&transaction.VotePayload{}).SignPair(voter).Execute()
+		Tx().Type(transaction.TxOpVote).Payload(&transaction.VotePayload{}).SignPair(voter).Execute()
 
 	block = bb.Build()
 

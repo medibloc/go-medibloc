@@ -24,7 +24,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -229,25 +228,25 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 		RecordHash: recordHash,
 	}
 	block := bb.Block(blocks[0]).Child().
-		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
 
 	block = bb.Block(blocks[1]).Child().
-		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
 
 	block = bb.Block(blocks[dynastySize*2/3]).Child().
-		Tx().Type(coreState.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(transaction.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
 
 	block = bb.Block(blocks[dynastySize*2/3+1]).Child().
-		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(block.GetBlockData())
 	assert.NoError(t, err)
@@ -255,7 +254,7 @@ func TestBlockManager_FilterByLIB(t *testing.T) {
 	parent, err := bm.BlockByHeight(3)
 	require.NoError(t, err)
 	b := bb.Block(parent).Child().
-		Tx().Type(coreState.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(transaction.TxOpTransfer).To(bb.KeyPairs[1].Addr).Value(10).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	err = bm.PushBlockData(b.GetBlockData())
 	assert.Equal(t, core.ErrFailedValidateHeightAndHeight, err)
@@ -284,7 +283,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 		RecordHash: recordHash,
 	}
 	b2 := bb.Block(b1).Child().
-		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
+		Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 		SignProposer().Build()
 	blocks = append(blocks, b2)
 
@@ -298,7 +297,7 @@ func TestBlockManager_PruneByLIB(t *testing.T) {
 			RecordHash: recordHash,
 		}
 		block := bb.Block(blocks[i+1]).Child().
-			Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
+			Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(bb.KeyPairs[0]).Execute().
 			SignProposer().Build()
 		blocks = append(blocks, block)
 	}
@@ -507,7 +506,7 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	pair = keyutil.NewAddrKeyPair(t)
 	block = bb.Block(genesis).Child().Tx().Type(transaction.TxOpTransfer).Value(100).Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignProposer().Build()
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
-	assert.Equal(t, ErrInvalidTransactionHash, err)
+	assert.Equal(t, core.ErrInvalidTransactionHash, err)
 
 	// // Invalid Transaction Signer
 	// pair1 := testutil.NewAddrKeyPair(t)
@@ -533,23 +532,23 @@ func TestBlockManager_InvalidState(t *testing.T) {
 	from := seed.Config.TokenDist[dynastySize]
 	to := seed.Config.TokenDist[dynastySize+1]
 	bb = bb.Block(genesis).Child().Stake().
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpAddRecord).
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpAddRecord).
 		Payload(&transaction.AddRecordPayload{
 			RecordHash: hash([]byte("Record Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpAddCertification).To(to.Addr).
+		Tx().Type(transaction.TxOpAddCertification).To(to.Addr).
 		Payload(&transaction.AddCertificationPayload{
 			IssueTime:       time.Now().Unix(),
 			ExpirationTime:  time.Now().Add(24 * time.Hour * 365).Unix(),
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpRevokeCertification).To(to.Addr).
+		Tx().Type(transaction.TxOpRevokeCertification).To(to.Addr).
 		Payload(&transaction.RevokeCertificationPayload{
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpStake).Value(100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpUnstake).Value(100).SignPair(from).Execute()
+		Tx().Type(transaction.TxOpStake).Value(100).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpUnstake).Value(100).SignPair(from).Execute()
 
 	proposer := bb.FindProposer()
 	bb = bb.Coinbase(proposer.Addr).PayReward().Flush().Seal()

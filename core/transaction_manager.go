@@ -265,6 +265,12 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 // 	return append(pending, future...)
 // }
 
+func (tm *TransactionManager) Len() int {
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	return tm.futurePool.Len() + tm.pendingPool.Len()
+}
+
 // Broadcast broadcasts transaction to network.
 func (tm *TransactionManager) Broadcast(tx *Transaction) error {
 	b, err := tx.ToBytes()

@@ -26,6 +26,12 @@ func NewFutureTransactionPool(size int) *FutureTransactionPool {
 	}
 }
 
+func (pool *FutureTransactionPool) Len() int {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	return len(pool.all)
+}
+
 // Get returns a transaction by hash.
 func (pool *FutureTransactionPool) Get(hash []byte) *TxContext {
 	pool.mu.RLock()

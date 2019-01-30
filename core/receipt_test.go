@@ -20,9 +20,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -51,10 +49,10 @@ func TestReceipt(t *testing.T) {
 
 	tb := bb.Tx()
 	tx1 := tb.Nonce(1).StakeTx(payer, 100).Build()
-	tx2 := tb.Nonce(2).Type(coreState.TxOpUnstake).Value(200).SignPair(payer).
+	tx2 := tb.Nonce(2).Type(transaction.TxOpUnstake).Value(200).SignPair(payer).
 		Build()
-	tx3 := tb.Nonce(2).Type(coreState.TxOpUnstake).Value(50).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
+	tx3 := tb.Nonce(2).Type(transaction.TxOpUnstake).Value(50).SignPair(payer).Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
@@ -98,8 +96,8 @@ func TestErrorTransactionReceipt(t *testing.T) {
 		RecordHash: recordHash,
 	}
 
-	tx2 := tb.Nonce(2).Type(coreState.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
-	tx3 := tb.Nonce(3).Type(coreState.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx2 := tb.Nonce(2).Type(transaction.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
+	tx3 := tb.Nonce(3).Type(transaction.TxOpAddRecord).Payload(payload).SignPair(payer).Build()
 	b := bb.ExecuteTx(tx1).ExecuteTx(tx2).ExecuteTxErr(tx3, transaction.ErrRecordAlreadyAdded).SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
@@ -158,23 +156,23 @@ func TestVoteTransactionReceipt(t *testing.T) {
 	payer2 := seed.Config.TokenDist[network.DynastySize+1]
 	aliasPayload1 := &transaction.RegisterAliasPayload{AliasName: "helloworld10"}
 	aliasPayload2 := &transaction.RegisterAliasPayload{AliasName: "helloworld20"}
-	aliasTx1 := bb.Tx().Nonce(2).Payload(aliasPayload1).Value(1000000).Type(coreState.TxOpRegisterAlias).SignPair(payer).Build()
-	aliasTx2 := bb.Tx().Nonce(2).Payload(aliasPayload2).Value(1000000).Type(coreState.TxOpRegisterAlias).SignPair(payer2).Build()
+	aliasTx1 := bb.Tx().Nonce(2).Payload(aliasPayload1).Value(1000000).Type(transaction.TxOpRegisterAlias).SignPair(payer).Build()
+	aliasTx2 := bb.Tx().Nonce(2).Payload(aliasPayload2).Value(1000000).Type(transaction.TxOpRegisterAlias).SignPair(payer2).Build()
 
-	candidateTx1 := bb.Tx().Value(1000000).Nonce(3).Type(dposState.TxOpBecomeCandidate).SignPair(payer).Build()
-	candidateTx2 := bb.Tx().Value(1000000).Nonce(3).Type(dposState.TxOpBecomeCandidate).SignPair(payer2).Build()
+	candidateTx1 := bb.Tx().Value(1000000).Nonce(3).Type(transaction.TxOpBecomeCandidate).SignPair(payer).Build()
+	candidateTx2 := bb.Tx().Value(1000000).Nonce(3).Type(transaction.TxOpBecomeCandidate).SignPair(payer2).Build()
 
 	candidateId, _ := byteutils.Hex2Bytes(
 		"e81217e7d3c1977b26f0d351f3ba2b8bbd3ab655a23e5142779a224e46e55417")
 	invalidPayload := &transaction.VotePayload{
 		CandidateIDs: [][]byte{candidateId, candidateTx1.Hash()},
 	}
-	invalidTx := bb.Tx().Nonce(4).Type(dposState.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
+	invalidTx := bb.Tx().Nonce(4).Type(transaction.TxOpVote).Payload(invalidPayload).SignPair(payer).Build()
 
 	validPayload := &transaction.VotePayload{
 		CandidateIDs: [][]byte{candidateTx1.Hash(), candidateTx2.Hash()},
 	}
-	validTx := bb.Tx().Nonce(5).Type(dposState.TxOpVote).Payload(validPayload).SignPair(payer).Build()
+	validTx := bb.Tx().Nonce(5).Type(transaction.TxOpVote).Payload(validPayload).SignPair(payer).Build()
 
 	b := bb.
 		ExecuteTx(aliasTx1).

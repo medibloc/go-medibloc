@@ -7,9 +7,7 @@ import (
 
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/trie"
-	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -37,9 +35,9 @@ func TestChangeDynasty(t *testing.T) {
 
 	// Become new candidate
 	bb = bb.ChildNextDynasty().
-		Tx().Type(coreState.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
-		Tx().Type(coreState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "newblockproducer"}).SignPair(newCandidate).Execute().
-		Tx().Type(dposState.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
+		Tx().Type(transaction.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
+		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "newblockproducer"}).SignPair(newCandidate).Execute().
+		Tx().Type(transaction.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
 	acc, err := bb.Build().State().GetAccount(newCandidate.Addr)
 	require.NoError(t, err)
@@ -53,7 +51,7 @@ func TestChangeDynasty(t *testing.T) {
 	votePayload := new(transaction.VotePayload)
 	votePayload.CandidateIDs = append(votePayload.CandidateIDs, acc.CandidateID)
 	bb = bb.
-		Tx().Type(dposState.TxOpVote).
+		Tx().Type(transaction.TxOpVote).
 		Payload(votePayload).SignPair(newCandidate).Execute().SignProposer()
 	bd := bb.Build().BlockData
 
@@ -78,7 +76,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	// quit candidate
 	bb = bb.Child().
-		Tx().Type(dposState.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
+		Tx().Type(transaction.TxOpQuitCandidacy).SignPair(newCandidate).Execute().
 		SignProposer()
 	bd = bb.Build().BlockData
 	ctx, cancel = context.WithTimeout(context.Background(), pushTimeLimit)

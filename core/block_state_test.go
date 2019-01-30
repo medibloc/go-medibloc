@@ -20,9 +20,7 @@ import (
 	"time"
 
 	"github.com/medibloc/go-medibloc/consensus/dpos"
-	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/core"
-	coreState "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
@@ -68,11 +66,11 @@ func TestNonceCheck(t *testing.T) {
 
 	bb = bb.
 		Tx().StakeTx(from, 100000).Execute().
-		Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).SignPair(from).ExecuteErr(core.ErrSmallTransactionNonce).
-		Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).Nonce(5).SignPair(from).ExecuteErr(core.ErrLargeTransactionNonce).
-		Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute()
+		Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).Nonce(1).SignPair(from).ExecuteErr(core.ErrNonceNotExecutable).
+		Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).Nonce(5).SignPair(from).ExecuteErr(core.ErrNonceNotExecutable).
+		Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Execute()
 }
 
 func TestUpdatePoints(t *testing.T) {
@@ -87,9 +85,9 @@ func TestUpdatePoints(t *testing.T) {
 
 	consumed := blockutil.Points(t, tx, bb.Build())
 	bb = bb.ExecuteTx(tx)
-	bb.Expect().Balance(from.Addr, 400000000-200).Staking(from.Addr, 200)
+	bb.Expect().Balance(from.Addr, 200000000-200).Staking(from.Addr, 200)
 
-	tx = bb.Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
+	tx = bb.Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed, err := consumed.Add(blockutil.Points(t, tx, bb.Build()))
 	require.NoError(t, err)
 	bb = bb.ExecuteTx(tx).SignProposer()
@@ -99,13 +97,13 @@ func TestUpdatePoints(t *testing.T) {
 	bb.Expect().Points(from.Addr, remain)
 
 	afterWeek := dpos.NextMintSlot2(nextMintTs + 7*24*60*60)
-	tx = bb.Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
+	tx = bb.Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed = blockutil.Points(t, tx, bb.Build())
 	remain, err = staking.Sub(consumed)
 	require.NoError(t, err)
 
 	bb = bb.ChildWithTimestamp(afterWeek)
-	tx = bb.Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
+	tx = bb.Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed = blockutil.Points(t, tx, bb.Build())
 	remain, err = staking.Sub(consumed)
 	require.Nil(t, err)
@@ -125,7 +123,7 @@ func TestUpdatePayerPoints(t *testing.T) {
 		RecordHash: recordHash,
 	}
 
-	tx := bb.Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(user).SignPayerKey(payer.PrivKey).Build()
+	tx := bb.Tx().Type(transaction.TxOpAddRecord).Payload(payload).SignPair(user).SignPayerPair(payer).Build()
 	bb = bb.ExecuteTx(tx)
 
 	consumed := blockutil.Points(t, tx, bb.Build())
@@ -141,8 +139,8 @@ func TestBandwidthWhenUnstaking(t *testing.T) {
 	from := bb.TokenDist[blockutil.DynastySize]
 
 	bb.Tx().StakeTx(from, 100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpUnstake).Value(100).SignPair(from).ExecuteErr(ErrStakingNotEnough).
-		Tx().Type(coreState.TxOpUnstake).Value(40).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpUnstake).Value(100).SignPair(from).ExecuteErr(core.ErrStakingNotEnough).
+		Tx().Type(transaction.TxOpUnstake).Value(40).SignPair(from).Execute().
 		Expect().
 		Unstaking(from.Addr, 40).
 		Staking(from.Addr, 60)
@@ -155,30 +153,30 @@ func TestTxsFromTxsTo(t *testing.T) {
 	from := bb.TokenDist[blockutil.DynastySize]
 
 	bb = bb.Stake().
-		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpAddRecord).
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(100).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpAddRecord).
 		Payload(&transaction.AddRecordPayload{
 			RecordHash: hash([]byte("Record Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpAddCertification).To(to.Addr).
+		Tx().Type(transaction.TxOpAddCertification).To(to.Addr).
 		Payload(&transaction.AddCertificationPayload{
 			IssueTime:       time.Now().Unix(),
 			ExpirationTime:  time.Now().Add(24 * time.Hour * 365).Unix(),
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpRevokeCertification).To(to.Addr).
+		Tx().Type(transaction.TxOpRevokeCertification).To(to.Addr).
 		Payload(&transaction.RevokeCertificationPayload{
 			CertificateHash: hash([]byte("Certificate Root Hash")),
 		}).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpStake).Value(100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpUnstake).Value(100).SignPair(from).Execute().
-		Tx().Type(coreState.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "testname0000"}).SignPair(from).Execute().
-		Tx().Type(dposState.TxOpBecomeCandidate).Value(1000000).SignPair(from).Execute().
-		Tx().Type(dposState.TxOpVote).
+		Tx().Type(transaction.TxOpStake).Value(100).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpUnstake).Value(100).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "testname0000"}).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpBecomeCandidate).Value(1000000).SignPair(from).Execute().
+		Tx().Type(transaction.TxOpVote).
 		Payload(&transaction.VotePayload{
 			CandidateIDs: [][]byte{},
 		}).SignPair(from).Execute().
-		Tx().Type(dposState.TxOpQuitCandidacy).SignPair(from).Execute()
+		Tx().Type(transaction.TxOpQuitCandidacy).SignPair(from).Execute()
 
 	block := bb.Build()
 
@@ -200,10 +198,10 @@ func TestBandwidthUsageAndPrice(t *testing.T) {
 
 	bb = bb.Child()
 	for i := 0; i < 3000; i++ {
-		tx := bb.Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
+		tx := bb.Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
 		bb = bb.ExecuteTx(tx)
 	}
-	tx := bb.Tx().Type(coreState.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
+	tx := bb.Tx().Type(transaction.TxOpTransfer).Value(10).To(to.Addr).SignPair(from).Build()
 	bb = bb.ExecuteTxErr(tx, core.ErrExceedBlockMaxCPUUsage)
 	bb = bb.SignProposer()
 	b1 := bb.Build()
@@ -222,7 +220,7 @@ func TestBandwidthUsageAndPrice(t *testing.T) {
 
 	remainNet := core.NetLimit
 	for {
-		tx := bb.Tx().Type(coreState.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).Build()
+		tx := bb.Tx().Type(transaction.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).Build()
 		net, err := tx.Size()
 		require.NoError(t, err)
 		bb = bb.ExecuteTx(tx)
@@ -231,7 +229,7 @@ func TestBandwidthUsageAndPrice(t *testing.T) {
 			break
 		}
 	}
-	tx = bb.Tx().Type(coreState.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).Build()
+	tx = bb.Tx().Type(transaction.TxOpTransfer).Payload(payload).Value(10).To(to.Addr).SignPair(from).Build()
 	net, err := tx.Size()
 	require.NoError(t, err)
 

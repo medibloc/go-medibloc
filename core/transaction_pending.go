@@ -48,6 +48,12 @@ func NewPendingTransactionPool() *PendingTransactionPool {
 	}
 }
 
+func (pool *PendingTransactionPool) Len() int {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	return len(pool.all)
+}
+
 // PushOrReplace pushes or replaces a transaction.
 func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *corestate.Account, price common.Price) error {
 	pool.mu.Lock()
