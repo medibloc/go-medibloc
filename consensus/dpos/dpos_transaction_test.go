@@ -34,15 +34,15 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 	txType := transaction.TxOpBecomeCandidate
 	bb = bb.
 		Tx().StakeTx(candidate, 100000).Execute().
-		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(transaction.ErrAliasNotExist).
+		Tx().Type(txType).Value(200000001).SignPair(candidate).ExecuteErr(transaction.ErrAliasNotExist).
 		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(candidate).Execute().
-		Tx().Type(txType).Value(400000001).SignPair(candidate).ExecuteErr(transaction.ErrBalanceNotEnough).
+		Tx().Type(txType).Value(200000001).SignPair(candidate).ExecuteErr(transaction.ErrBalanceNotEnough).
 		Tx().Type(txType).Value(999999).SignPair(candidate).ExecuteErr(transaction.ErrNotEnoughCandidateCollateral).
 		Tx().Type(txType).Value(1000000).SignPair(candidate).Execute().
 		Tx().Type(txType).Value(1000000).SignPair(candidate).ExecuteErr(transaction.ErrAlreadyCandidate)
 
 	bb.Expect().
-		Balance(candidate.Addr, 400000000-100000-1000000-1000000).
+		Balance(candidate.Addr, 200000000-100000-1000000-1000000).
 		Staking(candidate.Addr, 100000)
 
 	block := bb.Build()
@@ -63,7 +63,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 		Tx().Type(transaction.TxOpQuitCandidacy).SignPair(candidate).Execute().
 		Tx().Type(transaction.TxOpQuitCandidacy).SignPair(candidate).ExecuteErr(transaction.ErrNotCandidate)
 
-	bb.Expect().Balance(candidate.Addr, 400000000-100000-1000000)
+	bb.Expect().Balance(candidate.Addr, 200000000-100000-1000000)
 
 	block = bb.Build()
 	_, err = block.State().DposState().GetCandidate(cId)
@@ -89,7 +89,7 @@ func TestVote(t *testing.T) {
 		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(newCandidate).Execute().
 		Tx().Type(transaction.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
-	bb.Expect().Balance(newCandidate.Addr, 400000000-10000-1000000-1000000)
+	bb.Expect().Balance(newCandidate.Addr, 200000000-10000-1000000-1000000)
 	block := bb.Build()
 
 	candidateIDs := make([][]byte, 0)
