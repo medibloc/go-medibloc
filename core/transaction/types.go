@@ -97,7 +97,6 @@ var (
 	ErrFailedToUnmarshalPayload = errors.New("cannot unmarshal tx payload")
 	ErrFailedToMarshalPayload   = errors.New("cannot marshal tx payload to bytes")
 	ErrCheckPayloadIntegrity    = errors.New("payload has invalid elements")
-	ErrPointNotEnough           = errors.New("points are not enough")
 )
 
 // Errors related to dpos transactions (candidate, voting)
