@@ -44,7 +44,7 @@ func TestNewGenesisBlock(t *testing.T) {
 
 	for i := 0; i < len(dist); i++ {
 		assert.True(t, dist[i].Addr.Equals(txs[1+i].To()))
-		assert.Equal(t, "400000000000000000000", txs[1+i].Value().String())
+		assert.Equal(t, "200000000000000000000", txs[1+i].Value().String())
 	}
 
 	child := blockutil.New(t, dynastySize).Block(genesisBlock).Child().Build()
@@ -73,14 +73,14 @@ func TestNewGenesisBlock(t *testing.T) {
 		acc, err := accState.GetAccount(addr)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "298000000000000000000", acc.Balance.String())
+		assert.Equal(t, "98000000000000000000", acc.Balance.String())
 	}
 	for _, holder := range dist[21:] {
 		addr := holder.Addr
 		acc, err := accState.GetAccount(addr)
 		assert.NoError(t, err)
 
-		assert.Equal(t, "400000000000000000000", acc.Balance.String())
+		assert.Equal(t, "200000000000000000000", acc.Balance.String())
 	}
 }
 
