@@ -78,8 +78,6 @@ var (
 	ErrInvalidTimestamp                = errors.New("child block's timestamp is smaller than parent block's")
 	ErrBlockAlreadySealed              = errors.New("cannot seal an already sealed block")
 	ErrNilArgument                     = errors.New("argument(s) is nil")
-	ErrLargeTransactionNonce           = errors.New("transaction nonce is larger than expected")
-	ErrSmallTransactionNonce           = errors.New("transaction nonce is smaller than expected")
 	ErrMissingParentBlock              = errors.New("cannot find the block's parent block in storage")
 	ErrBlockNotExist                   = errors.New("block not exist")
 	ErrBlockNotSealed                  = errors.New("block should be sealed first to be signed")
