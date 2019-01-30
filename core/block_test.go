@@ -75,12 +75,12 @@ func TestBlock_PayReward(t *testing.T) {
 	cons := dpos.New(blockutil.DynastySize)
 
 	// wrong reward value (calculate reward based on wrong supply)
-	block := bb.Clone().Supply("1234567890000000000000").PayReward().Seal().CalcHash().SignKey(proposer.PrivKey).Build()
+	block := bb.Clone().Supply("1234567890000000000000").Coinbase(proposer.Addr).PayReward().Seal().CalcHash().SignKey(proposer.PrivKey).Build()
 	_, err := parent.CreateChildWithBlockData(block.GetBlockData(), cons)
 	assert.Equal(t, core.ErrInvalidBlockReward, err)
 
 	// wrong supply on header
-	block = bb.Clone().PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(proposer.PrivKey).Build()
+	block = bb.Clone().Coinbase(proposer.Addr).PayReward().Seal().Supply("1234567890000000000000").CalcHash().SignKey(proposer.PrivKey).Build()
 	_, err = parent.CreateChildWithBlockData(block.GetBlockData(), cons)
 	assert.Equal(t, core.ErrInvalidBlockSupply, err)
 
