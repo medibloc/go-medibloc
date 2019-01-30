@@ -43,7 +43,7 @@ func TestSend(t *testing.T) {
 		Tx().Type(coreState.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).
-		Balance(from.Addr, 399989990).
+		Balance(from.Addr, 199989990).
 		Staking(from.Addr, 10000)
 
 }
@@ -83,14 +83,14 @@ func TestStakingAndUnstaking(t *testing.T) {
 		Tx().Type(coreState.TxOpStake).Value(stakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, 400000000-stakingAmount).
+		Balance(from.Addr, 200000000-stakingAmount).
 		Staking(from.Addr, stakingAmount)
 
 	bb = bb.
 		Tx().Type(coreState.TxOpUnstake).Value(unstakingAmount).SignPair(from).Execute()
 
 	bb.Expect().
-		Balance(from.Addr, 400000000-stakingAmount).
+		Balance(from.Addr, 200000000-stakingAmount).
 		Staking(from.Addr, stakingAmount-unstakingAmount).
 		Unstaking(from.Addr, unstakingAmount)
 
@@ -106,7 +106,7 @@ func TestStakingAndUnstaking(t *testing.T) {
 	bb = bb.SignProposer().ChildWithTimestamp(bb.B.Timestamp() + int64(coreState.UnstakingWaitDuration/time.Second) + 1).
 		Tx().Type(coreState.TxOpAddRecord).Payload(payload).SignPair(from).Execute()
 	bb.Expect().
-		Balance(from.Addr, 400000000-stakingAmount+unstakingAmount).
+		Balance(from.Addr, 200000000-stakingAmount+unstakingAmount).
 		Unstaking(from.Addr, 0)
 }
 
@@ -131,7 +131,8 @@ func TestAddAndRevokeCertification(t *testing.T) {
 	bb = bb.Stake().
 		Tx().Type(coreState.TxOpAddCertification).To(certified.Addr).Payload(addPayload).CalcHash().SignPair(issuer).Execute()
 
-	block := bb.PayReward().Flush().Seal().Build()
+	proposer := bb.FindProposer()
+	block := bb.Coinbase(proposer.Addr).PayReward().Flush().Seal().Build()
 
 	issuerAcc, err := block.State().GetAccount(issuer.Addr)
 	require.NoError(t, err)
@@ -240,7 +241,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 	// Execute()
 
 	bb.Expect().
-		Balance(from.Addr, 400000000-collateralAmount-20000)
+		Balance(from.Addr, 200000000-collateralAmount-20000)
 	acc, err := bb.B.State().GetAccountByAlias(testutil.TestAliasName)
 	if err != nil {
 		t.Log(err)
@@ -266,7 +267,7 @@ func TestRegisterAndDeregisterAlias(t *testing.T) {
 		ExecuteErr(transaction.ErrAliasNotExist)
 
 	bb.Expect().
-		Balance(from.Addr, 400000000-20000)
+		Balance(from.Addr, 200000000-20000)
 
 	acc, err = bb.B.State().GetAccountByAlias(testutil.TestAliasName)
 	// require.NoError(t, err)
