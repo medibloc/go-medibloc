@@ -188,7 +188,14 @@ func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 }
 
 func (tx *UnstakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points.Sub(tx.amount)
+	modifiedPoints, err = points.Sub(tx.amount)
+	if err != nil && err == util.ErrUint128Underflow {
+		return nil, core.ErrStakingNotEnough
+	}
+	if err != nil {
+		return nil, err
+	}
+	return modifiedPoints, nil
 }
 
 func (tx *UnstakeTx) RecoverFrom() (common.Address, error) {
