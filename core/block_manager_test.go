@@ -87,71 +87,84 @@ func TestBlockManager_Reverse(t *testing.T) {
 	assert.Equal(t, nBlocks, int(bm.TailBlock().Height()))
 }
 
-func TestBlockManager_Forked(t *testing.T) {
+func TestBlockManager_Fork(t *testing.T) {
 	var (
-		mainChainHeight   = 6
-		forkedChainHeight = 5
-		forkedHeight      = 3 // must higher than LIB height of forkedHeight
-		mainChainBlocks   []*core.Block
-		forkedChainBlocks []*core.Block
+		oldChainHeight  = 6
+		newChainHeight  = 7
+		forkPointHeight = 4
 	)
 
-	testNetwork := testutil.NewNetwork(t)
-	defer testNetwork.Cleanup()
+	tn := testutil.NewNetwork(t)
+	defer tn.Cleanup()
 
-	seed := testNetwork.NewSeedNode()
+	seed := tn.NewSeedNode()
 	seed.Start()
-	bb := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
 
-	genesis := seed.Tail()
-	tail := genesis
-	for i := 1; i < mainChainHeight; i++ {
-		var mint *core.Block
-		if i == 1 {
-			mint = bb.Block(tail).Child().Stake().SignProposer().Build()
-		} else {
-			mint = bb.Block(tail).Child().SignProposer().Build()
+	bb := blockutil.New(t, tn.DynastySize).AddKeyPairs(seed.Config.Dynasties).AddKeyPairs(seed.Config.TokenDist)
+
+	// Create old chain's block
+	txs := make([]*core.Transaction, 0)
+	oldChain := make([]*core.Block, 0)
+	cur := seed.GenesisBlock()
+	for i := 0; i < oldChainHeight-1; i++ {
+		ib := bb.Block(cur).Child()
+		if i == 0 {
+			ib = ib.Stake()
 		}
-		mainChainBlocks = append(mainChainBlocks, mint)
-		tail = mint
-	}
-
-	tail = genesis
-	var txs []*Transaction
-	for i := 1; i < forkedChainHeight; i++ {
-		var mint *core.Block
-		if i+1 < forkedHeight {
-			mint = mainChainBlocks[i-1]
-		} else {
-			mint = bb.Block(tail).Child().Tx().RandomTx().Execute().SignProposer().Build()
-			txs = append(txs, mint.BlockData.Transactions()[0])
+		if i+2 > forkPointHeight {
+			tx := ib.Tx().RandomTx().Build()
+			txs = append(txs, tx)
+			ib = ib.ExecuteTx(tx)
 		}
-		forkedChainBlocks = append(forkedChainBlocks, mint)
-		tail = mint
+
+		block := ib.SignProposer().Build()
+		oldChain = append(oldChain, block)
+
+		cur = block
 	}
 
-	tm := seed.Med.TransactionManager()
-	failed := tm.PushAndExclusiveBroadcast(txs...)
-	assert.Zero(t, len(failed))
-	assert.Equal(t, len(txs), len(tm.GetAll()))
-
-	bm := seed.Med.BlockManager()
-	for i := len(forkedChainBlocks) - 1; i >= 0; i-- {
-		assert.NoError(t, bm.PushBlockData(forkedChainBlocks[i].BlockData))
-	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(forkedChainHeight), 10*time.Second))
-	assert.Equal(t, forkedChainBlocks[len(forkedChainBlocks)-1].Hash(), seed.Tail().Hash())
-	time.Sleep(1 * time.Second)
-	assert.Equal(t, 0, len(tm.GetAll()))
-
-	for i := len(mainChainBlocks) - 1; i >= forkedHeight-2; i-- {
-		err := bm.PushBlockData(mainChainBlocks[len(mainChainBlocks)-i].BlockData)
+	// push tx to check eviction later
+	for _, tx := range txs {
+		err := seed.Med.TransactionManager().Push(tx)
 		assert.NoError(t, err)
 	}
-	assert.NoError(t, seed.WaitUntilTailHeight(uint64(mainChainHeight), 10*time.Second))
-	assert.Equal(t, mainChainBlocks[len(mainChainBlocks)-1].Hash(), seed.Tail().Hash())
+	assert.Len(t, txs, seed.Med.TransactionManager().Len())
+
+	// push old chain's block
+	for _, block := range oldChain {
+		err := seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+		assert.NoError(t, err)
+	}
+	err := seed.WaitUntilTailHeight(uint64(oldChainHeight), 10*time.Second)
+	assert.NoError(t, err)
+	assert.Equal(t, seed.Tail().Hash(), oldChain[len(oldChain)-1].Hash())
+
+	// check transaction eviction
 	time.Sleep(1 * time.Second)
-	assert.Equal(t, len(txs), len(tm.GetAll()))
+	assert.Equal(t, 0, seed.Med.TransactionManager().Len())
+
+	// Create new chain's block after fork point
+	newChain := make([]*core.Block, 0)
+	cur = oldChain[forkPointHeight-2]
+	for i := forkPointHeight - 1; i < newChainHeight-1; i++ {
+		block := bb.Block(cur).Child().SignProposer().Build()
+		newChain = append(newChain, block)
+
+		cur = block
+	}
+
+	// push new chain to make chain fork
+	for _, block := range newChain {
+		err := seed.Med.BlockManager().PushBlockData(block.GetBlockData())
+		assert.NoError(t, err)
+	}
+	err = seed.WaitUntilTailHeight(uint64(newChainHeight), 10*time.Second)
+	assert.NoError(t, err)
+	assert.Equal(t, seed.Tail().Hash(), newChain[len(newChain)-1].Hash())
+
+	// check transaction reverted
+	time.Sleep(1 * time.Second)
+	assert.Equal(t, len(txs), seed.Med.TransactionManager().Len())
 }
 
 func TestBlockManager_CircularParentLink(t *testing.T) {

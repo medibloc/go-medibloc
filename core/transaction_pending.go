@@ -153,6 +153,10 @@ func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit u
 		if tx == nil {
 			break
 		}
+		if tx.Nonce() > nonceLowerLimit {
+			break
+		}
+
 		accFrom.remove(tx.Nonce())
 		accPayer := pool.payer[tx.PayerOrFrom()]
 		accPayer.remove(tx)

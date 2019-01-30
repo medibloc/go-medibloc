@@ -66,7 +66,7 @@ func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, n
 	defer pool.mu.Unlock()
 
 	from := addr.Hex()
-	v := pool.buckets.Del(from)
+	v := pool.buckets.Get(from)
 	if v == nil {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit ui
 	defer pool.mu.Unlock()
 
 	from := addr.Hex()
-	v := pool.buckets.Del(from)
+	v := pool.buckets.Get(from)
 	if v == nil {
 		return
 	}
@@ -93,7 +93,7 @@ func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit ui
 
 	for {
 		tx := bkt.peekFirst()
-		if tx == nil || tx.Nonce() >= nonceLowerLimit {
+		if tx == nil || tx.Nonce() > nonceLowerLimit {
 			break
 		}
 		pool.del(tx.Hash())
