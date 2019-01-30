@@ -315,6 +315,7 @@ func (bb *BlockBuilder) PayReward() *BlockBuilder {
 	return n
 }
 
+// TODO remove prepare, flush calls
 // Flush saves state to storage
 func (bb *BlockBuilder) Flush() *BlockBuilder {
 	n := bb.copy()
