@@ -118,11 +118,8 @@ message Genesis {
   // genesis meta
   GenesisMeta meta = 1;
 
-  // genesis token distribution address
-  repeated GenesisTokenDistribution token_distribution = 2;
-
   // genesis transactions
-  repeated Transaction transactions = 3;
+  repeated Transaction transactions = 2;
 }
 
 message GenesisMeta {
@@ -130,9 +127,4 @@ message GenesisMeta {
   uint32 chain_id = 1;
   // Dynasty size.
   uint32 dynasty_size = 2;
-}
-
-message GenesisTokenDistribution {
-  string address = 1;
-  string balance = 2;
 }
