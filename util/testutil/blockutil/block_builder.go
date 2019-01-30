@@ -297,7 +297,7 @@ func (bb *BlockBuilder) ExecuteTxErr(tx *core.Transaction, expected error) *Bloc
 		require.Equal(n.t, expected, err)
 		return n
 	}
-	require.Equal(n.t, expected.Error(), receipt.Error())
+	require.Equal(n.t, expected.Error(), string(receipt.Error()))
 	require.False(n.t, receipt.Executed())
 
 	tx.SetReceipt(receipt)
