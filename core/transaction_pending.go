@@ -59,6 +59,10 @@ func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *corestate.
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
+	if _, exist := pool.all[tx.HexHash()]; exist {
+		return ErrDuplicatedTransaction
+	}
+
 	accFrom, exist := pool.from[tx.From()]
 	if exist && accFrom.isDuplicateNonce(tx.Nonce()) {
 		return pool.replace(tx, acc, price)
