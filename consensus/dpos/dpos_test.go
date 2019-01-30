@@ -35,7 +35,7 @@ func TestChangeDynasty(t *testing.T) {
 
 	// Become new candidate
 	bb = bb.ChildNextDynasty().
-		Tx().Type(transaction.TxOpStake).Value(300000000).SignPair(newCandidate).Execute().
+		Tx().Type(transaction.TxOpStake).Value(100000000).SignPair(newCandidate).Execute().
 		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: "newblockproducer"}).SignPair(newCandidate).Execute().
 		Tx().Type(transaction.TxOpBecomeCandidate).Value(1000000).SignPair(newCandidate).Execute()
 
