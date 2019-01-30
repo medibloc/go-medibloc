@@ -497,9 +497,15 @@ func TestBlockManager_VerifyIntegrity(t *testing.T) {
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
 	assert.Equal(t, core.ErrInvalidBlock, err)
 
+	// Invalid Transaction Type
+	pair = keyutil.NewAddrKeyPair(t)
+	block = bb.Block(genesis).Child().Tx().Type("InvalidType").SignPair(pair).Add().SignProposer().Build()
+	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
+	assert.Equal(t, core.ErrTxTypeInvalid, err)
+
 	// Invalid Transaction Hash
 	pair = keyutil.NewAddrKeyPair(t)
-	block = bb.Block(genesis).Child().Tx().Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignProposer().Build()
+	block = bb.Block(genesis).Child().Tx().Type(transaction.TxOpTransfer).Value(100).Hash(hash([]byte("invalid hash"))).SignKey(pair.PrivKey).Add().SignProposer().Build()
 	err = bm.PushBlockDataSync(block.GetBlockData(), 1*time.Second)
 	assert.Equal(t, ErrInvalidTransactionHash, err)
 
