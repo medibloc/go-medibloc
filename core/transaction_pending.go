@@ -9,6 +9,7 @@ import (
 	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/common/roundrobin"
 	corestate "github.com/medibloc/go-medibloc/core/state"
+	"github.com/medibloc/go-medibloc/util"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -368,19 +369,11 @@ func (ap *AccountPayer) size() int {
 }
 
 func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Account, price common.Price) error {
-	bw := ap.bw.Clone()
-
-	key := addrNonceKey(tx)
-	old, exist := ap.addrNonceToTx[key]
-	if exist {
-		bw.Sub(old.exec.Bandwidth())
-	}
-	bw.Add(tx.exec.Bandwidth())
-	points, err := bw.CalcPoints(price)
+	point, err := ap.requiredPoint(tx, price)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to calculate points")
+		}).Error("Failed to get required point")
 		return err
 	}
 
@@ -389,11 +382,22 @@ func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Accoun
 	if err != nil {
 		return err
 	}
-	if modified.Cmp(points) < 0 {
+	if modified.Cmp(point) < 0 {
 		return ErrPointNotEnough
 	}
 
 	return nil
+}
+
+func (ap *AccountPayer) requiredPoint(tx *TxContext, price common.Price) (point *util.Uint128, err error) {
+	bw := ap.bw.Clone()
+	key := addrNonceKey(tx)
+	old, exist := ap.addrNonceToTx[key]
+	if exist {
+		bw.Sub(old.exec.Bandwidth())
+	}
+	bw.Add(tx.exec.Bandwidth())
+	return bw.CalcPoints(price)
 }
 
 func (ap *AccountPayer) set(tx *TxContext) (evicted *TxContext) {
