@@ -195,12 +195,12 @@ func (b *Block) ExecuteTransaction(tx *Transaction) (*Receipt, error) {
 		return nil, err
 	}
 
-	point, err := b.calcPointUsage(exeTx)
+	usage, err := b.calcPointUsage(exeTx)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := b.checkAvailablePoint(tx.PayerOrFrom(), exeTx, point); err != nil {
+	if err := b.checkAvailablePoint(tx, exeTx, usage); err != nil {
 		return nil, err
 	}
 
@@ -209,9 +209,9 @@ func (b *Block) ExecuteTransaction(tx *Transaction) (*Receipt, error) {
 		return nil, ErrAtomicError
 	}
 	if execErr != nil {
-		return b.makeErrorReceipt(exeTx.Bandwidth(), point, execErr), nil
+		return b.makeErrorReceipt(exeTx.Bandwidth(), usage, execErr), nil
 	}
-	return b.makeSuccessReceipt(exeTx.Bandwidth(), point), nil
+	return b.makeSuccessReceipt(exeTx.Bandwidth(), usage), nil
 }
 
 func (b *Block) receiptTemplate(bw *common.Bandwidth, point *util.Uint128) *Receipt {
@@ -259,13 +259,31 @@ func (b *Block) checkBandwidth(exeTx ExecutableTx) error {
 	return nil
 }
 
-func (b *Block) checkAvailablePoint(addr common.Address, exeTx ExecutableTx, point *util.Uint128) error {
-	payer, err := b.state.GetAccount(addr)
+func (b *Block) checkAvailablePoint(tx *Transaction, exeTx ExecutableTx, usage *util.Uint128) error {
+	if tx.HasPayer() {
+		payer, err := b.state.GetAccount(tx.Payer())
+		if err != nil {
+			return err
+		}
+		return b.checkPayerAccountPoint(payer, usage)
+	}
+
+	from, err := b.state.GetAccount(tx.From())
 	if err != nil {
 		return err
 	}
+	return b.checkFromAccountPoint(from, exeTx, usage)
+}
 
-	avail := payer.Points
+func (b *Block) checkPayerAccountPoint(payer *corestate.Account, usage *util.Uint128) error {
+	if payer.Points.Cmp(usage) < 0 {
+		return ErrPointNotEnough
+	}
+	return nil
+}
+
+func (b *Block) checkFromAccountPoint(from *corestate.Account, exeTx ExecutableTx, usage *util.Uint128) (err error) {
+	avail := from.Points
 	neg, abs := exeTx.PointChange()
 	if neg {
 		avail, err = avail.Sub(abs)
@@ -278,7 +296,7 @@ func (b *Block) checkAvailablePoint(addr common.Address, exeTx ExecutableTx, poi
 	if err == util.ErrUint128Underflow {
 		avail = util.Uint128Zero()
 	}
-	if avail.Cmp(point) < 0 {
+	if avail.Cmp(usage) < 0 {
 		return ErrPointNotEnough
 	}
 	return nil

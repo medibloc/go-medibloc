@@ -217,6 +217,43 @@ func TestPayerSigner(t *testing.T) {
 
 }
 
+func TestTransaction_StakeWithPayerSign(t *testing.T) {
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+
+	payer := bb.TokenDist[blockutil.DynastySize]
+	from := bb.TokenDist[blockutil.DynastySize+1]
+
+	// Payer doesn't have point
+	bb.Tx().StakeTx(from, 10000).SignPayerPair(payer).ExecuteErr(core.ErrPointNotEnough)
+
+	// Payer has point
+	bb.Tx().StakeTx(payer, 10000).Execute().
+		Tx().StakeTx(from, 10000).SignPayerPair(payer).Execute()
+}
+
+func TestTransaction_UnstakeWithPayerSign(t *testing.T) {
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+
+	payer := bb.TokenDist[blockutil.DynastySize]
+	from := bb.TokenDist[blockutil.DynastySize+1]
+
+	// Payer doesn't have point
+	bb.Tx().UnstakeTx(from, 10000).SignPayerPair(payer).ExecuteErr(core.ErrPointNotEnough)
+
+	// Unable to unstake all point without payer sign
+	bb.Tx().StakeTx(from, 10000).Execute().
+		Tx().UnstakeTx(from, 10000).ExecuteErr(core.ErrPointNotEnough)
+
+	// Partial unstake success
+	bb.Tx().StakeTx(from, 10000).Execute().
+		Tx().UnstakeTx(from, 9000).Execute()
+
+	// Unstake with payer sign
+	bb.Tx().StakeTx(from, 10000).Execute().
+		Tx().StakeTx(payer, 10000).Execute().
+		Tx().UnstakeTx(from, 10000).SignPayerPair(payer).Execute()
+}
+
 func TestRegisterAndDeregisterAlias(t *testing.T) {
 	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
 	from := bb.TokenDist[blockutil.DynastySize]

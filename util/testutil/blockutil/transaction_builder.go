@@ -239,6 +239,12 @@ func (tb *TxBuilder) StakeTx(pair *keyutil.AddrKeyPair, med float64) *TxBuilder 
 	return n.Type(transaction.TxOpStake).Value(med).SignPair(pair)
 }
 
+// UnstakeTx generate stake Tx
+func (tb *TxBuilder) UnstakeTx(pair *keyutil.AddrKeyPair, med float64) *TxBuilder {
+	n := tb.copy()
+	return n.Type(transaction.TxOpUnstake).Value(med).SignPair(pair)
+}
+
 // Build build transaction
 func (tb *TxBuilder) Build() *core.Transaction {
 	n := tb.copy()

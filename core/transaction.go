@@ -128,6 +128,10 @@ func (t *Transaction) PayerOrFrom() common.Address {
 	return t.payer
 }
 
+func (t *Transaction) HasPayer() bool {
+	return !t.payer.Equals(common.Address{})
+}
+
 // ToProto converts Transaction to corepb.Transaction
 func (t *Transaction) ToProto() (proto.Message, error) {
 	value, err := t.value.ToFixedSizeByteSlice()
