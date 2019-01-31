@@ -41,9 +41,9 @@ func GetStorage(t *testing.T) storage.Storage {
 func FindRandomListenPorts(n int) (ports []string) {
 	listens := make([]goNet.Listener, 0)
 	for i := 0; i < n; i++ {
-		lis, _ := goNet.Listen("tcp", ":0")
+		lis, _ := goNet.Listen("tcp", "127.0.0.1:0")
 		addr := lis.Addr().String()
-		ports = append(ports, strings.TrimLeft(addr, "[::]"))
+		ports = append(ports, strings.TrimLeft(addr, "127.0.0.1:"))
 		listens = append(listens, lis)
 	}
 	for i := 0; i < n; i++ {

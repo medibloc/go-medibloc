@@ -142,6 +142,7 @@ func waitForConnection(t *testing.T, timeout time.Duration, node *net.Node, targ
 
 func newDefalutConfig(t *testing.T) *medletpb.Config {
 	cfg := medlet.DefaultConfig()
+	cfg.Network.Listens = []string{"/ip4/127.0.0.1/tcp/0"}
 	cfg.Global.Datadir = testutil.TempDir(t)
 	return cfg
 }

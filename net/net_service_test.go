@@ -63,6 +63,7 @@ func TestNewMedService(t *testing.T) {
 func NewTestNetService(t *testing.T, ctx context.Context) (*net.MedService, peerstore.PeerInfo) {
 	cfg := medlet.DefaultConfig()
 	cfg.Global.Datadir = testutil.TempDir(t)
+	cfg.Network.Listens = []string{"/ip4/127.0.0.1/tcp/0"}
 
 	ns, err := net.NewNetService(cfg)
 	require.NoError(t, err)
