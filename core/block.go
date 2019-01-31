@@ -416,17 +416,14 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 			return err
 		}
 	}
+
 	payer.Points, err = payer.Points.Sub(tx.Receipt().Points())
-	if err != nil && err == util.ErrUint128Underflow {
-		logging.Console().WithFields(logrus.Fields{
-			"tx_points":    tx.Receipt().Points(),
-			"payer_points": payer.Points,
-			"payer":        tx.PayerOrFrom().Hex(),
-			"err":          err,
-		}).Warn("Points limit exceeded.")
-		return ErrPointNotEnough
-	}
 	if err != nil {
+		logging.Console().WithFields(logrus.Fields{
+			"tx":    tx,
+			"payer": payer,
+			"err":   err,
+		}).Error("Failed to subtract point.")
 		return err
 	}
 
