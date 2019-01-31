@@ -266,12 +266,19 @@ func (b *Block) checkAvailablePoint(addr common.Address, exeTx ExecutableTx, poi
 	}
 
 	avail := payer.Points
-	modified, err := exeTx.PointModifier(avail)
-	if err != nil {
+	neg, abs := exeTx.PointChange()
+	if neg {
+		avail, err = avail.Sub(abs)
+	} else {
+		avail, err = avail.Add(abs)
+	}
+	if err != nil && err != util.ErrUint128Underflow {
 		return err
 	}
-
-	if modified.Cmp(point) < 0 {
+	if err == util.ErrUint128Underflow {
+		avail = util.Uint128Zero()
+	}
+	if avail.Cmp(point) < 0 {
 		return ErrPointNotEnough
 	}
 	return nil

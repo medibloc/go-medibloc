@@ -378,11 +378,19 @@ func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Accoun
 	}
 
 	avail := acc.Points
-	modified, err := tx.exec.PointModifier(avail)
-	if err != nil {
+	neg, abs := tx.exec.PointChange()
+	if neg {
+		avail, err = avail.Sub(abs)
+	} else {
+		avail, err = avail.Add(abs)
+	}
+	if err != nil && err != util.ErrUint128Underflow {
 		return err
 	}
-	if modified.Cmp(point) < 0 {
+	if err == util.ErrUint128Underflow {
+		avail = util.Uint128Zero()
+	}
+	if avail.Cmp(point) < 0 {
 		return ErrPointNotEnough
 	}
 

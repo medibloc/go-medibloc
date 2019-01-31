@@ -52,7 +52,7 @@ func TestReceipt(t *testing.T) {
 	tx2 := tb.Nonce(2).Type(transaction.TxOpUnstake).Value(200).SignPair(payer).
 		Build()
 	tx3 := tb.Nonce(2).Type(transaction.TxOpUnstake).Value(50).SignPair(payer).Build()
-	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrStakingNotEnough).ExecuteTx(tx3).SignProposer().Build()
+	b := bb.ExecuteTx(tx1).ExecuteTxErr(tx2, core.ErrPointNotEnough).ExecuteTx(tx3).SignProposer().Build()
 
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(b.BlockData))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(b.BlockData))
