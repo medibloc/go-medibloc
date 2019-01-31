@@ -188,7 +188,7 @@ func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 }
 
 func (tx *UnstakeTx) PointChange() (neg bool, abs *util.Uint128) {
-	return true, tx.amount
+	return true, tx.amount.DeepCopy()
 }
 
 func (tx *UnstakeTx) RecoverFrom() (common.Address, error) {
