@@ -426,13 +426,13 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 	from.Nonce++
 
 	var payer *corestate.Account
-	if tx.PayerOrFrom().Equals(tx.From()) {
-		payer = from
-	} else {
-		payer, err = b.state.GetAccount(tx.PayerOrFrom())
+	if tx.HasPayer() {
+		payer, err = b.state.GetAccount(tx.Payer())
 		if err != nil {
 			return err
 		}
+	} else {
+		payer = from
 	}
 
 	payer.Points, err = payer.Points.Sub(tx.Receipt().Points())
@@ -449,7 +449,7 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 		if err := block.state.PutAccount(from); err != nil {
 			return err
 		}
-		if !tx.PayerOrFrom().Equals(tx.From()) {
+		if tx.HasPayer() {
 			if err := block.state.PutAccount(payer); err != nil {
 				return err
 			}
