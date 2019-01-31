@@ -94,6 +94,10 @@ func (tx *StakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uin
 	return points.Add(tx.amount)
 }
 
+func (tx *StakeTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, tx.amount.DeepCopy()
+}
+
 func (tx *StakeTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }
@@ -196,6 +200,10 @@ func (tx *UnstakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.U
 		return nil, err
 	}
 	return modifiedPoints, nil
+}
+
+func (tx *UnstakeTx) PointChange() (neg bool, abs *util.Uint128) {
+	return true, tx.amount
 }
 
 func (tx *UnstakeTx) RecoverFrom() (common.Address, error) {

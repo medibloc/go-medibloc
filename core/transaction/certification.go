@@ -156,6 +156,10 @@ func (tx *AddCertificationTx) PointModifier(points *util.Uint128) (modifiedPoint
 	return points, nil
 }
 
+func (tx *AddCertificationTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
+}
+
 func (tx *AddCertificationTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }
@@ -285,6 +289,10 @@ func (tx *RevokeCertificationTx) Bandwidth() *common.Bandwidth {
 
 func (tx *RevokeCertificationTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *RevokeCertificationTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
 }
 
 func (tx *RevokeCertificationTx) RecoverFrom() (common.Address, error) {

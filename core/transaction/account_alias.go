@@ -145,6 +145,10 @@ func (tx *RegisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *
 	return points, nil
 }
 
+func (tx *RegisterAliasTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
+}
+
 func (tx *RegisterAliasTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }
@@ -230,6 +234,10 @@ func (tx *DeregisterAliasTx) Bandwidth() *common.Bandwidth {
 // PointModifier returns modifier
 func (tx *DeregisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *DeregisterAliasTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
 }
 
 func (tx *DeregisterAliasTx) RecoverFrom() (common.Address, error) {

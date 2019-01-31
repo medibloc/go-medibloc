@@ -112,6 +112,10 @@ func (tx *AddRecordTx) PointModifier(points *util.Uint128) (modifiedPoints *util
 	return points, nil
 }
 
+func (tx *AddRecordTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
+}
+
 func (tx *AddRecordTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }

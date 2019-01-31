@@ -42,6 +42,10 @@ func (tx *GenesisTx) PointModifier(points *util.Uint128) (modifiedPoints *util.U
 	return points, nil
 }
 
+func (tx *GenesisTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
+}
+
 func (tx *GenesisTx) RecoverFrom() (common.Address, error) {
 	return recoverGenesis(tx.Transaction)
 }
@@ -98,6 +102,10 @@ func (tx *GenesisDistributionTx) Bandwidth() *common.Bandwidth {
 
 func (tx *GenesisDistributionTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *GenesisDistributionTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
 }
 
 func (tx *GenesisDistributionTx) RecoverFrom() (common.Address, error) {

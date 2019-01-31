@@ -147,6 +147,10 @@ func (tx *BecomeCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints
 	return points, nil
 }
 
+func (tx *BecomeCandidateTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
+}
+
 func (tx *BecomeCandidateTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }
@@ -227,6 +231,10 @@ func (tx *QuitCandidateTx) Bandwidth() *common.Bandwidth {
 // PointModifier returns modifier
 func (tx *QuitCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
 	return points, nil
+}
+
+func (tx *QuitCandidateTx) PointChange() (neg bool, abs *util.Uint128) {
+	return false, util.Uint128Zero()
 }
 
 func (tx *QuitCandidateTx) RecoverFrom() (common.Address, error) {
