@@ -168,10 +168,6 @@ func (tx *VoteTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
-func (tx *VoteTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
-}
-
 func (tx *VoteTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }

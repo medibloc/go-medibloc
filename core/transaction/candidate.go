@@ -143,10 +143,6 @@ func (tx *BecomeCandidateTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
-func (tx *BecomeCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
-}
-
 func (tx *BecomeCandidateTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
@@ -226,11 +222,6 @@ func (tx *QuitCandidateTx) Execute(b *core.Block) error {
 // Bandwidth returns bandwidth.
 func (tx *QuitCandidateTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
-}
-
-// PointModifier returns modifier
-func (tx *QuitCandidateTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
 }
 
 func (tx *QuitCandidateTx) PointChange() (neg bool, abs *util.Uint128) {

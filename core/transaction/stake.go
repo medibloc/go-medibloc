@@ -90,10 +90,6 @@ func (tx *StakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
-func (tx *StakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points.Add(tx.amount)
-}
-
 func (tx *StakeTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, tx.amount.DeepCopy()
 }
@@ -189,17 +185,6 @@ func (tx *UnstakeTx) Execute(b *core.Block) error {
 // Bandwidth returns bandwidth.
 func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
-}
-
-func (tx *UnstakeTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	modifiedPoints, err = points.Sub(tx.amount)
-	if err != nil && err == util.ErrUint128Underflow {
-		return nil, core.ErrStakingNotEnough
-	}
-	if err != nil {
-		return nil, err
-	}
-	return modifiedPoints, nil
 }
 
 func (tx *UnstakeTx) PointChange() (neg bool, abs *util.Uint128) {

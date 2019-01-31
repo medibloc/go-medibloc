@@ -141,10 +141,6 @@ func (tx *RegisterAliasTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
 
-func (tx *RegisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
-}
-
 func (tx *RegisterAliasTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
@@ -229,11 +225,6 @@ func (tx *DeregisterAliasTx) Execute(b *core.Block) error {
 // Bandwidth returns bandwidth.
 func (tx *DeregisterAliasTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
-}
-
-// PointModifier returns modifier
-func (tx *DeregisterAliasTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
 }
 
 func (tx *DeregisterAliasTx) PointChange() (neg bool, abs *util.Uint128) {

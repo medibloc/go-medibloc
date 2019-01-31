@@ -38,10 +38,6 @@ func (tx *GenesisTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(0, 0)
 }
 
-func (tx *GenesisTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
-}
-
 func (tx *GenesisTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
@@ -98,10 +94,6 @@ func (tx *GenesisDistributionTx) Execute(b *core.Block) error {
 
 func (tx *GenesisDistributionTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(0, 0)
-}
-
-func (tx *GenesisDistributionTx) PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error) {
-	return points, nil
 }
 
 func (tx *GenesisDistributionTx) PointChange() (neg bool, abs *util.Uint128) {

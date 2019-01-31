@@ -166,7 +166,6 @@ type Canonical interface {
 type ExecutableTx interface {
 	Execute(b *Block) error
 	Bandwidth() *common.Bandwidth
-	PointModifier(points *util.Uint128) (modifiedPoints *util.Uint128, err error)
 	PointChange() (neg bool, abs *util.Uint128)
 	RecoverFrom() (common.Address, error)
 }
