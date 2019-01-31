@@ -265,24 +265,24 @@ func (b *Block) checkAvailablePoint(tx *Transaction, exeTx ExecutableTx, usage *
 		if err != nil {
 			return err
 		}
-		return b.checkPayerAccountPoint(payer, usage)
+		return checkPayerAccountPoint(payer, usage)
 	}
 
 	from, err := b.state.GetAccount(tx.From())
 	if err != nil {
 		return err
 	}
-	return b.checkFromAccountPoint(from, exeTx, usage)
+	return checkFromAccountPoint(from, exeTx, usage)
 }
 
-func (b *Block) checkPayerAccountPoint(payer *corestate.Account, usage *util.Uint128) error {
+func checkPayerAccountPoint(payer *corestate.Account, usage *util.Uint128) error {
 	if payer.Points.Cmp(usage) < 0 {
 		return ErrPointNotEnough
 	}
 	return nil
 }
 
-func (b *Block) checkFromAccountPoint(from *corestate.Account, exeTx ExecutableTx, usage *util.Uint128) (err error) {
+func checkFromAccountPoint(from *corestate.Account, exeTx ExecutableTx, usage *util.Uint128) (err error) {
 	avail := from.Points
 	neg, abs := exeTx.PointChange()
 	if neg {

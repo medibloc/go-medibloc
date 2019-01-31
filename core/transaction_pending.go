@@ -84,7 +84,7 @@ func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, 
 	if !exist {
 		accPayer = newAccountPayer(tx.PayerOrFrom())
 	}
-	if err := accPayer.checkPointAvailable(tx, acc, price); err != nil {
+	if err := accPayer.checkAvailablePoint(tx, acc, price); err != nil {
 		return err
 	}
 
@@ -115,7 +115,7 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Accoun
 	if !exist {
 		accPayer = newAccountPayer(tx.PayerOrFrom())
 	}
-	if err := accPayer.checkPointAvailable(tx, acc, price); err != nil {
+	if err := accPayer.checkAvailablePoint(tx, acc, price); err != nil {
 		return err
 	}
 
@@ -368,8 +368,8 @@ func (ap *AccountPayer) size() int {
 	return len(ap.addrNonceToTx)
 }
 
-func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Account, price common.Price) error {
-	point, err := ap.requiredPoint(tx, price)
+func (ap *AccountPayer) checkAvailablePoint(tx *TxContext, acc *corestate.Account, price common.Price) error {
+	usage, err := ap.requiredPointUsage(tx, price)
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
@@ -377,27 +377,10 @@ func (ap *AccountPayer) checkPointAvailable(tx *TxContext, acc *corestate.Accoun
 		return err
 	}
 
-	avail := acc.Points
-	neg, abs := tx.exec.PointChange()
-	if neg {
-		avail, err = avail.Sub(abs)
-	} else {
-		avail, err = avail.Add(abs)
-	}
-	if err != nil && err != util.ErrUint128Underflow {
-		return err
-	}
-	if err == util.ErrUint128Underflow {
-		avail = util.Uint128Zero()
-	}
-	if avail.Cmp(point) < 0 {
-		return ErrPointNotEnough
-	}
-
-	return nil
+	return checkFromAccountPoint(acc, tx.exec, usage)
 }
 
-func (ap *AccountPayer) requiredPoint(tx *TxContext, price common.Price) (point *util.Uint128, err error) {
+func (ap *AccountPayer) requiredPointUsage(tx *TxContext, price common.Price) (point *util.Uint128, err error) {
 	bw := ap.bw.Clone()
 	key := addrNonceKey(tx)
 	old, exist := ap.addrNonceToTx[key]
