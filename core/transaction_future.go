@@ -66,6 +66,33 @@ func (pool *FutureTransactionPool) Set(tx *TxContext) (evicted *TxContext) {
 	return nil
 }
 
+// Del deletes a transaction
+func (pool *FutureTransactionPool) Del(tx *TxContext) (deleted bool) {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	if pool.exist(tx.Hash()) {
+		return false
+	}
+
+	return pool.del(tx.Hash())
+}
+
+// PeekLowerNonce returns a transaction with lowest nonce for given address.
+func (pool *FutureTransactionPool) PeekLowerNonce(addr common.Address) *TxContext {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	from := addr.Hex()
+	v := pool.buckets.Get(from)
+	if v == nil {
+		return nil
+	}
+	bkt := v.(*bucket)
+
+	return bkt.peekFirst()
+}
+
 // PopWithNonceUpperLimit pop a transaction if there is a transaction whose nonce is lower than given limit.
 func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, nonceUpperLimit uint64) *TxContext {
 	pool.mu.Lock()
@@ -82,7 +109,10 @@ func (pool *FutureTransactionPool) PopWithNonceUpperLimit(addr common.Address, n
 	if tx == nil || tx.Nonce() > nonceUpperLimit {
 		return nil
 	}
-	return pool.del(tx.Hash())
+	if deleted := pool.del(tx.Hash()); deleted {
+		return tx
+	}
+	return nil
 }
 
 // Prune prunes pool by given nonce of lower limit.
@@ -102,7 +132,9 @@ func (pool *FutureTransactionPool) Prune(addr common.Address, nonceLowerLimit ui
 		if tx == nil || tx.Nonce() > nonceLowerLimit {
 			break
 		}
-		pool.del(tx.Hash())
+		if deleted := pool.del(tx.Hash()); !deleted {
+			continue
+		}
 		if deleteCallback != nil {
 			deleteCallback(tx)
 		}
@@ -142,13 +174,16 @@ func (pool *FutureTransactionPool) evict() (evicted *TxContext) {
 	if tx == nil {
 		return nil
 	}
-	return pool.del(tx.Hash())
+	if deleted := pool.del(tx.Hash()); !deleted {
+		return nil
+	}
+	return tx
 }
 
-func (pool *FutureTransactionPool) del(hash []byte) (deleted *TxContext) {
+func (pool *FutureTransactionPool) del(hash []byte) (deleted bool) {
 	tx, exist := pool.all[byteutils.Bytes2Hex(hash)]
 	if !exist {
-		return nil
+		return false
 	}
 	delete(pool.all, byteutils.Bytes2Hex(hash))
 
@@ -156,14 +191,14 @@ func (pool *FutureTransactionPool) del(hash []byte) (deleted *TxContext) {
 
 	v := pool.buckets.Del(from)
 	if v == nil {
-		return nil
+		return false
 	}
 	bkt := v.(*bucket)
-	deleted = bkt.del(tx.Nonce())
+	deletedTx := bkt.del(tx.Nonce())
 	if !bkt.isEmpty() {
 		pool.buckets.Set(from, bkt)
 	}
-	return deleted
+	return deletedTx != nil
 }
 
 // bucket is a set of transactions for each account.
