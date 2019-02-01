@@ -23,6 +23,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
 	corepb "github.com/medibloc/go-medibloc/core/pb"
+	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/event"
 	medletpb "github.com/medibloc/go-medibloc/medlet/pb"
 	"github.com/medibloc/go-medibloc/net"
@@ -133,55 +134,97 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 		return err
 	}
 
-	bs := tm.canon.TailBlock().State()
-	price := bs.Price()
-	from := txc.From()
-	acc, err := bs.GetAccount(from)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get account.")
+	tail := tm.canon.TailBlock()
+	enterPending, err := tm.pushToPool(tail.State(), txc)
+	if err != nil || !enterPending {
 		return err
 	}
 
+	return tm.transit(tail.State(), txc.From())
+}
+
+func (tm *TransactionManager) pushToPool(bs *BlockState, txc *TxContext) (enterPending bool, err error) {
+	from, _, err := getFromAndPayerAccount(bs, txc)
+	if err != nil {
+		return false, err
+	}
+	price := bs.Price()
+
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	nonceUpperLimit := tm.pendingPool.NonceUpperLimit(acc)
+	nonceUpperLimit := tm.pendingPool.NonceUpperLimit(from)
 	if txc.Nonce() > nonceUpperLimit {
 		// TODO emit event
 		evicted := tm.futurePool.Set(txc)
 		if evicted != nil && byteutils.Equal(evicted.Hash(), txc.Hash()) {
 			// TODO Err Type
-			return errors.New("transaction pool is full")
+			return false, errors.New("transaction pool is full")
 		}
-		return nil
+		return false, nil
 	}
+	return true, tm.pushToPendingAndBroadcast(txc, from, price)
+}
 
-	err = tm.pendingPool.PushOrReplace(txc, acc, bs.Price())
+func (tm *TransactionManager) transit(bs *BlockState, addr common.Address) error {
+	for {
+		tx := tm.futurePool.PeekLowerNonce(addr)
+		if tx == nil {
+			return nil
+		}
+		keepMoving, err := tm.moveBetweenPool(bs, tx)
+		if err != nil || !keepMoving {
+			return err
+		}
+	}
+}
+
+func (tm *TransactionManager) moveBetweenPool(bs *BlockState, txc *TxContext) (keepMoving bool, err error) {
+	from, _, err := getFromAndPayerAccount(bs, txc)
+	if err != nil {
+		return false, err
+	}
+	price := bs.Price()
+
+	tm.mu.Lock()
+	defer tm.mu.Unlock()
+	nonceUpperLimit := tm.pendingPool.NonceUpperLimit(from)
+	if txc.Nonce() > nonceUpperLimit {
+		return false, nil
+	}
+	if deleted := tm.futurePool.Del(txc); !deleted {
+		return false, nil
+	}
+	err = tm.pushToPendingAndBroadcast(txc, from, price)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (tm *TransactionManager) pushToPendingAndBroadcast(txc *TxContext, from *corestate.Account, price common.Price) error {
+	err := tm.pendingPool.PushOrReplace(txc, from, price)
 	if err != nil {
 		return err
 	}
-	if txc.broadcast {
-		tm.Broadcast(txc.Transaction)
+	if !txc.broadcast {
+		return nil
 	}
+	return tm.Broadcast(txc.Transaction)
+}
 
-	// TODO Refactor extract method(transitTx)
-	for {
-		nonceUpperLimit = tm.pendingPool.NonceUpperLimit(acc)
-		txc = tm.futurePool.PopWithNonceUpperLimit(from, nonceUpperLimit)
-		if txc == nil {
-			break
-		}
-		err = tm.pendingPool.PushOrReplace(txc, acc, price)
-		if err != nil {
-			break
-		}
-		if txc.broadcast {
-			tm.Broadcast(txc.Transaction)
-		}
+func getFromAndPayerAccount(bs *BlockState, txc *TxContext) (from, payer *corestate.Account, err error) {
+	from, err = bs.GetAccount(txc.From())
+	if err != nil {
+		return nil, nil, err
 	}
-
-	return nil
+	if !txc.HasPayer() {
+		return from, nil, nil
+	}
+	payer, err = bs.GetAccount(txc.Payer())
+	if err != nil {
+		return nil, nil, err
+	}
+	return from, payer, nil
 }
 
 // ResetTransactionSelector resets transaction selector.
@@ -227,34 +270,8 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 	tm.futurePool.Prune(addr, nonce, nil)
 	tm.mu.Unlock()
 
-	bs := tm.canon.TailBlock().State()
-	price := bs.Price()
-	from := addr
-	acc, err := bs.GetAccount(addr)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get account.")
-		return err
-	}
-
-	tm.mu.Lock()
-	defer tm.mu.Unlock()
-	for {
-		nonceUpperLimit := tm.pendingPool.NonceUpperLimit(acc)
-		txc := tm.futurePool.PopWithNonceUpperLimit(from, nonceUpperLimit)
-		if txc == nil {
-			break
-		}
-		err = tm.pendingPool.PushOrReplace(txc, acc, price)
-		if err != nil {
-			break
-		}
-		if txc.broadcast {
-			tm.Broadcast(txc.Transaction)
-		}
-	}
-	return nil
+	tail := tm.canon.TailBlock()
+	return tm.transit(tail.State(), addr)
 }
 
 // TODO Need GETALL(?)
