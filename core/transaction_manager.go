@@ -144,7 +144,7 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 }
 
 func (tm *TransactionManager) pushToPool(bs *BlockState, txc *TxContext) (enterPending bool, err error) {
-	from, _, err := getFromAndPayerAccount(bs, txc)
+	from, payer, err := getFromAndPayerAccount(bs, txc)
 	if err != nil {
 		return false, err
 	}
@@ -162,7 +162,7 @@ func (tm *TransactionManager) pushToPool(bs *BlockState, txc *TxContext) (enterP
 		}
 		return false, nil
 	}
-	return true, tm.pushToPendingAndBroadcast(txc, from, price)
+	return true, tm.pushToPendingAndBroadcast(txc, from, payer, price)
 }
 
 func (tm *TransactionManager) transit(bs *BlockState, addr common.Address) error {
@@ -179,7 +179,7 @@ func (tm *TransactionManager) transit(bs *BlockState, addr common.Address) error
 }
 
 func (tm *TransactionManager) moveBetweenPool(bs *BlockState, txc *TxContext) (keepMoving bool, err error) {
-	from, _, err := getFromAndPayerAccount(bs, txc)
+	from, payer, err := getFromAndPayerAccount(bs, txc)
 	if err != nil {
 		return false, err
 	}
@@ -194,15 +194,15 @@ func (tm *TransactionManager) moveBetweenPool(bs *BlockState, txc *TxContext) (k
 	if deleted := tm.futurePool.Del(txc); !deleted {
 		return false, nil
 	}
-	err = tm.pushToPendingAndBroadcast(txc, from, price)
+	err = tm.pushToPendingAndBroadcast(txc, from, payer, price)
 	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (tm *TransactionManager) pushToPendingAndBroadcast(txc *TxContext, from *corestate.Account, price common.Price) error {
-	err := tm.pendingPool.PushOrReplace(txc, from, price)
+func (tm *TransactionManager) pushToPendingAndBroadcast(txc *TxContext, from *corestate.Account, payer *corestate.Account, price common.Price) error {
+	err := tm.pendingPool.PushOrReplace(txc, from, payer, price)
 	if err != nil {
 		return err
 	}

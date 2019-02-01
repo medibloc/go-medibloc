@@ -56,7 +56,7 @@ func (pool *PendingTransactionPool) Len() int {
 }
 
 // PushOrReplace pushes or replaces a transaction.
-func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *corestate.Account, price common.Price) error {
+func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, accState *corestate.Account, payerState *corestate.Account, price common.Price) error {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
@@ -66,17 +66,17 @@ func (pool *PendingTransactionPool) PushOrReplace(tx *TxContext, acc *corestate.
 
 	accFrom, exist := pool.from[tx.From()]
 	if exist && accFrom.isDuplicateNonce(tx.Nonce()) {
-		return pool.replace(tx, acc, price)
+		return pool.replace(tx, accState, payerState, price)
 	}
-	return pool.push(tx, acc, price)
+	return pool.push(tx, accState, payerState, price)
 }
 
-func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, price common.Price) error {
+func (pool *PendingTransactionPool) push(tx *TxContext, accState *corestate.Account, payerState *corestate.Account, price common.Price) error {
 	accFrom, exist := pool.from[tx.From()]
 	if !exist {
 		accFrom = newAccountFrom(tx.From())
 	}
-	if !accFrom.isAcceptableNonce(tx.Nonce(), acc.Nonce) {
+	if !accFrom.isAcceptableNonce(tx.Nonce(), accState.Nonce) {
 		return ErrNonceNotAcceptable
 	}
 
@@ -84,7 +84,17 @@ func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, 
 	if !exist {
 		accPayer = newAccountPayer(tx.PayerOrFrom())
 	}
-	if err := accPayer.checkAvailablePoint(tx, acc, price); err != nil {
+	usage, err := accPayer.requiredPointUsage(tx, price)
+	if err != nil {
+		return err
+	}
+
+	if tx.HasPayer() {
+		err = checkPayerAccountPoint(payerState, usage)
+	} else {
+		err = checkFromAccountPoint(accState, tx.exec, usage)
+	}
+	if err != nil {
 		return err
 	}
 
@@ -99,7 +109,7 @@ func (pool *PendingTransactionPool) push(tx *TxContext, acc *corestate.Account, 
 	return nil
 }
 
-func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Account, price common.Price) error {
+func (pool *PendingTransactionPool) replace(tx *TxContext, accState *corestate.Account, payerState *corestate.Account, price common.Price) error {
 	accFrom, exist := pool.from[tx.From()]
 	if !exist {
 		accFrom = newAccountFrom(tx.From())
@@ -115,7 +125,17 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, acc *corestate.Accoun
 	if !exist {
 		accPayer = newAccountPayer(tx.PayerOrFrom())
 	}
-	if err := accPayer.checkAvailablePoint(tx, acc, price); err != nil {
+	usage, err := accPayer.requiredPointUsage(tx, price)
+	if err != nil {
+		return err
+	}
+
+	if tx.HasPayer() {
+		err = checkPayerAccountPoint(payerState, usage)
+	} else {
+		err = checkFromAccountPoint(accState, tx.exec, usage)
+	}
+	if err != nil {
 		return err
 	}
 
@@ -366,18 +386,6 @@ func newAccountPayer(payer common.Address) *AccountPayer {
 
 func (ap *AccountPayer) size() int {
 	return len(ap.addrNonceToTx)
-}
-
-func (ap *AccountPayer) checkAvailablePoint(tx *TxContext, acc *corestate.Account, price common.Price) error {
-	usage, err := ap.requiredPointUsage(tx, price)
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("Failed to get required point")
-		return err
-	}
-
-	return checkFromAccountPoint(acc, tx.exec, usage)
 }
 
 func (ap *AccountPayer) requiredPointUsage(tx *TxContext, price common.Price) (point *util.Uint128, err error) {
