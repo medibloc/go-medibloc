@@ -135,20 +135,23 @@ func (tm *TransactionManager) push(txc *TxContext) error {
 	}
 
 	tail := tm.canon.TailBlock()
-	enterPending, err := tm.pushToPool(tail.State(), txc)
+	enterPending, err := tm.pushToPool(tail, txc)
 	if err != nil || !enterPending {
 		return err
 	}
 
-	return tm.transit(tail.State(), txc.From())
+	return tm.transit(tail, txc.From())
 }
 
-func (tm *TransactionManager) pushToPool(bs *BlockState, txc *TxContext) (enterPending bool, err error) {
-	from, payer, err := getFromAndPayerAccount(bs, txc)
+func (tm *TransactionManager) pushToPool(tail *Block, txc *TxContext) (enterPending bool, err error) {
+	from, payer, err := getFromAndPayerAccount(tail.State(), txc)
 	if err != nil {
 		return false, err
 	}
-	price := bs.Price()
+	price, err := tail.CalcChildPrice()
+	if err != nil {
+		return false, err
+	}
 
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
@@ -165,25 +168,28 @@ func (tm *TransactionManager) pushToPool(bs *BlockState, txc *TxContext) (enterP
 	return true, tm.pushToPendingAndBroadcast(txc, from, payer, price)
 }
 
-func (tm *TransactionManager) transit(bs *BlockState, addr common.Address) error {
+func (tm *TransactionManager) transit(tail *Block, addr common.Address) error {
 	for {
 		tx := tm.futurePool.PeekLowerNonce(addr)
 		if tx == nil {
 			return nil
 		}
-		keepMoving, err := tm.moveBetweenPool(bs, tx)
+		keepMoving, err := tm.moveBetweenPool(tail, tx)
 		if err != nil || !keepMoving {
 			return err
 		}
 	}
 }
 
-func (tm *TransactionManager) moveBetweenPool(bs *BlockState, txc *TxContext) (keepMoving bool, err error) {
-	from, payer, err := getFromAndPayerAccount(bs, txc)
+func (tm *TransactionManager) moveBetweenPool(tail *Block, txc *TxContext) (keepMoving bool, err error) {
+	from, payer, err := getFromAndPayerAccount(tail.State(), txc)
 	if err != nil {
 		return false, err
 	}
-	price := bs.Price()
+	price, err := tail.CalcChildPrice()
+	if err != nil {
+		return false, err
+	}
 
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
@@ -234,11 +240,7 @@ func (tm *TransactionManager) ResetTransactionSelector() {
 
 // Next returns next transaction from transaction selector.
 func (tm *TransactionManager) Next() *Transaction {
-	tx := tm.pendingPool.Next()
-	if tx != nil {
-		return nil
-	}
-	return tx
+	return tm.pendingPool.Next()
 }
 
 // SetRequiredNonce sets required nonce for given address to transaction selector.
@@ -271,7 +273,7 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 	tm.mu.Unlock()
 
 	tail := tm.canon.TailBlock()
-	return tm.transit(tail.State(), addr)
+	return tm.transit(tail, addr)
 }
 
 // TODO Need GETALL(?)
