@@ -192,6 +192,12 @@ func (tb *TxBuilder) SignPair(pair *keyutil.AddrKeyPair) *TxBuilder {
 	return n.From(pair.Addr).CalcHash().SignKey(pair.PrivKey)
 }
 
+// SignPairWithNonce set from, calculate hash, and sign with key pair.
+func (tb *TxBuilder) SignPairWithNonce(pair *keyutil.AddrKeyPair, nonce uint64) *TxBuilder {
+	n := tb.copy()
+	return n.From(pair.Addr).Nonce(nonce).CalcHash().SignKey(pair.PrivKey)
+}
+
 // TODO Make SignPayerkey consistent with SignKey
 // SignPayerKey sign by payer private key
 func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {

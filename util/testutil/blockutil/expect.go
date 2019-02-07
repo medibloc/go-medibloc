@@ -77,10 +77,15 @@ func (e *Expect) LastUnstakingTs(addr common.Address, ts int64) *Expect {
 	return e
 }
 
+// GetNonce gets nonce of account to expected value
+func (e *Expect) GetNonce(addr common.Address) uint64 {
+	acc := e.account(addr)
+	return acc.Nonce
+}
+
 // Nonce compare nonce of account to expected value
 func (e *Expect) Nonce(addr common.Address, nonce uint64) *Expect {
-	acc := e.account(addr)
-	require.Equal(e.t, acc.Nonce, nonce)
+	require.Equal(e.t, nonce, e.GetNonce(addr))
 	return e
 }
 
