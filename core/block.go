@@ -656,16 +656,16 @@ func (b *Block) GetBlockData() *BlockData {
 }
 
 // CalcChildPrice calculate child block's price
-func (b *Block) CalcChildPrice() (*common.Price, error) {
+func (b *Block) CalcChildPrice() (common.Price, error) {
 	cpu, err := b.calcChildCPUPrice()
 	if err != nil {
-		return nil, err
+		return common.Price{}, err
 	}
 	net, err := b.calcChildNetPrice()
 	if err != nil {
-		return nil, err
+		return common.Price{}, err
 	}
-	return &common.Price{
+	return common.Price{
 		CPUPrice: cpu,
 		NetPrice: net,
 	}, nil
