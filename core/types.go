@@ -51,9 +51,9 @@ const (
 
 // Points Price related defaults
 var (
-	MinimumDiscountRatio  = big.NewRat(1, 100)
-	BandwidthIncreaseRate = big.NewRat(105, 100)
-	BandwidthDecreaseRate = big.NewRat(95, 100)
+	PriceMinimumRate  = big.NewRat(1, 100)
+	PriceIncreaseRate = big.NewRat(105, 100)
+	PriceDecreaseRate = big.NewRat(95, 100)
 )
 
 // Points Price related defaults

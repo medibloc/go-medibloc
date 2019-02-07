@@ -17,7 +17,6 @@ package core
 
 import (
 	"errors"
-	"math/big"
 
 	"github.com/medibloc/go-medibloc/common"
 	corestate "github.com/medibloc/go-medibloc/core/state"
@@ -60,14 +59,13 @@ func (b *Block) InitChild(coinbase common.Address) (*Block, error) {
 	bs.cpuUsage = 0
 	bs.netUsage = 0
 
-	bs.cpuPrice, err = calcCPUPrice(b)
+	newPrice, err := b.CalcChildPrice()
 	if err != nil {
 		return nil, err
 	}
-	bs.netPrice, err = calcNetPrice(b)
-	if err != nil {
-		return nil, err
-	}
+	bs.cpuPrice = newPrice.CPUPrice
+	bs.netPrice = newPrice.NetPrice
+
 	return &Block{
 		BlockData: &BlockData{
 			BlockHeader: &BlockHeader{
@@ -657,69 +655,105 @@ func (b *Block) GetBlockData() *BlockData {
 	return b.BlockData
 }
 
-// calculate cpu price
-func calcCPUPrice(parent *Block) (*util.Uint128, error) {
-	return calcBandwidthPrice(&calcBandwidthPriceArg{
-		thresholdRatioNum:   ThresholdRatioNum,
-		thresholdRatioDenom: ThresholdRatioDenom,
-		increaseRate:        BandwidthIncreaseRate,
-		decreaseRate:        BandwidthDecreaseRate,
-		discountRatio:       MinimumDiscountRatio,
-		limit:               CPULimit,
-		usage:               parent.cpuUsage,
-		supply:              parent.supply,
-		previousPrice:       parent.cpuPrice,
+// CalcChildPrice calculate child block's price
+func (b *Block) CalcChildPrice() (*common.Price, error) {
+	cpu, err := b.calcChildCPUPrice()
+	if err != nil {
+		return nil, err
+	}
+	net, err := b.calcChildNetPrice()
+	if err != nil {
+		return nil, err
+	}
+	return &common.Price{
+		CPUPrice: cpu,
+		NetPrice: net,
+	}, nil
+}
+
+type calcPriceParam struct {
+	threshold uint64
+	limit     uint64
+	usage     uint64
+	price     *util.Uint128
+	supply    *util.Uint128
+}
+
+func (b *Block) calcChildCPUPrice() (*util.Uint128, error) {
+	return calcPrice(&calcPriceParam{
+		threshold: cpuThreshold(),
+		limit:     CPULimit,
+		usage:     b.cpuUsage,
+		price:     b.cpuPrice,
+		supply:    b.supply,
 	})
 }
 
-// calculate net price
-func calcNetPrice(parent *Block) (*util.Uint128, error) {
-	return calcBandwidthPrice(&calcBandwidthPriceArg{
-		thresholdRatioNum:   ThresholdRatioNum,
-		thresholdRatioDenom: ThresholdRatioDenom,
-		increaseRate:        BandwidthIncreaseRate,
-		decreaseRate:        BandwidthDecreaseRate,
-		discountRatio:       MinimumDiscountRatio,
-		limit:               NetLimit,
-		usage:               parent.netUsage,
-		supply:              parent.supply,
-		previousPrice:       parent.netPrice,
+func (b *Block) calcChildNetPrice() (*util.Uint128, error) {
+	return calcPrice(&calcPriceParam{
+		threshold: netThreshold(),
+		limit:     NetLimit,
+		usage:     b.netUsage,
+		price:     b.netPrice,
+		supply:    b.supply,
 	})
 }
 
-type calcBandwidthPriceArg struct {
-	increaseRate, decreaseRate, discountRatio            *big.Rat
-	thresholdRatioNum, thresholdRatioDenom, limit, usage uint64
-	supply, previousPrice                                *util.Uint128
-}
-
-func calcBandwidthPrice(arg *calcBandwidthPriceArg) (*util.Uint128, error) {
-	// thresholdBandwidth : Total MED amount which can be used for CPU / NET per block
-	thresholdBandwidth := arg.limit * arg.thresholdRatioNum / arg.thresholdRatioDenom
-
-	if arg.usage <= thresholdBandwidth {
-		minPrice, err := arg.supply.Div(util.NewUint128FromUint(NumberOfBlocksInSingleTimeWindow))
-		if err != nil {
-			return nil, err
-		}
-		minPrice, err = minPrice.Div(util.NewUint128FromUint(arg.limit))
-		if err != nil {
-			return nil, err
-		}
-		minPrice, err = minPrice.MulWithRat(arg.discountRatio)
-		if err != nil {
-			return nil, err
-		}
-
-		newPrice, err := arg.previousPrice.MulWithRat(arg.decreaseRate)
-		if err != nil {
-			return nil, err
-		}
-		if minPrice.Cmp(newPrice) > 0 {
-			return minPrice, nil
-		}
-		return newPrice, nil
+func calcPrice(param *calcPriceParam) (*util.Uint128, error) {
+	var (
+		newPrice *util.Uint128
+		err      error
+	)
+	if param.usage <= param.threshold {
+		newPrice, err = decreasePrice(param.price)
+	} else {
+		newPrice, err = increasePrice(param.price)
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	return arg.previousPrice.MulWithRat(arg.increaseRate)
+	minPrice, err := minPricePerBandwidth(param.supply, param.limit)
+	if err != nil {
+		return nil, err
+	}
+	if minPrice.Cmp(newPrice) > 0 {
+		return minPrice, nil
+	}
+	return newPrice, nil
+}
+
+func minPricePerBandwidth(supply *util.Uint128, limit uint64) (*util.Uint128, error) {
+	supplyPerBlock, err := supply.Div(util.NewUint128FromUint(NumberOfBlocksInSingleTimeWindow))
+	if err != nil {
+		return nil, err
+	}
+
+	supplyPerBandwidth, err := supplyPerBlock.Div(util.NewUint128FromUint(limit))
+	if err != nil {
+		return nil, err
+	}
+
+	minPricePerBandwidth, err := supplyPerBandwidth.MulWithRat(PriceMinimumRate)
+	if err != nil {
+		return nil, err
+	}
+
+	return minPricePerBandwidth, err
+}
+
+func increasePrice(prev *util.Uint128) (*util.Uint128, error) {
+	return prev.MulWithRat(PriceIncreaseRate)
+}
+
+func decreasePrice(prev *util.Uint128) (*util.Uint128, error) {
+	return prev.MulWithRat(PriceDecreaseRate)
+}
+
+func cpuThreshold() uint64 {
+	return CPULimit * ThresholdRatioNum / ThresholdRatioDenom
+}
+
+func netThreshold() uint64 {
+	return NetLimit * ThresholdRatioNum / ThresholdRatioDenom
 }

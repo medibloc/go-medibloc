@@ -249,9 +249,9 @@ func TestBandwidthUsageAndPrice(t *testing.T) {
 	assert.Equal(t, uint64(0), b3.CPUUsage())
 	assert.Equal(t, uint64(0), b3.NetUsage())
 
-	expect, err := b1.CPUPrice().MulWithRat(core.BandwidthIncreaseRate)
+	expect, err := b1.CPUPrice().MulWithRat(core.PriceIncreaseRate)
 	assert.Equal(t, expect.String(), b2.CPUPrice().String())
 
-	expect, err = b2.NetPrice().MulWithRat(core.BandwidthIncreaseRate)
+	expect, err = b2.NetPrice().MulWithRat(core.PriceIncreaseRate)
 	assert.Equal(t, expect.String(), b3.NetPrice().String())
 }
