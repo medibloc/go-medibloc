@@ -6,19 +6,16 @@ go:
 cache:
   directories:
     - ${GOPATH}/pkg/dep
+    - ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10
 
 before_install:
   - sudo apt-get update -qq && sudo apt-get install libsnappy-dev zlib1g-dev libbz2-dev -qq
-  - git clone https://github.com/facebook/rocksdb.git ${TRAVIS_HOME}/rocksdb
-  - cd ${TRAVIS_HOME}/rocksdb
-  - git reset --hard v5.15.10
-  - make shared_lib
-  - sudo cp --preserve=links ./librocksdb.* /usr/lib/
-  - sudo cp -r ./include/rocksdb/ /usr/include/
+  - ${TRAVIS_HOME}/gopath/src/github.com/medibloc/go-medibloc/script/travis-rocksdb.sh
+  - sudo cp -r --preserve=links ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/lib/librocksdb.* /usr/lib/
+  - sudo cp -r ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/include/* /usr/include/
   - go get github.com/golang/dep/cmd/dep
   - go get golang.org/x/tools/cmd/goimports
   - go get golang.org/x/lint/golint
-  - go get github.com/mattn/goveralls
 
 install:
   - cd ${TRAVIS_HOME}/gopath/src/github.com/medibloc/go-medibloc
