@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
-if [[ -e ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/lib/librocksdb.so ]]; then
-    ls -R ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/
+CACHE_DIR="${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10"
+
+if [[ -e ${CACHE_DIR}/lib/librocksdb.so ]]; then
+    ls -R ${CACHE_DIR}/
+    sudo cp -r --preserve=links ${CACHE_DIR}/lib/librocksdb.* /usr/lib/
+    sudo cp -r ${CACHE_DIR}/include/* /usr/include/
     exit
 fi
 
@@ -10,9 +14,11 @@ cd ${TRAVIS_BUILD_DIR}/rocksdb
 git reset --hard v5.15.10
 make shared_lib
 
-mkdir -p ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/lib
-mkdir -p ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/include
+mkdir -p ${CACHE_DIR}/lib
+mkdir -p ${CACHE_DIR}/include
 
-sudo cp --preserve=links ./librocksdb.* ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/lib/
-sudo cp -r ./include/rocksdb/ ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/include/
-ls -R ${TRAVIS_BUILD_DIR}/cache/rocksdb/v5.15.10/
+sudo cp --preserve=links ./librocksdb.* ${CACHE_DIR}/lib/
+sudo cp -r ./include/rocksdb/ ${CACHE_DIR}/include/
+ls -R ${CACHE_DIR}/
+sudo cp -r --preserve=links ${CACHE_DIR}/lib/librocksdb.* /usr/lib/
+sudo cp -r ${CACHE_DIR}/include/* /usr/include/
