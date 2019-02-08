@@ -357,13 +357,12 @@ func TestForAutoActivation2(t *testing.T) {
 	t.Logf("Height(%v) block of Reciever Node (before sync): %v", oldTail.Height(), byteutils.Bytes2Hex(oldTail.Hash()))
 
 	nextMintTs := dpos.NextMintSlotInSec(time.Now().Unix())
-	bb = bb.ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer()
-	bd := bb.Build().BlockData
-	require.NoError(t, seed.Med.BlockManager().PushBlockData(bd))
+	lastBlock := bb.Block(seed.Tail()).ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer().Build()
+	require.NoError(t, seed.Med.BlockManager().PushBlockData(lastBlock.GetBlockData()))
 
-	require.NoError(t, seed.WaitUntilTailHeight(bd.Height(), 10*time.Second))
+	require.NoError(t, seed.WaitUntilTailHeight(lastBlock.Height(), 10*time.Second))
 
-	time.Sleep(time.Unix(bd.Timestamp(), 0).Sub(time.Now()))
+	time.Sleep(time.Unix(lastBlock.Timestamp(), 0).Sub(time.Now()))
 	require.NoError(t, seed.Med.BlockManager().BroadCast(seed.Tail().BlockData))
 
 	startTime := time.Now()

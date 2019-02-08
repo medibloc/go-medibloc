@@ -759,13 +759,18 @@ func (bm *BlockManager) activateSync(bd *BlockData) bool {
 		return true
 	}
 
-	myMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bm.TailBlock().BlockData)
-	newMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bd)
-
-	if !(myMissingBlocks > newMissingBlocks && bm.bc.MainTailBlock().Height() < bd.height) &&
-		(bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight) {
+	if bm.bc.MainTailBlock().Height() >= bd.height {
 		return false
 	}
+
+	// TODO check
+	// myMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bm.TailBlock().BlockData)
+	// newMissingBlocks := bm.consensus.MissingBlocks(bm.LIB().BlockData, bd)
+	//
+	// if !(myMissingBlocks > newMissingBlocks && bm.bc.MainTailBlock().Height() < bd.height) &&
+	// 	(bd.Height() <= bm.bc.MainTailBlock().Height()+bm.syncActivationHeight) {
+	// 	return false
+	// }
 
 	if err := bm.syncService.Download(bd); err != nil {
 		logging.WithFields(logrus.Fields{
