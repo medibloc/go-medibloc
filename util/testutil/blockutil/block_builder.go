@@ -266,6 +266,11 @@ func (bb *BlockBuilder) FindProposer() *keyutil.AddrKeyPair {
 	return pair
 }
 
+// GetProposer returns proposer.
+func (bb *BlockBuilder) GetProposer() common.Address {
+	return bb.proposer
+}
+
 // AddTx add transaction
 func (bb *BlockBuilder) AddTx(tx *core.Transaction) *BlockBuilder {
 	n := bb.copy()

@@ -132,8 +132,8 @@ func TestForkRecover(t *testing.T) {
 	forkedNode := testNetwork.NewNode()
 	forkedNode.Start()
 
-	majorProposers := make(map[common.Address]interface{})
-	minorProposers := make(map[common.Address]interface{})
+	majorProposers := make(map[common.Address]bool)
+	minorProposers := make(map[common.Address]bool)
 	for _, v := range testNetwork.Seed.Config.Dynasties[0:nMajorProposers] {
 		majorProposers[v.Addr] = true
 	}
@@ -151,25 +151,19 @@ func TestForkRecover(t *testing.T) {
 
 	bb := init
 	for dt := int64(0); dt < timeSpend; dt += blockInterval {
-		temp := bb.ChildWithTimestamp(ts + dt).Tx().RandomTx().Execute().SignProposer()
-		proposer, err := temp.Build().Proposer()
-		require.NoError(t, err)
-		if _, ok := majorProposers[proposer]; !ok {
+		if !majorProposers[bb.ChildWithTimestamp(ts+dt).GetProposer()] {
 			continue
 		}
-		bb = temp
+		bb = bb.ChildWithTimestamp(ts + dt).Tx().RandomTx().Execute().SignProposer()
 		majorCanonical = append(majorCanonical, bb.Build().BlockData)
 	}
 
 	bb = init
 	for dt := int64(0); dt < timeSpend; dt += blockInterval {
-		temp := bb.ChildWithTimestamp(ts + dt).Tx().RandomTx().Execute().SignProposer()
-		proposer, err := temp.Build().Proposer()
-		require.NoError(t, err)
-		if _, ok := minorProposers[proposer]; !ok {
+		if !minorProposers[bb.ChildWithTimestamp(ts+dt).GetProposer()] {
 			continue
 		}
-		bb = temp
+		bb = bb.ChildWithTimestamp(ts + dt).Tx().RandomTx().Execute().SignProposer()
 		minorCanonical = append(minorCanonical, bb.Build().BlockData)
 	}
 
@@ -186,7 +180,7 @@ func TestForkRecover(t *testing.T) {
 	t.Logf("SeedNode's Tail  : %v floor, %v, %v", seed.Tail().Height(), seed.Tail().HexHash(), seed.Tail().Timestamp())
 	t.Logf("ForkedNode's Tail: %v floor, %v, %v", forkedNode.Tail().Height(), forkedNode.Tail().HexHash(), forkedNode.Tail().Timestamp())
 
-	require.False(t, byteutils.Equal(seed.Tail().Hash(), forkedNode.Tail().Hash()))
+	require.NotEqual(t, seed.Tail().Hash(), forkedNode.Tail().Hash())
 
 	cfg := testutil.NewConfig(t)
 	cfg.Config.Sync.NumberOfRetries = 256 // testFail probability:(1/2)^256 (same as hash collision probability)
