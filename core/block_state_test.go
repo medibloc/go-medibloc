@@ -74,7 +74,7 @@ func TestNonceCheck(t *testing.T) {
 }
 
 func TestUpdatePoints(t *testing.T) {
-	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
+	nextMintTs := dpos.NextMintSlotInSec(time.Now().Unix())
 	bb := blockutil.New(t, blockutil.DynastySize).Genesis().ChildWithTimestamp(nextMintTs)
 
 	from := bb.TokenDist[len(bb.TokenDist)-1]
@@ -96,7 +96,7 @@ func TestUpdatePoints(t *testing.T) {
 	require.NoError(t, err)
 	bb.Expect().Points(from.Addr, remain)
 
-	afterWeek := dpos.NextMintSlot2(nextMintTs + 7*24*60*60)
+	afterWeek := dpos.NextMintSlotInSec(nextMintTs + 7*24*60*60)
 	tx = bb.Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(1).SignPair(from).Build()
 	consumed = blockutil.Points(t, tx, bb.Build())
 	remain, err = staking.Sub(consumed)

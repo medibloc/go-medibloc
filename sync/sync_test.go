@@ -147,7 +147,7 @@ func TestForkRecover(t *testing.T) {
 	minorCanonical := make([]*core.BlockData, 0)
 
 	init := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.Tail())
-	ts := dpos.NextMintSlot2(time.Now().Unix() - timeSpend)
+	ts := dpos.NextMintSlotInSec(time.Now().Unix() - timeSpend)
 
 	bb := init
 	for dt := int64(0); dt < timeSpend; dt += blockInterval {
@@ -241,7 +241,7 @@ func TestForAutoActivation1(t *testing.T) {
 
 	testNetwork.WaitForEstablished()
 
-	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
+	nextMintTs := dpos.NextMintSlotInSec(time.Now().Unix())
 	bb = bb.ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer()
 	bd := bb.Build().BlockData
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bd))
@@ -329,7 +329,7 @@ func TestForAutoActivation2(t *testing.T) {
 	minorCanonical := make([]*core.BlockData, 0)
 
 	init := blockutil.New(t, testNetwork.DynastySize).AddKeyPairs(seed.Config.TokenDist).Block(seed.Tail())
-	ts := dpos.NextMintSlot2(time.Now().Unix() - timeSpend)
+	ts := dpos.NextMintSlotInSec(time.Now().Unix() - timeSpend)
 
 	bb := init
 	for dt := int64(0); dt < timeSpend; dt += blockInterval {
@@ -368,7 +368,7 @@ func TestForAutoActivation2(t *testing.T) {
 	oldTail := forkedNode.Tail()
 	t.Logf("Height(%v) block of Reciever Node (before sync): %v", oldTail.Height(), byteutils.Bytes2Hex(oldTail.Hash()))
 
-	nextMintTs := dpos.NextMintSlot2(time.Now().Unix())
+	nextMintTs := dpos.NextMintSlotInSec(time.Now().Unix())
 	bb = bb.ChildWithTimestamp(nextMintTs).Tx().RandomTx().Execute().SignProposer()
 	bd := bb.Build().BlockData
 	require.NoError(t, seed.Med.BlockManager().PushBlockData(bd))

@@ -271,7 +271,7 @@ func (d *Dpos) mintBlock(now time.Time) error {
 	if err != nil {
 		logging.WithFields(logrus.Fields{
 			"lastSlot": lastMintSlot(now),
-			"nextSlot": NextMintSlot2(now.Unix()),
+			"nextSlot": NextMintSlotInSec(now.Unix()),
 			"now":      now,
 			"err":      err,
 		}).Debug("It's not time to mint.")
@@ -499,7 +499,7 @@ func makeMintDynasty(sortedCandidates []common.Address, dynastySize int) []commo
 
 // FindMintProposer returns proposer for mint block
 func (d *Dpos) FindMintProposer(ts int64, parent *core.Block) (common.Address, error) {
-	mintTs := NextMintSlot2(ts)
+	mintTs := NextMintSlotInSec(ts)
 	proposerIndex := d.calcProposerIndex(mintTs)
 
 	dynasty, err := d.MakeMintDynasty(mintTs, parent.State())
@@ -524,8 +524,8 @@ func nextMintSlot(ts time.Time) time.Time {
 	return time.Unix(int64(next/time.Second), 0)
 }
 
-// NextMintSlot2 returns timestamp for next mint slot
-func NextMintSlot2(ts int64) int64 {
+// NextMintSlotInSec returns timestamp for next mint slot
+func NextMintSlotInSec(ts int64) int64 {
 	now := time.Duration(ts) * time.Second
 	next := ((now + BlockInterval - time.Second) / BlockInterval) * BlockInterval
 	return int64(next / time.Second)

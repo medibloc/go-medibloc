@@ -44,7 +44,7 @@ func TestReceipt(t *testing.T) {
 	receiver.Start()
 	network.WaitForEstablished()
 
-	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
+	bb := blockutil.New(t, 3).AddKeyPairs(seed.Config.TokenDist).Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlotInSec(time.Now().Unix()))
 	payer := seed.Config.TokenDist[network.DynastySize]
 
 	tb := bb.Tx()
@@ -84,7 +84,7 @@ func TestErrorTransactionReceipt(t *testing.T) {
 	network.WaitForEstablished()
 
 	bb := blockutil.New(t, network.DynastySize).AddKeyPairs(seed.Config.TokenDist).
-		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlot2(time.Now().Unix()))
+		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.NextMintSlotInSec(time.Now().Unix()))
 	payer := seed.Config.TokenDist[network.DynastySize]
 
 	tb := bb.Tx()
@@ -150,7 +150,7 @@ func TestVoteTransactionReceipt(t *testing.T) {
 
 	bb := blockutil.New(t, network.DynastySize).AddKeyPairs(seed.Config.TokenDist).
 		Block(seed.GenesisBlock()).ChildWithTimestamp(dpos.
-		NextMintSlot2(time.Now().Unix())).Stake()
+		NextMintSlotInSec(time.Now().Unix())).Stake()
 
 	payer := seed.Config.TokenDist[network.DynastySize]
 	payer2 := seed.Config.TokenDist[network.DynastySize+1]
