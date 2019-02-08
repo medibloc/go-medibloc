@@ -175,7 +175,7 @@ func TestForkRecover(t *testing.T) {
 	}
 
 	require.NoError(t, seed.WaitUntilTailHeight(majorCanonical[len(majorCanonical)-1].Height(), 10*time.Second))
-	require.NoError(t, forkedNode.WaitUntilTailHeight(majorCanonical[len(minorCanonical)-1].Height(), 10*time.Second))
+	require.NoError(t, forkedNode.WaitUntilTailHeight(minorCanonical[len(minorCanonical)-1].Height(), 10*time.Second))
 
 	t.Logf("SeedNode's Tail  : %v floor, %v, %v", seed.Tail().Height(), seed.Tail().HexHash(), seed.Tail().Timestamp())
 	t.Logf("ForkedNode's Tail: %v floor, %v, %v", forkedNode.Tail().Height(), forkedNode.Tail().HexHash(), forkedNode.Tail().Timestamp())
@@ -357,7 +357,7 @@ func TestForAutoActivation2(t *testing.T) {
 	}
 
 	require.NoError(t, seed.WaitUntilTailHeight(majorCanonical[len(majorCanonical)-1].Height(), 10*time.Second))
-	require.NoError(t, forkedNode.WaitUntilTailHeight(majorCanonical[len(minorCanonical)-1].Height(), 10*time.Second))
+	require.NoError(t, forkedNode.WaitUntilTailHeight(minorCanonical[len(minorCanonical)-1].Height(), 10*time.Second))
 
 	oldTail := forkedNode.Tail()
 	t.Logf("Height(%v) block of Reciever Node (before sync): %v", oldTail.Height(), byteutils.Bytes2Hex(oldTail.Hash()))
@@ -414,6 +414,7 @@ func runSyncDownload(t *testing.T, node *testutil.Node, target *core.BlockData) 
 	for ss.IsDownloadActivated() {
 		time.Sleep(100 * time.Millisecond)
 	}
+	require.NoError(t, node.WaitUntilTailHeight(target.Height(), 5*time.Second))
 	assert.Equal(t, target.Height(), node.Tail().Height())
 	assert.Equal(t, target.HexHash(), node.Tail().HexHash())
 	t.Logf("Sync download complete. height: %v, timeSpend: %v", node.Tail().Height(), time.Now().Sub(startTime))
