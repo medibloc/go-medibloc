@@ -3,6 +3,10 @@ language: go
 go:
   - "1.11.x"
 
+cache:
+  directories:
+    - ${GOPATH}/pkg/dep
+
 before_install:
   - sudo apt-get update -qq && sudo apt-get install libsnappy-dev zlib1g-dev libbz2-dev -qq
   - git clone https://github.com/facebook/rocksdb.git ${TRAVIS_HOME}/rocksdb
