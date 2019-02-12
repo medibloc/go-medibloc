@@ -101,6 +101,19 @@ func NewUint128FromInt(i int64) (*Uint128, error) {
 	return obj, nil
 }
 
+// NewUint128FromBigInt returns a new Uint128 struct with given value and have a check.
+func NewUint128FromBigInt(Big *big.Int) (*Uint128, error) {
+	if err := (&Uint128{Big}).Validate(); err != nil {
+		return nil, err
+	}
+	return &Uint128{Big}, nil
+}
+
+// BigInt returns the big int representation of x.
+func (u *Uint128) BigInt() *big.Int {
+	return u.value
+}
+
 // ToFixedSizeBytes converts Uint128 to Big-Endian fixed size bytes.
 func (u *Uint128) ToFixedSizeBytes() ([16]byte, error) {
 	var res [16]byte
