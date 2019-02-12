@@ -1,5 +1,46 @@
 package core_test
 
+import (
+	"testing"
+	"time"
+
+	"github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/util/testutil"
+	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
+	"github.com/medibloc/go-medibloc/util/testutil/retry"
+	"github.com/stretchr/testify/require"
+)
+
+func TestPendingTransactionPool_TransferAfterStake(t *testing.T) {
+	tn := testutil.NewNetwork(t)
+	defer tn.Cleanup()
+
+	seed := tn.NewSeedNode()
+	tn.SetProposerFromDynasties(seed)
+	seed.Start()
+
+	bb := blockutil.New(t, tn.DynastySize).Block(seed.GenesisBlock()).AddKeyPairs(seed.Config.TokenDist)
+
+	from := seed.Config.TokenDist[len(seed.Config.TokenDist)-1]
+	nonce := bb.Expect().GetNonce(from.Addr)
+
+	to := keyutil.NewAddrKeyPair(t)
+
+	stakeTx := bb.Tx().Type(transaction.TxOpStake).Value(10000000).SignPairWithNonce(from, nonce+1).Build()
+	transferTx := bb.Tx().Type(transaction.TxOpTransfer).Value(10000000).To(to.Addr).SignPairWithNonce(from, nonce+2).Build()
+
+	tm := seed.Med.TransactionManager()
+
+	err := tm.Push(stakeTx)
+	require.NoError(t, err)
+	err = tm.Push(transferTx)
+	require.NoError(t, err)
+
+	r := retry.New(t, 10, time.Second)
+	r.Try(func(t retry.T) { require.Equal(t, 0, tm.Len()) })
+}
+
 // func mockAccount(addr common.Address, nonce uint64, staking uint64, points uint64, lastPointsTs time.Time) *corestate.Account {
 // 	return &core.Account{
 // 		Address:      addr,

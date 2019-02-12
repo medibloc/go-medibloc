@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -33,6 +34,7 @@ type PendingTransactionPool struct {
 	all   map[string]*TxContext
 	from  map[common.Address]*AccountFrom
 	payer map[common.Address]*AccountPayer
+	point map[common.Address]*AccountPoint
 
 	selector   *roundrobin.RoundRobin
 	nonceCache map[common.Address]uint64
@@ -44,6 +46,7 @@ func NewPendingTransactionPool() *PendingTransactionPool {
 		all:        make(map[string]*TxContext),
 		from:       make(map[common.Address]*AccountFrom),
 		payer:      make(map[common.Address]*AccountPayer),
+		point:      make(map[common.Address]*AccountPoint),
 		selector:   roundrobin.New(),
 		nonceCache: make(map[common.Address]uint64),
 	}
@@ -89,21 +92,37 @@ func (pool *PendingTransactionPool) push(tx *TxContext, accState *corestate.Acco
 		return err
 	}
 
+	accPayerPoint, exist := pool.point[tx.PayerOrFrom()]
+	if !exist {
+		accPayerPoint = newAccountPoint(tx.PayerOrFrom())
+	}
+	modified, err := accPayerPoint.modifiedPointUsage(usage)
+	if err != nil {
+		return err
+	}
+
 	if tx.HasPayer() {
-		err = checkPayerAccountPoint(payerState, usage)
+		err = checkPayerAccountPoint(payerState, modified)
 	} else {
-		err = checkFromAccountPoint(accState, tx.exec, usage)
+		err = checkFromAccountPoint(accState, tx.exec, modified)
 	}
 	if err != nil {
 		return err
 	}
 
+	accFromPoint, exist := pool.point[tx.From()]
+	if !exist {
+		accFromPoint = newAccountPoint(tx.From())
+	}
+
 	accFrom.set(tx)
 	accPayer.set(tx)
+	accFromPoint.set(tx)
 
 	pool.all[tx.HexHash()] = tx
 	pool.from[tx.From()] = accFrom
 	pool.payer[tx.PayerOrFrom()] = accPayer
+	pool.point[tx.From()] = accFromPoint
 
 	pool.selector.Include(tx.From().Hex())
 	return nil
@@ -130,13 +149,27 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, accState *corestate.A
 		return err
 	}
 
+	accPayerPoint, exist := pool.point[tx.PayerOrFrom()]
+	if !exist {
+		accPayerPoint = newAccountPoint(tx.PayerOrFrom())
+	}
+	modified, err := accPayerPoint.modifiedPointUsage(usage)
+	if err != nil {
+		return err
+	}
+
 	if tx.HasPayer() {
-		err = checkPayerAccountPoint(payerState, usage)
+		err = checkPayerAccountPoint(payerState, modified)
 	} else {
-		err = checkFromAccountPoint(accState, tx.exec, usage)
+		err = checkFromAccountPoint(accState, tx.exec, modified)
 	}
 	if err != nil {
 		return err
+	}
+
+	accFromPoint, exist := pool.point[tx.From()]
+	if !exist {
+		accFromPoint = newAccountPoint(tx.From())
 	}
 
 	oldTx := accFrom.remove(tx.Nonce())
@@ -145,13 +178,14 @@ func (pool *PendingTransactionPool) replace(tx *TxContext, accState *corestate.A
 	if oldPayer.size() == 0 {
 		delete(pool.payer, oldTx.PayerOrFrom())
 	}
+	accFromPoint.remove(oldTx)
 	delete(pool.all, oldTx.HexHash())
 
 	accFrom.set(tx)
 	accPayer.set(tx)
+	accFromPoint.set(tx)
 
 	pool.all[tx.HexHash()] = tx
-	pool.from[tx.From()] = accFrom
 	pool.payer[tx.PayerOrFrom()] = accPayer
 
 	return nil
@@ -193,6 +227,11 @@ func (pool *PendingTransactionPool) Prune(addr common.Address, nonceLowerLimit u
 		accPayer.remove(tx)
 		if accPayer.size() == 0 {
 			delete(pool.payer, tx.PayerOrFrom())
+		}
+		accPoint := pool.point[tx.From()]
+		accPoint.remove(tx)
+		if accPoint.size() == 0 {
+			delete(pool.point, tx.From())
 		}
 		delete(pool.all, tx.HexHash())
 	}
@@ -369,6 +408,10 @@ func (af *AccountFrom) peekFirst() *TxContext {
 	return nil
 }
 
+func addrNonceKey(tx *TxContext) string {
+	return fmt.Sprintf("%s-%d", tx.From().Hex(), tx.Nonce())
+}
+
 // AccountPayer manages payers bandwidth.
 type AccountPayer struct {
 	addr          common.Address
@@ -420,6 +463,62 @@ func (ap *AccountPayer) remove(tx *TxContext) {
 	delete(ap.addrNonceToTx, key)
 }
 
-func addrNonceKey(tx *TxContext) string {
-	return fmt.Sprintf("%s-%d", tx.From().Hex(), tx.Nonce())
+type AccountPoint struct {
+	addr          common.Address
+	pointChange   *big.Int
+	addrNonceToTx map[string]*TxContext
+}
+
+func newAccountPoint(addr common.Address) *AccountPoint {
+	return &AccountPoint{
+		addr:          addr,
+		pointChange:   big.NewInt(0),
+		addrNonceToTx: make(map[string]*TxContext),
+	}
+}
+
+func (apo *AccountPoint) size() int {
+	return len(apo.addrNonceToTx)
+}
+
+func (apo *AccountPoint) modifiedPointUsage(usage *util.Uint128) (modifiedUsage *util.Uint128, err error) {
+	usageBig := usage.BigInt()
+	modifiedBig := big.NewInt(0).Sub(usageBig, apo.pointChange)
+	modifiedUsage, err = util.NewUint128FromBigInt(modifiedBig)
+	if err != nil && err != util.ErrUint128Underflow {
+		return nil, err
+	}
+	if err == util.ErrUint128Underflow {
+		modifiedUsage = util.Uint128Zero()
+	}
+	return modifiedUsage, nil
+}
+
+func (apo *AccountPoint) set(tx *TxContext) (evicted *TxContext) {
+	key := addrNonceKey(tx)
+	old, exist := apo.addrNonceToTx[key]
+	if exist {
+		apo.pointChange.Sub(apo.pointChange, newPoint(old.exec.PointChange()))
+	}
+	apo.pointChange.Add(apo.pointChange, newPoint(tx.exec.PointChange()))
+	apo.addrNonceToTx[key] = tx
+	return old
+}
+
+func newPoint(neg bool, abs *util.Uint128) *big.Int {
+	a := abs.BigInt()
+	if neg {
+		return big.NewInt(0).Neg(a)
+	}
+	return big.NewInt(0).Abs(a)
+}
+
+func (apo *AccountPoint) remove(tx *TxContext) {
+	key := addrNonceKey(tx)
+	old, exist := apo.addrNonceToTx[key]
+	if !exist {
+		return
+	}
+	apo.pointChange.Sub(apo.pointChange, newPoint(old.exec.PointChange()))
+	delete(apo.addrNonceToTx, key)
 }
