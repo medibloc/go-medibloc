@@ -407,7 +407,7 @@ func runSyncDownload(t *testing.T, node *testutil.Node, target *core.BlockData) 
 	for ss.IsDownloadActivated() {
 		time.Sleep(100 * time.Millisecond)
 	}
-	require.NoError(t, node.WaitUntilTailHeight(target.Height(), 5*time.Second))
+	require.NoError(t, node.WaitUntilTailHeight(target.Height(), 10*time.Second))
 	assert.Equal(t, target.Height(), node.Tail().Height())
 	assert.Equal(t, target.HexHash(), node.Tail().HexHash())
 	t.Logf("Sync download complete. height: %v, timeSpend: %v", node.Tail().Height(), time.Now().Sub(startTime))
