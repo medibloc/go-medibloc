@@ -392,7 +392,7 @@ func (bm *BlockManager) ForceLIB(b *Block) error {
 // BroadCast broadcasts BlockData to network.
 func (bm *BlockManager) BroadCast(bd *BlockData) error {
 	logging.Console().WithFields(logrus.Fields{
-		"hash":   bd.Hash(),
+		"hash":   bd.HexHash(),
 		"height": bd.height,
 	}).Info("block is broadcasted")
 
