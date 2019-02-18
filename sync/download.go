@@ -22,7 +22,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/net"
-	syncpb "github.com/medibloc/go-medibloc/sync/pb"
+	"github.com/medibloc/go-medibloc/sync/pb"
 	"github.com/medibloc/go-medibloc/util/byteutils"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/sirupsen/logrus"
@@ -200,6 +200,9 @@ func (d *download) stepUpRequest() error {
 			return ErrContextDone
 		case err := <-errCh:
 			if err != nil {
+				logging.Console().WithFields(logrus.Fields{
+					"err": err,
+				}).Warning("failed to step-up block request")
 				return err
 			}
 			numberOfRequests--
@@ -238,8 +241,10 @@ func (d *download) downloadBlockByHeight(ctx context.Context, errCh chan<- error
 			for _, err := range errs {
 				if err != nil {
 					logging.Console().WithFields(logrus.Fields{
-						"height": height,
-						"err":    err,
+						"height":          height,
+						"err":             err,
+						"retry count":     retry,
+						"max retry count": ss.numberOfRetries,
 					}).Warning("error occurred during download Block by Height request")
 				}
 			}
