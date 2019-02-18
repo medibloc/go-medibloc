@@ -22,11 +22,11 @@ const (
 )
 
 func DefaultConfig() *Config {
-	return ConfigGenerator(DefaultConfigParam())
+	return GenerateGenesisConfig(DefaultConfigParam())
 }
 
-func DefaultConfigParam() *ConfigGeneratorParam {
-	return &ConfigGeneratorParam{
+func DefaultConfigParam() *GenerateGenesisConfigParam {
+	return &GenerateGenesisConfigParam{
 		ChainID:        ChainID,
 		DynastySize:    DynastySize,
 		TokenDist:      TokenDist,
@@ -37,7 +37,7 @@ func DefaultConfigParam() *ConfigGeneratorParam {
 	}
 }
 
-type ConfigGeneratorParam struct {
+type GenerateGenesisConfigParam struct {
 	ChainID        uint32
 	DynastySize    int
 	TokenDist      int
@@ -47,12 +47,16 @@ type ConfigGeneratorParam struct {
 	Collateral     int64
 }
 
-func ConfigGenerator(param *ConfigGeneratorParam) *Config {
+func GenerateGenesisConfig(param *GenerateGenesisConfigParam) *Config {
+	secrets := secretn(param.TokenDist)
+	return GenerateGenesisConfigWithSecret(param, secrets)
+}
+
+func GenerateGenesisConfigWithSecret(param *GenerateGenesisConfigParam, secrets Secrets) *Config {
 	meta := &Meta{
 		ChainID:     param.ChainID,
 		DynastySize: param.DynastySize,
 	}
-	secrets := secretn(param.TokenDist)
 	txs := generateTransactions(param, secrets)
 
 	return &Config{
@@ -62,7 +66,7 @@ func ConfigGenerator(param *ConfigGeneratorParam) *Config {
 	}
 }
 
-func generateTransactions(param *ConfigGeneratorParam, secrets []*Secret) []*Transaction {
+func generateTransactions(param *GenerateGenesisConfigParam, secrets []*Secret) []*Transaction {
 	transactions := make([]*Transaction, 0, 1024)
 	n := int64(len(secrets))
 

@@ -18,7 +18,7 @@ func NewTestGenesisConf(t *testing.T, dynastySize int) (genesis *corepb.Genesis,
 	param := genesisutil.DefaultConfigParam()
 	param.ChainID = ChainID
 	param.DynastySize = dynastySize
-	conf := genesisutil.ConfigGenerator(param)
+	conf := genesisutil.GenerateGenesisConfig(param)
 	genesis, err := genesisutil.ConvertGenesisConf(conf)
 	require.NoError(t, err)
 
