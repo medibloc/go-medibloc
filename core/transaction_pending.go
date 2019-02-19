@@ -275,7 +275,10 @@ func (pool *PendingTransactionPool) Next() *Transaction {
 			return nil
 		}
 
-		accFrom := pool.from[addr]
+		accFrom, exist := pool.from[addr]
+		if !exist {
+			return nil
+		}
 
 		requiredNonce, exist := pool.nonceCache[addr]
 		if !exist {
