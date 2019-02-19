@@ -24,7 +24,7 @@ var (
 
 const (
 	// MaxPendingByAccount is the max number of pending transactions per account
-	MaxPendingByAccount = 64
+	MaxPendingByAccount = 4096
 )
 
 // PendingTransactionPool struct manages pending transactions by account.
