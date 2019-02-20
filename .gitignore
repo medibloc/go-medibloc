@@ -39,3 +39,5 @@ network.key
 private.key
 *.key
 custom.conf
+
+*.http
