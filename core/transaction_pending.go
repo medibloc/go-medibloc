@@ -277,6 +277,9 @@ func (pool *PendingTransactionPool) Next() *Transaction {
 
 		accFrom, exist := pool.from[addr]
 		if !exist {
+			logging.Console().WithFields(logrus.Fields{
+				"addr": addr.Hex(),
+			}).Error("Account doesn't exist in pending transaction pool.")
 			return nil
 		}
 

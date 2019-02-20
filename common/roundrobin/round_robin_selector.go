@@ -113,8 +113,13 @@ func (rr *RoundRobin) Reset() {
 	rr.Lock()
 	defer rr.Unlock()
 
-	rr.incl.PushBackList(rr.excl)
-	rr.excl = list.New()
+	for {
+		e := rr.excl.Front()
+		if e == nil {
+			break
+		}
+		rr.swap(e.Value.(*item).key)
+	}
 }
 
 func (rr *RoundRobin) swap(key string) {
