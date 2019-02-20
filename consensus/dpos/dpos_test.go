@@ -9,8 +9,10 @@ import (
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core"
 	"github.com/medibloc/go-medibloc/core/transaction"
+	"github.com/medibloc/go-medibloc/crypto/hash"
 	"github.com/medibloc/go-medibloc/util/testutil"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
+	"github.com/medibloc/go-medibloc/util/testutil/keyutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -102,6 +104,53 @@ func TestChangeDynasty(t *testing.T) {
 
 	require.NoError(t, seed.WaitUntilBlockAcceptedOnChain(bd.Hash(), 10*time.Second))
 	assert.False(t, inDynasty(t, bm, newCandidate.Addr))
+}
+
+func TestMakeMintBlock(t *testing.T) {
+	dynastySize := 21
+
+	testNetwork := testutil.NewNetworkWithDynastySize(t, dynastySize)
+	defer testNetwork.Cleanup()
+
+	seed := testNetwork.NewSeedNode()
+	seed.AddProposers(seed.Config.Dynasties)
+	seed.Start()
+
+	//node := testNetwork.NewNode()
+	//node.Start()
+
+	testNetwork.WaitForEstablished()
+
+	td := seed.Config.TokenDist
+	payer := td[0]
+
+	bb := blockutil.New(t, dynastySize).Block(seed.Tail()).AddKeyPairs(seed.Config.TokenDist)
+	tb := bb.Tx()
+
+	randomSender := keyutil.NewAddrKeyPair(t)
+	payload := &transaction.AddRecordPayload{RecordHash: hash.Sha3256([]byte("testRecord"))}
+	tx := tb.Type(transaction.TxOpAddRecord).Payload(payload).SignPair(randomSender).SignPayerPair(payer).Build()
+
+	tm := seed.Med.TransactionManager()
+	require.NoError(t, tm.Push(tx))
+
+	for tm.Get(tx.Hash()) != nil {
+		time.Sleep(3 * time.Second)
+	}
+
+	txInChain, err := seed.Tail().State().GetTx(tx.Hash())
+	require.NoError(t, err)
+
+	height := txInChain.Receipt().Height()
+
+	parent, err := seed.Med.BlockManager().BlockByHeight(height-1)
+	require.NoError(t, err)
+
+	b, err := seed.Med.BlockManager().BlockByHeight(height)
+	require.NoError(t, err)
+
+	_, err = parent.CreateChildWithBlockData(b.BlockData, seed.Med.BlockManager().Consensus())
+	require.NoError(t, err)
 }
 
 func dynasty(t *testing.T, bm *core.BlockManager) []common.Address {

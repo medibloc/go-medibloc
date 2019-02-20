@@ -186,6 +186,12 @@ func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte, timeLimit time.Dura
 	}
 }
 
+func (node *Node) AddProposers(pairs keyutil.AddrKeyPairs) {
+	for _, pair := range pairs {
+		node.Config = node.Config.SetProposer(pair)
+	}
+}
+
 // Network is set of nodes.
 type Network struct {
 	t       *testing.T

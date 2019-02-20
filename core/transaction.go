@@ -390,7 +390,7 @@ func (t *Transaction) recoverFrom() (common.Address, error) {
 
 // String returns string representation of tx
 func (t *Transaction) String() string {
-	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, nonce:%v, receipt:%v}`,
+	return fmt.Sprintf(`{chainID:%v, hash:%v, from:%v, to:%v, value:%v, type:%v, nonce:%v, payload:%v, receipt:%v}`,
 		t.chainID,
 		byteutils.Bytes2Hex(t.hash),
 		t.from.Hex(),
@@ -398,6 +398,7 @@ func (t *Transaction) String() string {
 		t.value.String(),
 		t.txType,
 		t.nonce,
+		byteutils.Bytes2Hex(t.payload),
 		t.receipt,
 	)
 }
