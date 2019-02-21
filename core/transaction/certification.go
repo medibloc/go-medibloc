@@ -244,11 +244,11 @@ func (tx *RevokeCertificationTx) Execute(b *core.Block) error {
 	if pbCert.RevocationTime > int64(-1) {
 		return ErrCertAlreadyRevoked
 	}
-	if pbCert.ExpirationTime < b.Timestamp() {
+	if pbCert.ExpirationTime < b.State().Timestamp() {
 		return ErrCertAlreadyExpired
 	}
 
-	pbCert.RevocationTime = b.Timestamp()
+	pbCert.RevocationTime = b.State().Timestamp()
 	newCertBytes, err := proto.Marshal(pbCert)
 	if err != nil {
 		return err

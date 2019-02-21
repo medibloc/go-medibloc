@@ -90,7 +90,7 @@ func (tx *AddRecordTx) Execute(b *core.Block) error {
 	pbRecord := &corepb.Record{
 		Owner:      tx.owner.Bytes(),
 		RecordHash: tx.recordHash,
-		Timestamp:  b.Timestamp(),
+		Timestamp:  b.State().Timestamp(),
 	}
 	recordBytes, err := proto.Marshal(pbRecord)
 	if err != nil {

@@ -131,7 +131,7 @@ func (tx *BecomeCandidateTx) Execute(b *core.Block) error {
 		Collateral: tx.collateral,
 		VotePower:  util.NewUint128(),
 		URL:        tx.payload.URL,
-		Timestamp:  b.Timestamp(),
+		Timestamp:  b.State().Timestamp(),
 	}
 
 	// Add candidate to candidate state

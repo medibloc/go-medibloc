@@ -154,7 +154,7 @@ func (tx *UnstakeTx) Execute(b *core.Block) error {
 		}).Warn("Failed to add unstaking.")
 		return err
 	}
-	account.LastUnstakingTs = b.Timestamp()
+	account.LastUnstakingTs = b.State().Timestamp()
 
 	if account.Staking.Cmp(account.Points) < 0 {
 		account.Points = account.Staking.DeepCopy()
