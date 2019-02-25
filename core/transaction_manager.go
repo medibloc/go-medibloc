@@ -284,6 +284,7 @@ func (tm *TransactionManager) DelByAddressNonce(addr common.Address, nonce uint6
 // 	return append(pending, future...)
 // }
 
+// Len returns the number of transactions kept in the transaction manager.
 func (tm *TransactionManager) Len() int {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()

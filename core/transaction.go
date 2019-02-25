@@ -35,6 +35,7 @@ type Transaction struct {
 	payer common.Address
 }
 
+// TransactionTemplateParam represents parameters for creating transaction template.
 type TransactionTemplateParam struct {
 	TxType  string
 	To      common.Address
@@ -44,6 +45,7 @@ type TransactionTemplateParam struct {
 	Payload []byte
 }
 
+// NewTransactionTemplate creates a partially filled transaction template.
 func NewTransactionTemplate(param *TransactionTemplateParam) *Transaction {
 	return &Transaction{
 		hash:      nil,
@@ -121,6 +123,7 @@ func (t *Transaction) SetReceipt(receipt *Receipt) {
 	t.receipt = receipt
 }
 
+// PayerOrFrom returns payer if there is a payer, or from if it is not.
 func (t *Transaction) PayerOrFrom() common.Address {
 	if t.payer.Equals(common.Address{}) {
 		return t.from
@@ -128,6 +131,7 @@ func (t *Transaction) PayerOrFrom() common.Address {
 	return t.payer
 }
 
+// HasPayer checks if the payer is set in the transaction.
 func (t *Transaction) HasPayer() bool {
 	return !t.payer.Equals(common.Address{})
 }
@@ -281,6 +285,7 @@ func (t *Transaction) SignThis(key signature.PrivateKey) error {
 	return nil
 }
 
+// SignGenesis will leave the sign empty.
 func (t *Transaction) SignGenesis() error {
 	var err error
 	t.from = common.Address{}

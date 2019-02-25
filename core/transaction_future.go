@@ -26,6 +26,7 @@ func NewFutureTransactionPool(size int) *FutureTransactionPool {
 	}
 }
 
+// Len returns size of pool.
 func (pool *FutureTransactionPool) Len() int {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()

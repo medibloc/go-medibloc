@@ -93,8 +93,8 @@ func genesisTemplate(chainID uint32, consensus Consensus, stor storage.Storage) 
 	}, nil
 }
 
-// TODO config verification, tx.verifyIntegrity, height, timestamp, chainid, ...
 // NewGenesisBlock generates genesis block
+// TODO config verification, tx.verifyIntegrity, height, timestamp, chainid, ...
 func NewGenesisBlock(conf *corepb.Genesis, consensus Consensus, stor storage.Storage) (*Block, error) {
 	genesis, err := genesisTemplate(conf.Meta.ChainId, consensus, stor)
 	if err != nil {

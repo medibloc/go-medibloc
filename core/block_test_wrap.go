@@ -5,10 +5,12 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 )
 
+// BlockTestWrap wraps Block and exports setters.
 type BlockTestWrap struct {
 	*Block
 }
 
+// Clone copies block.
 func (b *BlockTestWrap) Clone() (*BlockTestWrap, error) {
 	bd, err := b.Block.BlockData.Clone()
 	if err != nil {
@@ -28,6 +30,7 @@ func (b *BlockTestWrap) Clone() (*BlockTestWrap, error) {
 		}}, nil
 }
 
+// InitChild wraps block's InitChild.
 func (b *BlockTestWrap) InitChild(coinbase common.Address) (*BlockTestWrap, error) {
 	bb, err := b.Block.InitChild(coinbase)
 	if err != nil {

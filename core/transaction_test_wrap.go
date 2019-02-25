@@ -6,6 +6,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
+// TransactionTestWrap wraps Transaction and exports setters.
 type TransactionTestWrap struct {
 	*Transaction
 }

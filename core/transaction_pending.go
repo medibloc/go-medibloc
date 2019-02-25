@@ -52,6 +52,7 @@ func NewPendingTransactionPool() *PendingTransactionPool {
 	}
 }
 
+// Len returns size of pool.
 func (pool *PendingTransactionPool) Len() int {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -469,6 +470,7 @@ func (ap *AccountPayer) remove(tx *TxContext) {
 	delete(ap.addrNonceToTx, key)
 }
 
+// AccountPoint manages point of accounts.
 type AccountPoint struct {
 	addr          common.Address
 	pointChange   *big.Int

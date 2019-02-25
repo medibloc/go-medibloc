@@ -16,8 +16,6 @@
 package core
 
 import (
-	"errors"
-
 	"github.com/medibloc/go-medibloc/common"
 	corestate "github.com/medibloc/go-medibloc/core/state"
 	"github.com/medibloc/go-medibloc/crypto/signature"
@@ -385,6 +383,7 @@ func (b *Block) execute(tx *Transaction) error {
 	return nil
 }
 
+// SetMintDynasty sets mint dynasty of block's timestamp.
 func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
 	mintDynasty, err := consensus.MakeMintDynasty(b.state.timestamp, parent.State())
 	if err != nil && err == ErrSameDynasty {
@@ -406,6 +405,7 @@ func (b *Block) SetMintDynasty(parent *Block, consensus Consensus) error {
 	return nil
 }
 
+// AcceptTransaction accepts a transaction.
 func (b *Block) AcceptTransaction(tx *Transaction) error {
 	if tx.Receipt() == nil {
 		return ErrNoTransactionReceipt
@@ -460,8 +460,6 @@ func (b *Block) AcceptTransaction(tx *Transaction) error {
 
 	return nil
 }
-
-var ErrCoinbaseNotSet = errors.New("coinbase is not set")
 
 // PayReward add reward to coinbase and update reward and supply
 func (b *Block) PayReward(parentSupply *util.Uint128) error {
@@ -628,6 +626,8 @@ func (b *Block) Flush() error {
 	return b.state.flush()
 }
 
+// Atomic executes a given function in atomic way. execErr is an return error of
+// a given function. err is an error of atomic processing.
 func (b *Block) Atomic(batch func(block *Block) error) (execErr error, err error) {
 	if err := b.BeginBatch(); err != nil {
 		return nil, ErrAtomicError

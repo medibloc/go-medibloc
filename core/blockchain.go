@@ -376,6 +376,7 @@ func (bc *BlockChain) SetTailBlock(newTail *Block) ([]*Block, []*Block, error) {
 	return blocks, newBlocks, nil
 }
 
+// ForkChoice chooses new tail of canonical chain.
 func (bc *BlockChain) ForkChoice() (newTail *Block) {
 	bc.mu.RLock()
 	newTail = bc.mainTailBlock

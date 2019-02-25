@@ -125,6 +125,7 @@ var (
 	ErrGenesisDistributionAllowedOnce  = errors.New("genesis Distribution is allowed once per account")
 	ErrAtomicError                     = errors.New("failed to process atomic operation")
 	ErrNonceNotExecutable              = errors.New("transaction nonce not executable")
+	ErrCoinbaseNotSet                  = errors.New("coinbase is not set")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

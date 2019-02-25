@@ -44,6 +44,7 @@ type BlockState struct {
 	dposState *dState.State
 }
 
+// NewBlockState creates new block state.
 func NewBlockState(bd *BlockData, consensus Consensus, stor storage.Storage) (*BlockState, error) {
 	accState, err := coreState.NewAccountState(bd.AccStateRoot(), stor)
 	if err != nil {
@@ -226,6 +227,7 @@ func (bs *BlockState) Supply() *util.Uint128 {
 	return bs.supply
 }
 
+// SetSupply sets supply.
 func (bs *BlockState) SetSupply(supply *util.Uint128) {
 	bs.supply = supply
 }
@@ -235,6 +237,7 @@ func (bs *BlockState) Reward() *util.Uint128 {
 	return bs.reward
 }
 
+// SetReward sets reward.
 func (bs *BlockState) SetReward(reward *util.Uint128) {
 	bs.reward = reward
 }
