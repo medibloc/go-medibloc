@@ -206,15 +206,18 @@ func (d *download) stepUpRequest() error {
 				return err
 			}
 			numberOfRequests--
+			if numberOfRequests == 0 && height == d.targetHeight {
+				return nil
+			}
 		case <-ticker.C:
 			if numberOfRequests >= d.service.activeDownloadLimit {
 				continue
 			}
+			if height == d.targetHeight {
+				continue
+			}
 			numberOfRequests++
 			height++
-			if height > d.targetHeight {
-				return nil
-			}
 			go d.downloadBlockByHeight(ctx, errCh, height)
 		}
 	}
