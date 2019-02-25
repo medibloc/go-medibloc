@@ -143,7 +143,7 @@ func TestMakeMintBlock(t *testing.T) {
 
 	height := txInChain.Receipt().Height()
 
-	parent, err := seed.Med.BlockManager().BlockByHeight(height-1)
+	parent, err := seed.Med.BlockManager().BlockByHeight(height - 1)
 	require.NoError(t, err)
 
 	b, err := seed.Med.BlockManager().BlockByHeight(height)
