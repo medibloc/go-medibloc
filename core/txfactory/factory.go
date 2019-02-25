@@ -141,3 +141,25 @@ func (f *Factory) Vote(key signature.PrivateKey, candidateIDs [][]byte, nonce ui
 	}
 	return tx, nil
 }
+
+func (f *Factory) Transfer(key signature.PrivateKey, to common.Address, amount *util.Uint128, msg string, nonce uint64) (*core.Transaction, error) {
+	payload, err := (&transaction.DefaultPayload{
+		Message: msg,
+	}).ToBytes()
+	if err != nil {
+		return nil, err
+	}
+	tx := core.NewTransactionTemplate(&core.TransactionTemplateParam{
+		TxType:  transaction.TxOpTransfer,
+		To:      to,
+		Value:   amount,
+		Nonce:   nonce,
+		ChainID: f.chainID,
+		Payload: payload,
+	})
+
+	if err := tx.SignThis(key); err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
