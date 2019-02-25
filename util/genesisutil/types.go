@@ -38,16 +38,20 @@ type Secret struct {
 	Private string
 }
 
+func (s *Secret) Key() signature.PrivateKey {
+	key, err := secp256k1.NewPrivateKeyFromHex(s.Private)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
 type Secrets []*Secret
 
 func (ss Secrets) Key(from string) signature.PrivateKey {
 	for _, s := range ss {
 		if s.Public == from {
-			key, err := secp256k1.NewPrivateKeyFromHex(s.Private)
-			if err != nil {
-				panic(err)
-			}
-			return key
+			return s.Key()
 		}
 	}
 	return nil
