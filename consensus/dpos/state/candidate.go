@@ -1,10 +1,13 @@
 package dposstate
 
 import (
+	"fmt"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/medibloc/go-medibloc/common"
-	dpospb "github.com/medibloc/go-medibloc/consensus/dpos/pb"
+	"github.com/medibloc/go-medibloc/consensus/dpos/pb"
 	"github.com/medibloc/go-medibloc/util"
+	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
 // Candidate is struct for save candidate state
@@ -100,4 +103,16 @@ func (c *Candidate) ToBytes() ([]byte, error) {
 		Timestamp:  c.Timestamp,
 	}
 	return proto.Marshal(pbCandidate)
+}
+
+// String returns string representation of candidate
+func (c *Candidate) String() string {
+	return fmt.Sprintf(`{ID:%v, addr:%v, collateral:%v, votePower:%v, url:%v, timestamp:%v}`,
+		byteutils.Bytes2Hex(c.ID),
+		c.Addr.Hex(),
+		c.Collateral,
+		c.VotePower,
+		c.URL,
+		c.Timestamp,
+	)
 }

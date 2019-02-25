@@ -153,3 +153,27 @@ func TestVote(t *testing.T) {
 	assert.Equal(t, blockutil.FloatToUint128(t, 0), candidate.VotePower)
 
 }
+
+func TestStatePrefix(t *testing.T) {
+	bb := blockutil.New(t, blockutil.DynastySize).Genesis().Child()
+
+	candidate := bb.TokenDist[blockutil.DynastySize]
+
+	txType := transaction.TxOpBecomeCandidate
+	bb = bb.
+		Tx().StakeTx(candidate, 100000).Execute().
+		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(candidate).Execute()
+
+	tx := bb.Tx().Type(txType).Value(1000000).SignPair(candidate).Build()
+
+	bb = bb.ExecuteTx(tx)
+
+	block := bb.Build()
+	txInState, err := block.State().GetTx(tx.Hash())
+	assert.NoError(t, err)
+	t.Log(txInState)
+
+	candidateInState, err := block.State().DposState().GetCandidate(tx.Hash())
+	assert.NoError(t, err)
+	t.Log(candidateInState)
+}
