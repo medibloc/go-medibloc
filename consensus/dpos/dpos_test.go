@@ -116,9 +116,6 @@ func TestMakeMintBlock(t *testing.T) {
 	seed.AddProposers(seed.Config.Dynasties)
 	seed.Start()
 
-	//node := testNetwork.NewNode()
-	//node.Start()
-
 	testNetwork.WaitForEstablished()
 
 	td := seed.Config.TokenDist
