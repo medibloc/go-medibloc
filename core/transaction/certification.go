@@ -152,10 +152,12 @@ func (tx *AddCertificationTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *AddCertificationTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *AddCertificationTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }
@@ -283,10 +285,12 @@ func (tx *RevokeCertificationTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1500, uint64(tx.size))
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *RevokeCertificationTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *RevokeCertificationTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }

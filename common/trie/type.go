@@ -19,6 +19,7 @@ type Serializable interface {
 	FromBytes([]byte) error
 }
 
+// Batcher is an interface for batch commands.
 type Batcher interface {
 	Prepare() error
 	BeginBatch() error
@@ -28,11 +29,23 @@ type Batcher interface {
 	Reset() error
 }
 
+// BatchCallType is a type of batch call function.
 type BatchCallType func(batch Batcher) error
 
-func PrepareCall(batch Batcher) error    { return batch.Prepare() }
+// PrepareCall is a prepare call.
+func PrepareCall(batch Batcher) error { return batch.Prepare() }
+
+// BeginBatchCall is a begin batch call.
 func BeginBatchCall(batch Batcher) error { return batch.BeginBatch() }
-func CommitCall(batch Batcher) error     { return batch.Commit() }
-func RollbackCall(batch Batcher) error   { return batch.RollBack() }
-func FlushCall(batch Batcher) error      { return batch.Flush() }
-func ResetCall(batch Batcher) error      { return batch.Reset() }
+
+// CommitCall is a commit call.
+func CommitCall(batch Batcher) error { return batch.Commit() }
+
+// RollbackCall is a rollback call.
+func RollbackCall(batch Batcher) error { return batch.RollBack() }
+
+// FlushCall is a flush call.
+func FlushCall(batch Batcher) error { return batch.Flush() }
+
+// ResetCall is a reset call.
+func ResetCall(batch Batcher) error { return batch.Reset() }

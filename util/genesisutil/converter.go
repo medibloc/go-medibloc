@@ -13,10 +13,12 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 )
 
+// ConvertProposerConfBytes extracts proposer config in bytes format from genesis configuration.
 func ConvertProposerConfBytes(conf *Config) []byte {
 	return []byte(proto.MarshalTextString(ConvertProposerConf(conf)))
 }
 
+// ConvertProposerConf converts genesis configuration to proposer config in protobuf format.
 func ConvertProposerConf(conf *Config) *medletpb.Config {
 	proposers := make([]*medletpb.ProposerConfig, 0, len(conf.Secrets))
 	for i, s := range conf.Secrets {
@@ -37,6 +39,7 @@ func ConvertProposerConf(conf *Config) *medletpb.Config {
 	}
 }
 
+// ConvertGenesisConfBytes converts genesis configuration to bytes slice.
 func ConvertGenesisConfBytes(conf *Config) ([]byte, error) {
 	genesis, err := ConvertGenesisConf(conf)
 	if err != nil {
@@ -45,6 +48,7 @@ func ConvertGenesisConfBytes(conf *Config) ([]byte, error) {
 	return []byte(proto.MarshalTextString(genesis)), nil
 }
 
+// ConvertGenesisConf converts genesis configuration to protobuf format.
 func ConvertGenesisConf(conf *Config) (*corepb.Genesis, error) {
 	genesis := &corepb.Genesis{
 		Meta: &corepb.GenesisMeta{

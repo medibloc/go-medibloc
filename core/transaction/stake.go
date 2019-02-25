@@ -90,10 +90,12 @@ func (tx *StakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *StakeTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, tx.amount.DeepCopy()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *StakeTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }
@@ -187,10 +189,12 @@ func (tx *UnstakeTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *UnstakeTx) PointChange() (neg bool, abs *util.Uint128) {
 	return true, tx.amount.DeepCopy()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *UnstakeTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }

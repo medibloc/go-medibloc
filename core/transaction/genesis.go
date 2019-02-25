@@ -6,6 +6,7 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 )
 
+// GenesisTx represents genesis transaction in executable form.
 type GenesisTx struct {
 	*core.Transaction
 	hash []byte
@@ -13,6 +14,7 @@ type GenesisTx struct {
 
 var _ core.ExecutableTx = &GenesisTx{}
 
+// NewGenesisTx return GenesisTx.
 func NewGenesisTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	if len(tx.Payload()) > MaxPayloadSize {
 		return nil, ErrTooLargePayload
@@ -27,6 +29,7 @@ func NewGenesisTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
+// Execute GenesisTx.
 func (tx *GenesisTx) Execute(b *core.Block) error {
 	if b.Height() != core.GenesisHeight {
 		return core.ErrNotGenesisBlock
@@ -34,18 +37,22 @@ func (tx *GenesisTx) Execute(b *core.Block) error {
 	return nil
 }
 
+// Bandwidth returns bandwidth.
 func (tx *GenesisTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(0, 0)
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *GenesisTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *GenesisTx) RecoverFrom() (common.Address, error) {
 	return recoverGenesis(tx.Transaction)
 }
 
+// GenesisDistributionTx represents genesis distribution transaction in executable form.
 type GenesisDistributionTx struct {
 	*core.Transaction
 	target  common.Address
@@ -54,6 +61,7 @@ type GenesisDistributionTx struct {
 
 var _ core.ExecutableTx = &GenesisDistributionTx{}
 
+// NewGenesisDistributionTx returns GenesisDistributionTx.
 func NewGenesisDistributionTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	return &GenesisDistributionTx{
 		Transaction: tx,
@@ -62,6 +70,7 @@ func NewGenesisDistributionTx(tx *core.Transaction) (core.ExecutableTx, error) {
 	}, nil
 }
 
+// Execute GenesisDistributionTx.
 func (tx *GenesisDistributionTx) Execute(b *core.Block) error {
 	if b.Height() != core.GenesisHeight {
 		return core.ErrNotGenesisBlock
@@ -92,14 +101,17 @@ func (tx *GenesisDistributionTx) Execute(b *core.Block) error {
 	return nil
 }
 
+// Bandwidth returns bandwidth.
 func (tx *GenesisDistributionTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(0, 0)
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *GenesisDistributionTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *GenesisDistributionTx) RecoverFrom() (common.Address, error) {
 	return recoverGenesis(tx.Transaction)
 }

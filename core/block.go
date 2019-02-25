@@ -35,6 +35,7 @@ type Block struct {
 	sealed bool
 }
 
+// FromBlockData converts block data to block.
 func (b *Block) FromBlockData(bd *BlockData, consensus Consensus, storage storage.Storage) error {
 	var err error
 	b.BlockData = bd
@@ -173,10 +174,6 @@ func (b *Block) Seal() error {
 	return nil
 }
 
-var (
-	ErrAtomicError = errors.New("failed to process atomic operation")
-)
-
 // ExecuteTransaction on given block state
 func (b *Block) ExecuteTransaction(tx *Transaction) (*Receipt, error) {
 	// Verify that transaction is executable
@@ -235,9 +232,6 @@ func (b *Block) makeSuccessReceipt(bw *common.Bandwidth, point *util.Uint128) *R
 	receipt.SetExecuted(true)
 	return receipt
 }
-
-// TODO move to types.go
-var ErrNonceNotExecutable = errors.New("transaction nonce not executable")
 
 func (b *Block) checkNonce(tx *Transaction) error {
 	from, err := b.state.GetAccount(tx.From())

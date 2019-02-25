@@ -102,7 +102,7 @@ func (tb *TxBuilder) Value(med float64) *TxBuilder {
 	return n
 }
 
-// Value sets value
+// ValueRaw sets raw value in Uint128
 func (tb *TxBuilder) ValueRaw(value *util.Uint128) *TxBuilder {
 	n := tb.copy()
 	n.tx.SetValue(value)
@@ -198,8 +198,8 @@ func (tb *TxBuilder) SignPairWithNonce(pair *keyutil.AddrKeyPair, nonce uint64) 
 	return n.From(pair.Addr).Nonce(nonce).CalcHash().SignKey(pair.PrivKey)
 }
 
-// TODO Make SignPayerkey consistent with SignKey
 // SignPayerKey sign by payer private key
+// TODO Make SignPayerKey consistent with SignKey
 func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	n := tb.copy()
 	t := tb.t
@@ -209,6 +209,7 @@ func (tb *TxBuilder) SignPayerKey(key signature.PrivateKey) *TxBuilder {
 	return n
 }
 
+// SignPayerPair sets payer and sign transaction by payer key.
 func (tb *TxBuilder) SignPayerPair(pair *keyutil.AddrKeyPair) *TxBuilder {
 	n := tb.copy()
 	return n.Payer(pair.Addr).SignPayerKey(pair.PrivKey)

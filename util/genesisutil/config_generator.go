@@ -11,6 +11,7 @@ import (
 	"github.com/medibloc/go-medibloc/util/byteutils"
 )
 
+// Genesis util's default configuration.
 const (
 	DynastySize    = 21
 	ChainID        = 181228
@@ -21,10 +22,12 @@ const (
 	GenesisMessage = "Genesis block of MediBloc"
 )
 
+// DefaultConfig returns default config.
 func DefaultConfig() *Config {
 	return GenerateGenesisConfig(DefaultConfigParam())
 }
 
+// DefaultConfigParam returns default config param.
 func DefaultConfigParam() *GenerateGenesisConfigParam {
 	return &GenerateGenesisConfigParam{
 		ChainID:        ChainID,
@@ -37,6 +40,7 @@ func DefaultConfigParam() *GenerateGenesisConfigParam {
 	}
 }
 
+// GenerateGenesisConfigParam represents parameters for generating genesis configuration.
 type GenerateGenesisConfigParam struct {
 	ChainID        uint32
 	DynastySize    int
@@ -47,11 +51,13 @@ type GenerateGenesisConfigParam struct {
 	Collateral     int64
 }
 
+// GenerateGenesisConfig generates genesis configuration.
 func GenerateGenesisConfig(param *GenerateGenesisConfigParam) *Config {
 	secrets := secretn(param.TokenDist)
 	return GenerateGenesisConfigWithSecret(param, secrets)
 }
 
+// GenerateGenesisConfigWithSecret generates genesis configuration with given secrets.
 func GenerateGenesisConfigWithSecret(param *GenerateGenesisConfigParam, secrets Secrets) *Config {
 	meta := &Meta{
 		ChainID:     param.ChainID,

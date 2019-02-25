@@ -5,17 +5,20 @@ import (
 	"time"
 )
 
+// T is an interface wrapper around *testing.T
 type T interface {
 	Errorf(format string, args ...interface{})
 	FailNow()
 }
 
+// Retry is a structure that sets the retry count and interval.
 type Retry struct {
 	t        *testing.T
 	count    int
 	interval time.Duration
 }
 
+// New creates new retry structure.
 func New(t *testing.T, count int, interval time.Duration) *Retry {
 	return &Retry{
 		t:        t,
@@ -24,6 +27,7 @@ func New(t *testing.T, count int, interval time.Duration) *Retry {
 	}
 }
 
+// Try tries the given function.
 func (r *Retry) Try(fn func(t T)) {
 	wrapT := &wrapTestingT{}
 	for i := 0; i < r.count-1; i++ {

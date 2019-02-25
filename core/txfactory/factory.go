@@ -8,18 +8,22 @@ import (
 	"github.com/medibloc/go-medibloc/util"
 )
 
+// GenesisNonce is a nonce of genesis transaction.
 const GenesisNonce = 1
 
+// Factory is a factory for creating transactions.
 type Factory struct {
 	chainID uint32
 }
 
+// New creates new factory.
 func New(chainID uint32) *Factory {
 	return &Factory{
 		chainID: chainID,
 	}
 }
 
+// Genesis returns a genesis transaction.
 func (f *Factory) Genesis(msg string) (*core.Transaction, error) {
 	payload, err := (&transaction.DefaultPayload{
 		Message: msg,
@@ -44,6 +48,7 @@ func (f *Factory) Genesis(msg string) (*core.Transaction, error) {
 	return tx, nil
 }
 
+// GenesisDistribution returns a genesis distribution transaction.
 func (f *Factory) GenesisDistribution(to common.Address, amount *util.Uint128, nonce uint64) (*core.Transaction, error) {
 	tx := core.NewTransactionTemplate(&core.TransactionTemplateParam{
 		TxType:  transaction.TxOpGenesisDistribution,
@@ -60,6 +65,7 @@ func (f *Factory) GenesisDistribution(to common.Address, amount *util.Uint128, n
 	return tx, nil
 }
 
+// Stake returns a stake transaction.
 func (f *Factory) Stake(key signature.PrivateKey, amount *util.Uint128, nonce uint64) (*core.Transaction, error) {
 	tx := core.NewTransactionTemplate(&core.TransactionTemplateParam{
 		TxType:  transaction.TxOpStake,
@@ -76,6 +82,7 @@ func (f *Factory) Stake(key signature.PrivateKey, amount *util.Uint128, nonce ui
 	return tx, nil
 }
 
+// RegisterAlias returns a register alias transaction.
 func (f *Factory) RegisterAlias(key signature.PrivateKey, collateral *util.Uint128, alias string, nonce uint64) (*core.Transaction, error) {
 	payload, err := (&transaction.RegisterAliasPayload{
 		AliasName: alias,
@@ -98,6 +105,7 @@ func (f *Factory) RegisterAlias(key signature.PrivateKey, collateral *util.Uint1
 	return tx, nil
 }
 
+// BecomeCandidate returns a become candidate transaction.
 func (f *Factory) BecomeCandidate(key signature.PrivateKey, collateral *util.Uint128, url string, nonce uint64) (*core.Transaction, error) {
 	payload, err := (&transaction.BecomeCandidatePayload{
 		URL: url,
@@ -120,6 +128,7 @@ func (f *Factory) BecomeCandidate(key signature.PrivateKey, collateral *util.Uin
 	return tx, nil
 }
 
+// Vote returns a vote transaction.
 func (f *Factory) Vote(key signature.PrivateKey, candidateIDs [][]byte, nonce uint64) (*core.Transaction, error) {
 	payload, err := (&transaction.VotePayload{
 		CandidateIDs: candidateIDs,
@@ -142,6 +151,7 @@ func (f *Factory) Vote(key signature.PrivateKey, candidateIDs [][]byte, nonce ui
 	return tx, nil
 }
 
+// Transfer returns a transfer transaction.
 func (f *Factory) Transfer(key signature.PrivateKey, to common.Address, amount *util.Uint128, msg string, nonce uint64) (*core.Transaction, error) {
 	payload, err := (&transaction.DefaultPayload{
 		Message: msg,

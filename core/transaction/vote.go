@@ -168,10 +168,12 @@ func (tx *VoteTx) Bandwidth() *common.Bandwidth {
 	return common.NewBandwidth(1000, uint64(tx.size))
 }
 
+// PointChange returns account's point change when applying this transaction.
 func (tx *VoteTx) PointChange() (neg bool, abs *util.Uint128) {
 	return false, util.Uint128Zero()
 }
 
+// RecoverFrom returns from account's address.
 func (tx *VoteTx) RecoverFrom() (common.Address, error) {
 	return recoverSigner(tx.Transaction)
 }

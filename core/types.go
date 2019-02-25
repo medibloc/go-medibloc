@@ -109,26 +109,22 @@ var (
 	ErrForkedBeforeLIB                 = errors.New("block is forked before LIB")
 	ErrInvalidBlock                    = errors.New("invalid block")
 	ErrSameDynasty                     = errors.New("new block is in same dynasty with parent block")
-)
-
-var (
-	ErrStakingNotEnough             = errors.New("staking is not enough")
-	ErrPointNotEnough               = errors.New("points are not enough")
-	ErrCannotConvertReceipt         = errors.New("proto message cannot be converted into Receipt")
-	ErrInvalidReceiptToProto        = errors.New("receipt cannot be converted into proto")
-	ErrCannotConvertTransaction     = errors.New("proto message cannot be converted into Transaction")
-	ErrTransactionSignatureNotExist = errors.New("signature does not exist in the tx")
-	ErrPayerSignatureNotExist       = errors.New("payer signature does not exist in the tx")
-	ErrInvalidTransactionHash       = errors.New("invalid transaction hash")
-	ErrInvalidTransactionType       = errors.New("invalid transaction type")
-	ErrCannotRecoverPayer           = errors.New("failed to recover payer from payer sign")
-	ErrInvalidTxChainID             = errors.New("invalid transaction chainID")
-	ErrGenesisSignShouldNotExist    = errors.New("genesis sign should not exist")
-)
-
-var (
-	ErrNotGenesisBlock                = errors.New("block is not genesis")
-	ErrGenesisDistributionAllowedOnce = errors.New("genesis Distribution is allowed once per account")
+	ErrStakingNotEnough                = errors.New("staking is not enough")
+	ErrPointNotEnough                  = errors.New("points are not enough")
+	ErrCannotConvertReceipt            = errors.New("proto message cannot be converted into Receipt")
+	ErrInvalidReceiptToProto           = errors.New("receipt cannot be converted into proto")
+	ErrCannotConvertTransaction        = errors.New("proto message cannot be converted into Transaction")
+	ErrTransactionSignatureNotExist    = errors.New("signature does not exist in the tx")
+	ErrPayerSignatureNotExist          = errors.New("payer signature does not exist in the tx")
+	ErrInvalidTransactionHash          = errors.New("invalid transaction hash")
+	ErrInvalidTransactionType          = errors.New("invalid transaction type")
+	ErrCannotRecoverPayer              = errors.New("failed to recover payer from payer sign")
+	ErrInvalidTxChainID                = errors.New("invalid transaction chainID")
+	ErrGenesisSignShouldNotExist       = errors.New("genesis sign should not exist")
+	ErrNotGenesisBlock                 = errors.New("block is not genesis")
+	ErrGenesisDistributionAllowedOnce  = errors.New("genesis Distribution is allowed once per account")
+	ErrAtomicError                     = errors.New("failed to process atomic operation")
+	ErrNonceNotExecutable              = errors.New("transaction nonce not executable")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.
@@ -158,6 +154,7 @@ type SyncService interface {
 	IsDownloadActivated() bool
 }
 
+// Canonical is an interface of tail block in canonical chain.
 type Canonical interface {
 	TailBlock() *Block
 }

@@ -202,7 +202,7 @@ type Network struct {
 	Nodes       []*Node
 }
 
-// NewNetworkWithDynastySize creates network.
+// NewNetwork creates network.
 func NewNetwork(t *testing.T) *Network {
 	return NewNetworkWithDynastySize(t, blockutil.DynastySize)
 }

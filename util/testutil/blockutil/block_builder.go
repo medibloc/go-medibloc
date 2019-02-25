@@ -320,8 +320,8 @@ func (bb *BlockBuilder) PayReward() *BlockBuilder {
 	return n
 }
 
-// TODO remove prepare, flush calls
 // Flush saves state to storage
+// TODO remove prepare, flush calls
 func (bb *BlockBuilder) Flush() *BlockBuilder {
 	n := bb.copy()
 	require.NoError(n.t, n.B.Flush())

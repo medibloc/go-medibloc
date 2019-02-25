@@ -2,7 +2,7 @@ package core
 
 var txMapper TxMapper
 
-// TxMap is a map for transaction to executable tx.
+// TxMapper is a map for transaction to executable tx.
 type TxMapper map[string]func(tx *Transaction) (ExecutableTx, error)
 
 // Executable converts transaction to executable tx.
