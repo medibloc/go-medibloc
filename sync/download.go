@@ -257,10 +257,16 @@ func (d *download) downloadBlockByHeight(ctx context.Context, errCh chan<- error
 			break
 		}
 	}
+
+	var err error
 	if !ok {
-		errCh <- ErrLimitedRetry
+		err = ErrLimitedRetry
 	}
-	errCh <- nil
+	select {
+	case <-ctx.Done():
+		return
+	case errCh <- err:
+	}
 }
 
 func (d *download) handleBlockByHeightResponse(q net.Query, msg net.Message) error {
