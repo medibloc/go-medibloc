@@ -237,15 +237,23 @@ func (t *Trie) delete(rootHash []byte, route []byte) ([]byte, error) {
 
 	switch n.Type {
 	case branch:
+		var index byte
+		var nextRoute []byte
+
 		if len(route) == 0 {
-			n.Val[16] = nil
+			index = 16
+			nextRoute = nil
 		} else {
-			childHash, err := t.delete(n.Val[route[0]], route[1:])
-			if err != nil {
-				return nil, err
-			}
-			n.Val[route[0]] = childHash
+			index = route[0]
+			nextRoute = route[1:]
 		}
+
+		childHash, err := t.delete(n.Val[index], nextRoute)
+		if err != nil {
+			return nil, err
+		}
+		n.Val[index] = childHash
+
 		var (
 			childrenCnt = 0
 			childIndex  = 0
