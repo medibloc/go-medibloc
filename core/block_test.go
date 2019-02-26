@@ -47,7 +47,7 @@ func TestBlock_BasicTx(t *testing.T) {
 	defer nt.Cleanup()
 
 	seed := nt.NewSeedNode()
-	nt.SetProposerFromDynasties(seed)
+	nt.AddProposerFromDynasties(seed)
 	seed.Start()
 
 	nt.WaitForEstablished()

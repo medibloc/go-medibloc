@@ -26,7 +26,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/medibloc/go-medibloc/common"
 	"github.com/medibloc/go-medibloc/core"
+	"github.com/medibloc/go-medibloc/crypto/signature/secp256k1"
 	"github.com/medibloc/go-medibloc/medlet"
 	"github.com/medibloc/go-medibloc/util/logging"
 	"github.com/medibloc/go-medibloc/util/testutil/blockutil"
@@ -186,9 +188,10 @@ func (node *Node) WaitUntilBlockAcceptedOnChain(hash []byte, timeLimit time.Dura
 	}
 }
 
+// AddProposers adds multiple proposers.
 func (node *Node) AddProposers(pairs keyutil.AddrKeyPairs) {
 	for _, pair := range pairs {
-		node.Config = node.Config.SetProposer(pair)
+		node.Config = node.Config.AddProposer(pair)
 	}
 }
 
@@ -323,26 +326,34 @@ func (n *Network) LogTestHook() *test.Hook {
 	return n.logHook
 }
 
-// SetProposerFromDynasties chooses proposer from dynasties.
-func (n *Network) SetProposerFromDynasties(node *Node) {
+// AddProposerFromDynasties chooses proposer from dynasties.
+func (n *Network) AddProposerFromDynasties(node *Node) {
 	require.False(n.t, node.IsStarted())
 
 	exclude := n.assignedProposers()
-	node.Config.SetProposerFromDynasties(exclude)
+	node.Config.AddProposerFromDynasties(exclude)
 }
 
-// SetRandomProposer sets random proposer.
-func (n *Network) SetRandomProposer(node *Node) {
+// AddRandomProposer sets random proposer.
+func (n *Network) AddRandomProposer(node *Node) {
 	require.False(n.t, node.IsStarted())
 
-	node.Config.SetRandomProposer()
+	node.Config.AddRandomProposer()
 }
 
 func (n *Network) assignedProposers() []*keyutil.AddrKeyPair {
 	proposers := make([]*keyutil.AddrKeyPair, 0)
 	for _, node := range n.Nodes {
-		if node.Config.Proposer != nil {
-			proposers = append(proposers, node.Config.Proposer)
+		for _, p := range node.Config.Config.Chain.Proposers {
+			addr, err := common.HexToAddress(p.Proposer)
+			require.NoError(n.t, err)
+			privKey, err := secp256k1.NewPrivateKeyFromHex(p.Privkey)
+			require.NoError(n.t, err)
+			e := &keyutil.AddrKeyPair{
+				Addr:    addr,
+				PrivKey: privKey,
+			}
+			proposers = append(proposers, e)
 		}
 	}
 	return proposers

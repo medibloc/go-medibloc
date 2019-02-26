@@ -63,11 +63,11 @@ func TestNetworkProposer(t *testing.T) {
 	defer nt.Cleanup()
 
 	seed := nt.NewSeedNode()
-	nt.SetProposerFromDynasties(seed)
+	nt.AddProposerFromDynasties(seed)
 	seed.Start()
 	for i := 0; i < nt.DynastySize-1; i++ {
 		node := nt.NewNode()
-		nt.SetProposerFromDynasties(node)
+		nt.AddProposerFromDynasties(node)
 	}
 	nt.Start()
 

@@ -17,7 +17,7 @@ func TestPendingTransactionPool_TransferAfterStake(t *testing.T) {
 	defer tn.Cleanup()
 
 	seed := tn.NewSeedNode()
-	tn.SetProposerFromDynasties(seed)
+	tn.AddProposerFromDynasties(seed)
 	seed.Start()
 
 	bb := blockutil.New(t, tn.DynastySize).Block(seed.GenesisBlock()).AddKeyPairs(seed.Config.TokenDist)

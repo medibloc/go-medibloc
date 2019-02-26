@@ -43,8 +43,7 @@ type NodeConfig struct {
 	t   *testing.T
 	dir string
 
-	Config   *medletpb.Config
-	Proposer *keyutil.AddrKeyPair
+	Config *medletpb.Config
 
 	Genesis   *corepb.Genesis
 	Dynasties keyutil.AddrKeyPairs
@@ -107,11 +106,11 @@ func (cfg *NodeConfig) SetRandomPorts() *NodeConfig {
 	return cfg
 }
 
-// SetProposer sets proposer.
-func (cfg *NodeConfig) SetProposer(proposer *keyutil.AddrKeyPair) *NodeConfig {
-	cfg.Proposer = proposer
+// AddProposer adds a proposer.
+func (cfg *NodeConfig) AddProposer(proposer *keyutil.AddrKeyPair) *NodeConfig {
 	cfg.Config.Chain.StartMine = true
-	cfg.Config.Chain.Privkey = proposer.PrivateKey()
+	// TODO Remove PrivKey field in proto
+	//	cfg.Config.Chain.Privkey = proposer.PrivateKey()
 
 	pCfg := &medletpb.ProposerConfig{
 		Proposer: proposer.Address(),
@@ -122,8 +121,8 @@ func (cfg *NodeConfig) SetProposer(proposer *keyutil.AddrKeyPair) *NodeConfig {
 	return cfg
 }
 
-// SetProposerFromDynasties chooses proposer from dynasties.
-func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*keyutil.AddrKeyPair) *NodeConfig {
+// AddProposerFromDynasties chooses proposer from dynasties.
+func (cfg *NodeConfig) AddProposerFromDynasties(exclude []*keyutil.AddrKeyPair) *NodeConfig {
 	excludeMap := make(map[string]bool)
 	for _, e := range exclude {
 		excludeMap[e.Address()] = true
@@ -131,7 +130,7 @@ func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*keyutil.AddrKeyPair) 
 
 	for _, d := range cfg.Dynasties {
 		if _, ok := excludeMap[d.Address()]; !ok {
-			cfg.SetProposer(d)
+			cfg.AddProposer(d)
 			return cfg
 		}
 	}
@@ -140,10 +139,10 @@ func (cfg *NodeConfig) SetProposerFromDynasties(exclude []*keyutil.AddrKeyPair) 
 	return cfg
 }
 
-// SetRandomProposer sets random proposer.
-func (cfg *NodeConfig) SetRandomProposer() *NodeConfig {
+// AddRandomProposer sets random proposer.
+func (cfg *NodeConfig) AddRandomProposer() *NodeConfig {
 	keypair := keyutil.NewAddrKeyPair(cfg.t)
-	return cfg.SetProposer(keypair)
+	return cfg.AddProposer(keypair)
 }
 
 // setGenesis sets genesis configuration.
@@ -227,7 +226,7 @@ func (cfg *NodeConfig) String() string {
 * Net               : %v
 * RPC               : %v
 * HTTP              : %v
-* Proposer(addr/key)   : %v
+* Proposers         : %v
 * Dynasties         :
 %v
 * TokenDistribution :
@@ -240,7 +239,7 @@ func (cfg *NodeConfig) String() string {
 		cfg.Config.Network.Listens,
 		cfg.Config.Rpc.RpcListen,
 		cfg.Config.Rpc.HttpListen,
-		cfg.Proposer,
+		cfg.Config.Chain.Proposers,
 		cfg.Dynasties,
 		cfg.TokenDist)
 }

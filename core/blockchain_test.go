@@ -45,7 +45,7 @@ func TestRestartNode(t *testing.T) {
 
 	seed := testNet.NewSeedNode()
 	for i := 0; i < blockutil.DynastySize; i++ {
-		testNet.SetProposerFromDynasties(seed)
+		testNet.AddProposerFromDynasties(seed)
 	}
 	seed.Start()
 
