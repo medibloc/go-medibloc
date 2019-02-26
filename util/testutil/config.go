@@ -109,8 +109,6 @@ func (cfg *NodeConfig) SetRandomPorts() *NodeConfig {
 // AddProposer adds a proposer.
 func (cfg *NodeConfig) AddProposer(proposer *keyutil.AddrKeyPair) *NodeConfig {
 	cfg.Config.Chain.StartMine = true
-	// TODO Remove PrivKey field in proto
-	//	cfg.Config.Chain.Privkey = proposer.PrivateKey()
 
 	pCfg := &medletpb.ProposerConfig{
 		Proposer: proposer.Address(),

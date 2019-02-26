@@ -82,10 +82,6 @@ message ChainConfig {
     // Transaction pool size
     uint32 transaction_pool_size = 28;
 
-    // TODO account manager
-    // Proposer private key.
-    string privkey = 29;
-
     // Proposer list for multi proposer
     repeated ProposerConfig proposers = 30;
 
