@@ -78,9 +78,32 @@ func (s *State) DelCandidate(cid []byte) error {
 	return s.candidateState.Delete(append([]byte(CandidatePrefix), cid...))
 }
 
-// CandidateState returns candidate state
-func (s *State) CandidateState() *trie.Batch {
-	return s.candidateState
+// GetCandidates returns candidate list from candidate state.
+func (s *State) GetCandidates() ([]*Candidate, error) {
+	candidates := make([]*Candidate, 0)
+
+	iter, err := s.candidateState.Iterator([]byte(CandidatePrefix))
+	if err != nil {
+		return nil, err
+	}
+	exist, err := iter.Next()
+	if err != nil {
+		return nil, err
+	}
+	for exist {
+		candidate := new(Candidate)
+		err := candidate.FromBytes(iter.Value())
+		if err != nil {
+			return nil, err
+		}
+		candidates = append(candidates, candidate)
+
+		exist, err = iter.Next()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return candidates, nil
 }
 
 // GetProposer returns proposer address of index
@@ -97,11 +120,6 @@ func (s *State) GetProposer(index int) (common.Address, error) {
 func (s *State) PutProposer(index int, addr common.Address) error {
 	ds := s.dynastyState
 	return ds.Put(append([]byte(DynastyPrefix), byteutils.FromInt32(int32(index))...), addr.Bytes())
-}
-
-// DynastyState returns dynasty state
-func (s *State) DynastyState() *trie.Batch {
-	return s.dynastyState
 }
 
 func (s *State) applyBatchToEachState(fn trie.BatchCallType) error {
@@ -231,30 +249,11 @@ func (s *State) RootBytes() ([]byte, error) {
 
 // SortByVotePower returns Descending ordered candidate slice
 func (s *State) SortByVotePower() ([]common.Address, error) {
-	cs := s.candidateState
 	addresses := make([]common.Address, 0)
-	candidates := make([]*Candidate, 0)
 
-	iter, err := cs.Iterator([]byte(CandidatePrefix))
+	candidates, err := s.GetCandidates()
 	if err != nil {
 		return nil, err
-	}
-	exist, err := iter.Next()
-	if err != nil {
-		return nil, err
-	}
-	for exist {
-		candidate := new(Candidate)
-		err := candidate.FromBytes(iter.Value())
-		if err != nil {
-			return nil, err
-		}
-		candidates = append(candidates, candidate)
-
-		exist, err = iter.Next()
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	var sortErr error

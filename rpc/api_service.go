@@ -18,7 +18,6 @@ package rpc
 import (
 	"encoding/hex"
 
-	dposState "github.com/medibloc/go-medibloc/consensus/dpos/state"
 	"github.com/medibloc/go-medibloc/event"
 	"github.com/sirupsen/logrus"
 
@@ -252,41 +251,12 @@ func (s *APIService) GetCandidates(ctx context.Context, req *rpcpb.NonParamReque
 	var rpcCandidates []*rpcpb.Candidate
 	block := s.bm.TailBlock()
 
-	cs := block.State().DposState().CandidateState()
-	candidates := make([]*dposState.Candidate, 0)
-
-	iter, err := cs.Iterator(nil)
+	candidates, err := block.State().DposState().GetCandidates()
 	if err != nil {
 		logging.Console().WithFields(logrus.Fields{
 			"err": err,
-		}).Error("Failed to get iterator.")
+		}).Error("Failed to get list of candidates from state.")
 		return nil, status.Error(codes.Internal, ErrMsgInternalError)
-	}
-	exist, err := iter.Next()
-	if err != nil {
-		logging.Console().WithFields(logrus.Fields{
-			"err": err,
-		}).Error("failed to find a leaf node.")
-		return nil, status.Error(codes.Internal, ErrMsgInternalError)
-	}
-	for exist {
-		candidate := new(dposState.Candidate)
-		err := candidate.FromBytes(iter.Value())
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("Failed to set candidate struct from bytes.")
-			return nil, status.Error(codes.Internal, ErrMsgInternalError)
-		}
-		candidates = append(candidates, candidate)
-
-		exist, err = iter.Next()
-		if err != nil {
-			logging.Console().WithFields(logrus.Fields{
-				"err": err,
-			}).Error("failed to find a next leaf node.")
-			return nil, status.Error(codes.Internal, ErrMsgInternalError)
-		}
 	}
 
 	for _, candidate := range candidates {
