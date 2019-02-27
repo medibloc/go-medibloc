@@ -86,22 +86,20 @@ func (s *State) GetCandidates() ([]*Candidate, error) {
 	if err != nil {
 		return nil, err
 	}
-	exist, err := iter.Next()
-	if err != nil {
-		return nil, err
-	}
-	for exist {
+	for {
+		exist, err := iter.Next()
+		if err != nil {
+			return nil, err
+		}
+		if !exist {
+			break
+		}
 		candidate := new(Candidate)
-		err := candidate.FromBytes(iter.Value())
+		err = candidate.FromBytes(iter.Value())
 		if err != nil {
 			return nil, err
 		}
 		candidates = append(candidates, candidate)
-
-		exist, err = iter.Next()
-		if err != nil {
-			return nil, err
-		}
 	}
 	return candidates, nil
 }
