@@ -62,7 +62,7 @@ func NewDposState(candidateStateHash []byte, dynastyStateHash []byte, stor stora
 // GetCandidate returns candidate from candidate state
 func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
 	candidate := new(Candidate)
-	if err := s.candidateState.GetData(cid, candidate); err != nil {
+	if err := s.candidateState.GetData(append([]byte(CandidatePrefix), cid...), candidate); err != nil {
 		return nil, err
 	}
 	return candidate, nil
@@ -70,12 +70,12 @@ func (s *State) GetCandidate(cid []byte) (*Candidate, error) {
 
 // PutCandidate puts candidate to candidate state
 func (s *State) PutCandidate(cid []byte, candidate *Candidate) error {
-	return s.candidateState.PutData(cid, candidate)
+	return s.candidateState.PutData(append([]byte(CandidatePrefix), cid...), candidate)
 }
 
 // DelCandidate del candidate from candidate state
 func (s *State) DelCandidate(cid []byte) error {
-	return s.candidateState.Delete(cid)
+	return s.candidateState.Delete(append([]byte(CandidatePrefix), cid...))
 }
 
 // CandidateState returns candidate state
@@ -86,7 +86,7 @@ func (s *State) CandidateState() *trie.Batch {
 // GetProposer returns proposer address of index
 func (s *State) GetProposer(index int) (common.Address, error) {
 	ds := s.dynastyState
-	b, err := ds.Get(byteutils.FromInt32(int32(index)))
+	b, err := ds.Get(append([]byte(DynastyPrefix), byteutils.FromInt32(int32(index))...))
 	if err != nil {
 		return common.Address{}, err
 	}
@@ -96,7 +96,7 @@ func (s *State) GetProposer(index int) (common.Address, error) {
 // PutProposer sets proposer address to index
 func (s *State) PutProposer(index int, addr common.Address) error {
 	ds := s.dynastyState
-	return ds.Put(byteutils.FromInt32(int32(index)), addr.Bytes())
+	return ds.Put(append([]byte(DynastyPrefix), byteutils.FromInt32(int32(index))...), addr.Bytes())
 }
 
 // DynastyState returns dynasty state
@@ -235,7 +235,7 @@ func (s *State) SortByVotePower() ([]common.Address, error) {
 	addresses := make([]common.Address, 0)
 	candidates := make([]*Candidate, 0)
 
-	iter, err := cs.Iterator(nil)
+	iter, err := cs.Iterator([]byte(CandidatePrefix))
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func (s *State) SetDynasty(dynasty []common.Address) error {
 // AddVotePowerToCandidate add vote power to candidate
 func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
-	err := s.candidateState.GetData(id, candidate)
+	err := s.candidateState.GetData(append([]byte(CandidatePrefix), id...), candidate)
 	if err != nil {
 		return err
 	}
@@ -299,13 +299,13 @@ func (s *State) AddVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	if err != nil {
 		return err
 	}
-	return s.candidateState.PutData(id, candidate)
+	return s.candidateState.PutData(append([]byte(CandidatePrefix), id...), candidate)
 }
 
 // SubVotePowerToCandidate sub vote power from candidate's vote power
 func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	candidate := new(Candidate)
-	err := s.candidateState.GetData(id, candidate)
+	err := s.candidateState.GetData(append([]byte(CandidatePrefix), id...), candidate)
 	if err != nil {
 		return err
 	}
@@ -314,5 +314,5 @@ func (s *State) SubVotePowerToCandidate(id []byte, amount *util.Uint128) error {
 	if err != nil {
 		return err
 	}
-	return s.candidateState.PutData(id, candidate)
+	return s.candidateState.PutData(append([]byte(CandidatePrefix), id...), candidate)
 }
