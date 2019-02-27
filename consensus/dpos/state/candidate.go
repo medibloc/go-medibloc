@@ -39,6 +39,16 @@ func (c *Candidate) fromProto(pbCandidate *dpospb.Candidate) error {
 	return nil
 }
 
+// FromBytes set Candidate struct from bytes
+func (c *Candidate) FromBytes(bytes []byte) error {
+	pbCandidate := new(dpospb.Candidate)
+	if err := proto.Unmarshal(bytes, pbCandidate); err != nil {
+		return err
+	}
+
+	return c.fromProto(pbCandidate)
+}
+
 func (c *Candidate) toProto() (*dpospb.Candidate, error) {
 	collateral, err := c.Collateral.ToFixedSizeByteSlice()
 	if err != nil {
@@ -50,6 +60,7 @@ func (c *Candidate) toProto() (*dpospb.Candidate, error) {
 	}
 	return &dpospb.Candidate{
 		Id:         c.ID,
+		TxHash:     c.ID,
 		Addr:       c.Addr.Bytes(),
 		Collateral: collateral,
 		VotePower:  votePower,
@@ -58,49 +69,11 @@ func (c *Candidate) toProto() (*dpospb.Candidate, error) {
 	}, nil
 }
 
-// FromBytes set Candidate struct from bytes
-func (c *Candidate) FromBytes(bytes []byte) error {
-	var err error
-	pbCandidate := new(dpospb.Candidate)
-	if err := proto.Unmarshal(bytes, pbCandidate); err != nil {
-		return err
-	}
-	c.ID = pbCandidate.Id
-	if err := c.Addr.FromBytes(pbCandidate.Addr); err != nil {
-		return err
-	}
-	c.Collateral, err = util.NewUint128FromFixedSizeByteSlice(pbCandidate.Collateral)
-	if err != nil {
-		return err
-	}
-	c.VotePower, err = util.NewUint128FromFixedSizeByteSlice(pbCandidate.VotePower)
-	if err != nil {
-		return err
-	}
-	c.URL = pbCandidate.Url
-	c.Timestamp = pbCandidate.Timestamp
-	return nil
-}
-
 // ToBytes marshal Candidate struct to bytes
 func (c *Candidate) ToBytes() ([]byte, error) {
-	collateral, err := c.Collateral.ToFixedSizeByteSlice()
+	pbCandidate, err := c.toProto()
 	if err != nil {
 		return nil, err
-	}
-	votePower, err := c.VotePower.ToFixedSizeByteSlice()
-	if err != nil {
-		return nil, err
-	}
-
-	pbCandidate := &dpospb.Candidate{
-		Id:         c.ID,
-		TxHash:     c.ID,
-		Addr:       c.Addr.Bytes(),
-		Collateral: collateral,
-		VotePower:  votePower,
-		Url:        c.URL,
-		Timestamp:  c.Timestamp,
 	}
 	return proto.Marshal(pbCandidate)
 }
