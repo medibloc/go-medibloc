@@ -71,7 +71,10 @@ func (tx *StakeTx) Execute(b *core.Block) error {
 		return err
 	}
 
-	voted := user.VotedSlice()
+	voted, err := user.VotedSlice()
+	if err != nil {
+		return err
+	}
 
 	// Add user's stake to candidates' votePower
 	for _, v := range voted {
@@ -162,7 +165,10 @@ func (tx *UnstakeTx) Execute(b *core.Block) error {
 		account.Points = account.Staking.DeepCopy()
 	}
 
-	voted := account.VotedSlice()
+	voted, err := account.VotedSlice()
+	if err != nil {
+		return err
+	}
 
 	err = b.State().PutAccount(account)
 	if err != nil {

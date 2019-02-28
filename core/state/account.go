@@ -173,8 +173,8 @@ func (acc *Account) ToBytes() ([]byte, error) {
 }
 
 // VotedSlice returns slice converted from Voted trie
-func (acc *Account) VotedSlice() [][]byte {
-	return KeyTrieToSlice(acc.Voted)
+func (acc *Account) VotedSlice() ([][]byte, error) {
+	return acc.Voted.Keys(nil)
 }
 
 // GetData returns value in account's data trie

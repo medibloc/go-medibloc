@@ -35,12 +35,17 @@ func coreAccount2rpcAccount(account *coreState.Account, curTs int64, address str
 	if err != nil {
 		return nil, err
 	}
+	votedSlice, err := account.VotedSlice()
+	if err != nil {
+		return nil, err
+	}
+	voted := byteutils.BytesSlice2HexSlice(votedSlice)
 	return &rpcpb.Account{
 		Address:     address,
 		Balance:     account.Balance.String(),
 		Nonce:       account.Nonce,
 		Staking:     account.Staking.String(),
-		Voted:       byteutils.BytesSlice2HexSlice(account.VotedSlice()),
+		Voted:       voted,
 		Points:      account.Points.String(),
 		Unstaking:   account.Unstaking.String(),
 		Alias:       pbAlias.AliasName,

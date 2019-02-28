@@ -122,6 +122,26 @@ func (t *Trie) getSubTrieWithMaxCommonPrefix(prefix []byte) ([]byte, []byte, err
 	return curRootHash, route, nil
 }
 
+// Keys returns all keys starting with the given prefix.
+func (t *Trie) Keys(prefix []byte) ([][]byte, error) {
+	keys := make([][]byte, 0)
+	iter, err := t.Iterator(prefix)
+	if err != nil {
+		return nil, err
+	}
+	for {
+		exist, err := iter.Next()
+		if err != nil {
+			return nil, err
+		}
+		if !exist {
+			break
+		}
+		keys = append(keys, iter.Key())
+	}
+	return keys, nil
+}
+
 func (it *Iterator) push(node *node, pos int, route []byte) {
 	it.stack = append(it.stack, &IteratorState{node, pos, route})
 }
