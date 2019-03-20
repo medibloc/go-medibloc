@@ -281,3 +281,7 @@
 [[override]]
   name = "github.com/libp2p/go-libp2p-kad-dht"
   version = "4.4.12"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/influxdata/influxdb1-client"
