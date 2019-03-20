@@ -21,7 +21,7 @@ import (
 	uurl "net/url"
 	"time"
 
-	"github.com/influxdata/influxdb/client"
+	"github.com/influxdata/influxdb1-client"
 	metrics "github.com/rcrowley/go-metrics"
 )
 
