@@ -69,7 +69,7 @@ make build
 ```
 $ cd $GOPATH/src/github.com/medibloc/go-medibloc
 
-$ build/medi conf/test/nodes/nodes.conf
+$ build/medi conf/local/single_node/node.conf
 INFO[2018-05-18T06:55:28Z] Start medibloc...                             file=main.go func=main.runMedi line=48
 INFO[2018-05-18T06:55:28Z] Setting up Medlet...                          file=medlet.go func="medlet.(*Medlet).Setup" line=92
 INFO[2018-05-18T06:55:28Z] Set up Medlet.                                file=medlet.go func="medlet.(*Medlet).Setup" line=115
@@ -100,7 +100,7 @@ INFO[2018-05-18T06:55:30Z] Block pushed.                                 block="
 cd $GOPATH/src/github.com/medibloc/go-medibloc
 
 # Run 6 nodes
-build/medi conf/test/nodes/nodes.conf
+build/medi conf/local/single_node/node.conf
 ```
 
 ### Endpoints of the Local Testnet
