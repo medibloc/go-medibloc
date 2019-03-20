@@ -48,7 +48,7 @@ go get -u golang.org/x/lint/golint
 ### Building
 ```bash
 # Go get medibloc repository.
-go get -u github.com/medibloc/go-medibloc/...
+go get -u github.com/medibloc/go-medibloc
 
 # Change directory to medibloc repository.
 cd $GOPATH/src/github.com/medibloc/go-medibloc
