@@ -202,6 +202,9 @@ func (b *Block) ExecuteTransaction(tx *Transaction) (*Receipt, error) {
 		return nil, ErrAtomicError
 	}
 	if execErr != nil {
+		if execErr == ErrNotEnoughBalance {
+			return nil, execErr
+		}
 		return b.makeErrorReceipt(exeTx.Bandwidth(), usage, execErr), nil
 	}
 	return b.makeSuccessReceipt(exeTx.Bandwidth(), usage), nil

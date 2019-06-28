@@ -18,6 +18,8 @@ package dpos_test
 import (
 	"testing"
 
+	"github.com/medibloc/go-medibloc/core"
+
 	"github.com/medibloc/go-medibloc/common/trie"
 	"github.com/medibloc/go-medibloc/core/transaction"
 	"github.com/medibloc/go-medibloc/util/testutil"
@@ -36,7 +38,7 @@ func TestBecomeAndQuitCandidate(t *testing.T) {
 		Tx().StakeTx(candidate, 100000).Execute().
 		Tx().Type(txType).Value(200000001).SignPair(candidate).ExecuteErr(transaction.ErrAliasNotExist).
 		Tx().Type(transaction.TxOpRegisterAlias).Value(1000000).Payload(&transaction.RegisterAliasPayload{AliasName: testutil.TestAliasName}).SignPair(candidate).Execute().
-		Tx().Type(txType).Value(200000001).SignPair(candidate).ExecuteErr(transaction.ErrBalanceNotEnough).
+		Tx().Type(txType).Value(200000001).SignPair(candidate).ExecuteErr(core.ErrNotEnoughBalance).
 		Tx().Type(txType).Value(999999).SignPair(candidate).ExecuteErr(transaction.ErrNotEnoughCandidateCollateral).
 		Tx().Type(txType).Value(1000000).SignPair(candidate).Execute().
 		Tx().Type(txType).Value(1000000).SignPair(candidate).ExecuteErr(transaction.ErrAlreadyCandidate)

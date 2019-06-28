@@ -106,7 +106,7 @@ func (tx *RegisterAliasTx) Execute(b *core.Block) error {
 
 	acc.Balance, err = acc.Balance.Sub(tx.collateral)
 	if err == util.ErrUint128Underflow {
-		return ErrBalanceNotEnough
+		return core.ErrNotEnoughBalance
 	}
 	if err != nil {
 		return err

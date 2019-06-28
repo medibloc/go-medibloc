@@ -40,7 +40,7 @@ func TestSend(t *testing.T) {
 
 	bb.
 		Tx().StakeTx(from, 10000).Execute().
-		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(transaction.ErrBalanceNotEnough).
+		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(400000001).SignPair(from).ExecuteErr(core.ErrNotEnoughBalance).
 		Tx().Type(transaction.TxOpTransfer).To(to.Addr).Value(10).SignPair(from).Execute().
 		Expect().
 		Balance(to.Addr, 10).

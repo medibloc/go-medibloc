@@ -126,6 +126,7 @@ var (
 	ErrAtomicError                     = errors.New("failed to process atomic operation")
 	ErrNonceNotExecutable              = errors.New("transaction nonce not executable")
 	ErrCoinbaseNotSet                  = errors.New("coinbase is not set")
+	ErrNotEnoughBalance                = errors.New("not enough balance for staking")
 )
 
 // HashableBlock is an interface that can get its own or parent's hash.

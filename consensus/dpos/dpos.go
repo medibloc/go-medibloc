@@ -423,6 +423,9 @@ func (d *Dpos) makeBlock(coinbase common.Address, tail *core.Block, deadline tim
 			return nil, err
 		}
 		if err != nil {
+			if err == core.ErrNotEnoughBalance {
+				err = d.tm.DelByAddressNonce(tx.From(), tx.Nonce())
+			}
 			continue
 		}
 

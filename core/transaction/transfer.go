@@ -83,7 +83,7 @@ func (tx *TransferTx) Execute(b *core.Block) error {
 	}
 	sender.Balance, err = sender.Balance.Sub(tx.value)
 	if err == util.ErrUint128Underflow {
-		return ErrBalanceNotEnough
+		return core.ErrNotEnoughBalance
 	}
 	if err != nil {
 		return err

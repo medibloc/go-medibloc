@@ -51,7 +51,7 @@ func (tx *StakeTx) Execute(b *core.Block) error {
 	}
 	user.Balance, err = user.Balance.Sub(tx.amount)
 	if err == util.ErrUint128Underflow {
-		return ErrBalanceNotEnough
+		return core.ErrNotEnoughBalance
 	}
 	if err != nil {
 		return err
